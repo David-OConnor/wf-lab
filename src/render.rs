@@ -12,14 +12,21 @@ use lin_alg2::f32::{Vec3, Quaternion};
 use crate::State;
 
 const WINDOW_TITLE: &str = "ψ lab";
-const WINDOW_SIZE_X: f32 = 800.;
+const WINDOW_SIZE_X: f32 = 1_100.;
 const WINDOW_SIZE_Y: f32 = 800.;
 const RENDER_DIST: f32 = 100.;
 const BACKGROUND_COLOR: (f32, f32, f32) = (0.5, 0.5, 0.5);
 const SIDE_PANEL_SIZE: f32 = 400.;
 
-const SURFACE_COLOR_1: (f32, f32, f32) = (0., 0., 1.);
-const SURFACE_COLOR_2: (f32, f32, f32) = (0., 1., 0.);
+const SURFACE_COLORS: [(f32, f32, f32); 7] = [
+    (0., 0., 1.),
+    (0., 1., 0.),
+    (1., 0., 0.),
+    (0., 0.5, 0.5),
+    (0.5, 0.5, 0.),
+    (0.5, 0.5, 0.),
+    (0.5, 0., 0.5),
+];
 
 const SURFACE_SHINYNESS: f32 = 1.;
 
@@ -57,44 +64,49 @@ fn render_handler(state: &mut State, scene: &mut Scene, dt: f32) -> EngineUpdate
     }
 }
 
-pub fn render(state: State, psi: &crate::arr_2d) {
+pub fn render(state: State, surfaces: &Vec<crate::arr_2d>) {
+    let mut meshes = Vec::new();
+    let mut entities = Vec::new();
 
-    // todo: Temp: Converting arr to vec.
-
-    let mut psi_vec = Vec::new();
-    for row in psi {
-        let mut row_vec = Vec::new();
-        for val in row {
-            row_vec.push(*val);
+    for (i, surface) in surfaces.into_iter().enumerate() {
+        let mut surface_vec = Vec::new();
+        // todo: Temp: Converting arr to vec.
+        for row in surface {
+            let mut row_vec = Vec::new();
+            for val in row {
+                row_vec.push(*val);
+            }
+            surface_vec.push(row_vec);
         }
-        psi_vec.push(row_vec);
+
+        meshes.push(
+            Mesh::new_surface(
+                &surface_vec,
+                -4.,
+                0.1,
+                true,
+            )
+        );
+
+        entities.push(
+            Entity::new(
+                i,
+                Vec3::new_zero(),
+                // Quaternion::from_axis_angle(Vec3::new(-1., 0., 0.), TAU / 4.),
+                Quaternion::new_identity(),
+                1.,
+                SURFACE_COLORS[i],
+                SURFACE_SHINYNESS,
+            )
+        );
     }
 
     let scene = Scene {
-        meshes: vec![
-            // todo: Handle this later, eg with UI
-            Mesh::new_surface(
-                &psi_vec,
-                -4.,
-                0.1,
-            ),
-        ],
-        entities: vec![
-            // todo: Handle this later, eg with UI
-            Entity::new(
-                0,
-                Vec3::new_zero(),
-                // Rotate since our math coords are Z-up, and
-                // graphics coords are Z-forward.
-                Quaternion::from_axis_angle(Vec3::new(-1., 0., 0.), TAU / 4.),
-                1.,
-                SURFACE_COLOR_1,
-                SURFACE_SHINYNESS,
-            ),
-        ],
+        meshes,
+        entities,
         camera: Camera {
             fov_y: TAU as f32 / 8.,
-            position: Vec3::new(0., 3., -8.),
+            position: Vec3::new(0., 6., -15.),
             far: RENDER_DIST,
             // orientation: QuatF32::from
             ..Default::default()
@@ -106,7 +118,7 @@ pub fn render(state: State, psi: &crate::arr_2d) {
                 // Light from above. The sun?
                 PointLight {
                     type_: LightType::Omnidirectional,
-                    position: Vec3::new(0., 100., 0.),
+                    position: Vec3::new(0., 20., 0.),
                     diffuse_color: [0.6, 0.4, 0.3, 1.],
                     specular_color: [0.6, 0.4, 0.3, 1.],
                     diffuse_intensity: 15_000.,

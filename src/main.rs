@@ -1,6 +1,9 @@
 //! This program explores solving the wave equation for
 //! arbitrary potentials. It visualizes the wave function in 3d, with user interaction.
 
+#![allow(non_snake_case)]
+
+
 use core::f32::consts::{PI, TAU};
 
 use lin_alg2::f32::{Quaternion, Vec3};
@@ -74,7 +77,7 @@ fn linspace(range: (f32, f32), num_vals: usize) -> Vec<f32> {
     result
 }
 
-fn eval_wf() -> arr_2d {
+fn eval_wf() -> Vec<arr_2d> {
     // Schrod eq for H:
     // V for hydrogen: K_C * Q_PROT / r
 
@@ -165,13 +168,17 @@ fn eval_wf() -> arr_2d {
 
     println!("ψ'' Score: {:.2}", score_wf(psi_pp_expected, psi_pp_measured));
 
-    psi
+    vec![
+        V_vals,
+        psi
+    ]
 }
 
 fn main() {
     let mut state = State::default();
 
-    let psi = eval_wf();
+    let surfaces = eval_wf();
+    // let surfaces = Vec::new();
 
-    render::render(state, &psi);
+    render::render(state, &surfaces);
 }
