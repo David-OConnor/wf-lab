@@ -64,30 +64,13 @@ fn render_handler(state: &mut State, scene: &mut Scene, dt: f32) -> EngineUpdate
     }
 }
 
-pub fn render(state: State, surfaces: &Vec<crate::arr_2d>) {
-    let mut meshes = Vec::new();
+/// Updates entities, but not meshes. For example, when hiding or showing a mesh.
+pub fn update_entities(surfaces: &Vec<((crate::arr_2d, String), bool)>, scene: &mut Scene) {
     let mut entities = Vec::new();
-
-    for (i, surface) in surfaces.into_iter().enumerate() {
-        let mut surface_vec = Vec::new();
-        // todo: Temp: Converting arr to vec.
-        for row in surface {
-            let mut row_vec = Vec::new();
-            for val in row {
-                row_vec.push(*val);
-            }
-            surface_vec.push(row_vec);
+    for (i, (surface, show)) in surfaces.into_iter().enumerate() {
+        if !show {
+            continue
         }
-
-        meshes.push(
-            Mesh::new_surface(
-                &surface_vec,
-                -4.,
-                0.1,
-                true,
-            )
-        );
-
         entities.push(
             Entity::new(
                 i,
@@ -100,25 +83,52 @@ pub fn render(state: State, surfaces: &Vec<crate::arr_2d>) {
             )
         );
     }
+    scene.entities = entities;
+}
 
-    let scene = Scene {
+/// Entry point to our render and event loop.
+pub fn render(state: State) {
+    let mut meshes = Vec::new();
+
+    for (i, ((surface, _name), _show)) in state.surfaces.iter().enumerate() {
+        let mut surface_vec = Vec::new();
+        // todo: Temp: Converting arr to vec.
+        for row in surface{
+            let mut row_vec = Vec::new();
+            for val in row {
+                row_vec.push(*val as f32); // Convert from f64.
+            }
+            surface_vec.push(row_vec);
+        }
+
+        meshes.push(
+            Mesh::new_surface(
+                &surface_vec,
+                -4.,
+                0.1,
+                true,
+            )
+        );
+    }
+    
+    let mut scene = Scene {
         meshes,
-        entities,
+        entities: Vec::new(), // updated below.
         camera: Camera {
             fov_y: TAU as f32 / 8.,
             position: Vec3::new(0., 6., -15.),
             far: RENDER_DIST,
-            // orientation: QuatF32::from
+            orientation: Quaternion::from_axis_angle(Vec3::new(1., 0., 0.), TAU/16.),
             ..Default::default()
         },
         lighting: Lighting {
             ambient_color: [-1., 1., 1., 0.5],
-            ambient_intensity: 0.05,
+            ambient_intensity: 0.02,
             point_lights: vec![
                 // Light from above. The sun?
                 PointLight {
                     type_: LightType::Omnidirectional,
-                    position: Vec3::new(0., 20., 0.),
+                    position: Vec3::new(0., 100., 0.),
                     diffuse_color: [0.6, 0.4, 0.3, 1.],
                     specular_color: [0.6, 0.4, 0.3, 1.],
                     diffuse_intensity: 15_000.,
@@ -131,6 +141,8 @@ pub fn render(state: State, surfaces: &Vec<crate::arr_2d>) {
         window_title: WINDOW_TITLE.to_owned(),
         ..Default::default()
     };
+
+    update_entities(&state.surfaces, &mut scene);
 
     let input_settings = InputSettings {
         initial_controls: ControlScheme::FreeCamera,

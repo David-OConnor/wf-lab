@@ -1,31 +1,39 @@
 //! This program explores solving the wave equation for
 //! arbitrary potentials. It visualizes the wave function in 3d, with user interaction.
 
+// todo: Imaginary part of WFs?
+
 #![allow(non_snake_case)]
 
 
-use core::f32::consts::{PI, TAU};
+use core::f64::consts::{PI, TAU};
 
-use lin_alg2::f32::{Quaternion, Vec3};
+use lin_alg2::f64::{Quaternion, Vec3};
 
 mod render;
 mod ui;
 
-const A_0: f32 = 1.;
-const Z_H: f32 = 1.;
-const K_C: f32 = 1.;
-const Q_PROT: f32 = 1.;
-const Q_ELEC: f32 = -1.;
-// const  M_ELEC: f32 = 5.45e-4
-const M_ELEC: f32 = 1.; // todo: Which?
-const ħ: f32 = 1.;
+const A_0: f64 = 1.;
+const Z_H: f64 = 1.;
+const K_C: f64 = 1.;
+const Q_PROT: f64 = 1.;
+const Q_ELEC: f64 = -1.;
+// const  M_ELEC: f64 = 5.45e-4
+const M_ELEC: f64 = 1.; // todo: Which?
+const ħ: f64 = 1.;
 
 const N: usize = 100;
 
-type arr_2d = [[f32; N]; N];
+type arr_2d = [[f64; N]; N];
+
+#[derive(Default)]
+pub struct State {
+    /// Surface, show if true; hide if false.
+    pub surfaces: Vec<((arr_2d, String), bool)>,
+}
 
 /// Score using a least-squares regression.
-fn score_wf(target: arr_2d, attempt: arr_2d) -> f32 {
+fn score_wf(target: &arr_2d, attempt: &arr_2d) -> f64 {
     let mut result = 0.;
 
     for i in 0..target[0].len() {
@@ -34,11 +42,11 @@ fn score_wf(target: arr_2d, attempt: arr_2d) -> f32 {
         }
     }
 
-    result / target.len() as f32
+    result / target.len() as f64
 }
 
 /// Hydrogen potential.
-fn V_h(posit_nuc: Vec3, posit_sample: Vec3) -> f32 {
+fn V_h(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
     let diff = posit_sample - posit_nuc;
     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
@@ -46,7 +54,7 @@ fn V_h(posit_nuc: Vec3, posit_sample: Vec3) -> f32 {
 }
 
 /// Analytic solution for n=1, s orbital
-fn h_wf_100(posit_nuc: Vec3, posit_sample: Vec3) -> f32 {
+fn h_wf_100(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
     let diff = posit_sample - posit_nuc;
     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
@@ -55,16 +63,11 @@ fn h_wf_100(posit_nuc: Vec3, posit_sample: Vec3) -> f32 {
     // 1. / sqrt(pi) * 1./ A_0.powf(3. / 2.) * (-ρ).exp()
 }
 
-#[derive(Default)]
-pub struct State {
-    // /todo
-}
-
 /// Create a set of values in a given range, with a given number of values.
 /// Similar to `numpy.linspace`.
 /// The result terminates one step before the end of the range.
-fn linspace(range: (f32, f32), num_vals: usize) -> Vec<f32> {
-    let step = (range.1 - range.0) / num_vals as f32;
+fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
+    let step = (range.1 - range.0) / num_vals as f64;
 
     let mut result = Vec::new();
 
@@ -77,7 +80,7 @@ fn linspace(range: (f32, f32), num_vals: usize) -> Vec<f32> {
     result
 }
 
-fn eval_wf() -> Vec<arr_2d> {
+fn eval_wf() -> Vec<(arr_2d, String)> {
     // Schrod eq for H:
     // V for hydrogen: K_C * Q_PROT / r
 
@@ -94,7 +97,7 @@ fn eval_wf() -> Vec<arr_2d> {
 
     // Used for calculating numerical psi''.
     // Smaller is more precise. Applies to dx, dy, and dz
-    let h = 0.000001; // aka dx
+    let h = 0.00001; // aka dx
 
     // let wf = wf_osc;
     let wf = h_wf_100;
@@ -153,6 +156,7 @@ fn eval_wf() -> Vec<arr_2d> {
                 psi_z_prev += wf(nuc, z_prev);
                 psi_z_next += wf(nuc, z_next);
             }
+            // println!("{}", psi_x_prev);
 
             psi_pp_measured[i][j] = 0.;
             psi_pp_measured[i][j] += psi_x_prev + psi_x_next - 2. * psi[i][j];
@@ -166,19 +170,20 @@ fn eval_wf() -> Vec<arr_2d> {
 
     // println!("Psi: {:?}", psi);
 
-    println!("ψ'' Score: {:.2}", score_wf(psi_pp_expected, psi_pp_measured));
+    println!("ψ'' Score: {:.2}", score_wf(&psi_pp_expected, &psi_pp_measured));
 
     vec![
-        V_vals,
-        psi
+        (V_vals, "V".to_owned()),
+        (psi, "ψ".to_owned()),
+        (psi_pp_expected, "ψ'' expected".to_owned()),
+        (psi_pp_measured, "ψ'' measured".to_owned()),
     ]
 }
 
 fn main() {
-    let mut state = State::default();
+    let mut state = State {
+        surfaces: eval_wf().into_iter().map(|s| (s, true)).collect(),
+    };
 
-    let surfaces = eval_wf();
-    // let surfaces = Vec::new();
-
-    render::render(state, &surfaces);
+    render::render(state);
 }
