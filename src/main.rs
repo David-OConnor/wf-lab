@@ -1,146 +1,177 @@
 //! This program explores solving the wave equation for
 //! arbitrary potentials. It visualizes the wave function in 3d, with user interaction.
 
-use core::f32::consts::TAU;
-
-use graphics::{
-    self, Camera, ControlScheme, DeviceEvent, ElementState, EngineUpdates, Entity, InputSettings,
-    LightType, Lighting, Mesh, PointLight, Scene, UiSettings,
-};
+use core::f32::consts::{PI, TAU};
 
 use lin_alg2::f32::{Quaternion, Vec3};
 
-const WINDOW_TITLE: &str = "ψ lab";
-const WINDOW_SIZE_X: f32 = 800.;
-const WINDOW_SIZE_Y: f32 = 800.;
-const RENDER_DIST: f32 = 100.;
-const BACKGROUND_COLOR: (f32, f32, f32) = (0.5, 0.5, 0.5);
-const SIDE_PANEL_SIZE: f32 = 400.;
+mod render;
+mod ui;
 
-const SURFACE_COLOR_1: (f32, f32, f32) = (0., 0., 1.);
-const SURFACE_COLOR_2: (f32, f32, f32) = (0., 1., 0.);
+const A_0: f32 = 1.;
+const Z_H: f32 = 1.;
+const K_C: f32 = 1.;
+const Q_PROT: f32 = 1.;
+const Q_ELEC: f32 = -1.;
+// const  M_ELEC: f32 = 5.45e-4
+const M_ELEC: f32 = 1.; // todo: Which?
+const ħ: f32 = 1.;
 
-const SURFACE_SHINYNESS: f32 = 1.;
+const N: usize = 100;
+
+type arr_2d = [[f32; N]; N];
+
+/// Score using a least-squares regression.
+fn score_wf(target: arr_2d, attempt: arr_2d) -> f32 {
+    let mut result = 0.;
+
+    for i in 0..target[0].len() {
+        for j in 0..target[1].len() {
+            result += attempt[i][j] - target[i][j];
+        }
+    }
+
+    result / target.len() as f32
+}
+
+/// Hydrogen potential.
+fn V_h(posit_nuc: Vec3, posit_sample: Vec3) -> f32 {
+    let diff = posit_sample - posit_nuc;
+    let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+    -K_C * Q_PROT / r
+}
+
+/// Analytic solution for n=1, s orbital
+fn h_wf_100(posit_nuc: Vec3, posit_sample: Vec3) -> f32 {
+    let diff = posit_sample - posit_nuc;
+    let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+    let ρ = Z_H * r / A_0;
+    1. / PI.sqrt() * (Z_H / A_0).powf(3. / 2.) * (-ρ).exp()
+    // 1. / sqrt(pi) * 1./ A_0.powf(3. / 2.) * (-ρ).exp()
+}
 
 #[derive(Default)]
 pub struct State {
     // /todo
 }
 
-fn event_handler(
-    state: &mut State,
-    event: DeviceEvent,
-    scene: &mut Scene,
-    dt: f32,
-) -> EngineUpdates {
-    // todo: Higher level api from winit or otherwise instead of scancode?
-    let mut entities_changed = false;
-    let mut lighting_changed = false;
+/// Create a set of values in a given range, with a given number of values.
+/// Similar to `numpy.linspace`.
+/// The result terminates one step before the end of the range.
+fn linspace(range: (f32, f32), num_vals: usize) -> Vec<f32> {
+    let step = (range.1 - range.0) / num_vals as f32;
 
-    // let rotation_amt = crate::BOND_ROTATION_SPEED * dt as f64;
+    let mut result = Vec::new();
 
-    match event {
-        DeviceEvent::Key(key) => {}
-        _ => (),
+    let mut val = range.0;
+    for _ in 0..num_vals {
+        result.push(val);
+        val += step;
     }
-    EngineUpdates::default()
+
+    result
 }
 
-/// This runs each frame. Update our time-based simulation here.
-fn render_handler(state: &mut State, scene: &mut Scene, dt: f32) -> EngineUpdates {
-    let mut entities_changed = false;
+fn eval_wf() -> arr_2d {
+    // Schrod eq for H:
+    // V for hydrogen: K_C * Q_PROT / r
 
-    // scene.entities = generate_entities(&state);
+    // psi(r)'' = (E - V(r)) * 2*m/ħ**2 * psi(r)
+    // psi(r) = (E - V(R))^-1 * ħ**2/2m * psi(r)''
 
-    entities_changed = true;
+    let mut V_vals = [[0.; N]; N];
+    let mut psi = [[0.; N]; N];
+    let mut psi_pp_expected = [[0.; N]; N];
+    let mut psi_pp_measured = [[0.; N]; N];
 
-    EngineUpdates {
-        entities: entities_changed,
-        camera: false,
-        lighting: false,
+    let x_vals = linspace((-4., 4.), N);
+    let y_vals = linspace((-4., 4.), N);
+
+    // Used for calculating numerical psi''.
+    // Smaller is more precise. Applies to dx, dy, and dz
+    let h = 0.000001; // aka dx
+
+    // let wf = wf_osc;
+    let wf = h_wf_100;
+
+    let potential_fn = V_h;
+    // potential_fn = V_osc
+
+    let E = -0.05;
+    // let E = -1/8; # n = 2
+    // let E = -0.05514706; # n = 3
+
+    // letnuclei = [Vec3(2., 0., 0.)];
+    // H ion nuc dist is I believe 2 bohr radii.
+    let nuclei = [Vec3::new(-0.5, 0., 0.), Vec3::new(0.5, 0., 0.)];
+
+    // psi = wf(posit_nuc, Vec3::n ))
+
+    for (i, x) in x_vals.iter().enumerate() {
+        for (j, y) in y_vals.iter().enumerate() {
+            let posit_sample = Vec3::new(*x, *y, 0.); // todo: Inject z in a diff way.sc
+
+            let mut V = 0.;
+
+            for nuc in nuclei {
+                // todo: Naiive superposition
+                psi[i][j] += wf(nuc, posit_sample);
+
+                V += potential_fn(nuc, posit_sample);
+            }
+            V_vals[i][j] = V;
+
+            psi_pp_expected[i][j] = (E - V) * -2. * M_ELEC / ħ.powi(2) * psi[i][j];
+
+            // Calculate psi'' based on a numerical derivative of psi
+            // in 3D.
+
+            let x_prev = Vec3::new(posit_sample.x - h, posit_sample.y, posit_sample.z);
+            let x_next = Vec3::new(posit_sample.x + h, posit_sample.y, posit_sample.z);
+            let y_prev = Vec3::new(posit_sample.x, posit_sample.y - h, posit_sample.z);
+            let y_next = Vec3::new(posit_sample.x, posit_sample.y + h, posit_sample.z);
+            let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - h);
+            let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + h);
+
+            let mut psi_x_prev = 0.;
+            let mut psi_x_next = 0.;
+            let mut psi_y_prev = 0.;
+            let mut psi_y_next = 0.;
+            let mut psi_z_prev = 0.;
+            let mut psi_z_next = 0.;
+
+            for nuc in nuclei {
+                psi_x_prev += wf(nuc, x_prev);
+                psi_x_next += wf(nuc, x_next);
+                psi_y_prev += wf(nuc, y_prev);
+                psi_y_next += wf(nuc, y_next);
+                psi_z_prev += wf(nuc, z_prev);
+                psi_z_next += wf(nuc, z_next);
+            }
+
+            psi_pp_measured[i][j] = 0.;
+            psi_pp_measured[i][j] += psi_x_prev + psi_x_next - 2. * psi[i][j];
+            psi_pp_measured[i][j] += psi_y_prev + psi_y_next - 2. * psi[i][j];
+            psi_pp_measured[i][j] += psi_z_prev + psi_z_next - 2. * psi[i][j];
+            psi_pp_measured[i][j] /= h.powi(2);
+        }
     }
-}
+    // psi_pp_measured[i] = 0.25 * psi_x_prev2 + psi_x_next2 + psi_y_prev2 + psi_y_next2 + \
+    // psi_z_prev2 + psi_z_next2 - 6. * psi[i]
 
-/// This function draws the (immediate-mode) GUI.
-/// [UI items](https://docs.rs/egui/latest/egui/struct.Ui.html#method.heading)
-pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> EngineUpdates {
-    let mut engine_updates = EngineUpdates::default();
+    // println!("Psi: {:?}", psi);
 
-    let panel = egui::SidePanel::left(0) // ID must be unique among panels.
-        .default_width(SIDE_PANEL_SIZE);
+    println!("ψ'' Score: {:.2}", score_wf(psi_pp_expected, psi_pp_measured));
 
-    engine_updates
+    psi
 }
 
 fn main() {
     let mut state = State::default();
 
-    let scene = Scene {
-        meshes: vec![
-            // todo: Handle this later, eg with UI
-            Mesh::new_surface(&vec![
-                vec![1., 2., 5.],
-                vec![3., 4., -1.,],
-                vec![3., 6., -1.,]
-                ], -4., 0.5),
-        ],
-        entities: vec![
-            // todo: Handle this later, eg with UI
-            Entity::new(
-                0,
-                Vec3::new_zero(),
-                Quaternion::new_identity(),
-                1.,
-                SURFACE_COLOR_1,
-                SURFACE_SHINYNESS,
-            )
-        ],
-        camera: Camera {
-            fov_y: TAU as f32 / 7.,
-            position: Vec3::new(0., 0., -30.),
-            far: RENDER_DIST,
-            // orientation: QuatF32::from
-            ..Default::default()
-        },
-        lighting: Lighting {
-            ambient_color: [-1., 1., 1., 0.5],
-            ambient_intensity: 0.05,
-            point_lights: vec![
-                // Light from above. The sun?
-                PointLight {
-                    type_: LightType::Omnidirectional,
-                    position: Vec3::new(0., 100., 0.),
-                    diffuse_color: [0.6, 0.4, 0.3, 1.],
-                    specular_color: [0.6, 0.4, 0.3, 1.],
-                    diffuse_intensity: 15_000.,
-                    specular_intensity: 15_000.,
-                },
-            ],
-        },
-        background_color: BACKGROUND_COLOR,
-        window_size: (WINDOW_SIZE_X, WINDOW_SIZE_Y),
-        window_title: WINDOW_TITLE.to_owned(),
-        ..Default::default()
-    };
+    let psi = eval_wf();
 
-    let input_settings = InputSettings {
-        initial_controls: ControlScheme::FreeCamera,
-        ..Default::default()
-    };
-    let ui_settings = UiSettings {
-        // todo: How to handle this? For blocking keyboard and moues inputs when over the UI.
-        // width: gui::UI_WIDTH as f64, // todo: Not working correctly.
-        width: 500.,
-        icon_path: None,
-    };
-
-    graphics::run(
-        state,
-        scene,
-        input_settings,
-        ui_settings,
-        render_handler,
-        event_handler,
-        ui_handler,
-    );
+    render::render(state, &psi);
 }
