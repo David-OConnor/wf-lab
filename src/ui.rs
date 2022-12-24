@@ -8,6 +8,11 @@ const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 200.;
 
+const E_MIN: f64 = -3.;
+const E_MAX: f64 = 3.;
+const Z_MIN: f64 = -10.;
+const Z_MAX: f64 = 5.;
+
 /// This function draws the (immediate-mode) GUI.
 /// [UI items](https://docs.rs/egui/latest/egui/struct.Ui.html#method.heading)
 pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> EngineUpdates {
@@ -29,17 +34,61 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.heading("Show surfaces:");
 
-        let mut updated_shown = false;
         for (i, ((_surface, name), show)) in state.surfaces.iter_mut().enumerate() {
             if ui.checkbox(show, &*name).clicked() {
-                updated_shown = true;
                 engine_updates.entities = true;
             }
         }
 
+        ui.add(
+            egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
+                if let Some(v_) = v {
+                    state.E = v_;
+                    engine_updates.meshes = true;
+                    // engine_updates.entities = true; // todo?
+
+                    // todo: Don't reset shown state.
+                    let data = crate::eval_wf(state.z, state.E);
+
+                    render::update_meshes(&state.surfaces, scene);
+
+                    state.surfaces = data.0.into_iter().map(|s| (s, true)).collect();
+
+                    state.psi_pp_score = data.1;
+
+                    render::update_meshes(&state.surfaces, scene);
+                }
+
+                state.E
+            })
+            .text("Energy"),
+        );
+
+        ui.add(
+            egui::Slider::from_get_set(Z_MIN..=Z_MAX, |v| {
+                if let Some(v_) = v {
+                    state.z = v_;
+                    engine_updates.meshes = true;
+                    // engine_updates.entities = true; // todo?
+                    // todo: Don't reset shown state.
+                    let data = crate::eval_wf(state.z, state.E);
+
+                    state.surfaces = data.0.into_iter().map(|s| (s, true)).collect();
+                    state.psi_pp_score = data.1;
+
+                    render::update_meshes(&state.surfaces, scene);
+                }
+
+                state.z
+            })
+            .text("Z slice"),
+        );
+
+        ui.heading(format!("ψ'' score: {:.4}", state.psi_pp_score));
+
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.
-        if updated_shown {
+        if engine_updates.entities {
             render::update_entities(&state.surfaces, scene);
         }
     });

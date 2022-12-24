@@ -7,7 +7,7 @@ use graphics::{
     LightType, Lighting, Mesh, PointLight, Scene, UiSettings,
 };
 
-use lin_alg2::f32::{Vec3, Quaternion};
+use lin_alg2::f32::{Quaternion, Vec3};
 
 use crate::State;
 
@@ -58,42 +58,21 @@ fn render_handler(state: &mut State, scene: &mut Scene, dt: f32) -> EngineUpdate
     entities_changed = true;
 
     EngineUpdates {
+        meshes: false,
         entities: entities_changed,
         camera: false,
         lighting: false,
     }
 }
 
-/// Updates entities, but not meshes. For example, when hiding or showing a mesh.
-pub fn update_entities(surfaces: &Vec<((crate::arr_2d, String), bool)>, scene: &mut Scene) {
-    let mut entities = Vec::new();
-    for (i, (surface, show)) in surfaces.into_iter().enumerate() {
-        if !show {
-            continue
-        }
-        entities.push(
-            Entity::new(
-                i,
-                Vec3::new_zero(),
-                // Quaternion::from_axis_angle(Vec3::new(-1., 0., 0.), TAU / 4.),
-                Quaternion::new_identity(),
-                1.,
-                SURFACE_COLORS[i],
-                SURFACE_SHINYNESS,
-            )
-        );
-    }
-    scene.entities = entities;
-}
-
-/// Entry point to our render and event loop.
-pub fn render(state: State) {
+/// Updates meshes. For example, when updating a plot due to changing parameters.
+pub fn update_meshes(surfaces: &Vec<((crate::arr_2d, String), bool)>, scene: &mut Scene) {
     let mut meshes = Vec::new();
 
-    for (i, ((surface, _name), _show)) in state.surfaces.iter().enumerate() {
+    for (i, ((surface, _name), _show)) in surfaces.into_iter().enumerate() {
         let mut surface_vec = Vec::new();
         // todo: Temp: Converting arr to vec.
-        for row in surface{
+        for row in surface {
             let mut row_vec = Vec::new();
             for val in row {
                 row_vec.push(*val as f32); // Convert from f64.
@@ -101,24 +80,41 @@ pub fn render(state: State) {
             surface_vec.push(row_vec);
         }
 
-        meshes.push(
-            Mesh::new_surface(
-                &surface_vec,
-                -4.,
-                0.1,
-                true,
-            )
-        );
+        meshes.push(Mesh::new_surface(&surface_vec, -4., 0.1, true));
     }
-    
+    scene.meshes = meshes;
+}
+
+/// Updates entities, but not meshes. For example, when hiding or showing a mesh.
+pub fn update_entities(surfaces: &Vec<((crate::arr_2d, String), bool)>, scene: &mut Scene) {
+    let mut entities = Vec::new();
+    for (i, (surface, show)) in surfaces.into_iter().enumerate() {
+        if !show {
+            continue;
+        }
+        entities.push(Entity::new(
+            i,
+            Vec3::new_zero(),
+            // Quaternion::from_axis_angle(Vec3::new(-1., 0., 0.), TAU / 4.),
+            Quaternion::new_identity(),
+            1.,
+            SURFACE_COLORS[i],
+            SURFACE_SHINYNESS,
+        ));
+    }
+    scene.entities = entities;
+}
+
+/// Entry point to our render and event loop.
+pub fn render(state: State) {
     let mut scene = Scene {
-        meshes,
+        meshes: Vec::new(),   // updated below.
         entities: Vec::new(), // updated below.
         camera: Camera {
             fov_y: TAU as f32 / 8.,
             position: Vec3::new(0., 6., -15.),
             far: RENDER_DIST,
-            orientation: Quaternion::from_axis_angle(Vec3::new(1., 0., 0.), TAU/16.),
+            orientation: Quaternion::from_axis_angle(Vec3::new(1., 0., 0.), TAU / 16.),
             ..Default::default()
         },
         lighting: Lighting {
@@ -142,6 +138,7 @@ pub fn render(state: State) {
         ..Default::default()
     };
 
+    update_meshes(&state.surfaces, &mut scene);
     update_entities(&state.surfaces, &mut scene);
 
     let input_settings = InputSettings {

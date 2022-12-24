@@ -5,7 +5,6 @@
 
 #![allow(non_snake_case)]
 
-
 use core::f64::consts::{PI, TAU};
 
 use lin_alg2::f64::{Quaternion, Vec3};
@@ -30,6 +29,12 @@ type arr_2d = [[f64; N]; N];
 pub struct State {
     /// Surface, show if true; hide if false.
     pub surfaces: Vec<((arr_2d, String), bool)>,
+    /// Eg, least-squares over 2 or 3 dimensions between
+    /// When visualizing a 2d wave function over X and Y, this is the fixed Z value.
+    pub z: f64,
+    /// Energy of the system
+    pub E: f64,
+    pub psi_pp_score: f64,
 }
 
 /// Score using a least-squares regression.
@@ -80,7 +85,7 @@ fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
     result
 }
 
-fn eval_wf() -> Vec<(arr_2d, String)> {
+fn eval_wf(z: f64, E: f64) -> (Vec<(arr_2d, String)>, f64) {
     // Schrod eq for H:
     // V for hydrogen: K_C * Q_PROT / r
 
@@ -105,10 +110,6 @@ fn eval_wf() -> Vec<(arr_2d, String)> {
     let potential_fn = V_h;
     // potential_fn = V_osc
 
-    let E = -0.05;
-    // let E = -1/8; # n = 2
-    // let E = -0.05514706; # n = 3
-
     // letnuclei = [Vec3(2., 0., 0.)];
     // H ion nuc dist is I believe 2 bohr radii.
     let nuclei = [Vec3::new(-0.5, 0., 0.), Vec3::new(0.5, 0., 0.)];
@@ -117,7 +118,7 @@ fn eval_wf() -> Vec<(arr_2d, String)> {
 
     for (i, x) in x_vals.iter().enumerate() {
         for (j, y) in y_vals.iter().enumerate() {
-            let posit_sample = Vec3::new(*x, *y, 0.); // todo: Inject z in a diff way.sc
+            let posit_sample = Vec3::new(*x, *y, z); // todo: Inject z in a diff way.sc
 
             let mut V = 0.;
 
@@ -170,19 +171,32 @@ fn eval_wf() -> Vec<(arr_2d, String)> {
 
     // println!("Psi: {:?}", psi);
 
-    println!("ψ'' Score: {:.2}", score_wf(&psi_pp_expected, &psi_pp_measured));
+    // todo: You should score over all 3D, not just this 2D slice.
+    let score = score_wf(&psi_pp_expected, &psi_pp_measured);
 
-    vec![
-        (V_vals, "V".to_owned()),
-        (psi, "ψ".to_owned()),
-        (psi_pp_expected, "ψ'' expected".to_owned()),
-        (psi_pp_measured, "ψ'' measured".to_owned()),
-    ]
+    (
+        vec![
+            (V_vals, "V".to_owned()),
+            (psi, "ψ".to_owned()),
+            (psi_pp_expected, "ψ'' expected".to_owned()),
+            (psi_pp_measured, "ψ'' measured".to_owned()),
+        ],
+        score,
+    )
 }
 
 fn main() {
+    let z = 0.;
+    let E = -0.5;
+
+    let data = eval_wf(z, E);
+    let surfaces = data.0.into_iter().map(|s| (s, true)).collect();
+
     let mut state = State {
-        surfaces: eval_wf().into_iter().map(|s| (s, true)).collect(),
+        surfaces,
+        E,
+        z,
+        psi_pp_score: data.1,
     };
 
     render::render(state);
