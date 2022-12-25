@@ -2,14 +2,20 @@ use egui::{self, Color32, RichText};
 
 use graphics::{EngineUpdates, Scene};
 
-use crate::{render, State, N};
+use crate::{render, State, N, NUM_SURFACES};
 
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 200.;
 
-const E_MIN: f64 = -3.;
-const E_MAX: f64 = 3.;
+const E_MIN: f64 = -4.;
+const E_MAX: f64 = 4.;
+
+// Wave fn weights
+const WEIGHT_MIN: f64 = -6.;
+const WEIGHT_MAX: f64 = 6.;
+
+const ITEM_SPACING: f32 = 16.;
 
 /// This function draws the (immediate-mode) GUI.
 /// [UI items](https://docs.rs/egui/latest/egui/struct.Ui.html#method.heading)
@@ -39,6 +45,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             }
         }
 
+        ui.add_space(ITEM_SPACING);
+
         ui.add(
             egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
                 if let Some(v_) = v {
@@ -66,18 +74,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.z_displayed = v_;
                     engine_updates.meshes = true;
 
-                    // let data = crate::eval_wf(&state.wfs, &state.nuclei, state.z, state.E);
-
-                    // todo: DRY with above.
-                    // let mut updated_surfaces = Vec::new();
-                    // for (i, surface) in data.0.into_iter().enumerate() {
-                    // (This approach preserves what's selected to show/hide.)
-                    // updated_surfaces.push((surface, state.surfaces[i].1))
-                    // }
-                    // state.surfaces = updated_surfaces;
-
-                    // state.psi_pp_score = data.1;
-
                     render::update_meshes(&state.surfaces, state.z_displayed, scene);
                 }
 
@@ -85,6 +81,41 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             })
             .text("Z slice"),
         );
+
+        ui.add_space(ITEM_SPACING);
+
+        ui.heading("Weights:");
+
+        // We use this var to avoid mutable/unmutable borrow conflicts
+        let mut updated_weights = false;
+        for wf in state.wfs.iter_mut() {
+            
+            ui.add(
+                egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
+                    if let Some(v_) = v {
+                        wf.1 = v_;
+                        updated_weights = true;
+                    }
+
+                    wf.1
+                })
+                .text("Weight"),
+            );
+        }
+
+        if updated_weights {
+            engine_updates.meshes = true;
+
+            let (surfaces, _names, psi_pp_score) =
+                crate::eval_wf(&state.wfs, &state.nuclei, state.E);
+
+            state.surfaces = surfaces;
+            state.psi_pp_score = psi_pp_score;
+
+            render::update_meshes(&state.surfaces, state.z_displayed, scene);
+        }
+
+        ui.add_space(ITEM_SPACING);
 
         ui.heading(format!("ψ'' score: {:.7}", state.psi_pp_score));
 

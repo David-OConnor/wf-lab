@@ -23,12 +23,12 @@ const Q_ELEC: f64 = -1.;
 const M_ELEC: f64 = 1.; // todo: Which?
 const ħ: f64 = 1.;
 
-const N: usize = 50;
+const N: usize = 60;
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
 const H: f64 = 0.00001;
-const GRID_MIN: f64 = -3.;
-const GRID_MAX: f64 = 3.;
+const GRID_MIN: f64 = -4.;
+const GRID_MAX: f64 = 4.;
 
 type arr_2d = [[f64; N]; N];
 type arr_3d = [[[f64; N]; N]; N];
@@ -138,69 +138,76 @@ fn eval_wf(
     // let mut psi_pp_expected = [[[0.; N]; N]; N];
     // let mut psi_pp_measured = [[[0.; N]; N]; N];
 
-    // todo temp unsafe!
     unsafe {
         V_vals = [[[0.; N]; N]; N];
         psi = [[[0.; N]; N]; N];
         psi_pp_expected = [[[0.; N]; N]; N];
         psi_pp_measured = [[[0.; N]; N]; N];
+    }
 
-        let x_vals = linspace((GRID_MIN, GRID_MAX), N);
-        let y_vals = linspace((GRID_MIN, GRID_MAX), N);
-        let z_vals = linspace((GRID_MIN, GRID_MAX), N);
+    let x_vals = linspace((GRID_MIN, GRID_MAX), N);
+    let y_vals = linspace((GRID_MIN, GRID_MAX), N);
+    let z_vals = linspace((GRID_MIN, GRID_MAX), N);
 
-        let potential_fn = V_h;
-        // potential_fn = V_osc
+    let potential_fn = V_h;
+    // potential_fn = V_osc
 
-        for (i, x) in x_vals.iter().enumerate() {
-            for (j, y) in y_vals.iter().enumerate() {
-                for (k, z) in z_vals.iter().enumerate() {
-                    let posit_sample = Vec3::new(*x, *y, *z);
+    for (i, x) in x_vals.iter().enumerate() {
+        for (j, y) in y_vals.iter().enumerate() {
+            for (k, z) in z_vals.iter().enumerate() {
+                let posit_sample = Vec3::new(*x, *y, *z);
 
-                    let mut V = 0.;
+                let mut V = 0.;
 
-                    for (i_nuc, nuc) in nuclei.into_iter().enumerate() {
-                        let (wf_i, weight) = wfs[i_nuc];
-                        let wf = h_wf_100; // todo: Use the `wf_i` above etc.
-                                           // todo: Naive superposition
+                for (i_nuc, nuc) in nuclei.into_iter().enumerate() {
+                    let (wf_i, weight) = wfs[i_nuc];
+                    let wf = h_wf_100; // todo: Use the `wf_i` above etc.
+                                       // todo: Naive superposition
+                    unsafe {
                         psi[i][j][k] += wf(*nuc, posit_sample) * weight;
-
-                        V += potential_fn(*nuc, posit_sample);
                     }
+
+                    V += potential_fn(*nuc, posit_sample);
+                }
+                unsafe {
                     V_vals[i][j][k] = V;
+                }
 
+                unsafe {
                     psi_pp_expected[i][j][k] = (E - V) * -2. * M_ELEC / ħ.powi(2) * psi[i][j][k];
+                }
 
-                    // Calculate psi'' based on a numerical derivative of psi
-                    // in 3D.
+                // Calculate psi'' based on a numerical derivative of psi
+                // in 3D.
 
-                    let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
-                    let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
-                    let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
-                    let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
-                    let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
-                    let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+                let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
+                let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
+                let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
+                let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
+                let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
+                let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
 
-                    let mut psi_x_prev = 0.;
-                    let mut psi_x_next = 0.;
-                    let mut psi_y_prev = 0.;
-                    let mut psi_y_next = 0.;
-                    let mut psi_z_prev = 0.;
-                    let mut psi_z_next = 0.;
+                let mut psi_x_prev = 0.;
+                let mut psi_x_next = 0.;
+                let mut psi_y_prev = 0.;
+                let mut psi_y_next = 0.;
+                let mut psi_z_prev = 0.;
+                let mut psi_z_next = 0.;
 
-                    for (i_nuc, nuc) in nuclei.into_iter().enumerate() {
-                        let (wf_i, weight) = wfs[i_nuc];
-                        let wf = h_wf_100; // todo: Use the `wf_i` above etc.
+                for (i_nuc, nuc) in nuclei.into_iter().enumerate() {
+                    let (wf_i, weight) = wfs[i_nuc];
+                    let wf = h_wf_100; // todo: Use the `wf_i` above etc.
 
-                        psi_x_prev += wf(*nuc, x_prev) * weight;
-                        psi_x_next += wf(*nuc, x_next) * weight;
-                        psi_y_prev += wf(*nuc, y_prev) * weight;
-                        psi_y_next += wf(*nuc, y_next) * weight;
-                        psi_z_prev += wf(*nuc, z_prev) * weight;
-                        psi_z_next += wf(*nuc, z_next) * weight;
-                    }
-                    // println!("{}", psi_x_prev);
+                    psi_x_prev += wf(*nuc, x_prev) * weight;
+                    psi_x_next += wf(*nuc, x_next) * weight;
+                    psi_y_prev += wf(*nuc, y_prev) * weight;
+                    psi_y_next += wf(*nuc, y_next) * weight;
+                    psi_z_prev += wf(*nuc, z_prev) * weight;
+                    psi_z_next += wf(*nuc, z_next) * weight;
+                }
+                // println!("{}", psi_x_prev);
 
+                unsafe {
                     psi_pp_measured[i][j][k] = 0.;
                     psi_pp_measured[i][j][k] += psi_x_prev + psi_x_next - 2. * psi[i][j][k];
                     psi_pp_measured[i][j][k] += psi_y_prev + psi_y_next - 2. * psi[i][j][k];
@@ -209,13 +216,16 @@ fn eval_wf(
                 }
             }
         }
-        // psi_pp_measured[i] = 0.25 * psi_x_prev2 + psi_x_next2 + psi_y_prev2 + psi_y_next2 + \
-        // psi_z_prev2 + psi_z_next2 - 6. * psi[i]
+    }
+    // psi_pp_measured[i] = 0.25 * psi_x_prev2 + psi_x_next2 + psi_y_prev2 + psi_y_next2 + \
+    // psi_z_prev2 + psi_z_next2 - 6. * psi[i]
 
-        // println!("Psi: {:?}", psi);
+    // println!("Psi: {:?}", psi);
 
-        // todo: You should score over all 3D, not just this 2D slice.
+    // todo: You should score over all 3D, not just this 2D slice.
+    unsafe {
         let score = score_wf(&psi_pp_expected, &psi_pp_measured);
+
         (
             [&V_vals, &psi, &psi_pp_expected, &psi_pp_measured],
             [
@@ -226,7 +236,7 @@ fn eval_wf(
             ],
             score,
         )
-    } // todo temp end unsafe!
+    }
 }
 
 fn main() {
