@@ -12,6 +12,8 @@ use lin_alg2::f64::{Quaternion, Vec3};
 mod render;
 mod ui;
 
+const NUM_SURFACES: usize = 4; // V, psi, psi_pp_expected, psi_pp_measured
+
 const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
 const K_C: f64 = 1.;
@@ -21,7 +23,7 @@ const Q_ELEC: f64 = -1.;
 const M_ELEC: f64 = 1.; // todo: Which?
 const ħ: f64 = 1.;
 
-const N: usize = 15;
+const N: usize = 20;
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
 const H: f64 = 0.00001;
@@ -36,6 +38,12 @@ type wf_type = dyn Fn(Vec3, Vec3) -> f64;
 
 // todo: Consider static allocation instead of vecs when possible.
 
+// todo: troubleshooting mem issues
+// static mut V_vals: arr_3d = Default::default();
+// static mut psi: arr_3d = Default::default();
+// static mut psi_pp_measued: arr_3d = Default::default();
+// static mut psi_pp_expected: arr_3d = Default::default();
+
 #[derive(Default)]
 pub struct State {
     /// todo: Combine wfs and nuclei in into single tuple etc to enforce index pairing?
@@ -46,14 +54,17 @@ pub struct State {
     // todo use an index for them.
     /// Nuclei. todo: H only for now.
     pub nuclei: Vec<Vec3>,
-    /// Computed surfaces, show if true; hide if false.
-    pub surfaces: Vec<((arr_3d, String), bool)>,
+    /// Computed surfaces, with name.
+    pub surfaces: [arr_3d; NUM_SURFACES],
     /// Eg, least-squares over 2 or 3 dimensions between
     /// When visualizing a 2d wave function over X and Y, this is the fixed Z value.
     pub z_displayed: f64,
     /// Energy of the system
     pub E: f64,
     pub psi_pp_score: f64,
+    /// Surface name
+    pub surface_names: [String; NUM_SURFACES],
+    pub show_surfaces: [bool; NUM_SURFACES],
 }
 
 /// Score using a least-squares regression.
@@ -113,8 +124,8 @@ fn eval_wf(
     nuclei: &Vec<Vec3>,
     // z: f64,
     E: f64,
-) -> ([(arr_3d, String); 4], f64) {
-// ) -> (Vec<(arr_3d, String)>, f64) {
+) -> ([arr_3d; NUM_SURFACES], [String; NUM_SURFACES], f64) {
+    // ) -> (Vec<(arr_3d, String)>, f64) {
     // Schrod eq for H:
     // V for hydrogen: K_C * Q_PROT / r
 
@@ -143,7 +154,7 @@ fn eval_wf(
                 for (i_nuc, nuc) in nuclei.into_iter().enumerate() {
                     let (wf_i, weight) = wfs[i_nuc];
                     let wf = h_wf_100; // todo: Use the `wf_i` above etc.
-                    // todo: Naive superposition
+                                       // todo: Naive superposition
                     psi[i][j][k] += wf(*nuc, posit_sample) * weight;
 
                     V += potential_fn(*nuc, posit_sample);
@@ -197,13 +208,13 @@ fn eval_wf(
 
     // todo: You should score over all 3D, not just this 2D slice.
     let score = score_wf(&psi_pp_expected, &psi_pp_measured);
-
     (
+        [V_vals, psi, psi_pp_expected, psi_pp_measured],
         [
-            (V_vals, "V".to_owned()),
-            (psi, "ψ".to_owned()),
-            (psi_pp_expected, "ψ'' expected".to_owned()),
-            (psi_pp_measured, "ψ'' measured".to_owned()),
+            "V".to_owned(),
+            "ψ".to_owned(),
+            "ψ'' expected".to_owned(),
+            "ψ'' measured".to_owned(),
         ],
         score,
     )
@@ -213,8 +224,8 @@ fn main() {
     let wfs = vec![
         (0, 1.),
         (0, -1.), // todo: Try -1 for ani-bonding orbital?
-        // (h_wf_100, 1.),
-        // (h_wf_100, 1.),
+                  // (h_wf_100, 1.),
+                  // (h_wf_100, 1.),
     ];
     let nuclei = vec![Vec3::new(-0.5, 0., 0.), Vec3::new(0.5, 0., 0.)];
     // let nuclei = vec![Vec3::new(-1., 0., 0.), Vec3::new(1., 0., 0.)];
@@ -222,8 +233,11 @@ fn main() {
     let z_displayed = 0.;
     let E = -0.5;
 
-    let data = eval_wf(&wfs, &nuclei, E);
-    let surfaces = data.0.into_iter().map(|s| (s, true)).collect();
+    let (surfaces, surface_names, psi_pp_score) = eval_wf(&wfs, &nuclei, E);
+    // let surfaces = data.0.into_iter().map(|s| (s, true)).collect();
+    // let surfaces: [((arr_3d, String), bool); NUM_SURFACES] = sfc.into_iter().map(|s| (s, true)).collect();
+
+    let show_surfaces = Default::default();
 
     let mut state = State {
         wfs,
@@ -231,7 +245,9 @@ fn main() {
         surfaces,
         E,
         z_displayed,
-        psi_pp_score: data.1,
+        psi_pp_score,
+        surface_names,
+        show_surfaces,
     };
 
     render::render(state);

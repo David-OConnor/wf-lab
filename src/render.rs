@@ -9,7 +9,7 @@ use graphics::{
 
 use lin_alg2::f32::{Quaternion, Vec3};
 
-use crate::{State, GRID_MIN, GRID_MAX};
+use crate::{State, GRID_MAX, GRID_MIN};
 
 const WINDOW_TITLE: &str = "ψ lab";
 const WINDOW_SIZE_X: f32 = 1_100.;
@@ -38,7 +38,6 @@ fn event_handler(
 ) -> EngineUpdates {
     // todo: Higher level api from winit or otherwise instead of scancode?
     let mut entities_changed = false;
-    let mut lighting_changed = false;
 
     // let rotation_amt = crate::BOND_ROTATION_SPEED * dt as f64;
 
@@ -49,20 +48,9 @@ fn event_handler(
     EngineUpdates::default()
 }
 
-/// This runs each frame. Update our time-based simulation here.
+/// This runs each frame. Currently, no updates.
 fn render_handler(state: &mut State, scene: &mut Scene, dt: f32) -> EngineUpdates {
-    let mut entities_changed = false;
-
-    // scene.entities = generate_entities(&state);
-
-    entities_changed = true;
-
-    EngineUpdates {
-        meshes: false,
-        entities: entities_changed,
-        camera: false,
-        lighting: false,
-    }
+    EngineUpdates::default()
 }
 
 /// Utility function to linearly map an input value to an output
@@ -76,13 +64,17 @@ pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 
 
 /// Updates meshes. For example, when updating a plot due to changing parameters.
 /// Note that this is where we decide which Z to render.
-pub fn update_meshes(surfaces: &Vec<((crate::arr_3d, String), bool)>, z_displayed: f64, scene: &mut Scene) {
+pub fn update_meshes(
+    surfaces: &[crate::arr_3d; crate::NUM_SURFACES],
+    z_displayed: f64,
+    scene: &mut Scene,
+) {
     let mut meshes = Vec::new();
 
     // `z_displayed` is a value float. Convert this to an index.
     let z_i = map_linear(z_displayed, (GRID_MIN, GRID_MAX), (0., crate::N as f64)) as usize;
 
-    for (i, ((surface, _name), _show)) in surfaces.into_iter().enumerate() {
+    for (i, surface) in surfaces.into_iter().enumerate() {
         let mut surface_vec = Vec::new();
         // todo: Temp: Converting arr to vec. And indexing to the correct Z value.
         for x in surface {
@@ -99,10 +91,14 @@ pub fn update_meshes(surfaces: &Vec<((crate::arr_3d, String), bool)>, z_displaye
 }
 
 /// Updates entities, but not meshes. For example, when hiding or showing a mesh.
-pub fn update_entities(surfaces: &Vec<((crate::arr_3d, String), bool)>, scene: &mut Scene) {
+pub fn update_entities(
+    surfaces: &[crate::arr_3d; crate::NUM_SURFACES],
+    show_surfaces: &[bool; crate::NUM_SURFACES],
+    scene: &mut Scene,
+) {
     let mut entities = Vec::new();
-    for (i, (_surface, show)) in surfaces.into_iter().enumerate() {
-        if !show {
+    for (i, surface) in surfaces.into_iter().enumerate() {
+        if !show_surfaces[i] {
             continue;
         }
         entities.push(Entity::new(
@@ -160,7 +156,7 @@ pub fn render(state: State) {
     };
 
     update_meshes(&state.surfaces, state.z_displayed, &mut scene);
-    update_entities(&state.surfaces, &mut scene);
+    update_entities(&state.surfaces, &state.show_surfaces, &mut scene);
 
     let input_settings = InputSettings {
         initial_controls: ControlScheme::FreeCamera,

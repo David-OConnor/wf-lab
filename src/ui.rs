@@ -2,7 +2,7 @@ use egui::{self, Color32, RichText};
 
 use graphics::{EngineUpdates, Scene};
 
-use crate::{render, State};
+use crate::{render, State, N};
 
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
@@ -32,8 +32,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.heading("Show surfaces:");
 
-        for (i, ((_surface, name), show)) in state.surfaces.iter_mut().enumerate() {
-            if ui.checkbox(show, &*name).clicked() {
+        for (i, name) in state.surface_names.iter_mut().enumerate() {
+            let mut show = state.show_surfaces[i];
+            if ui.checkbox(&mut show, &*name).clicked() {
                 engine_updates.entities = true;
             }
         }
@@ -44,16 +45,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.E = v_;
                     engine_updates.meshes = true;
 
-                    let data = crate::eval_wf(&state.wfs, &state.nuclei, state.E);
+                    let (surfaces, _names, psi_pp_score) =
+                        crate::eval_wf(&state.wfs, &state.nuclei, state.E);
 
-                    let mut updated_surfaces = Vec::new();
-                    for (i, surface) in data.0.into_iter().enumerate() {
-                        // (This approach preserves what's selected to show/hide.)
-                        updated_surfaces.push((surface, state.surfaces[i].1))
-                    }
-                    state.surfaces = updated_surfaces;
-
-                    state.psi_pp_score = data.1;
+                    state.surfaces = surfaces;
+                    state.psi_pp_score = psi_pp_score;
 
                     render::update_meshes(&state.surfaces, state.z_displayed, scene);
                 }
@@ -75,8 +71,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // todo: DRY with above.
                     // let mut updated_surfaces = Vec::new();
                     // for (i, surface) in data.0.into_iter().enumerate() {
-                        // (This approach preserves what's selected to show/hide.)
-                        // updated_surfaces.push((surface, state.surfaces[i].1))
+                    // (This approach preserves what's selected to show/hide.)
+                    // updated_surfaces.push((surface, state.surfaces[i].1))
                     // }
                     // state.surfaces = updated_surfaces;
 
@@ -95,7 +91,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.
         if engine_updates.entities {
-            render::update_entities(&state.surfaces, scene);
+            render::update_entities(&state.surfaces, &state.show_surfaces, scene);
         }
     });
 
