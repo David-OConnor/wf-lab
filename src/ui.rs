@@ -33,7 +33,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.heading("Show surfaces:");
 
         for (i, name) in state.surface_names.iter_mut().enumerate() {
-            let mut show = state.show_surfaces[i];
+            let mut show = &mut state.show_surfaces[i];
             if ui.checkbox(&mut show, &*name).clicked() {
                 engine_updates.entities = true;
             }
@@ -86,7 +86,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             .text("Z slice"),
         );
 
-        ui.heading(format!("ψ'' score: {:.4}", state.psi_pp_score));
+        ui.heading(format!("ψ'' score: {:.7}", state.psi_pp_score));
 
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.

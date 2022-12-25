@@ -65,7 +65,7 @@ pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 
 /// Updates meshes. For example, when updating a plot due to changing parameters.
 /// Note that this is where we decide which Z to render.
 pub fn update_meshes(
-    surfaces: &[crate::arr_3d; crate::NUM_SURFACES],
+    surfaces: &[&'static crate::arr_3d; crate::NUM_SURFACES],
     z_displayed: f64,
     scene: &mut Scene,
 ) {
@@ -77,7 +77,7 @@ pub fn update_meshes(
     for (i, surface) in surfaces.into_iter().enumerate() {
         let mut surface_vec = Vec::new();
         // todo: Temp: Converting arr to vec. And indexing to the correct Z value.
-        for x in surface {
+        for x in *surface {
             let mut x_vec = Vec::new();
             for y in x {
                 x_vec.push(y[z_i] as f32); // Convert from f64.
@@ -92,7 +92,7 @@ pub fn update_meshes(
 
 /// Updates entities, but not meshes. For example, when hiding or showing a mesh.
 pub fn update_entities(
-    surfaces: &[crate::arr_3d; crate::NUM_SURFACES],
+    surfaces: &[&'static crate::arr_3d; crate::NUM_SURFACES],
     show_surfaces: &[bool; crate::NUM_SURFACES],
     scene: &mut Scene,
 ) {
