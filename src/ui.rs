@@ -10,8 +10,6 @@ const SLIDER_WIDTH: f32 = 200.;
 
 const E_MIN: f64 = -3.;
 const E_MAX: f64 = 3.;
-const Z_MIN: f64 = -10.;
-const Z_MAX: f64 = 5.;
 
 /// This function draws the (immediate-mode) GUI.
 /// [UI items](https://docs.rs/egui/latest/egui/struct.Ui.html#method.heading)
@@ -46,7 +44,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.E = v_;
                     engine_updates.meshes = true;
 
-                    let data = crate::eval_wf(&state.wfs, &state.nuclei, state.z, state.E);
+                    let data = crate::eval_wf(&state.wfs, &state.nuclei, state.E);
 
                     let mut updated_surfaces = Vec::new();
                     for (i, surface) in data.0.into_iter().enumerate() {
@@ -57,7 +55,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                     state.psi_pp_score = data.1;
 
-                    render::update_meshes(&state.surfaces, scene);
+                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
                 }
 
                 state.E
@@ -66,27 +64,28 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         );
 
         ui.add(
-            egui::Slider::from_get_set(Z_MIN..=Z_MAX, |v| {
+            // -0.1 is a kludge.
+            egui::Slider::from_get_set(crate::GRID_MIN..=crate::GRID_MAX - 0.1, |v| {
                 if let Some(v_) = v {
-                    state.z = v_;
+                    state.z_displayed = v_;
                     engine_updates.meshes = true;
 
-                    let data = crate::eval_wf(&state.wfs, &state.nuclei, state.z, state.E);
+                    // let data = crate::eval_wf(&state.wfs, &state.nuclei, state.z, state.E);
 
                     // todo: DRY with above.
-                    let mut updated_surfaces = Vec::new();
-                    for (i, surface) in data.0.into_iter().enumerate() {
+                    // let mut updated_surfaces = Vec::new();
+                    // for (i, surface) in data.0.into_iter().enumerate() {
                         // (This approach preserves what's selected to show/hide.)
-                        updated_surfaces.push((surface, state.surfaces[i].1))
-                    }
-                    state.surfaces = updated_surfaces;
+                        // updated_surfaces.push((surface, state.surfaces[i].1))
+                    // }
+                    // state.surfaces = updated_surfaces;
 
-                    state.psi_pp_score = data.1;
+                    // state.psi_pp_score = data.1;
 
-                    render::update_meshes(&state.surfaces, scene);
+                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
                 }
 
-                state.z
+                state.z_displayed
             })
             .text("Z slice"),
         );

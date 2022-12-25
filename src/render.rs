@@ -9,7 +9,7 @@ use graphics::{
 
 use lin_alg2::f32::{Quaternion, Vec3};
 
-use crate::State;
+use crate::{State, GRID_MIN, GRID_MAX};
 
 const WINDOW_TITLE: &str = "ψ lab";
 const WINDOW_SIZE_X: f32 = 1_100.;
@@ -65,19 +65,32 @@ fn render_handler(state: &mut State, scene: &mut Scene, dt: f32) -> EngineUpdate
     }
 }
 
+/// Utility function to linearly map an input value to an output
+pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 {
+    // todo: You may be able to optimize calls to this by having the ranges pre-store
+    // todo the total range vals.
+    let portion = (val - range_in.0) / (range_in.1 - range_in.0);
+
+    portion * (range_out.1 - range_out.0) + range_out.0
+}
+
 /// Updates meshes. For example, when updating a plot due to changing parameters.
-pub fn update_meshes(surfaces: &Vec<((crate::arr_2d, String), bool)>, scene: &mut Scene) {
+/// Note that this is where we decide which Z to render.
+pub fn update_meshes(surfaces: &Vec<((crate::arr_3d, String), bool)>, z_displayed: f64, scene: &mut Scene) {
     let mut meshes = Vec::new();
+
+    // `z_displayed` is a value float. Convert this to an index.
+    let z_i = map_linear(z_displayed, (GRID_MIN, GRID_MAX), (0., crate::N as f64)) as usize;
 
     for (i, ((surface, _name), _show)) in surfaces.into_iter().enumerate() {
         let mut surface_vec = Vec::new();
-        // todo: Temp: Converting arr to vec.
-        for row in surface {
-            let mut row_vec = Vec::new();
-            for val in row {
-                row_vec.push(*val as f32); // Convert from f64.
+        // todo: Temp: Converting arr to vec. And indexing to the correct Z value.
+        for x in surface {
+            let mut x_vec = Vec::new();
+            for y in x {
+                x_vec.push(y[z_i] as f32); // Convert from f64.
             }
-            surface_vec.push(row_vec);
+            surface_vec.push(x_vec);
         }
 
         meshes.push(Mesh::new_surface(&surface_vec, -4., 0.1, true));
@@ -86,9 +99,9 @@ pub fn update_meshes(surfaces: &Vec<((crate::arr_2d, String), bool)>, scene: &mu
 }
 
 /// Updates entities, but not meshes. For example, when hiding or showing a mesh.
-pub fn update_entities(surfaces: &Vec<((crate::arr_2d, String), bool)>, scene: &mut Scene) {
+pub fn update_entities(surfaces: &Vec<((crate::arr_3d, String), bool)>, scene: &mut Scene) {
     let mut entities = Vec::new();
-    for (i, (surface, show)) in surfaces.into_iter().enumerate() {
+    for (i, (_surface, show)) in surfaces.into_iter().enumerate() {
         if !show {
             continue;
         }
@@ -146,7 +159,7 @@ pub fn render(state: State) {
         ..Default::default()
     };
 
-    update_meshes(&state.surfaces, &mut scene);
+    update_meshes(&state.surfaces, state.z_displayed, &mut scene);
     update_entities(&state.surfaces, &mut scene);
 
     let input_settings = InputSettings {

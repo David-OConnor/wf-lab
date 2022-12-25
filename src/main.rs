@@ -21,15 +21,20 @@ const Q_ELEC: f64 = -1.;
 const M_ELEC: f64 = 1.; // todo: Which?
 const ħ: f64 = 1.;
 
-const N: usize = 100;
+const N: usize = 15;
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
 const H: f64 = 0.00001;
+const GRID_MIN: f64 = -3.;
+const GRID_MAX: f64 = 3.;
 
 type arr_2d = [[f64; N]; N];
+type arr_3d = [[[f64; N]; N]; N];
 type wf_type = dyn Fn(Vec3, Vec3) -> f64;
 // type wf_type = dyn Fn(Vec3, Vec3) -> f64;
 // type wf_type = fn(Vec3, Vec3) -> f64;
+
+// todo: Consider static allocation instead of vecs when possible.
 
 #[derive(Default)]
 pub struct State {
@@ -42,26 +47,28 @@ pub struct State {
     /// Nuclei. todo: H only for now.
     pub nuclei: Vec<Vec3>,
     /// Computed surfaces, show if true; hide if false.
-    pub surfaces: Vec<((arr_2d, String), bool)>,
+    pub surfaces: Vec<((arr_3d, String), bool)>,
     /// Eg, least-squares over 2 or 3 dimensions between
     /// When visualizing a 2d wave function over X and Y, this is the fixed Z value.
-    pub z: f64,
+    pub z_displayed: f64,
     /// Energy of the system
     pub E: f64,
     pub psi_pp_score: f64,
 }
 
 /// Score using a least-squares regression.
-fn score_wf(target: &arr_2d, attempt: &arr_2d) -> f64 {
+fn score_wf(target: &arr_3d, attempt: &arr_3d) -> f64 {
     let mut result = 0.;
 
     for i in 0..target[0].len() {
         for j in 0..target[1].len() {
-            result += attempt[i][j] - target[i][j];
+            for k in 0..target[2].len() {
+                result += attempt[i][j][k] - target[i][j][k];
+            }
         }
     }
 
-    result / target.len() as f64
+    result / target.len().pow(3) as f64
 }
 
 /// Hydrogen potential.
@@ -104,79 +111,83 @@ fn eval_wf(
     // wfs: &Vec<(wf_type, f64)>,
     wfs: &Vec<(usize, f64)>,
     nuclei: &Vec<Vec3>,
-    z: f64,
+    // z: f64,
     E: f64,
-) -> (Vec<(arr_2d, String)>, f64) {
+) -> ([(arr_3d, String); 4], f64) {
+// ) -> (Vec<(arr_3d, String)>, f64) {
     // Schrod eq for H:
     // V for hydrogen: K_C * Q_PROT / r
 
     // psi(r)'' = (E - V(r)) * 2*m/ħ**2 * psi(r)
     // psi(r) = (E - V(R))^-1 * ħ**2/2m * psi(r)''
 
-    let mut V_vals = [[0.; N]; N];
-    let mut psi = [[0.; N]; N];
-    let mut psi_pp_expected = [[0.; N]; N];
-    let mut psi_pp_measured = [[0.; N]; N];
+    let mut V_vals = [[[0.; N]; N]; N];
+    let mut psi = [[[0.; N]; N]; N];
+    let mut psi_pp_expected = [[[0.; N]; N]; N];
+    let mut psi_pp_measured = [[[0.; N]; N]; N];
 
-    let x_vals = linspace((-4., 4.), N);
-    let y_vals = linspace((-4., 4.), N);
+    let x_vals = linspace((GRID_MIN, GRID_MAX), N);
+    let y_vals = linspace((GRID_MIN, GRID_MAX), N);
+    let z_vals = linspace((GRID_MIN, GRID_MAX), N);
 
     let potential_fn = V_h;
     // potential_fn = V_osc
 
     for (i, x) in x_vals.iter().enumerate() {
         for (j, y) in y_vals.iter().enumerate() {
-            let posit_sample = Vec3::new(*x, *y, z); // todo: Inject z in a diff way.sc
+            for (k, z) in z_vals.iter().enumerate() {
+                let posit_sample = Vec3::new(*x, *y, *z);
 
-            let mut V = 0.;
+                let mut V = 0.;
 
-            for (k, nuc) in nuclei.into_iter().enumerate() {
-                let (wf_i, weight) = wfs[k];
-                let wf = h_wf_100; // todo: Use the `wf_i` above etc.
-                // todo: Naive superposition
-                psi[i][j] += wf(*nuc, posit_sample) * weight;
+                for (i_nuc, nuc) in nuclei.into_iter().enumerate() {
+                    let (wf_i, weight) = wfs[i_nuc];
+                    let wf = h_wf_100; // todo: Use the `wf_i` above etc.
+                    // todo: Naive superposition
+                    psi[i][j][k] += wf(*nuc, posit_sample) * weight;
 
-                V += potential_fn(*nuc, posit_sample);
+                    V += potential_fn(*nuc, posit_sample);
+                }
+                V_vals[i][j][k] = V;
+
+                psi_pp_expected[i][j][k] = (E - V) * -2. * M_ELEC / ħ.powi(2) * psi[i][j][k];
+
+                // Calculate psi'' based on a numerical derivative of psi
+                // in 3D.
+
+                let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
+                let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
+                let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
+                let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
+                let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
+                let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+
+                let mut psi_x_prev = 0.;
+                let mut psi_x_next = 0.;
+                let mut psi_y_prev = 0.;
+                let mut psi_y_next = 0.;
+                let mut psi_z_prev = 0.;
+                let mut psi_z_next = 0.;
+
+                for (i_nuc, nuc) in nuclei.into_iter().enumerate() {
+                    let (wf_i, weight) = wfs[i_nuc];
+                    let wf = h_wf_100; // todo: Use the `wf_i` above etc.
+
+                    psi_x_prev += wf(*nuc, x_prev) * weight;
+                    psi_x_next += wf(*nuc, x_next) * weight;
+                    psi_y_prev += wf(*nuc, y_prev) * weight;
+                    psi_y_next += wf(*nuc, y_next) * weight;
+                    psi_z_prev += wf(*nuc, z_prev) * weight;
+                    psi_z_next += wf(*nuc, z_next) * weight;
+                }
+                // println!("{}", psi_x_prev);
+
+                psi_pp_measured[i][j][k] = 0.;
+                psi_pp_measured[i][j][k] += psi_x_prev + psi_x_next - 2. * psi[i][j][k];
+                psi_pp_measured[i][j][k] += psi_y_prev + psi_y_next - 2. * psi[i][j][k];
+                psi_pp_measured[i][j][k] += psi_z_prev + psi_z_next - 2. * psi[i][j][k];
+                psi_pp_measured[i][j][k] /= H.powi(2); // todo: Hard-code this in a const etc.
             }
-            V_vals[i][j] = V;
-
-            psi_pp_expected[i][j] = (E - V) * -2. * M_ELEC / ħ.powi(2) * psi[i][j];
-
-            // Calculate psi'' based on a numerical derivative of psi
-            // in 3D.
-
-            let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
-            let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
-            let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
-            let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
-            let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
-            let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
-
-            let mut psi_x_prev = 0.;
-            let mut psi_x_next = 0.;
-            let mut psi_y_prev = 0.;
-            let mut psi_y_next = 0.;
-            let mut psi_z_prev = 0.;
-            let mut psi_z_next = 0.;
-
-            for (k, nuc) in nuclei.into_iter().enumerate() {
-                let (wf_i, weight) = wfs[k];
-                let wf = h_wf_100; // todo: Use the `wf_i` above etc.
-
-                psi_x_prev += wf(*nuc, x_prev) * weight;
-                psi_x_next += wf(*nuc, x_next) * weight;
-                psi_y_prev += wf(*nuc, y_prev) * weight;
-                psi_y_next += wf(*nuc, y_next) * weight;
-                psi_z_prev += wf(*nuc, z_prev) * weight;
-                psi_z_next += wf(*nuc, z_next) * weight;
-            }
-            // println!("{}", psi_x_prev);
-
-            psi_pp_measured[i][j] = 0.;
-            psi_pp_measured[i][j] += psi_x_prev + psi_x_next - 2. * psi[i][j];
-            psi_pp_measured[i][j] += psi_y_prev + psi_y_next - 2. * psi[i][j];
-            psi_pp_measured[i][j] += psi_z_prev + psi_z_next - 2. * psi[i][j];
-            psi_pp_measured[i][j] /= H.powi(2); // todo: Hard-code this in a const etc.
         }
     }
     // psi_pp_measured[i] = 0.25 * psi_x_prev2 + psi_x_next2 + psi_y_prev2 + psi_y_next2 + \
@@ -188,7 +199,7 @@ fn eval_wf(
     let score = score_wf(&psi_pp_expected, &psi_pp_measured);
 
     (
-        vec![
+        [
             (V_vals, "V".to_owned()),
             (psi, "ψ".to_owned()),
             (psi_pp_expected, "ψ'' expected".to_owned()),
@@ -206,11 +217,12 @@ fn main() {
         // (h_wf_100, 1.),
     ];
     let nuclei = vec![Vec3::new(-0.5, 0., 0.), Vec3::new(0.5, 0., 0.)];
+    // let nuclei = vec![Vec3::new(-1., 0., 0.), Vec3::new(1., 0., 0.)];
 
-    let z = 0.;
+    let z_displayed = 0.;
     let E = -0.5;
 
-    let data = eval_wf(&wfs, &nuclei, z, E);
+    let data = eval_wf(&wfs, &nuclei, E);
     let surfaces = data.0.into_iter().map(|s| (s, true)).collect();
 
     let mut state = State {
@@ -218,7 +230,7 @@ fn main() {
         nuclei,
         surfaces,
         E,
-        z,
+        z_displayed,
         psi_pp_score: data.1,
     };
 
