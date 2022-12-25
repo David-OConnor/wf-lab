@@ -45,14 +45,15 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 if let Some(v_) = v {
                     state.E = v_;
                     engine_updates.meshes = true;
-                    // engine_updates.entities = true; // todo?
 
-                    // todo: Don't reset shown state.
-                    let data = crate::eval_wf(state.z, state.E);
+                    let data = crate::eval_wf(&state.wfs, &state.nuclei, state.z, state.E);
 
-                    render::update_meshes(&state.surfaces, scene);
-
-                    state.surfaces = data.0.into_iter().map(|s| (s, true)).collect();
+                    let mut updated_surfaces = Vec::new();
+                    for (i, surface) in data.0.into_iter().enumerate() {
+                        // (This approach preserves what's selected to show/hide.)
+                        updated_surfaces.push((surface, state.surfaces[i].1))
+                    }
+                    state.surfaces = updated_surfaces;
 
                     state.psi_pp_score = data.1;
 
@@ -69,11 +70,17 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 if let Some(v_) = v {
                     state.z = v_;
                     engine_updates.meshes = true;
-                    // engine_updates.entities = true; // todo?
-                    // todo: Don't reset shown state.
-                    let data = crate::eval_wf(state.z, state.E);
 
-                    state.surfaces = data.0.into_iter().map(|s| (s, true)).collect();
+                    let data = crate::eval_wf(&state.wfs, &state.nuclei, state.z, state.E);
+
+                    // todo: DRY with above.
+                    let mut updated_surfaces = Vec::new();
+                    for (i, surface) in data.0.into_iter().enumerate() {
+                        // (This approach preserves what's selected to show/hide.)
+                        updated_surfaces.push((surface, state.surfaces[i].1))
+                    }
+                    state.surfaces = updated_surfaces;
+
                     state.psi_pp_score = data.1;
 
                     render::update_meshes(&state.surfaces, scene);
