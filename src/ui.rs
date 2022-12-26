@@ -84,17 +84,32 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.add_space(ITEM_SPACING);
 
+        ui.heading("H orbitals:");
+
         ui.heading("Weights:");
 
         // We use this var to avoid mutable/unmutable borrow conflicts
-        let mut updated_weights = false;
+        let mut updated_wfs = false;
         for wf in state.wfs.iter_mut() {
-            
+            let mut wf_entry = wf.0.to_string();
+
+            let response = ui.add(egui::TextEdit::singleline(&mut wf_entry).desired_width(16.));
+            if response.changed() {
+                let mut ok = false;
+                match wf_entry.parse() {
+                    Ok(v) => {
+                        wf.0 = v;
+                        updated_wfs = true;
+                    }
+                    Err(_) => (),
+                }
+            }
+
             ui.add(
                 egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
                     if let Some(v_) = v {
                         wf.1 = v_;
-                        updated_weights = true;
+                        updated_wfs = true;
                     }
 
                     wf.1
@@ -103,7 +118,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             );
         }
 
-        if updated_weights {
+        if updated_wfs {
             engine_updates.meshes = true;
 
             let (surfaces, _names, psi_pp_score) =

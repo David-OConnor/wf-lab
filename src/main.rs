@@ -101,6 +101,15 @@ fn h_wf_100(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
     // 1. / sqrt(pi) * 1./ A_0.powf(3. / 2.) * (-ρ).exp()
 }
 
+/// Analytic solution for n=2, s orbital
+fn h_wf_200(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
+    let diff = posit_sample - posit_nuc;
+    let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+    let ρ = Z_H * r / A_0;
+    1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * (2. - ρ) * (-ρ/2.).exp()
+}
+
 /// Create a set of values in a given range, with a given number of values.
 /// Similar to `numpy.linspace`.
 /// The result terminates one step before the end of the range.
@@ -161,8 +170,13 @@ fn eval_wf(
 
                 for (i_nuc, nuc) in nuclei.into_iter().enumerate() {
                     let (wf_i, weight) = wfs[i_nuc];
-                    let wf = h_wf_100; // todo: Use the `wf_i` above etc.
-                                       // todo: Naive superposition
+
+                    let wf = match wf_i {
+                        1 => h_wf_100,
+                        2 => h_wf_200,
+                        _ => h_wf_100,
+                    };
+
                     unsafe {
                         psi[i][j][k] += wf(*nuc, posit_sample) * weight;
                     }
@@ -195,8 +209,13 @@ fn eval_wf(
                 let mut psi_z_next = 0.;
 
                 for (i_nuc, nuc) in nuclei.into_iter().enumerate() {
+                    // todo DRY
                     let (wf_i, weight) = wfs[i_nuc];
-                    let wf = h_wf_100; // todo: Use the `wf_i` above etc.
+                    let wf = match wf_i {
+                        1 => h_wf_100,
+                        2 => h_wf_200,
+                        _ => h_wf_100,
+                    };
 
                     psi_x_prev += wf(*nuc, x_prev) * weight;
                     psi_x_next += wf(*nuc, x_next) * weight;
@@ -241,13 +260,15 @@ fn eval_wf(
 
 fn main() {
     let wfs = vec![
-        (0, 1.),
-        (0, -1.), // todo: Try -1 for ani-bonding orbital?
+        (1, 1.),
+        (1, -1.), // todo: Try -1 for ani-bonding orbital?
                   // (h_wf_100, 1.),
                   // (h_wf_100, 1.),
     ];
-    let nuclei = vec![Vec3::new(-0.5, 0., 0.), Vec3::new(0.5, 0., 0.)];
-    // let nuclei = vec![Vec3::new(-1., 0., 0.), Vec3::new(1., 0., 0.)];
+    // let nuclei = vec![Vec3::new(-0.5, 0., 0.), Vec3::new(0.5, 0., 0.)];
+    // let nuclei = vec![Vec3::new(0., 0., 0.)];
+    // H ion nuc dist is I believe 2 bohr radii.
+    let nuclei = vec![Vec3::new(-1., 0., 0.), Vec3::new(1., 0., 0.)];
 
     let z_displayed = 0.;
     let E = -0.5;
