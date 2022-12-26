@@ -6,14 +6,14 @@ use crate::{render, State, N, NUM_SURFACES};
 
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
-const SLIDER_WIDTH: f32 = 200.;
+const SLIDER_WIDTH: f32 = 260.;
 
-const E_MIN: f64 = -4.;
-const E_MAX: f64 = 4.;
+const E_MIN: f64 = -2.;
+const E_MAX: f64 = 2.;
 
 // Wave fn weights
-const WEIGHT_MIN: f64 = -6.;
-const WEIGHT_MAX: f64 = 6.;
+const WEIGHT_MIN: f64 = -4.;
+const WEIGHT_MAX: f64 = 4.;
 
 const ITEM_SPACING: f32 = 16.;
 
@@ -53,10 +53,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.E = v_;
                     engine_updates.meshes = true;
 
-                    let (surfaces, _names, psi_pp_score) =
-                        crate::eval_wf(&state.wfs, &state.nuclei, state.E);
+                    let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
 
-                    state.surfaces = surfaces;
                     state.psi_pp_score = psi_pp_score;
 
                     render::update_meshes(&state.surfaces, state.z_displayed, scene);
@@ -86,7 +84,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.heading("H orbitals:");
 
-        ui.heading("Weights:");
+        ui.heading("Wave functions and Weights:");
 
         // We use this var to avoid mutable/unmutable borrow conflicts
         let mut updated_wfs = false;
@@ -121,10 +119,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         if updated_wfs {
             engine_updates.meshes = true;
 
-            let (surfaces, _names, psi_pp_score) =
-                crate::eval_wf(&state.wfs, &state.nuclei, state.E);
+            let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
 
-            state.surfaces = surfaces;
             state.psi_pp_score = psi_pp_score;
 
             render::update_meshes(&state.surfaces, state.z_displayed, scene);
