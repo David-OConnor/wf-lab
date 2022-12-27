@@ -53,7 +53,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.E = v_;
                     engine_updates.meshes = true;
 
-                    let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
+                    // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
+                    let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
 
                     state.psi_pp_score = psi_pp_score;
 
@@ -119,7 +120,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         if updated_wfs {
             engine_updates.meshes = true;
 
-            let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
+            // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
+            let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
 
             state.psi_pp_score = psi_pp_score;
 

@@ -6,8 +6,8 @@
 #![allow(non_snake_case)]
 
 use std::{
-    f64::consts::{PI, TAU},
     boxed::Box,
+    f64::consts::PI,
 };
 
 use lin_alg2::f64::{Quaternion, Vec3};
@@ -15,7 +15,7 @@ use lin_alg2::f64::{Quaternion, Vec3};
 mod render;
 mod ui;
 
-const NUM_SURFACES: usize = 4; // V, psi, psi_pp_expected, psi_pp_measured
+const NUM_SURFACES: usize = 4; // V, psi, psi_pp_calculated, psi_pp_measured
 
 const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
@@ -42,10 +42,10 @@ type wf_type = dyn Fn(Vec3, Vec3) -> f64;
 // todo: Consider static allocation instead of vecs when possible.
 
 // todo: troubleshooting stack overflow issues
-// static mut V_vals: Arr3d = [[[0.; N]; N]; N];
-// static mut psi: Arr3d = [[[0.; N]; N]; N];
-// static mut psi_pp_measured: Arr3d = [[[0.; N]; N]; N];
-// static mut psi_pp_expected: Arr3d = [[[0.; N]; N]; N];
+static mut V_vals: Arr3d = [[[0.; N]; N]; N];
+static mut psi: Arr3d = [[[0.; N]; N]; N];
+static mut psi_pp_measured: Arr3d = [[[0.; N]; N]; N];
+static mut psi_pp_calculated: Arr3d = [[[0.; N]; N]; N];
 
 // #[derive(Default)]
 pub struct State {
@@ -58,8 +58,8 @@ pub struct State {
     /// Nuclei. todo: H only for now.
     pub charges: Vec<(Vec3, f64)>,
     /// Computed surfaces, with name.
-    // pub surfaces: [&'static Arr3d; NUM_SURFACES],
-    pub surfaces: Box<[Arr3d; NUM_SURFACES]>,
+    pub surfaces: [&'static Arr3d; NUM_SURFACES],
+    // pub surfaces: Box<[Arr3d; NUM_SURFACES]>,
     // pub surfaces: [Arr3d; NUM_SURFACES],
     /// Eg, least-squares over 2 or 3 dimensions between
     /// When visualizing a 2d wave function over X and Y, this is the fixed Z value.
@@ -111,7 +111,19 @@ fn h_wf_200(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
     let ρ = Z_H * r / A_0;
-    1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * (2. - ρ) * (-ρ/2.).exp()
+    1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * (2. - ρ) * (-ρ / 2.).exp()
+}
+
+fn h_wf_210(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
+    let diff = posit_sample - posit_nuc;
+    let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+    // We take Cos theta below, so no need for cos^-1 here.
+    // todo: Not sure how we deal with diff phis?
+    let cos_theta = posit_nuc.to_normalized().dot(posit_sample.to_normalized());
+
+    let ρ = Z_H * r / A_0;
+    1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * ρ * (-ρ/2.).exp() * cos_theta
 }
 
 /// Create a set of values in a given range, with a given number of values.
@@ -138,12 +150,14 @@ fn eval_wf(
     // wfs: &Vec<(wf_type, f64)>,
     wfs: &Vec<(usize, f64)>,
     charges: &Vec<(Vec3, f64)>,
-    surfaces: &mut Box<[Arr3d; NUM_SURFACES]>,
+    // surfaces: &mut [Arr3d; NUM_SURFACES],
+    // surfaces: &'static [Arr3d; NUM_SURFACES],
     // z: f64,
     E: f64,
-// ) -> ([&'static Arr3d; NUM_SURFACES], [String; NUM_SURFACES], f64) {
-// ) -> (&[Arr3d; NUM_SURFACES], [String; NUM_SURFACES], f64) {
-) -> f64{ // output score. todo: Move score to a diff fn?
+    // ) -> ([&'static Arr3d; NUM_SURFACES], [String; NUM_SURFACES], f64) {
+    // ) -> (&[Arr3d; NUM_SURFACES], [String; NUM_SURFACES], f64) {
+) -> f64 {
+    // output score. todo: Move score to a diff fn?
     // ) -> (Vec<(Arr3d, String)>, f64) {
     // Schrod eq for H:
     // V for hydrogen: K_C * Q_PROT / r
@@ -153,119 +167,121 @@ fn eval_wf(
 
     // let mut V_vals = [[[0.; N]; N]; N];
     // let mut psi = [[[0.; N]; N]; N];
-    // let mut psi_pp_expected = [[[0.; N]; N]; N];
+    // let mut psi_pp_calculated = [[[0.; N]; N]; N];
     // let mut psi_pp_measured = [[[0.; N]; N]; N];
 
-    let [V_vals, psi, psi_pp_expected, psi_pp_measured] = *surfaces;
+    // let [V_vals, psi, psi_pp_calculated, psi_pp_measured] = *surfaces;
 
-    // unsafe {
-        *V_vals = [[[0.; N]; N]; N];
-        *psi = [[[0.; N]; N]; N];
-        *psi_pp_expected = [[[0.; N]; N]; N];
-        *psi_pp_measured = [[[0.; N]; N]; N];
-    // }
+    unsafe {
+        // unsafe {
+        V_vals = [[[0.; N]; N]; N];
+        psi = [[[0.; N]; N]; N];
+        psi_pp_calculated = [[[0.; N]; N]; N];
+        psi_pp_measured = [[[0.; N]; N]; N];
+        // }
 
-    let x_vals = linspace((GRID_MIN, GRID_MAX), N);
-    let y_vals = linspace((GRID_MIN, GRID_MAX), N);
-    let z_vals = linspace((GRID_MIN, GRID_MAX), N);
+        let x_vals = linspace((GRID_MIN, GRID_MAX), N);
+        let y_vals = linspace((GRID_MIN, GRID_MAX), N);
+        let z_vals = linspace((GRID_MIN, GRID_MAX), N);
 
-    let potential_fn = V_coulomb;
-    // potential_fn = V_osc
+        let potential_fn = V_coulomb;
+        // potential_fn = V_osc
 
-    for (i, x) in x_vals.iter().enumerate() {
-        for (j, y) in y_vals.iter().enumerate() {
-            for (k, z) in z_vals.iter().enumerate() {
-                let posit_sample = Vec3::new(*x, *y, *z);
+        for (i, x) in x_vals.iter().enumerate() {
+            for (j, y) in y_vals.iter().enumerate() {
+                for (k, z) in z_vals.iter().enumerate() {
+                    let posit_sample = Vec3::new(*x, *y, *z);
 
-                let mut V = 0.;
+                    let mut V = 0.;
 
-                // Calculate psi'' based on a numerical derivative of psi
-                // in 3D.
+                    // Calculate psi'' based on a numerical derivative of psi
+                    // in 3D.
 
-                let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
-                let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
-                let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
-                let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
-                let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
-                let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+                    let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
+                    let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
+                    let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
+                    let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
+                    let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
+                    let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
 
-                let mut psi_x_prev = 0.;
-                let mut psi_x_next = 0.;
-                let mut psi_y_prev = 0.;
-                let mut psi_y_next = 0.;
-                let mut psi_z_prev = 0.;
-                let mut psi_z_next = 0.;
+                    let mut psi_x_prev = 0.;
+                    let mut psi_x_next = 0.;
+                    let mut psi_y_prev = 0.;
+                    let mut psi_y_next = 0.;
+                    let mut psi_z_prev = 0.;
+                    let mut psi_z_next = 0.;
 
-                for (i_charge, (posit_charge, charge_amt)) in charges.into_iter().enumerate() {
-                    let (wf_i, weight) = wfs[i_charge];
+                    for (i_charge, (posit_charge, charge_amt)) in charges.into_iter().enumerate() {
+                        let (wf_i, weight) = wfs[i_charge];
 
-                    let wf = match wf_i {
-                        1 => h_wf_100,
-                        2 => h_wf_200,
-                        _ => h_wf_100,
-                    };
+                        let wf = match wf_i {
+                            1 => h_wf_100,
+                            2 => h_wf_200,
+                            _ => h_wf_210,
+                        };
+
+                        // unsafe {
+                        psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
+                        // }
+
+                        V += potential_fn(*posit_charge, posit_sample, *charge_amt);
+
+                        psi_x_prev += wf(*posit_charge, x_prev) * weight;
+                        psi_x_next += wf(*posit_charge, x_next) * weight;
+                        psi_y_prev += wf(*posit_charge, y_prev) * weight;
+                        psi_y_next += wf(*posit_charge, y_next) * weight;
+                        psi_z_prev += wf(*posit_charge, z_prev) * weight;
+                        psi_z_next += wf(*posit_charge, z_next) * weight;
+                    }
 
                     // unsafe {
-                        psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
+                    V_vals[i][j][k] = V;
                     // }
 
-                    V += potential_fn(*posit_charge, posit_sample, *charge_amt);
+                    // unsafe {
+                    psi_pp_calculated[i][j][k] = (E - V) * -2. * M_ELEC / ħ.powi(2) * psi[i][j][k];
+                    // }
 
-                    psi_x_prev += wf(*posit_charge, x_prev) * weight;
-                    psi_x_next += wf(*posit_charge, x_next) * weight;
-                    psi_y_prev += wf(*posit_charge, y_prev) * weight;
-                    psi_y_next += wf(*posit_charge, y_next) * weight;
-                    psi_z_prev += wf(*posit_charge, z_prev) * weight;
-                    psi_z_next += wf(*posit_charge, z_next) * weight;
-                }
-
-                // unsafe {
-                    V_vals[i][j][k] = V;
-                // }
-
-                // unsafe {
-                    psi_pp_expected[i][j][k] = (E - V) * -2. * M_ELEC / ħ.powi(2) * psi[i][j][k];
-                // }
-
-                // unsafe {
+                    // unsafe {
                     psi_pp_measured[i][j][k] = 0.;
                     psi_pp_measured[i][j][k] += psi_x_prev + psi_x_next - 2. * psi[i][j][k];
                     psi_pp_measured[i][j][k] += psi_y_prev + psi_y_next - 2. * psi[i][j][k];
                     psi_pp_measured[i][j][k] += psi_z_prev + psi_z_next - 2. * psi[i][j][k];
                     psi_pp_measured[i][j][k] /= H.powi(2); // todo: Hard-code this in a const etc.
-                // }
+                                                           // }
+                }
             }
         }
-    }
-    // psi_pp_measured[i] = 0.25 * psi_x_prev2 + psi_x_next2 + psi_y_prev2 + psi_y_next2 + \
-    // psi_z_prev2 + psi_z_next2 - 6. * psi[i]
+        // psi_pp_measured[i] = 0.25 * psi_x_prev2 + psi_x_next2 + psi_y_prev2 + psi_y_next2 + \
+        // psi_z_prev2 + psi_z_next2 - 6. * psi[i]
 
-    // unsafe {
-    //     let score = score_wf(&psi_pp_expected, &psi_pp_measured);
+        // unsafe {
+        //     let score = score_wf(&psi_pp_calculated, &psi_pp_measured);
 
-    //     (
-    //         [&V_vals, &psi, &psi_pp_expected, &psi_pp_measured],
-    //         [
-    //             "V".to_owned(),
-    //             "ψ".to_owned(),
-    //             "ψ'' expected".to_owned(),
-    //             "ψ'' measured".to_owned(),
-    //         ],
-    //         score,
-    //     )
-    // }
+        //     (
+        //         [&V_vals, &psi, &psi_pp_calculated, &psi_pp_measured],
+        //         [
+        //             "V".to_owned(),
+        //             "ψ".to_owned(),
+        //             "ψ'' expected".to_owned(),
+        //             "ψ'' measured".to_owned(),
+        //         ],
+        //         score,
+        //     )
+        // }
 
-    // todo: Probably score elsewhere?
-    score_wf(&psi_pp_expected, &psi_pp_measured)
+        // todo: Probably score elsewhere?
+        score_wf(&psi_pp_calculated, &psi_pp_measured)
+    } // unsafe end
 }
 
 fn main() {
     let wfs = vec![
         (1, 1.),
-        (1, -1.), 
-        (1, 1.), 
-                  // (h_wf_100, 1.),
-                  // (h_wf_100, 1.),
+        (1, -1.),
+        // (1, 1.),
+        // (h_wf_100, 1.),
+        // (h_wf_100, 1.),
     ];
     // let nuclei = vec![Vec3::new(-0.5, 0., 0.), Vec3::new(0.5, 0., 0.)];
     // let nuclei = vec![Vec3::new(0., 0., 0.)];
@@ -274,7 +290,7 @@ fn main() {
     let charges = vec![
         (Vec3::new(-1., 0., 0.), Q_PROT),
         (Vec3::new(1., 0., 0.), Q_PROT),
-        (Vec3::new(0., 1., 0.), Q_ELEC)
+        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
     let z_displayed = 0.;
@@ -285,17 +301,17 @@ fn main() {
     // This our sole allocation for the surfaces. We use a `Box` to assign this memory to the heap,
     // since it might get large otherwise. An alternative is to use Vecs, but this would
     // use more allocations. (?)
-    let mut surfaces = Box::new([
-        [[[0.; N]; N]; N],
-        [[[0.; N]; N]; N],
-        [[[0.; N]; N]; N],
-        [[[0.; N]; N]; N],
-    ]);
+    // let mut surfaces = Box::new([
+    //     [[[0.; N]; N]; N],
+    //     [[[0.; N]; N]; N],
+    //     [[[0.; N]; N]; N],
+    //     [[[0.; N]; N]; N],
+    // ]);
 
-    let psi_pp_score = eval_wf(&wfs, &charges, &mut surfaces, E);
+    let surfaces = unsafe { [&V_vals, &psi, &psi_pp_calculated, &psi_pp_measured] };
 
-    // let surfaces = data.0.into_iter().map(|s| (s, true)).collect();
-    // let surfaces: [((Arr3d, String), bool); NUM_SURFACES] = sfc.into_iter().map(|s| (s, true)).collect();
+    // let psi_pp_score = eval_wf(&wfs, &charges, &mut surfaces, E);
+    let psi_pp_score = eval_wf(&wfs, &charges, E);
 
     let show_surfaces = [true, true, true, true];
 
