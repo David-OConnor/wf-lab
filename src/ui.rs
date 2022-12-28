@@ -12,8 +12,8 @@ const E_MIN: f64 = -2.;
 const E_MAX: f64 = 2.;
 
 // Wave fn weights
-const WEIGHT_MIN: f64 = -4.;
-const WEIGHT_MAX: f64 = 4.;
+const WEIGHT_MIN: f64 = -3.;
+const WEIGHT_MAX: f64 = 3.;
 
 const ITEM_SPACING: f32 = 16.;
 
@@ -51,12 +51,30 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
                 if let Some(v_) = v {
                     state.E = v_;
-                    engine_updates.meshes = true;
+
+                    // todo: Don't update all meshes! We only need
+                    // to update psi_pp_calculated.
+                    // todo: YOu should probably have a delegated standalone
+                    // todo fn for this, probably one that accepts i, j, k
+                    // todo: YOu'd call it from nudge, eval, and here.
+
+                    for i in 0..N {
+                        for j in 0..N {
+                            for k in 0..N {
+                                unsafe {
+                                    crate::psi_pp_calculated[i][j][k] =
+                                        crate::find_psi_pp_calc(state.E, i, j, k)
+                                };
+                            }
+                        }
+                    }
 
                     // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
-                    state.psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
+                    // state.psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
+                    state.psi_pp_score = crate::score_wf(&state.surfaces[2], &state.surfaces[3]);
 
                     render::update_meshes(&state.surfaces, state.z_displayed, scene);
+                    engine_updates.meshes = true;
                 }
 
                 state.E
@@ -119,7 +137,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
             // crate::nudge_wf(&mut state.surfaces[1], &state.surfaces[2], &state.surfaces[3]);
             // crate::nudge_wf(&mut state.surfaces);
-            crate::nudge_wf();
+            crate::nudge_wf(&state.wfs, &state.charges, state.E);
 
             // todo: DRY
             engine_updates.meshes = true;
@@ -136,9 +154,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             engine_updates.meshes = true;
 
             // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
-            let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
 
-            state.psi_pp_score = psi_pp_score;
+            crate::eval_wf(&state.wfs, &state.charges, state.E);
+
+            state.psi_pp_score = crate::score_wf(&state.surfaces[2], &state.surfaces[3]);
 
             render::update_meshes(&state.surfaces, state.z_displayed, scene);
         }

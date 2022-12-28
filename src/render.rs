@@ -3,8 +3,8 @@
 use core::f32::consts::TAU;
 
 use graphics::{
-    self, Camera, ControlScheme, DeviceEvent, EngineUpdates, Entity, InputSettings,
-    LightType, Lighting, Mesh, PointLight, Scene, UiSettings,
+    self, Camera, ControlScheme, DeviceEvent, EngineUpdates, Entity, InputSettings, LightType,
+    Lighting, Mesh, PointLight, Scene, UiSettings,
 };
 
 use lin_alg2::f32::{Quaternion, Vec3};
