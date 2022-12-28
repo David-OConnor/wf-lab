@@ -62,44 +62,71 @@ pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 
     portion * (range_out.1 - range_out.0) + range_out.0
 }
 
+/// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
+fn prepare_2d_mesh(surface: &crate::Arr3d, z_i: usize) -> Vec<Vec<f32>> {
+    let mut result = Vec::new();
+    for i in 0..crate::N {
+        let mut y_vec = Vec::new();
+        for j in 0..crate::N {
+            y_vec.push(surface[i][j][z_i] as f32); // Convert from f64.
+        }
+        result.push(y_vec);
+    }
+
+    result
+}
+
 /// Updates meshes. For example, when updating a plot due to changing parameters.
 /// Note that this is where we decide which Z to render.
 pub fn update_meshes(
-    surfaces: &[&'static crate::Arr3d; crate::NUM_SURFACES],
+    surfaces: &crate::Surfaces,
     // surfaces: &[crate::Arr3d; crate::NUM_SURFACES],
     z_displayed: f64,
     scene: &mut Scene,
 ) {
-    let mut meshes = Vec::new();
-
     // `z_displayed` is a value float. Convert this to an index.
     let z_i = map_linear(z_displayed, (GRID_MIN, GRID_MAX), (0., crate::N as f64)) as usize;
 
-    for surface in surfaces.into_iter() {
-        let mut surface_vec = Vec::new();
-        // todo: Temp: Converting arr to vec. And indexing to the correct Z value.
-        for x in *surface {
-            let mut x_vec = Vec::new();
-            for y in x {
-                x_vec.push(y[z_i] as f32); // Convert from f64.
-            }
-            surface_vec.push(x_vec);
-        }
+    let mut meshes = Vec::new();
 
-        meshes.push(Mesh::new_surface(&surface_vec, -4., 0.1, true));
+    for sfc in [
+        &surfaces.V,
+        &surfaces.psi,
+        &surfaces.psi_pp_calculated,
+        &surfaces.psi_pp_measured,
+    ] {
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(sfc, z_i),
+            -4.,
+            0.1,
+            true,
+        ));
     }
+
+    // for surface in surfaces.into_iter() {
+    //     let mut surface_2d = Vec::new();
+    //     // todo: Temp: Converting arr to vec. And indexing to the correct Z value.
+    //     for x in *surface {
+    //         let mut x_vec = Vec::new();
+    //         for y in x {
+    //             x_vec.push(y[z_i] as f32); // Convert from f64.
+    //         }
+    //         surface_2d.push(x_vec);
+    //     }
+
+    //     meshes.push(Mesh::new_surface(&surface_2d, -4., 0.1, true));
+    // }
     scene.meshes = meshes;
 }
 
 /// Updates entities, but not meshes. For example, when hiding or showing a mesh.
 pub fn update_entities(
-    surfaces: &[&'static crate::Arr3d; crate::NUM_SURFACES],
     // surfaces: &[crate::Arr3d; crate::NUM_SURFACES],
     show_surfaces: &[bool; crate::NUM_SURFACES],
     scene: &mut Scene,
 ) {
     let mut entities = Vec::new();
-    for (i, surface) in surfaces.into_iter().enumerate() {
+    for i in 0..crate::NUM_SURFACES {
         if !show_surfaces[i] {
             continue;
         }
@@ -158,7 +185,7 @@ pub fn render(state: State) {
     };
 
     update_meshes(&state.surfaces, state.z_displayed, &mut scene);
-    update_entities(&state.surfaces, &state.show_surfaces, &mut scene);
+    update_entities(&state.show_surfaces, &mut scene);
 
     let input_settings = InputSettings {
         initial_controls: ControlScheme::FreeCamera,

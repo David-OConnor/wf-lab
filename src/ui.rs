@@ -61,17 +61,18 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     for i in 0..N {
                         for j in 0..N {
                             for k in 0..N {
-                                unsafe {
-                                    crate::psi_pp_calculated[i][j][k] =
-                                        crate::find_psi_pp_calc(state.E, i, j, k)
-                                };
+                                state.surfaces.psi_pp_calculated[i][j][k] =
+                                    crate::find_psi_pp_calc(&state.surfaces, state.E, i, j, k)
                             }
                         }
                     }
 
                     // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
                     // state.psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
-                    state.psi_pp_score = crate::score_wf(&state.surfaces[2], &state.surfaces[3]);
+                    state.psi_pp_score = crate::score_wf(
+                        &state.surfaces.psi_pp_calculated,
+                        &state.surfaces.psi_pp_measured,
+                    );
 
                     render::update_meshes(&state.surfaces, state.z_displayed, scene);
                     engine_updates.meshes = true;
@@ -137,17 +138,26 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
             // crate::nudge_wf(&mut state.surfaces[1], &state.surfaces[2], &state.surfaces[3]);
             // crate::nudge_wf(&mut state.surfaces);
-            crate::nudge_wf(&state.wfs, &state.charges, state.E);
+            // crate::nudge_wf(&state.wfs, &state.charges, state.E);
+            crate::nudge_wf(&mut state.surfaces, state.E);
 
             // todo: DRY
             engine_updates.meshes = true;
 
-            state.psi_pp_score = crate::score_wf(&state.surfaces[2], &state.surfaces[3]);
+            state.psi_pp_score = crate::score_wf(
+                &state.surfaces.psi_pp_calculated,
+                &state.surfaces.psi_pp_measured,
+            );
 
             // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
             // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
 
-            render::update_meshes(&state.surfaces, state.z_displayed, scene);
+            render::update_meshes(
+                &state.surfaces,
+                state.z_displayed,
+                // &mut state.surfaces,
+                scene,
+            );
         }
 
         if updated_wfs {
@@ -155,9 +165,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
 
-            crate::eval_wf(&state.wfs, &state.charges, state.E);
+            crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
 
-            state.psi_pp_score = crate::score_wf(&state.surfaces[2], &state.surfaces[3]);
+            state.psi_pp_score = crate::score_wf(
+                &state.surfaces.psi_pp_calculated,
+                &state.surfaces.psi_pp_measured,
+            );
 
             render::update_meshes(&state.surfaces, state.z_displayed, scene);
         }
@@ -169,7 +182,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.
         if engine_updates.entities {
-            render::update_entities(&state.surfaces, &state.show_surfaces, scene);
+            render::update_entities(&state.show_surfaces, scene);
         }
     });
 
