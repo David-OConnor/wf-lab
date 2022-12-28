@@ -31,20 +31,15 @@ const SURFACE_COLORS: [(f32, f32, f32); 7] = [
 const SURFACE_SHINYNESS: f32 = 1.;
 
 fn event_handler(
-    state: &mut State,
-    event: DeviceEvent,
-    scene: &mut Scene,
-    dt: f32,
+    _state: &mut State,
+    _event: DeviceEvent,
+    _scene: &mut Scene,
+    _dt: f32,
 ) -> EngineUpdates {
-    // todo: Higher level api from winit or otherwise instead of scancode?
-    let mut entities_changed = false;
-
-    // let rotation_amt = crate::BOND_ROTATION_SPEED * dt as f64;
-
-    match event {
-        DeviceEvent::Key(key) => {}
-        _ => (),
-    }
+    // match event {
+    //     DeviceEvent::Key(key) => {}
+    //     _ => (),
+    // }
     EngineUpdates::default()
 }
 
@@ -149,7 +144,7 @@ pub fn render(state: State) {
         meshes: Vec::new(),   // updated below.
         entities: Vec::new(), // updated below.
         camera: Camera {
-            fov_y: TAU as f32 / 8.,
+            fov_y: TAU / 8.,
             position: Vec3::new(0., 6., -15.),
             far: RENDER_DIST,
             orientation: Quaternion::from_axis_angle(Vec3::new(1., 0., 0.), TAU / 16.),
@@ -181,7 +176,6 @@ pub fn render(state: State) {
         background_color: BACKGROUND_COLOR,
         window_size: (WINDOW_SIZE_X, WINDOW_SIZE_Y),
         window_title: WINDOW_TITLE.to_owned(),
-        ..Default::default()
     };
 
     update_meshes(&state.surfaces, state.z_displayed, &mut scene);

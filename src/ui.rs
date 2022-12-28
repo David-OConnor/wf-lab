@@ -2,7 +2,7 @@ use egui::{self, Color32, RichText};
 
 use graphics::{EngineUpdates, Scene};
 
-use crate::{render, State, N, NUM_SURFACES};
+use crate::{render, State, N};
 
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
@@ -39,8 +39,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.heading("Show surfaces:");
 
         for (i, name) in state.surface_names.iter_mut().enumerate() {
-            let mut show = &mut state.show_surfaces[i];
-            if ui.checkbox(&mut show, &*name).clicked() {
+            let show = &mut state.show_surfaces[i];
+            if ui.checkbox(show, &*name).clicked() {
                 engine_updates.entities = true;
             }
         }
@@ -111,12 +111,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             let response = ui.add(egui::TextEdit::singleline(&mut wf_entry).desired_width(16.));
             if response.changed() {
-                match wf_entry.parse() {
-                    Ok(v) => {
-                        wf.0 = v;
-                        updated_wfs = true;
-                    }
-                    Err(_) => (),
+                if let Ok(v) = wf_entry.parse() {
+                    wf.0 = v;
+                    updated_wfs = true;
                 }
             }
 

@@ -5,9 +5,9 @@
 
 #![allow(non_snake_case)]
 
-use std::{boxed::Box, f64::consts::PI};
+use std::f64::consts::PI;
 
-use lin_alg2::f64::{Quaternion, Vec3};
+use lin_alg2::f64::Vec3;
 
 mod render;
 mod ui;
@@ -19,33 +19,22 @@ const Z_H: f64 = 1.;
 const K_C: f64 = 1.;
 const Q_PROT: f64 = 1.;
 const Q_ELEC: f64 = -1.;
-// const  M_ELEC: f64 = 5.45e-4
 const M_ELEC: f64 = 1.; // todo: Which?
 const ħ: f64 = 1.;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-const N: usize = 76;
+const N: usize = 90;
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
 const H: f64 = 0.00001;
-const GRID_MIN: f64 = -3.;
-const GRID_MAX: f64 = 3.;
+const GRID_MIN: f64 = -4.;
+const GRID_MAX: f64 = 4.;
 
-// type Arr2d = [[f64; N]; N];
-// type Arr3d = [[[f64; N]; N]; N];
 type Arr3d = Vec<Vec<Vec<f64>>>;
-type wf_type = dyn Fn(Vec3, Vec3) -> f64;
+// type WfType = dyn Fn(Vec3, Vec3) -> f64;
 // type wf_type = dyn Fn(Vec3, Vec3) -> f64;
 // type wf_type = fn(Vec3, Vec3) -> f64;
-
-// todo: Consider static allocation instead of vecs when possible.
-
-// todo: troubleshooting stack overflow issues
-// static mut V_vals: Arr3d = [[[0.; N]; N]; N];
-// static mut psi: Arr3d = [[[0.; N]; N]; N];
-// static mut psi_pp_measured: Arr3d = [[[0.; N]; N]; N];
-// static mut psi_pp_calculated: Arr3d = [[[0.; N]; N]; N];
 
 /// Represents important data, in describe 3D arrays.
 /// We use Vecs, since these can be large, and we don't want
@@ -188,17 +177,17 @@ fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
 
 /// Calcualte psi'', calculated from psi, and E.
 /// At a given i, j, k.
-fn find_psi_pp_calc(surfaces: &Surfaces, E: f64, i: usize, j: usize, k: usize) -> f64 {
-    unsafe { (E - surfaces.V[i][j][k]) * -2. * M_ELEC / ħ.powi(2) * surfaces.psi[i][j][k] }
+fn find_psi_pp_calc(sfcs: &Surfaces, E: f64, i: usize, j: usize, k: usize) -> f64 {
+    (E - sfcs.V[i][j][k]) * -2. * M_ELEC / ħ.powi(2) * sfcs.psi[i][j][k]
 }
 
 /// Calcualte psi'', measured, using the finite diff method, for a single value.
 fn find_psi_pp_meas(
-    surfaces: &Surfaces,
-    posit_sample: Vec3,
+    sfcs: &Surfaces,
+    // posit_sample: Vec3,
     // wfs: &Vec<(usize, f64)>,
     // charges: &Vec<(Vec3, f64)>,
-    E: f64,
+    // E: f64,
     i: usize,
     j: usize,
     k: usize,
@@ -225,7 +214,7 @@ fn find_psi_pp_meas(
     // of creating it from basis fns.
 
     if i == 0 || i == N - 1 || j == 0 || j == N - 1 || k == 0 || k == N - 1 {
-        return surfaces.psi_pp_measured[i][j][k];
+        return sfcs.psi_pp_measured[i][j][k];
     }
 
     // for (i_charge, (posit_charge, charge_amt)) in charges.into_iter().enumerate() {
@@ -248,84 +237,85 @@ fn find_psi_pp_meas(
     // psi_z_prev += wf(*posit_charge, z_prev) * weight;
     // psi_z_next += wf(*posit_charge, z_next) * weight;
 
-    psi_x_prev += surfaces.psi[i - 1][j][k];
-    psi_x_next += surfaces.psi[i + 1][j][k];
-    psi_y_prev += surfaces.psi[i][j - 1][k];
-    psi_y_next += surfaces.psi[i][j + 1][k];
-    psi_z_prev += surfaces.psi[i][j][k - 1];
-    psi_z_next += surfaces.psi[i][j][k + 1];
+    psi_x_prev += sfcs.psi[i - 1][j][k];
+    psi_x_next += sfcs.psi[i + 1][j][k];
+    psi_y_prev += sfcs.psi[i][j - 1][k];
+    psi_y_next += sfcs.psi[i][j + 1][k];
+    psi_z_prev += sfcs.psi[i][j][k - 1];
+    psi_z_next += sfcs.psi[i][j][k + 1];
 
     let mut result = 0.;
-    result += psi_x_prev + psi_x_next - 2. * surfaces.psi[i][j][k];
-    result += psi_y_prev + psi_y_next - 2. * surfaces.psi[i][j][k];
-    result += psi_z_prev + psi_z_next - 2. * surfaces.psi[i][j][k];
+    result += psi_x_prev + psi_x_next - 2. * sfcs.psi[i][j][k];
+    result += psi_y_prev + psi_y_next - 2. * sfcs.psi[i][j][k];
+    result += psi_z_prev + psi_z_next - 2. * sfcs.psi[i][j][k];
     result /= H_GRID.powi(2); // todo: Hard-code this in a const etc.
 
     result
 }
 
 /// Apply a correction to the WF, in attempt to make our two psi''s closer.
-/// Uses our numerically-calculated WF.
-// fn nudge_wf(wf: &mut Arr3d, pp_calculated: &Arr3d, pp_measured: &Arr3d) {
-// fn nudge_wf(surfaces: &mut [&mut Arr3d; NUM_SURFACES]) {
-fn nudge_wf(surfaces: &mut Surfaces, E: f64) {
-    // fn nudge_wf(wfs: &Vec<(usize, f64)>, charges: &Vec<(Vec3, f64)>, E: f64) {
-    let nudge_amount = 0.001;
+/// Uses our numerically-calculated WF. Updates psi, and both psi''s.
+fn nudge_wf(sfcs: &mut Surfaces, E: f64) {
+    let nudge_amount = 0.0001;
 
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
-                // todo: Maybe check if diff is belwo an eps, then take no action
+    let num_nudges = 100;
 
-                // Note that changing psi affects both these things.
-                // todo: QC how this works.
-                // let diff = pp_calculated[i][j][k] - pp_measured[i][j][k];
-                // let diff = surfaces[2][i][j][k] - surfaces[3][i][j][k];
-                let diff = surfaces.psi_pp_calculated[i][j][k] - surfaces.psi_pp_measured[i][j][k];
+    for _ in 0..num_nudges {
+        for i in 0..N {
+            for j in 0..N {
+                for k in 0..N {
+                    // todo: Maybe check if diff is belwo an eps, then take no action
 
-                // Move down to create upward curvature at this pt, etc.
-                // wf[i][j][k] -= nudge_amount * diff;
-                surfaces.psi[i][j][k] -= nudge_amount * diff;
+                    // Note that changing psi affects both these things.
+                    // todo: QC how this works.
+                    // let diff = pp_calculated[i][j][k] - pp_measured[i][j][k];
+                    // let diff = surfaces[2][i][j][k] - surfaces[3][i][j][k];
+                    let diff = sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k];
 
-                // Now that we've updated psi, calculatd a new psi_pp_calulated,
-                // based on the energy.
-                // todo: Massage E here??
-                surfaces.psi_pp_calculated[i][j][k] = find_psi_pp_calc(&surfaces, E, i, j, k);
+                    // Move down to create upward curvature at this pt, etc.
+                    sfcs.psi[i][j][k] -= nudge_amount * diff;
+
+                    // Now that we've updated psi, calculatd a new psi_pp_calulated,
+                    // based on the energy.
+                    // todo: Massage E here??
+                    sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
+                }
             }
         }
-    }
 
-    // Now, update psi_pp_measured.
-    // for i in 0..N {
-    //     for j in 0..N {
-    //         for k in 0..N {
+        // Now, update psi_pp_measured.
+        // for i in 0..N {
+        //     for j in 0..N {
+        //         for k in 0..N {
 
-    // todo: More DRY with eval_wf!
-    let x_vals = linspace((GRID_MIN, GRID_MAX), N);
-    let y_vals = linspace((GRID_MIN, GRID_MAX), N);
-    let z_vals = linspace((GRID_MIN, GRID_MAX), N);
+        // todo: More DRY with eval_wf!
+        // let x_vals = linspace((GRID_MIN, GRID_MAX), N);
+        // let y_vals = linspace((GRID_MIN, GRID_MAX), N);
+        // let z_vals = linspace((GRID_MIN, GRID_MAX), N);
 
-    for (i, x) in x_vals.iter().enumerate() {
-        for (j, y) in y_vals.iter().enumerate() {
-            for (k, z) in z_vals.iter().enumerate() {
-                let posit_sample = Vec3::new(*x, *y, *z);
+        for i in 0..N {
+            for j in 0..N {
+                for k in 0..N {
+                    // for (i, x) in x_vals.iter().enumerate() {
+                    //     for (j, y) in y_vals.iter().enumerate() {
+                    //         for (k, z) in z_vals.iter().enumerate() {
+                    // let posit_sample = Vec3::new(*x, *y, *z);
 
-                surfaces.psi_pp_measured[i][j][k] =
-                        // find_psi_pp_meas(posit_sample, wfs, charges, E, i, j, k);
-                        find_psi_pp_meas(surfaces, posit_sample, E, i, j, k);
+                    sfcs.psi_pp_measured[i][j][k] = find_psi_pp_meas(sfcs, i, j, k);
+                }
             }
         }
     }
 }
 
 /// todo: This should probably be a method on `State`.
-/// This is our main computation function for surfaces.
+/// This is our main computation function for sfcs.
 /// Modifies in place to conserve memory.
 fn eval_wf(
     // wfs: &Vec<(wf_type, f64)>,
-    wfs: &Vec<(usize, f64)>,
-    charges: &Vec<(Vec3, f64)>,
-    surfaces: &mut Surfaces,
+    wfs: &[(usize, f64)],
+    charges: &[(Vec3, f64)],
+    sfcs: &mut Surfaces,
     E: f64,
 ) {
     // output score. todo: Move score to a diff fn?
@@ -367,10 +357,10 @@ fn eval_wf(
                 let mut psi_z_prev = 0.;
                 let mut psi_z_next = 0.;
 
-                surfaces.V[i][j][k] = 0.;
-                surfaces.psi[i][j][k] = 0.;
+                sfcs.V[i][j][k] = 0.;
+                sfcs.psi[i][j][k] = 0.;
 
-                for (i_charge, (posit_charge, charge_amt)) in charges.into_iter().enumerate() {
+                for (i_charge, (posit_charge, charge_amt)) in charges.iter().enumerate() {
                     let (wf_i, weight) = wfs[i_charge];
 
                     let wf = match wf_i {
@@ -379,9 +369,9 @@ fn eval_wf(
                         _ => h_wf_210,
                     };
 
-                    surfaces.psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
+                    sfcs.psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
 
-                    surfaces.V[i][j][k] += potential_fn(*posit_charge, posit_sample, *charge_amt);
+                    sfcs.V[i][j][k] += potential_fn(*posit_charge, posit_sample, *charge_amt);
 
                     psi_x_prev += wf(*posit_charge, x_prev) * weight;
                     psi_x_next += wf(*posit_charge, x_next) * weight;
@@ -391,16 +381,13 @@ fn eval_wf(
                     psi_z_next += wf(*posit_charge, z_next) * weight;
                 }
 
-                surfaces.psi_pp_calculated[i][j][k] = find_psi_pp_calc(&surfaces, E, i, j, k);
+                sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
 
-                surfaces.psi_pp_measured[i][j][k] = 0.;
-                surfaces.psi_pp_measured[i][j][k] +=
-                    psi_x_prev + psi_x_next - 2. * surfaces.psi[i][j][k];
-                surfaces.psi_pp_measured[i][j][k] +=
-                    psi_y_prev + psi_y_next - 2. * surfaces.psi[i][j][k];
-                surfaces.psi_pp_measured[i][j][k] +=
-                    psi_z_prev + psi_z_next - 2. * surfaces.psi[i][j][k];
-                surfaces.psi_pp_measured[i][j][k] /= H.powi(2); // todo: Hard-code this in a const etc.
+                sfcs.psi_pp_measured[i][j][k] = 0.;
+                sfcs.psi_pp_measured[i][j][k] += psi_x_prev + psi_x_next - 2. * sfcs.psi[i][j][k];
+                sfcs.psi_pp_measured[i][j][k] += psi_y_prev + psi_y_next - 2. * sfcs.psi[i][j][k];
+                sfcs.psi_pp_measured[i][j][k] += psi_z_prev + psi_z_next - 2. * sfcs.psi[i][j][k];
+                sfcs.psi_pp_measured[i][j][k] /= H.powi(2); // todo: Hard-code this in a const etc.
             }
         }
     }
@@ -412,44 +399,27 @@ fn main() {
     let wfs = vec![
         (1, 1.),
         (1, -1.),
-        // (1, 1.),
+        (1, 1.),
         // (h_wf_100, 1.),
         // (h_wf_100, 1.),
     ];
-    // let nuclei = vec![Vec3::new(-0.5, 0., 0.), Vec3::new(0.5, 0., 0.)];
-    // let nuclei = vec![Vec3::new(0., 0., 0.)];
+
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges = vec![
         (Vec3::new(-0.5, 0., 0.), Q_PROT),
         (Vec3::new(0.5, 0., 0.), Q_PROT),
-        // (Vec3::new(0., 1., 0.), Q_ELEC),
+        (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
     let z_displayed = 0.;
     let E = -0.7;
 
-    // let (surfaces, surface_names, psi_pp_score) = eval_wf(&wfs, &charges, E);
+    let mut sfcs = Default::default();
 
-    // This our sole allocation for the surfaces. We use a `Box` to assign this memory to the heap,
-    // since it might get large otherwise. An alternative is to use Vecs, but this would
-    // use more allocations. (?)
+    eval_wf(&wfs, &charges, &mut sfcs, E);
 
-    // let mut surfaces2 = Box::new([
-    //     [[[0.; N]; N]; N],
-    //     // [[[0.; N]; N]; N],
-    //     // [[[0.; N]; N]; N],
-    //     // [[[0.; N]; N]; N],
-    // ]);
-
-    // let surfaces = unsafe { [&V_vals, &psi, &psi_pp_calculated, &psi_pp_measured] };
-
-    let mut surfaces = Default::default();
-
-    // let psi_pp_score = eval_wf(&wfs, &charges, &mut surfaces, E);
-    eval_wf(&wfs, &charges, &mut surfaces, E);
-
-    let psi_pp_score = score_wf(&surfaces.psi_pp_calculated, &surfaces.psi_pp_measured);
+    let psi_pp_score = score_wf(&sfcs.psi_pp_calculated, &sfcs.psi_pp_measured);
 
     let show_surfaces = [true, true, true, true];
 
@@ -463,7 +433,7 @@ fn main() {
     let state = State {
         wfs,
         charges,
-        surfaces,
+        surfaces: sfcs,
         E,
         z_displayed,
         psi_pp_score,
