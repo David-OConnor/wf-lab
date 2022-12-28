@@ -54,9 +54,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     engine_updates.meshes = true;
 
                     // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
-                    let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
-
-                    state.psi_pp_score = psi_pp_score;
+                    state.psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
 
                     render::update_meshes(&state.surfaces, state.z_displayed, scene);
                 }
@@ -94,7 +92,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             let response = ui.add(egui::TextEdit::singleline(&mut wf_entry).desired_width(16.));
             if response.changed() {
-                let mut ok = false;
                 match wf_entry.parse() {
                     Ok(v) => {
                         wf.0 = v;
@@ -115,6 +112,24 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 })
                 .text("Weight"),
             );
+        }
+
+        ui.add_space(ITEM_SPACING);
+
+        if ui.add(egui::Button::new("Nudge WF")).clicked() {
+            // crate::nudge_wf(&mut state.surfaces[1], &state.surfaces[2], &state.surfaces[3]);
+            // crate::nudge_wf(&mut state.surfaces);
+            crate::nudge_wf();
+
+            // todo: DRY
+            engine_updates.meshes = true;
+
+            state.psi_pp_score = crate::score_wf(&state.surfaces[2], &state.surfaces[3]);
+
+            // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
+            // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
+
+            render::update_meshes(&state.surfaces, state.z_displayed, scene);
         }
 
         if updated_wfs {

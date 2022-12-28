@@ -26,12 +26,14 @@ const Q_ELEC: f64 = -1.;
 const M_ELEC: f64 = 1.; // todo: Which?
 const ħ: f64 = 1.;
 
-const N: usize = 60;
+// Wave function number of values per edge.
+// Memory use and some parts of computation scale with the cube of this.
+const N: usize = 76;
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
 const H: f64 = 0.00001;
-const GRID_MIN: f64 = -4.;
-const GRID_MAX: f64 = 4.;
+const GRID_MIN: f64 = -3.;
+const GRID_MAX: f64 = 3.;
 
 // type Arr2d = [[f64; N]; N];
 type Arr3d = [[[f64; N]; N]; N];
@@ -95,6 +97,8 @@ fn V_coulomb(posit_nuc: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
     -K_C * charge / r
 }
 
+/// https://chem.libretexts.org/Courses/University_of_California_Davis/UCD_Chem_107B%3A_Physical_Chemistry_for_Life_Scientists/Chapters/4%3A_Quantum_Theory/
+/// 4.10%3A_The_Schr%C3%B6dinger_Wave_Equation_for_the_Hydrogen_Atom
 /// Analytic solution for n=1, s orbital
 fn h_wf_100(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
     let diff = posit_sample - posit_nuc;
@@ -118,6 +122,7 @@ fn h_wf_210(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
     let diff = posit_sample - posit_nuc;
     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
+    // todo wrong
     // We take Cos theta below, so no need for cos^-1 here.
     // todo: Not sure how we deal with diff phis?
     let cos_theta = posit_nuc.to_normalized().dot(posit_sample.to_normalized());
@@ -141,6 +146,50 @@ fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
     }
 
     result
+}
+
+/// Apply a correction to the WF, in attempt to make our two psi''s closer.
+// fn nudge_wf(wf: &mut Arr3d, pp_calculated: &Arr3d, pp_measured: &Arr3d) {
+// fn nudge_wf(surfaces: &mut [&mut Arr3d; NUM_SURFACES]) {
+fn nudge_wf() {
+    let nudge_amount = 2.;
+
+    for i in 0..N {
+        for j in 0..N {
+            for k in 0..N {
+                // todo: Maybe check if diff is belwo an eps, then take no action
+
+                // Note that changing psi affects both these things.
+                // todo: QC how this works.
+                // let diff = pp_calculated[i][j][k] - pp_measured[i][j][k];
+                // let diff = surfaces[2][i][j][k] - surfaces[3][i][j][k];
+                unsafe {
+                    let diff = psi_pp_calculated[i][j][k] - psi_pp_measured[i][j][k];
+
+                    // Move down to create upward curvature at this pt, etc.
+                    // wf[i][j][k] -= nudge_amount * diff;
+                    psi[i][j][k] -= nudge_amount * diff;
+                }
+            }
+        }
+    }
+
+    // Now, update psi_pp_measured.
+    for i in 0..N {
+        for j in 0..N {
+            for k in 0..N {
+                // todo: Maybe check if diff is belwo an eps, then take no action
+
+                // Note that changing psi affects both these things.
+                // todo: QC how this works.
+                // let diff = pp_calculated[i][j][k] - pp_measured[i][j][k];
+                // let diff = surfaces[2][i][j][k] - surfaces[3][i][j][k];
+                unsafe {
+                    psi_pp_measured[i][j][k] -= nudge_amount * diff;
+                }
+            }
+        }
+    }
 }
 
 /// todo: This should probably be a method on `State`.
@@ -288,13 +337,13 @@ fn main() {
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges = vec![
-        (Vec3::new(-1., 0., 0.), Q_PROT),
-        (Vec3::new(1., 0., 0.), Q_PROT),
+        (Vec3::new(-0.5, 0., 0.), Q_PROT),
+        (Vec3::new(0.5, 0., 0.), Q_PROT),
         // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
     let z_displayed = 0.;
-    let E = -0.5;
+    let E = -0.7;
 
     // let (surfaces, surface_names, psi_pp_score) = eval_wf(&wfs, &charges, E);
 
@@ -322,7 +371,7 @@ fn main() {
         "ψ'' measured".to_owned(),
     ];
 
-    let mut state = State {
+    let state = State {
         wfs,
         charges,
         surfaces,
