@@ -106,25 +106,26 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         // We use this var to avoid mutable/unmutable borrow conflicts
         let mut updated_wfs = false;
-        for wf in state.wfs.iter_mut() {
-            let mut wf_entry = wf.0.to_string();
+        for (wf, weight) in state.wfs.iter_mut() {
+            // let mut wf_entry = wf.descrip();
 
-            let response = ui.add(egui::TextEdit::singleline(&mut wf_entry).desired_width(16.));
-            if response.changed() {
-                if let Ok(v) = wf_entry.parse() {
-                    wf.0 = v;
-                    updated_wfs = true;
-                }
-            }
+            // // todo: Dropdown? Put back WF selection!
+            // let response = ui.add(egui::TextEdit::singleline(&mut wf_entry).desired_width(16.));
+            // if response.changed() {
+            //     if let Ok(v) = wf_entry.descrip() {
+            //         wf = v;
+            //         updated_wfs = true;
+            //     }
+            // }
 
             ui.add(
                 egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
                     if let Some(v_) = v {
-                        wf.1 = v_;
+                        *weight = v_;
                         updated_wfs = true;
                     }
 
-                    wf.1
+                    *weight
                 })
                 .text("Weight"),
             );

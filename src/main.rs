@@ -9,13 +9,14 @@ use std::f64::consts::PI;
 
 use lin_alg2::f64::Vec3;
 
+use basis_wfs::BasisFn;
+
+mod basis_wfs;
 mod render;
 mod ui;
 
 const NUM_SURFACES: usize = 4; // V, psi, psi_pp_calculated, psi_pp_measured
 
-const A_0: f64 = 1.;
-const Z_H: f64 = 1.;
 const K_C: f64 = 1.;
 const Q_PROT: f64 = 1.;
 const Q_ELEC: f64 = -1.;
@@ -24,7 +25,9 @@ const ħ: f64 = 1.;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-const N: usize = 90;
+// Note: Using this as our fine grid. We will potentially subdivide it once
+// or twice per axis, hence the multiple of 4 constraint.
+const N: usize = 20 * 4;
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
 const H: f64 = 0.00001;
@@ -82,7 +85,7 @@ pub struct State {
     /// todo: Or a sub struct?
     /// Wave functions, with weights
     // pub wfs: Vec<(impl Fn(Vec3, Vec3) -> f64 + 'static, f64)>,
-    pub wfs: Vec<(usize, f64)>, // todo: currently unable to store wfs, so
+    pub wfs: Vec<(BasisFn, f64)>,
     // todo use an index for them.
     /// Nuclei. todo: H only for now.
     pub charges: Vec<(Vec3, f64)>,
@@ -99,6 +102,9 @@ pub struct State {
     /// Surface name
     pub surface_names: [String; NUM_SURFACES],
     pub show_surfaces: [bool; NUM_SURFACES],
+    /// This defines how our 3D grid is subdivided in different areas.
+    /// todo: FIgure this out.
+    pub grid_divisions: usize,
 }
 
 /// Score using a least-squares regression.
@@ -122,40 +128,6 @@ fn V_coulomb(posit_nuc: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
     -K_C * charge / r
-}
-
-/// https://chem.libretexts.org/Courses/University_of_California_Davis/UCD_Chem_107B%3A_Physical_Chemistry_for_Life_Scientists/Chapters/4%3A_Quantum_Theory/
-/// 4.10%3A_The_Schr%C3%B6dinger_Wave_Equation_for_the_Hydrogen_Atom
-/// Analytic solution for n=1, s orbital
-fn h_wf_100(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
-    let diff = posit_sample - posit_nuc;
-    let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
-
-    let ρ = Z_H * r / A_0;
-    1. / PI.sqrt() * (Z_H / A_0).powf(3. / 2.) * (-ρ).exp()
-    // 1. / sqrt(pi) * 1./ A_0.powf(3. / 2.) * (-ρ).exp()
-}
-
-/// Analytic solution for n=2, s orbital
-fn h_wf_200(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
-    let diff = posit_sample - posit_nuc;
-    let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
-
-    let ρ = Z_H * r / A_0;
-    1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * (2. - ρ) * (-ρ / 2.).exp()
-}
-
-fn h_wf_210(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
-    let diff = posit_sample - posit_nuc;
-    let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
-
-    // todo wrong
-    // We take Cos theta below, so no need for cos^-1 here.
-    // todo: Not sure how we deal with diff phis?
-    let cos_theta = posit_nuc.to_normalized().dot(posit_sample.to_normalized());
-
-    let ρ = Z_H * r / A_0;
-    1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * ρ * (-ρ / 2.).exp() * cos_theta
 }
 
 /// Create a set of values in a given range, with a given number of values.
@@ -244,19 +216,24 @@ fn find_psi_pp_meas(
     psi_z_prev += sfcs.psi[i][j][k - 1];
     psi_z_next += sfcs.psi[i][j][k + 1];
 
-    let mut result = 0.;
-    result += psi_x_prev + psi_x_next - 2. * sfcs.psi[i][j][k];
-    result += psi_y_prev + psi_y_next - 2. * sfcs.psi[i][j][k];
-    result += psi_z_prev + psi_z_next - 2. * sfcs.psi[i][j][k];
-    result /= H_GRID.powi(2); // todo: Hard-code this in a const etc.
+    let mut result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+        - 6. * sfcs.psi[i][j][k];
 
-    result
+    result / H_GRID.powi(2)
+
+    // let mut result = 0.;
+    // result += psi_x_prev + psi_x_next - 2. * sfcs.psi[i][j][k];
+    // result += psi_y_prev + psi_y_next - 2. * sfcs.psi[i][j][k];
+    // result += psi_z_prev + psi_z_next - 2. * sfcs.psi[i][j][k];
+    // result /= H_GRID.powi(2); // todo: Hard-code this in a const etc.
+
+    // result
 }
 
 /// Apply a correction to the WF, in attempt to make our two psi''s closer.
 /// Uses our numerically-calculated WF. Updates psi, and both psi''s.
 fn nudge_wf(sfcs: &mut Surfaces, E: f64) {
-    let nudge_amount = 0.0001;
+    let mut nudge_amount = 0.0010;
 
     let num_nudges = 100;
 
@@ -293,6 +270,7 @@ fn nudge_wf(sfcs: &mut Surfaces, E: f64) {
         // let y_vals = linspace((GRID_MIN, GRID_MAX), N);
         // let z_vals = linspace((GRID_MIN, GRID_MAX), N);
 
+        // We must solve for psi IVO our sample point before measuring psi_pp.
         for i in 0..N {
             for j in 0..N {
                 for k in 0..N {
@@ -311,13 +289,7 @@ fn nudge_wf(sfcs: &mut Surfaces, E: f64) {
 /// todo: This should probably be a method on `State`.
 /// This is our main computation function for sfcs.
 /// Modifies in place to conserve memory.
-fn eval_wf(
-    // wfs: &Vec<(wf_type, f64)>,
-    wfs: &[(usize, f64)],
-    charges: &[(Vec3, f64)],
-    sfcs: &mut Surfaces,
-    E: f64,
-) {
+fn eval_wf(wfs: &[(BasisFn, f64)], charges: &[(Vec3, f64)], sfcs: &mut Surfaces, E: f64) {
     // output score. todo: Move score to a diff fn?
     // ) -> (Vec<(Arr3d, String)>, f64) {
     // Schrod eq for H:
@@ -361,13 +333,9 @@ fn eval_wf(
                 sfcs.psi[i][j][k] = 0.;
 
                 for (i_charge, (posit_charge, charge_amt)) in charges.iter().enumerate() {
-                    let (wf_i, weight) = wfs[i_charge];
+                    let (basis, weight) = &wfs[i_charge];
 
-                    let wf = match wf_i {
-                        1 => h_wf_100,
-                        2 => h_wf_200,
-                        _ => h_wf_210,
-                    };
+                    let wf = basis.f();
 
                     sfcs.psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
 
@@ -383,32 +351,34 @@ fn eval_wf(
 
                 sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
 
-                sfcs.psi_pp_measured[i][j][k] = 0.;
-                sfcs.psi_pp_measured[i][j][k] += psi_x_prev + psi_x_next - 2. * sfcs.psi[i][j][k];
-                sfcs.psi_pp_measured[i][j][k] += psi_y_prev + psi_y_next - 2. * sfcs.psi[i][j][k];
-                sfcs.psi_pp_measured[i][j][k] += psi_z_prev + psi_z_next - 2. * sfcs.psi[i][j][k];
-                sfcs.psi_pp_measured[i][j][k] /= H.powi(2); // todo: Hard-code this in a const etc.
+                // sfcs.psi_pp_measured[i][j][k] = 0.;
+                // sfcs.psi_pp_measured[i][j][k] += psi_x_prev + psi_x_next - 2. * sfcs.psi[i][j][k];
+                // sfcs.psi_pp_measured[i][j][k] += psi_y_prev + psi_y_next - 2. * sfcs.psi[i][j][k];
+                // sfcs.psi_pp_measured[i][j][k] += psi_z_prev + psi_z_next - 2. * sfcs.psi[i][j][k];
+                // sfcs.psi_pp_measured[i][j][k] /= H.powi(2); // todo: Hard-code this in a const etc.
+
+                sfcs.psi_pp_measured[i][j][k] =
+                    psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+                        - 6. * sfcs.psi[i][j][k];
+
+                sfcs.psi_pp_measured[i][j][k] /= H.powi(2)
             }
         }
     }
-    // psi_pp_measured[i] = 0.25 * psi_x_prev2 + psi_x_next2 + psi_y_prev2 + psi_y_next2 + \
-    // psi_z_prev2 + psi_z_next2 - 6. * psi[i]
 }
 
 fn main() {
     let wfs = vec![
-        (1, 1.),
-        (1, -1.),
-        (1, 1.),
-        // (h_wf_100, 1.),
-        // (h_wf_100, 1.),
+        (BasisFn::H100, 1.),
+        (BasisFn::H100, 1.),
+        (BasisFn::H100, 1.),
     ];
 
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges = vec![
-        (Vec3::new(-0.5, 0., 0.), Q_PROT),
-        (Vec3::new(0.5, 0., 0.), Q_PROT),
+        (Vec3::new(-1., 0., 0.), Q_PROT),
+        (Vec3::new(1., 0., 0.), Q_PROT),
         (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
@@ -439,6 +409,7 @@ fn main() {
         psi_pp_score,
         surface_names,
         show_surfaces,
+        grid_divisions: 0,
     };
 
     render::render(state);
