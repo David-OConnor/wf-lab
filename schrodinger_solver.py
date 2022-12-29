@@ -34,7 +34,7 @@
 # Note the Kato therom: That there will be a cusp at every nucleus. This
 # is great info, if true. (Ground state only??)
 
-from dataclasses import dataclass;
+from dataclasses import dataclass
 
 import numpy as np
 import matplotlib.pyplot as plt
