@@ -2,7 +2,7 @@ use egui::{self, Color32, RichText};
 
 use graphics::{EngineUpdates, Scene};
 
-use crate::{render, State, N};
+use crate::{basis_wfs::BasisFn, render, State, N};
 
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
@@ -106,17 +106,26 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         // We use this var to avoid mutable/unmutable borrow conflicts
         let mut updated_wfs = false;
-        for (wf, weight) in state.wfs.iter_mut() {
-            // let mut wf_entry = wf.descrip();
+        for (id, (wf, weight)) in state.wfs.iter_mut().enumerate() {
+            // Clone here so we can properly check if it changed below.
+            let mut selected = wf.clone();
 
-            // // todo: Dropdown? Put back WF selection!
-            // let response = ui.add(egui::TextEdit::singleline(&mut wf_entry).desired_width(16.));
-            // if response.changed() {
-            //     if let Ok(v) = wf_entry.descrip() {
-            //         wf = v;
-            //         updated_wfs = true;
-            //     }
-            // }
+            egui::ComboBox::from_id_source(id)
+                .width(60.)
+                .selected_text(wf.descrip())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut selected, BasisFn::H100, BasisFn::H100.descrip());
+                    ui.selectable_value(&mut selected, BasisFn::H200, BasisFn::H200.descrip());
+                    ui.selectable_value(&mut selected, BasisFn::H300, BasisFn::H300.descrip());
+                    ui.selectable_value(&mut selected, BasisFn::H210, BasisFn::H210.descrip());
+                    ui.selectable_value(&mut selected, BasisFn::H211, BasisFn::H211.descrip());
+                    ui.selectable_value(&mut selected, BasisFn::H21M1, BasisFn::H21M1.descrip());
+                });
+
+            if selected != *wf {
+                *wf = selected;
+                updated_wfs = true;
+            }
 
             ui.add(
                 egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
@@ -175,7 +184,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.add_space(ITEM_SPACING);
 
-        ui.heading(format!("ψ'' score: {:.7}", state.psi_pp_score));
+        ui.heading(format!("ψ'' score: {:.10}", state.psi_pp_score));
 
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.

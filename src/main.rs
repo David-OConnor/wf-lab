@@ -27,7 +27,7 @@ const ħ: f64 = 1.;
 // Memory use and some parts of computation scale with the cube of this.
 // Note: Using this as our fine grid. We will potentially subdivide it once
 // or twice per axis, hence the multiple of 4 constraint.
-const N: usize = 20 * 4;
+const N: usize = 21 * 4;
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
 const H: f64 = 0.00001;
@@ -379,7 +379,7 @@ fn main() {
     let charges = vec![
         (Vec3::new(-1., 0., 0.), Q_PROT),
         (Vec3::new(1., 0., 0.), Q_PROT),
-        (Vec3::new(0., 1., 0.), Q_ELEC),
+        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
     let z_displayed = 0.;

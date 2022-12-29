@@ -15,6 +15,7 @@ use lin_alg2::f64::Vec3;
 const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
 
+#[derive(Copy, Clone, PartialEq)]
 pub enum BasisFn {
     H100,
     H200,
@@ -39,12 +40,12 @@ impl BasisFn {
 
     pub fn descrip(&self) -> String {
         match self {
-            Self::H100 => "H n=1, l=0, m=0",
-            Self::H200 => "H n=2, l=0, m=0",
-            Self::H300 => "H n=3, l=0, m=0",
-            Self::H210 => "H n=2, l=1, m=0",
-            Self::H211 => "H n=2, l=1, m=1",
-            Self::H21M1 => "H n=2, l=1, m=-1",
+            Self::H100 => "H100: n=1, l=0, m=0",
+            Self::H200 => "H200: n=2, l=0, m=0",
+            Self::H300 => "H300: n=3, l=0, m=0",
+            Self::H210 => "H210: n=2, l=1, m=0",
+            Self::H211 => "H211: n=2, l=1, m=1",
+            Self::H21M1 => "H21-1: n=2, l=1, m=-1",
         }
         .to_owned()
     }
