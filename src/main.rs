@@ -23,6 +23,10 @@ const Q_ELEC: f64 = -1.;
 const M_ELEC: f64 = 1.; // todo: Which?
 const ħ: f64 = 1.;
 
+// Compute these statically, to avoid continuous calls during excecution.
+const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
+const KE_COEFF_INV: f64 = 1. / KE_COEFF;
+
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
 // Note: Using this as our fine grid. We will potentially subdivide it once
@@ -33,6 +37,10 @@ const N: usize = 21 * 4;
 const H: f64 = 0.00001;
 const GRID_MIN: f64 = -4.;
 const GRID_MAX: f64 = 4.;
+
+// For finding psi_pp_meas, using only values on the grid
+const H_GRID: f64 = (GRID_MAX - GRID_MIN) / (N as f64);
+const H_GRID_SQ: f64 = H_GRID * H_GRID;
 
 type Arr3d = Vec<Vec<Vec<f64>>>;
 // type WfType = dyn Fn(Vec3, Vec3) -> f64;
@@ -104,7 +112,7 @@ pub struct State {
     pub show_surfaces: [bool; NUM_SURFACES],
     /// This defines how our 3D grid is subdivided in different areas.
     /// todo: FIgure this out.
-    pub grid_divisions: usize,
+    pub grid_divisions: Vec<Vec<Vec<u8>>>,
 }
 
 /// Score using a least-squares regression.
@@ -150,12 +158,13 @@ fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
 /// Calcualte psi'', calculated from psi, and E.
 /// At a given i, j, k.
 fn find_psi_pp_calc(sfcs: &Surfaces, E: f64, i: usize, j: usize, k: usize) -> f64 {
-    (E - sfcs.V[i][j][k]) * -2. * M_ELEC / ħ.powi(2) * sfcs.psi[i][j][k]
+    (E - sfcs.V[i][j][k]) * KE_COEFF * sfcs.psi[i][j][k]
 }
 
 /// Calcualte psi'', measured, using the finite diff method, for a single value.
 fn find_psi_pp_meas(
-    sfcs: &Surfaces,
+    psi: &Arr3d,
+    psi_pp_measured: &Arr3d,
     // posit_sample: Vec3,
     // wfs: &Vec<(usize, f64)>,
     // charges: &Vec<(Vec3, f64)>,
@@ -165,7 +174,6 @@ fn find_psi_pp_meas(
     k: usize,
 ) -> f64 {
     // Using purely the numerical psi, we are now limited to the grid, for now.
-    let H_GRID = (GRID_MAX - GRID_MIN) / (N as f64);
 
     // let x_prev = Vec3::new(posit_sample.x - H_GRID, posit_sample.y, posit_sample.z);
     // let x_next = Vec3::new(posit_sample.x + H_GRID, posit_sample.y, posit_sample.z);
@@ -186,7 +194,7 @@ fn find_psi_pp_meas(
     // of creating it from basis fns.
 
     if i == 0 || i == N - 1 || j == 0 || j == N - 1 || k == 0 || k == N - 1 {
-        return sfcs.psi_pp_measured[i][j][k];
+        return psi_pp_measured[i][j][k];
     }
 
     // for (i_charge, (posit_charge, charge_amt)) in charges.into_iter().enumerate() {
@@ -209,17 +217,17 @@ fn find_psi_pp_meas(
     // psi_z_prev += wf(*posit_charge, z_prev) * weight;
     // psi_z_next += wf(*posit_charge, z_next) * weight;
 
-    psi_x_prev += sfcs.psi[i - 1][j][k];
-    psi_x_next += sfcs.psi[i + 1][j][k];
-    psi_y_prev += sfcs.psi[i][j - 1][k];
-    psi_y_next += sfcs.psi[i][j + 1][k];
-    psi_z_prev += sfcs.psi[i][j][k - 1];
-    psi_z_next += sfcs.psi[i][j][k + 1];
+    psi_x_prev += psi[i - 1][j][k];
+    psi_x_next += psi[i + 1][j][k];
+    psi_y_prev += psi[i][j - 1][k];
+    psi_y_next += psi[i][j + 1][k];
+    psi_z_prev += psi[i][j][k - 1];
+    psi_z_next += psi[i][j][k + 1];
 
     let mut result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-        - 6. * sfcs.psi[i][j][k];
+        - 6. * psi[i][j][k];
 
-    result / H_GRID.powi(2)
+    result / H_GRID_SQ
 
     // let mut result = 0.;
     // result += psi_x_prev + psi_x_next - 2. * sfcs.psi[i][j][k];
@@ -233,9 +241,12 @@ fn find_psi_pp_meas(
 /// Apply a correction to the WF, in attempt to make our two psi''s closer.
 /// Uses our numerically-calculated WF. Updates psi, and both psi''s.
 fn nudge_wf(sfcs: &mut Surfaces, E: f64) {
-    let mut nudge_amount = 0.0010;
+    let mut nudge_amount = 0.00010;
 
-    let num_nudges = 100;
+    let num_nudges = 1;
+    let d_psi = 0.001;
+
+    // todo: Once out of the shower, look for more you can optimize out!
 
     for _ in 0..num_nudges {
         for i in 0..N {
@@ -247,10 +258,51 @@ fn nudge_wf(sfcs: &mut Surfaces, E: f64) {
                     // todo: QC how this works.
                     // let diff = pp_calculated[i][j][k] - pp_measured[i][j][k];
                     // let diff = surfaces[2][i][j][k] - surfaces[3][i][j][k];
-                    let diff = sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k];
+                    let psi_pp_diff =
+                        sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k];
 
+                    // From this diff in psi'' and E, calculate the psi change required
+                    // to make this diff (Using the Schrodinger Eq, which may be a good enough
+                    // proxy, assuming we started with a good trial WF)
+
+                    // let psi_diff_guess = 1. / (E - sfcs.V[i][j][k]) * KE_COEFF_INV * sfcs.psi_pp_diff[i][j][k];
+
+                    // Reasoning out steps:
+                    // - We mus find out how to change psi'' (measured) by diff, and apply this
+                    // change to psi. Does this mean taking a deriv of psi''-calculated at this [i][j][k]?
+                    //- Plug `psi_pp_diff` into this deriv, and pull psi out of it. Use that new psi.
+
+                    // - I think we need d_psi / d_psi''. Then we multiply that by the diff
+                    // (Probably scaled down)
+
+                    // Increment psi, and see how psi'' calc reacts, from the Schrodinger calculation.
+                    // This is how psi'' calculated reacts to a change in psi.
+                    let psi_pp_next_calc =
+                        (E - sfcs.V[i][j][k]) * KE_COEFF * sfcs.psi[i][j][k] + d_psi;
+                    let d_psi__d_psi_pp_calc =
+                        d_psi / (psi_pp_next_calc - sfcs.psi_pp_calculated[i][j][k]);
+
+                    println!("T: {}", psi_pp_next_calc - sfcs.psi_pp_calculated[i][j][k]);
+
+                    // todo: I'm quite suspicious of this approach, since it doesn't take into account
+                    // our nudges in neighbors.
+                    sfcs.psi[i][j][k] += d_psi;
+                    let psi_pp_next_meas =
+                        find_psi_pp_meas(&sfcs.psi, &sfcs.psi_pp_measured, i, j, k);
+                    sfcs.psi[i][j][k] -= d_psi;
+
+                    let d_psi__d_psi_pp_meas =
+                        d_psi / (psi_pp_next_meas - sfcs.psi_pp_measured[i][j][k]);
+
+                    println!(
+                        "Calc: {:.6} Meas: {:.6}",
+                        d_psi__d_psi_pp_calc, d_psi__d_psi_pp_meas
+                    );
+                    // println!("G {}", psi_diff_guess);
                     // Move down to create upward curvature at this pt, etc.
-                    sfcs.psi[i][j][k] -= nudge_amount * diff;
+                    // sfcs.psi[i][j][k] -= nudge_amount * psi_pp_diff;
+
+                    sfcs.psi[i][j][k] += d_psi__d_psi_pp_calc * psi_pp_diff * 0.01;
 
                     // Now that we've updated psi, calculatd a new psi_pp_calulated,
                     // based on the energy.
@@ -279,7 +331,8 @@ fn nudge_wf(sfcs: &mut Surfaces, E: f64) {
                     //         for (k, z) in z_vals.iter().enumerate() {
                     // let posit_sample = Vec3::new(*x, *y, *z);
 
-                    sfcs.psi_pp_measured[i][j][k] = find_psi_pp_meas(sfcs, i, j, k);
+                    sfcs.psi_pp_measured[i][j][k] =
+                        find_psi_pp_meas(&sfcs.psi, &sfcs.psi_pp_measured, i, j, k);
                 }
             }
         }
@@ -400,6 +453,10 @@ fn main() {
         "ψ'' measured".to_owned(),
     ];
 
+    let z = vec![4; N];
+    let y = vec![z; N];
+    let grid_divisions = vec![y; N];
+
     let state = State {
         wfs,
         charges,
@@ -409,7 +466,7 @@ fn main() {
         psi_pp_score,
         surface_names,
         show_surfaces,
-        grid_divisions: 0,
+        grid_divisions,
     };
 
     render::render(state);
