@@ -69,10 +69,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                     // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
                     // state.psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
-                    state.psi_pp_score = crate::score_wf(
-                        &state.surfaces.psi_pp_calculated,
-                        &state.surfaces.psi_pp_measured,
-                    );
+                    state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
 
                     render::update_meshes(&state.surfaces, state.z_displayed, scene);
                     engine_updates.meshes = true;
@@ -151,10 +148,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             // todo: DRY
             engine_updates.meshes = true;
 
-            state.psi_pp_score = crate::score_wf(
-                &state.surfaces.psi_pp_calculated,
-                &state.surfaces.psi_pp_measured,
-            );
+            state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
 
             // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
             // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
@@ -174,17 +168,14 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
 
-            state.psi_pp_score = crate::score_wf(
-                &state.surfaces.psi_pp_calculated,
-                &state.surfaces.psi_pp_measured,
-            );
+            state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
 
             render::update_meshes(&state.surfaces, state.z_displayed, scene);
         }
 
         ui.add_space(ITEM_SPACING);
 
-        ui.heading(format!("ψ'' score: {:.10}", state.psi_pp_score));
+        ui.heading(format!("ψ'' score: {:.6}", state.psi_pp_score));
 
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.

@@ -46,13 +46,13 @@ def main():
 		diff = psipp_calc - psipp_meas
 
 		for i in range(N):
-			# if i == 0 or i == N-1:
-			# 	continue
-
-
 			psi[i] -= diff[i] * NUDGE_AMT
-			# psi[i+1] += diff[i] * NUDGE_AMT
-			# psi[i-1] += diff[i] * NUDGE_AMT
+			if i != 0:
+				psi[i-1] += diff[i] * NUDGE_AMT
+
+			if i != N-1:
+				psi[i+1] += diff[i] * NUDGE_AMT
+			
 
 		psipp_meas = np.zeros(N)
 		for i in range(N):
