@@ -8,11 +8,11 @@ import math
 
 TAU = 2. * pi
 N = 1000
-NUDGE_AMT = 0.0001
-NUM_NUDGES = 20
+NUDGE_AMT = 0.001
+NUM_NUDGES = 4
 h = (20/N)
 
-EPS_DIFF = 0.0001 # todo: tie to nudge amt?
+EPS_DIFF = 0.001 # todo: tie to nudge amt?
 
 def main():
 	x = np.linspace(-10, 10, N)
@@ -22,10 +22,17 @@ def main():
 
 	psipp_meas = np.zeros(N)
 	for i in range(N):
-		if i == 0 or i == N-1:
-			continue
+		if i == 0:
+			psi_prev = 2. * psi[i] - psi[i+1]
+		else:
+			psi_prev = psi[i-1]
 
-		psipp_meas[i] = (psi[i-1] + psi[i+1] - 2. * psi[i]) / h**2
+		if i == N - 1:
+			psi_next = 2. * psi[i] - psi[i-1]
+		else:
+			psi_next = psi[i+1]
+
+		psipp_meas[i] = (psi_prev + psi_next - 2. * psi[i]) / h**2
 
 	# plt.plot(psi)
 	# plt.plot(psipp_calc)
@@ -39,20 +46,29 @@ def main():
 		diff = psipp_calc - psipp_meas
 
 		for i in range(N):
-			if i == 0 or i == N-1:
-				continue
+			# if i == 0 or i == N-1:
+			# 	continue
+
 
 			psi[i] -= diff[i] * NUDGE_AMT
-			psi[i+1] += diff[i] * NUDGE_AMT
-			psi[i-1] += diff[i] * NUDGE_AMT
+			# psi[i+1] += diff[i] * NUDGE_AMT
+			# psi[i-1] += diff[i] * NUDGE_AMT
 
 		psipp_meas = np.zeros(N)
 		for i in range(N):
-			if i == 0 or i == N-1:
-				continue
+			if i == 0:
+				psi_prev = 2. * psi[i] - psi[i+1]
+			else:
+				psi_prev = psi[i-1]
+
+			if i == N - 1:
+				psi_next = 2. * psi[i] - psi[i-1]
+			else:
+				psi_next = psi[i+1]
+
 			# if np.abs(diff[i]) < EPS_DIFF:
 			# 	continue
-			psipp_meas[i] = (psi[i-1] + psi[i+1] - 2. * psi[i]) / h**2
+			psipp_meas[i] = (psi_prev + psi_next - 2. * psi[i]) / h**2
 
 	plt.plot(psi)
 	plt.plot(psipp_calc)
