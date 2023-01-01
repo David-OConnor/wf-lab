@@ -1,7 +1,8 @@
 //! This program explores solving the wave equation for
 //! arbitrary potentials. It visualizes the wave function in 3d, with user interaction.
 
-// todo: Imaginary part of WFs?
+// todo: Consider instead of H orbitals, use the full set of Slater basis
+// functions, which are more general. Make a fn to generate them.
 
 #![allow(non_snake_case)]
 
@@ -86,6 +87,35 @@ impl Default for Surfaces {
     }
 }
 
+/// Represents a gaussian function.
+#[derive(Clone, Copy)]
+pub struct Gaussian {
+    pub a_x: f64,
+    pub b_x: f64,
+    pub c_x: f64,
+    pub a_y: f64,
+    pub b_y: f64,
+    pub c_y: f64,
+    pub a_z: f64,
+    pub b_z: f64,
+    pub c_z: f64,
+}
+
+impl Gaussian {
+    /// Helper fn
+    fn val_1d(x: f64, a: f64, b: f64, c: f64) -> f64 {
+        let part_1 = (x - b).powi(2) / (2. * c.powi(2));
+        a * (-part_1).exp()
+    }
+
+    pub fn val(&self, posit: Vec3) -> f64 {
+        // todo: QC how this works in 3d
+        Self::val_1d(posit.x, self.a_x, self.b_x, self.c_x)
+            + Self::val_1d(posit.y, self.a_y, self.b_y, self.c_y)
+            + Self::val_1d(posit.z, self.a_z, self.b_z, self.c_z)
+    }
+}
+
 // #[derive(Default)]
 pub struct State {
     /// todo: Combine wfs and nuclei in into single tuple etc to enforce index pairing?
@@ -111,13 +141,16 @@ pub struct State {
     pub show_surfaces: [bool; NUM_SURFACES],
     /// This defines how our 3D grid is subdivided in different areas.
     /// todo: FIgure this out.
+    /// todo: We should possibly remove grid divisions, as we may move
+    /// today away from the grid for all but plotting.
     pub grid_divisions: Vec<Vec<Vec<u8>>>,
+    /// Experimenting with gaussians; if this works out, it should possibly be
+    /// combined with the BasisFn (wfs field).
+    pub gaussians: Vec<Gaussian>,
 }
 
 /// Score using wavefunction fidelity.
 fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
-    // let mut result = 0.;
-
     // "The accuracy should be scored by the fidelity of the wavefunction compared
     // to the true wavefunction. Fidelity is defined as |<psi_trial | psi_true >|^2.
     // For normalized states, this will always be bounded from above by 1.0. So it's
@@ -127,42 +160,49 @@ fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
     let mut fidelity = 0.;
 
     // For normalization.
-    let mut size_psi_trial = 0.;
-    let mut size_psi_fm_meas = 0.;
+    let mut norm_sq_trial = 0.;
+    let mut norm_sq_meas = 0.;
 
-    // todo: DOn't allocate each time?
+    // todo: Dkn't allocate each time?
     let mut psi_fm_meas = new_data();
+
+    const EPS: f64 = 0.0001;
 
     // Create normalization const.
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                size_psi_trial += sfcs.psi[i][j][k].powi(2);
+                norm_sq_trial += sfcs.psi[i][j][k].powi(2);
 
-                psi_fm_meas[i][j][k] =
-                    1. / (E - sfcs.V[i][j][k]) * KE_COEFF_INV * sfcs.psi_pp_measured[i][j][k];
-                size_psi_fm_meas += psi_fm_meas[i][j][k].powi(2);
+                // Numerical anomolies that should balance a very low number by
+                // a very high one don't work out here; set to 0.(?)
+                // todo: QC if this is really solving your problem with spike ring.
+                psi_fm_meas[i][j][k] = if (E - sfcs.V[i][j][k]).abs() < EPS {
+                    0.
+                } else {
+                    KE_COEFF_INV / (E - sfcs.V[i][j][k]) * sfcs.psi_pp_measured[i][j][k]
+                };
+
+                norm_sq_meas += psi_fm_meas[i][j][k].powi(2);
             }
         }
     }
 
-    let norm_trial = size_psi_trial.sqrt();
-    let norm_fm_meas = size_psi_fm_meas.sqrt();
+    let norm_trial = norm_sq_trial.sqrt();
+    let norm_meas = norm_sq_meas.sqrt();
 
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                fidelity += psi_fm_meas[i][j][k] / norm_fm_meas * sfcs.psi[i][j][k] / norm_trial;
-
-                // result += (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).powi(2);
+                fidelity +=
+                    (psi_fm_meas[i][j][k] / norm_sq_meas) * (sfcs.psi[i][j][k] / norm_trial);
             }
         }
     }
 
-    // println!("FIDEL: {:?}", fidelity.powi(2));
-    fidelity.powi(2)
+    // sfcs.V = psi_fm_meas; // todo temp!!!
 
-    // result / target.len().pow(3) as f64
+    fidelity.powi(2)
 }
 
 /// Single-point Coulomb potential, eg a hydrogen nuclei.
@@ -389,7 +429,13 @@ fn nudge_wf(sfcs: &mut Surfaces, E: f64) {
 /// todo: This should probably be a method on `State`.
 /// This is our main computation function for sfcs.
 /// Modifies in place to conserve memory.
-fn eval_wf(wfs: &[(BasisFn, f64)], charges: &[(Vec3, f64)], sfcs: &mut Surfaces, E: f64) {
+fn eval_wf(
+    wfs: &[(BasisFn, f64)],
+    gauss: &Vec<Gaussian>,
+    charges: &[(Vec3, f64)],
+    sfcs: &mut Surfaces,
+    E: f64,
+) {
     // output score. todo: Move score to a diff fn?
     // ) -> (Vec<(Arr3d, String)>, f64) {
     // Schrod eq for H:
@@ -447,6 +493,10 @@ fn eval_wf(wfs: &[(BasisFn, f64)], charges: &[(Vec3, f64)], sfcs: &mut Surfaces,
                     psi_z_next += wf(*posit_charge, z_next) * weight;
                 }
 
+                for gauss_basis in gauss {
+                    sfcs.psi[i][j][k] += gauss_basis.val(posit_sample);
+                }
+
                 sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
 
                 sfcs.psi_pp_measured[i][j][k] =
@@ -466,6 +516,18 @@ fn main() {
         (BasisFn::H100, 1.),
     ];
 
+    let gaussians = vec![Gaussian {
+        a_x: 0.,
+        b_x: 0.,
+        c_x: 0.,
+        a_y: 0.,
+        b_y: 0.,
+        c_y: 0.,
+        a_z: 0.,
+        b_z: 0.,
+        c_z: 0.,
+    }];
+
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges = vec![
@@ -479,7 +541,7 @@ fn main() {
 
     let mut sfcs = Default::default();
 
-    eval_wf(&wfs, &charges, &mut sfcs, E);
+    eval_wf(&wfs, &gaussians, &charges, &mut sfcs, E);
 
     let psi_pp_score = score_wf(&sfcs, E);
 
@@ -506,6 +568,8 @@ fn main() {
         surface_names,
         show_surfaces,
         grid_divisions,
+
+        gaussians,
     };
 
     render::render(state);

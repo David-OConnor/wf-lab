@@ -166,7 +166,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
 
-            crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
+            crate::eval_wf(
+                &state.wfs,
+                &state.gaussians,
+                &state.charges,
+                &mut state.surfaces,
+                state.E,
+            );
 
             state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
 
