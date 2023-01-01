@@ -32,7 +32,9 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 // Memory use and some parts of computation scale with the cube of this.
 // Note: Using this as our fine grid. We will potentially subdivide it once
 // or twice per axis, hence the multiple of 4 constraint.
-const N: usize = 21 * 4;
+// const N: usize = 21 * 4;
+const N: usize = 60;
+
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
 const H: f64 = 0.00001;
@@ -239,23 +241,23 @@ fn find_psi_pp_calc(sfcs: &Surfaces, E: f64, i: usize, j: usize, k: usize) -> f6
 /// Calcualte psi'', measured, using the finite diff method, for a single value.
 fn find_psi_pp_meas(
     psi: &Arr3d,
-    psi_pp_measured: &Arr3d,
-    // posit_sample: Vec3,
-    // wfs: &Vec<(usize, f64)>,
-    // charges: &Vec<(Vec3, f64)>,
-    // E: f64,
+    posit_sample: Vec3,
+    wfs: &[(BasisFn, f64)],
+    charges: &[(Vec3, f64)],
+    gauss: &[Gaussian],
     i: usize,
     j: usize,
     k: usize,
 ) -> f64 {
-    // Using purely the numerical psi, we are now limited to the grid, for now.
+    // Calculate psi'' based on a numerical derivative of psi
+    // in 3D.
 
-    // let x_prev = Vec3::new(posit_sample.x - H_GRID, posit_sample.y, posit_sample.z);
-    // let x_next = Vec3::new(posit_sample.x + H_GRID, posit_sample.y, posit_sample.z);
-    // let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H_GRID, posit_sample.z);
-    // let y_next = Vec3::new(posit_sample.x, posit_sample.y + H_GRID, posit_sample.z);
-    // let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H_GRID);
-    // let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H_GRID);
+    let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
+    let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
+    let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
+    let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
+    let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
+    let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
 
     let mut psi_x_prev = 0.;
     let mut psi_x_next = 0.;
@@ -264,65 +266,127 @@ fn find_psi_pp_meas(
     let mut psi_z_prev = 0.;
     let mut psi_z_next = 0.;
 
-    // If on an edge, contue the WF around the edge's value using
-    // a constant slope, to avoid. Alternatively, we could mirror the value.
+    for (i_charge, (posit_charge, charge_amt)) in charges.iter().enumerate() {
+        let (basis, weight) = &wfs[i_charge];
 
-    // 1, 2, 5 //  8
-    // 5, 2, 1 // 8
-    let psi_this = psi[i][j][k]; // code shortener
+        let wf = basis.f();
 
-    let psi_x_prev = if i == 0 {
-        2. * psi_this - psi[i + 1][j][k]
-        // mirror: psi[i + 1][j][k]
-    } else {
-        psi[i - 1][j][k]
-    };
-    let psi_x_next = if i == N - 1 {
-        2. * psi_this - psi[i - 1][j][k]
-    } else {
-        psi[i + 1][j][k]
-    };
-    let psi_y_prev = if j == 0 {
-        2. * psi_this - psi[i][j + 1][k]
-    } else {
-        psi[i][j - 1][k]
-    };
-    let psi_y_next = if j == N - 1 {
-        2. * psi_this - psi[i][j - 1][k]
-    } else {
-        psi[i][j + 1][k]
-    };
-    let psi_z_prev = if k == 0 {
-        2. * psi_this - psi[i][j][k + 1]
-    } else {
-        psi[i][j][k - 1]
-    };
-    let psi_z_next = if k == N - 1 {
-        2. * psi_this - psi[i][j][k - 1]
-    } else {
-        psi[i][j][k + 1]
-    };
+        psi_x_prev += wf(*posit_charge, x_prev) * weight;
+        psi_x_next += wf(*posit_charge, x_next) * weight;
+        psi_y_prev += wf(*posit_charge, y_prev) * weight;
+        psi_y_next += wf(*posit_charge, y_next) * weight;
+        psi_z_prev += wf(*posit_charge, z_prev) * weight;
+        psi_z_next += wf(*posit_charge, z_next) * weight;
+    }
 
-    let mut result =
-        psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next - 6. * psi_this;
+    for gauss_basis in gauss {
+        psi_x_prev += gauss_basis.val(x_prev);
+        psi_x_next += gauss_basis.val(x_next);
+        psi_y_prev += gauss_basis.val(y_prev);
+        psi_y_next += gauss_basis.val(y_next);
+        psi_z_prev += gauss_basis.val(z_prev);
+        psi_z_next += gauss_basis.val(z_next);
+    }
 
-    result / H_GRID_SQ
+    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+        - 6. * psi[i][j][k];
 
-    // let mut result = 0.;
-    // result = psi_x_prev + psi_x_next - 2. * sfcs.psi[i][j][k];
-    // result = psi_y_prev + psi_y_next - 2. * sfcs.psi[i][j][k];
-    // result = psi_z_prev + psi_z_next - 2. * sfcs.psi[i][j][k];
-    // result /= H_GRID.powi(2); // todo: Hard-code this in a const etc.
-
-    // result
+    result / H.powi(2)
 }
+
+// /// Calcualte psi'', measured, using the finite diff method, for a single value.
+// fn find_psi_pp_meas(
+//     psi: &Arr3d,
+//     psi_pp_measured: &Arr3d,
+//     // posit_sample: Vec3,
+//     // wfs: &Vec<(usize, f64)>,
+//     // charges: &Vec<(Vec3, f64)>,
+//     // E: f64,
+//     i: usize,
+//     j: usize,
+//     k: usize,
+// ) -> f64 {
+//     // Using purely the numerical psi, we are now limited to the grid, for now.
+
+//     // let x_prev = Vec3::new(posit_sample.x - H_GRID, posit_sample.y, posit_sample.z);
+//     // let x_next = Vec3::new(posit_sample.x + H_GRID, posit_sample.y, posit_sample.z);
+//     // let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H_GRID, posit_sample.z);
+//     // let y_next = Vec3::new(posit_sample.x, posit_sample.y + H_GRID, posit_sample.z);
+//     // let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H_GRID);
+//     // let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H_GRID);
+
+//     let mut psi_x_prev = 0.;
+//     let mut psi_x_next = 0.;
+//     let mut psi_y_prev = 0.;
+//     let mut psi_y_next = 0.;
+//     let mut psi_z_prev = 0.;
+//     let mut psi_z_next = 0.;
+
+//     // If on an edge, contue the WF around the edge's value using
+//     // a constant slope, to avoid. Alternatively, we could mirror the value.
+
+//     // 1, 2, 5 //  8
+//     // 5, 2, 1 // 8
+//     let psi_this = psi[i][j][k]; // code shortener
+
+//     let psi_x_prev = if i == 0 {
+//         2. * psi_this - psi[i + 1][j][k]
+//         // mirror: psi[i + 1][j][k]
+//     } else {
+//         psi[i - 1][j][k]
+//     };
+//     let psi_x_next = if i == N - 1 {
+//         2. * psi_this - psi[i - 1][j][k]
+//     } else {
+//         psi[i + 1][j][k]
+//     };
+//     let psi_y_prev = if j == 0 {
+//         2. * psi_this - psi[i][j + 1][k]
+//     } else {
+//         psi[i][j - 1][k]
+//     };
+//     let psi_y_next = if j == N - 1 {
+//         2. * psi_this - psi[i][j - 1][k]
+//     } else {
+//         psi[i][j + 1][k]
+//     };
+//     let psi_z_prev = if k == 0 {
+//         2. * psi_this - psi[i][j][k + 1]
+//     } else {
+//         psi[i][j][k - 1]
+//     };
+//     let psi_z_next = if k == N - 1 {
+//         2. * psi_this - psi[i][j][k - 1]
+//     } else {
+//         psi[i][j][k + 1]
+//     };
+
+//     let mut result =
+//         psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next - 6. * psi_this;
+
+//     result / H_GRID_SQ
+
+//     // let mut result = 0.;
+//     // result = psi_x_prev + psi_x_next - 2. * sfcs.psi[i][j][k];
+//     // result = psi_y_prev + psi_y_next - 2. * sfcs.psi[i][j][k];
+//     // result = psi_z_prev + psi_z_next - 2. * sfcs.psi[i][j][k];
+//     // result /= H_GRID.powi(2); // todo: Hard-code this in a const etc.
+
+//     // result
+// }
 
 /// Apply a correction to the WF, in attempt to make our two psi''s closer.
 /// Uses our numerically-calculated WF. Updates psi, and both psi''s.
-fn nudge_wf(sfcs: &mut Surfaces, E: f64) {
+fn nudge_wf(
+    sfcs: &mut Surfaces,
+    wfs: &[(BasisFn, f64)],
+    charges: &[(Vec3, f64)],
+    gauss: &[Gaussian],
+    E: f64,
+) {
     let mut nudge_amount = 0.0001;
 
-    let num_nudges = 100;
+    let num_nudges = 1;
     let d_psi = 0.001;
 
     // todo: Once out of the shower, look for more you can optimize out!
@@ -335,91 +399,22 @@ fn nudge_wf(sfcs: &mut Surfaces, E: f64) {
         for i in 0..N {
             for j in 0..N {
                 for k in 0..N {
-                    if i == 0 || i == N - 1 || j == 0 || j == N - 1 || k == 0 || k == N - 1 {
-                        // continue
-                    }
-
-                    // todo: Maybe check if diff is belwo an eps, then take no action
-
-                    // Note that changing psi affects both these things.
-                    // todo: QC how this works.
-                    // let diff = pp_calculated[i][j][k] - pp_measured[i][j][k];
-                    // let diff = surfaces[2][i][j][k] - surfaces[3][i][j][k];
-                    let psi_pp_diff =
-                        sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k];
-
-                    // From this diff in psi'' and E, calculate the psi change required
-                    // to make this diff (Using the Schrodinger Eq, which may be a good enough
-                    // proxy, assuming we started with a good trial WF)
-
-                    // let psi_diff_guess = 1. / (E - sfcs.V[i][j][k]) * KE_COEFF_INV * sfcs.psi_pp_diff[i][j][k];
-
-                    // Reasoning out steps:
-                    // - We mus find out how to change psi'' (measured) by diff, and apply this
-                    // change to psi. Does this mean taking a deriv of psi''-calculated at this [i][j][k]?
-                    //- Plug `psi_pp_diff` into this deriv, and pull psi out of it. Use that new psi.
-
-                    // - I think we need d_psi / d_psi''. Then we multiply that by the diff
-                    // (Probably scaled down)
-
-                    // todo: Consider applying a lowpass filter to the data after each nudge,
-                    // to remove high-frequency noise added by the nudges.
-
-                    // Increment psi, and see how psi'' calc reacts, from the Schrodinger calculation.
-                    // This is how psi'' calculated reacts to a change in psi.
-                    let d_psi_pp_calc__d_psi = (E - sfcs.V[i][j][k]) * KE_COEFF;
-                    let d_psi__d_psi_pp_calc = 1. / (E - sfcs.V[i][j][k]) * KE_COEFF_INV;
-
-                    // todo: I'm suspicious of this approach, since it doesn't take into account
-                    // our nudges in neighbors.
-                    // sfcs.psi[i][j][k] = d_psi;
-
-                    let psi_pp_next_meas =
-                        find_psi_pp_meas(&sfcs.psi, &sfcs.psi_pp_measured, i, j, k);
-                    // sfcs.psi[i][j][k] -= d_psi;
-
-                    let d_psi__d_psi_pp_meas =
-                        d_psi / (psi_pp_next_meas - sfcs.psi_pp_measured[i][j][k]);
-
-                    // println!(
-                    // "Calc: {:.6} Meas: {:.6}",
-                    // d_psi__d_psi_pp_calc, d_psi__d_psi_pp_meas
-                    // );
-
-                    let d_psi_d_psi_pp_diff = d_psi__d_psi_pp_calc - d_psi__d_psi_pp_meas;
-                    // let d_psi_d_psi_pp_diff = d_psi__d_psi_pp_meas - d_psi__d_psi_pp_calc;
-
-                    // println!("G {}", psi_diff_guess);
-                    // Move down to create upward curvature at this pt, etc.
-                    // sfcs.psi[i][j][k] -= nudge_amount * psi_pp_diff;
-
-                    // let nudge_amt = -d_psi_d_psi_pp_diff * psi_pp_diff * 0.01;
-                    let nudge = psi_pp_diff * nudge_amount;
-
-                    sfcs.psi[i][j][k] -= nudge;
-                    // sfcs.psi[i+1][j][k] = nudge_amount;
-                    // sfcs.psi[i-1][j][k] = nudge_amount;
-                    // sfcs.psi[i][j+1][k] = nudge_amount;
-                    // sfcs.psi[i][j-1][k] = nudge_amount;
-                    // sfcs.psi[i][j][k+1] = nudge_amount;
-                    // sfcs.psi[i][j][k-1] = nudge_amount;
-
-                    // sfcs.psi[i][j][k] = d_psi__d_psi_pp_meas * psi_pp_diff * 0.2;
-
-                    // Now that we've updated psi, calculatd a new psi_pp_calulated,
-                    // based on the energy.
-                    // todo: Massage E here??
                     sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
                 }
             }
         }
 
-        // We must solve for psi IVO our sample point before measuring psi_pp.
-        for i in 0..N {
-            for j in 0..N {
-                for k in 0..N {
+        let x_vals = linspace((GRID_MIN, GRID_MAX), N);
+        let y_vals = linspace((GRID_MIN, GRID_MAX), N);
+        let z_vals = linspace((GRID_MIN, GRID_MAX), N);
+
+        for (i, x) in x_vals.iter().enumerate() {
+            for (j, y) in y_vals.iter().enumerate() {
+                for (k, z) in z_vals.iter().enumerate() {
+                    let posit_sample = Vec3::new(*x, *y, *z);
+
                     sfcs.psi_pp_measured[i][j][k] =
-                        find_psi_pp_meas(&sfcs.psi, &sfcs.psi_pp_measured, i, j, k);
+                        find_psi_pp_meas(&sfcs.psi, posit_sample, wfs, charges, gauss, i, j, k);
                 }
             }
         }
@@ -444,6 +439,7 @@ fn eval_wf(
     // psi(r)'' = (E - V(r)) * 2*m/ħ**2 * psi(r)
     // psi(r) = (E - V(R))^-1 * ħ**2/2m * psi(r)''
 
+    // todo: Store these somewhere to save on computation; minor pt.
     let x_vals = linspace((GRID_MIN, GRID_MAX), N);
     let y_vals = linspace((GRID_MIN, GRID_MAX), N);
     let z_vals = linspace((GRID_MIN, GRID_MAX), N);
@@ -459,20 +455,6 @@ fn eval_wf(
                 // Calculate psi'' based on a numerical derivative of psi
                 // in 3D.
 
-                let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
-                let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
-                let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
-                let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
-                let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
-                let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
-
-                let mut psi_x_prev = 0.;
-                let mut psi_x_next = 0.;
-                let mut psi_y_prev = 0.;
-                let mut psi_y_next = 0.;
-                let mut psi_z_prev = 0.;
-                let mut psi_z_next = 0.;
-
                 sfcs.V[i][j][k] = 0.;
                 sfcs.psi[i][j][k] = 0.;
 
@@ -484,13 +466,6 @@ fn eval_wf(
                     sfcs.psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
 
                     sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
-
-                    psi_x_prev += wf(*posit_charge, x_prev) * weight;
-                    psi_x_next += wf(*posit_charge, x_next) * weight;
-                    psi_y_prev += wf(*posit_charge, y_prev) * weight;
-                    psi_y_next += wf(*posit_charge, y_next) * weight;
-                    psi_z_prev += wf(*posit_charge, z_prev) * weight;
-                    psi_z_next += wf(*posit_charge, z_next) * weight;
                 }
 
                 for gauss_basis in gauss {
@@ -499,11 +474,11 @@ fn eval_wf(
 
                 sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
 
-                sfcs.psi_pp_measured[i][j][k] =
-                    psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-                        - 6. * sfcs.psi[i][j][k];
+                // todo: By delegating psi_pp_measured, we are causing an additional loop
+                // through charges, wfs, gauss etc.
 
-                sfcs.psi_pp_measured[i][j][k] /= H.powi(2)
+                sfcs.psi_pp_measured[i][j][k] =
+                    find_psi_pp_meas(&sfcs.psi, posit_sample, wfs, charges, gauss, i, j, k);
             }
         }
     }

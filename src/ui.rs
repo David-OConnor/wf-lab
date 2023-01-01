@@ -140,10 +140,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.add_space(ITEM_SPACING);
 
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
-            // crate::nudge_wf(&mut state.surfaces[1], &state.surfaces[2], &state.surfaces[3]);
-            // crate::nudge_wf(&mut state.surfaces);
-            // crate::nudge_wf(&state.wfs, &state.charges, state.E);
-            crate::nudge_wf(&mut state.surfaces, state.E);
+            crate::nudge_wf(
+                &mut state.surfaces,
+                &state.wfs,
+                &state.charges,
+                &state.gaussians,
+                state.E,
+            );
 
             // todo: DRY
             engine_updates.meshes = true;
