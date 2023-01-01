@@ -24,7 +24,7 @@ const SURFACE_COLORS: [(f32, f32, f32); 7] = [
     (1., 0., 0.),
     (0., 0.5, 0.5),
     (0.5, 0.5, 0.),
-    (0.5, 0.5, 0.),
+    (0.33, 0.33, 0.333),
     (0.5, 0., 0.5),
 ];
 
@@ -89,6 +89,8 @@ pub fn update_meshes(
         &surfaces.psi,
         &surfaces.psi_pp_calculated,
         &surfaces.psi_pp_measured,
+        &surfaces.aux1,
+        &surfaces.aux2,
     ] {
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh(sfc, z_i),

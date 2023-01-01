@@ -86,11 +86,15 @@ pub fn h_wf_300(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
 
 pub fn h_wf_210(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
     let r = r_from_pts(posit_nuc, posit_sample);
-
-    // todo wrong
     // We take Cos theta below, so no need for cos^-1 here.
-    // todo: Not sure how we deal with diff phis?
-    let cos_theta = posit_nuc.to_normalized().dot(posit_sample.to_normalized());
+
+    // todo: FOr now, we hard-code the axis of rotation as +Z.
+    let posit_nuc_2d = Vec3::new(posit_nuc.x, posit_nuc.y, 0.);
+    let posit_sample_2d = Vec3::new(posit_sample.x, posit_sample.y, 0.);
+
+    let cos_theta = posit_nuc_2d
+        .to_normalized()
+        .dot(posit_sample_2d.to_normalized());
 
     let ρ = Z_H * r / A_0;
     1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * ρ * (-ρ / 2.).exp() * cos_theta

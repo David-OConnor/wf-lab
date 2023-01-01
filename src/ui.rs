@@ -144,7 +144,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.surfaces,
                 &state.wfs,
                 &state.charges,
-                &state.gaussians,
+                &mut state.gaussians,
                 state.E,
             );
 
