@@ -133,10 +133,25 @@ impl Gaussian {
     }
 
     pub fn val(&self, posit_sample: Vec3) -> f64 {
+        let diff = posit_sample - self.posit;
+        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
         // todo: QC how this works in 3d
-        Self::val_1d(posit_sample.x, self.a_x, self.posit.x, self.c_x)
-            + Self::val_1d(posit_sample.y, self.a_y, self.posit.y, self.c_y)
-            + Self::val_1d(posit_sample.z, self.a_z, self.posit.z, self.c_z)
+        Self::val_1d(r, self.a_x, self.posit.x, self.c_x)
+        // + Self::val_1d(posit_sample.y, self.a_y, self.posit.y, self.c_y)
+        // + Self::val_1d(posit_sample.z, self.a_z, self.posit.z, self.c_z)
+    }
+}
+
+pub struct Basis {
+    pub f: BasisFn,
+    pub posit: Vec3,
+    pub weight: f64,
+}
+
+impl Basis {
+    pub fn new(f: BasisFn, posit: Vec3, weight: f64) -> Self {
+        Self { f, posit, weight }
     }
 }
 
@@ -146,7 +161,7 @@ pub struct State {
     /// todo: Or a sub struct?
     /// Wave functions, with weights
     // pub wfs: Vec<(impl Fn(Vec3, Vec3) -> f64 + 'static, f64)>,
-    pub wfs: Vec<(BasisFn, f64)>,
+    pub wfs: Vec<Basis>, // todo: Rename, eg `bases`
     // todo use an index for them.
     /// Nuclei. todo: H only for now.
     pub charges: Vec<(Vec3, f64)>,
@@ -173,7 +188,7 @@ pub struct State {
     pub gaussians: Vec<Gaussian>,
 }
 
-/// Score using wavefunction fidelity.
+/// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2
 fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
     // "The accuracy should be scored by the fidelity of the wavefunction compared
     // to the true wavefunction. Fidelity is defined as |<psi_trial | psi_true >|^2.
@@ -181,52 +196,60 @@ fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
     // lower than 1.0 for an imperfect variational function, but is 1 if you are
     // able to exactly express it.""
 
-    let mut fidelity = 0.;
-
     // For normalization.
-    let mut norm_sq_trial = 0.;
+    let mut norm_sq_calc = 0.;
     let mut norm_sq_meas = 0.;
 
     // todo: Dkn't allocate each time?
-    let mut psi_fm_meas = new_data();
+    // let mut psi_fm_meas = new_data();
 
-    const EPS: f64 = 0.0001;
+    // const EPS: f64 = 0.0001;
 
     // Create normalization const.
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                norm_sq_trial += sfcs.psi[i][j][k].powi(2);
+                // norm_sq_trial += sfcs.psi[i][j][k].powi(2);
 
                 // Numerical anomolies that should balance a very low number by
                 // a very high one don't work out here; set to 0.(?)
                 // todo: QC if this is really solving your problem with spike ring.
-                psi_fm_meas[i][j][k] = if (E - sfcs.V[i][j][k]).abs() < EPS {
-                    0.
-                } else {
-                    KE_COEFF_INV / (E - sfcs.V[i][j][k]) * sfcs.psi_pp_measured[i][j][k]
-                };
+                // psi_fm_meas[i][j][k] = if (E - sfcs.V[i][j][k]).abs() < EPS {
+                //     0.
+                // } else {
+                //     KE_COEFF_INV / (E - sfcs.V[i][j][k]) * sfcs.psi_pp_measured[i][j][k]
+                // };
 
-                norm_sq_meas += psi_fm_meas[i][j][k].powi(2);
+                // norm_sq_meas += psi_fm_meas[i][j][k].powi(2);
+
+                norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].powi(2);
+                norm_sq_meas += sfcs.psi_pp_measured[i][j][k].powi(2);
             }
         }
     }
 
-    let norm_trial = norm_sq_trial.sqrt();
+    let norm_calc = norm_sq_calc.sqrt();
     let norm_meas = norm_sq_meas.sqrt();
+
+    let mut fidelity = 0.;
 
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
                 fidelity +=
-                    (psi_fm_meas[i][j][k] / norm_sq_meas) * (sfcs.psi[i][j][k] / norm_trial);
+                    // (psi_fm_meas[i][j][k] / norm_sq_meas) * (sfcs.psi[i][j][k] / norm_trial);
+                    // sfcs.psi_pp_calculated[i][j][k] / norm_sq_calc * sfcs.psi_pp_measured[i][j][k] / norm_sq_meas;
+                    // (sfcs.psi_pp_calculated[i][j][k] / norm_sq_calc) * (sfcs.psi_pp_calculated[i][j][k] / norm_sq_calc);
+                    // (sfcs.psi_pp_measured[i][j][k] / norm_sq_meas) * (sfcs.psi_pp_measured[i][j][k] / norm_sq_meas);
+
+                    // todo: I can't get "fidelity" working; bakc to leaset-squares
+                    (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).powi(2)
             }
         }
     }
 
-    // sfcs.V = psi_fm_meas; // todo temp!!!
-
-    fidelity.powi(2)
+    // fidelity.powi(2)
+    fidelity
 }
 
 /// Single-point Coulomb potential, eg a hydrogen nuclei.
@@ -264,7 +287,7 @@ fn find_psi_pp_calc(sfcs: &Surfaces, E: f64, i: usize, j: usize, k: usize) -> f6
 fn find_psi_pp_meas(
     psi: &Arr3d,
     posit_sample: Vec3,
-    wfs: &[(BasisFn, f64)],
+    bases: &[Basis],
     charges: &[(Vec3, f64)],
     gauss: &[Gaussian],
     i: usize,
@@ -288,17 +311,15 @@ fn find_psi_pp_meas(
     let mut psi_z_prev = 0.;
     let mut psi_z_next = 0.;
 
-    for (i_charge, (posit_charge, charge_amt)) in charges.iter().enumerate() {
-        let (basis, weight) = &wfs[i_charge];
+    for basis in bases {
+        let wf = basis.f.f();
 
-        let wf = basis.f();
-
-        psi_x_prev += wf(*posit_charge, x_prev) * weight;
-        psi_x_next += wf(*posit_charge, x_next) * weight;
-        psi_y_prev += wf(*posit_charge, y_prev) * weight;
-        psi_y_next += wf(*posit_charge, y_next) * weight;
-        psi_z_prev += wf(*posit_charge, z_prev) * weight;
-        psi_z_next += wf(*posit_charge, z_next) * weight;
+        psi_x_prev += wf(basis.posit, x_prev) * basis.weight;
+        psi_x_next += wf(basis.posit, x_next) * basis.weight;
+        psi_y_prev += wf(basis.posit, y_prev) * basis.weight;
+        psi_y_next += wf(basis.posit, y_next) * basis.weight;
+        psi_z_prev += wf(basis.posit, z_prev) * basis.weight;
+        psi_z_next += wf(basis.posit, z_next) * basis.weight;
     }
 
     for gauss_basis in gauss {
@@ -320,7 +341,7 @@ fn find_psi_pp_meas(
 /// Uses our numerically-calculated WF. Updates psi, and both psi''s.
 fn nudge_wf(
     sfcs: &mut Surfaces,
-    wfs: &[(BasisFn, f64)],
+    wfs: &[Basis],
     charges: &[(Vec3, f64)],
     gauss: &mut Vec<Gaussian>,
     E: f64,
@@ -368,17 +389,16 @@ fn nudge_wf(
 
                 // let psi_fm_meas =
                 //     KE_COEFF_INV / (E - sfcs.V[i][j][k]) * sfcs.psi_pp_measured[i][j][k];
-                
 
-                let psi_fm_meas = if (E - sfcs.V[i][j][k]).abs() < 0.01 || sfcs.psi_pp_measured[i][j][k].abs() < 0.01  {
+                let psi_fm_meas = if (E - sfcs.V[i][j][k]).abs() < 0.01
+                    || sfcs.psi_pp_measured[i][j][k].abs() < 0.01
+                {
                     0.
                 } else {
                     KE_COEFF_INV / (E - sfcs.V[i][j][k]) * sfcs.psi_pp_measured[i][j][k]
                 };
 
                 let psi_fm_diff = KE_COEFF_INV / (E - sfcs.V[i][j][k]) * diff;
-
-                
 
                 sfcs.aux1[i][j][k] = diff;
 
@@ -400,30 +420,30 @@ fn nudge_wf(
         }
         // }
 
-        for (i, x) in x_vals.iter().enumerate() {
-            for (j, y) in y_vals.iter().enumerate() {
-                for (k, z) in z_vals.iter().enumerate() {
-                    let posit_sample = Vec3::new(*x, *y, *z);
+        // for (i, x) in x_vals.iter().enumerate() {
+        //     for (j, y) in y_vals.iter().enumerate() {
+        //         for (k, z) in z_vals.iter().enumerate() {
+        //             let posit_sample = Vec3::new(*x, *y, *z);
 
-                    // todo: Maybe you can wrap up the psi and /or psi calc into the psi_pp_meas fn?
+        //             // todo: Maybe you can wrap up the psi and /or psi calc into the psi_pp_meas fn?
 
-                    sfcs.psi[i][j][k] = 0.;
+        //             sfcs.psi[i][j][k] = 0.;
 
-                    for (i_charge, (posit_charge, charge_amt)) in charges.iter().enumerate() {
-                        let (basis, weight) = &wfs[i_charge];
+        //             for (i_charge, (posit_charge, charge_amt)) in charges.iter().enumerate() {
+        //                 let (basis, weight) = &wfs[i_charge];
 
-                        let wf = basis.f();
+        //                 let wf = basis.f();
 
-                        sfcs.psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
-                    }
+        //                 sfcs.psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
+        //             }
 
-                    sfcs.psi_pp_measured[i][j][k] =
-                        find_psi_pp_meas(&sfcs.psi, posit_sample, wfs, charges, gauss, i, j, k);
+        //             sfcs.psi_pp_measured[i][j][k] =
+        //                 find_psi_pp_meas(&sfcs.psi, posit_sample, wfs, charges, gauss, i, j, k);
 
-                    sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
-                }
-            }
-        }
+        //             sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
+        //         }
+        //     }
+        // }
     }
 }
 
@@ -431,7 +451,7 @@ fn nudge_wf(
 /// This is our main computation function for sfcs.
 /// Modifies in place to conserve memory.
 fn eval_wf(
-    wfs: &[(BasisFn, f64)],
+    bases: &[Basis],
     gauss: &Vec<Gaussian>,
     charges: &[(Vec3, f64)],
     sfcs: &mut Surfaces,
@@ -462,16 +482,13 @@ fn eval_wf(
                 // in 3D.
 
                 sfcs.V[i][j][k] = 0.;
-                sfcs.psi[i][j][k] = 0.;
-
-                for (i_charge, (posit_charge, charge_amt)) in charges.iter().enumerate() {
-                    let (basis, weight) = &wfs[i_charge];
-
-                    let wf = basis.f();
-
-                    sfcs.psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
-
+                for (posit_charge, charge_amt) in charges.iter() {
                     sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
+                }
+
+                sfcs.psi[i][j][k] = 0.;
+                for basis in bases {
+                    sfcs.psi[i][j][k] += basis.f.f()(basis.posit, posit_sample) * basis.weight;
                 }
 
                 for gauss_basis in gauss {
@@ -484,7 +501,7 @@ fn eval_wf(
                 // through charges, wfs, gauss etc.
 
                 sfcs.psi_pp_measured[i][j][k] =
-                    find_psi_pp_meas(&sfcs.psi, posit_sample, wfs, charges, gauss, i, j, k);
+                    find_psi_pp_meas(&sfcs.psi, posit_sample, bases, charges, gauss, i, j, k);
             }
         }
     }
@@ -492,14 +509,13 @@ fn eval_wf(
 
 fn main() {
     let wfs = vec![
-        (BasisFn::H100, 1.),
-        (BasisFn::H100, 1.),
-        (BasisFn::H100, 1.),
+        Basis::new(BasisFn::H100, Vec3::new(-1., 0., 0.), 1.),
+        Basis::new(BasisFn::H100, Vec3::new(1., 0., 0.), 1.),
+        Basis::new(BasisFn::H210, Vec3::new(-1., 0., 0.), 0.),
+        Basis::new(BasisFn::H210, Vec3::new(1., 0., 0.), 0.),
     ];
 
-    let gaussians = vec![
-        // Gaussian::new_symmetric(Vec3::new(0., 0., 0.), -1., 5.),
-    ];
+    let gaussians = vec![Gaussian::new_symmetric(Vec3::new(0., 0., 0.), 0.1, 2.)];
 
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
