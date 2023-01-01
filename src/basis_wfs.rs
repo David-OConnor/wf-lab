@@ -84,22 +84,29 @@ pub fn h_wf_300(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
         * (-ρ / 3.).exp()
 }
 
+// todo: Axis arg.
 pub fn h_wf_210(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
     let r = r_from_pts(posit_nuc, posit_sample);
     // We take Cos theta below, so no need for cos^-1 here.
 
-    // todo: FOr now, we hard-code the axis of rotation as +Z.
-    let posit_nuc_2d = Vec3::new(posit_nuc.x, posit_nuc.y, 0.);
-    let posit_sample_2d = Vec3::new(posit_sample.x, posit_sample.y, 0.);
+    // todo: For now, let's say the axis that goes through the lobes is
+    // todo the x axis.
+    let axis_through_lobes = Vec3::new(1., 0., 0.);
+    ////  We could imagine the lobes spinning around this axis.
+    // let axis_perp = Vec3::new(0., 0., 1.);
 
-    let cos_theta = posit_nuc_2d
+    // todo: Duplicate creations of `diff`; here and in `r_from_pts`.
+    let posit_sample_rel = posit_sample - posit_nuc;
+
+    let cos_theta = posit_sample_rel
         .to_normalized()
-        .dot(posit_sample_2d.to_normalized());
+        .dot(axis_through_lobes);
 
     let ρ = Z_H * r / A_0;
     1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * ρ * (-ρ / 2.).exp() * cos_theta
 }
 
+/// todo: Not required, since it's a rotation of h_wf_210?
 pub fn h_wf_211(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
     let r = r_from_pts(posit_nuc, posit_sample);
 
@@ -120,6 +127,7 @@ pub fn h_wf_211(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
         * (i * phi).exp()
 }
 
+/// todo: Not required, since it's a rotation of h_wf_210?
 /// todo: Dry with above! Only diff is one change in sign.
 pub fn h_wf_21m1(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
     let r = r_from_pts(posit_nuc, posit_sample);

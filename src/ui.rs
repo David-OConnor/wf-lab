@@ -12,8 +12,8 @@ const E_MIN: f64 = -2.;
 const E_MAX: f64 = 2.;
 
 // Wave fn weights
-const WEIGHT_MIN: f64 = -3.;
-const WEIGHT_MAX: f64 = 3.;
+const WEIGHT_MIN: f64 = -4.;
+const WEIGHT_MAX: f64 = 4.;
 
 const ITEM_SPACING: f32 = 16.;
 
@@ -34,9 +34,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.set_max_width(UI_WIDTH);
 
-        ui.heading("Wavefunction Lab");
+        // ui.heading("Wavefunction Lab");
 
         ui.heading("Show surfaces:");
+
+        // ui.horizontal(|ui| {
 
         for (i, name) in state.surface_names.iter_mut().enumerate() {
             let show = &mut state.show_surfaces[i];
@@ -95,9 +97,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             .text("Z slice"),
         );
 
-        ui.add_space(ITEM_SPACING);
-
-        ui.heading("H orbitals:");
+        // ui.add_space(ITEM_SPACING);
 
         ui.heading("Wave functions and Weights:");
 

@@ -510,12 +510,17 @@ fn eval_wf(
 fn main() {
     let wfs = vec![
         Basis::new(BasisFn::H100, Vec3::new(-1., 0., 0.), 1.),
-        Basis::new(BasisFn::H100, Vec3::new(1., 0., 0.), 1.),
+        Basis::new(BasisFn::H100, Vec3::new(1., 0., 0.), -1.),
+        Basis::new(BasisFn::H200, Vec3::new(-1., 0., 0.), 0.),
+        Basis::new(BasisFn::H200, Vec3::new(1., 0., 0.), 0.),
         Basis::new(BasisFn::H210, Vec3::new(-1., 0., 0.), 0.),
         Basis::new(BasisFn::H210, Vec3::new(1., 0., 0.), 0.),
+        Basis::new(BasisFn::H300, Vec3::new(-1., 0., 0.), 0.),
+        Basis::new(BasisFn::H300, Vec3::new(1., 0., 0.), 0.),
     ];
 
     let gaussians = vec![Gaussian::new_symmetric(Vec3::new(0., 0., 0.), 0.1, 2.)];
+    let gaussians = vec![];
 
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
