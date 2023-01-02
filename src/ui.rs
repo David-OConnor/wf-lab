@@ -4,6 +4,8 @@ use graphics::{EngineUpdates, Scene};
 
 use crate::{basis_wfs::BasisFn, render, State, N};
 
+use lin_alg2::f64::{Quaternion, Vec3};
+
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 260.;
@@ -36,7 +38,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         // ui.heading("Wavefunction Lab");
 
-        ui.heading("Show surfaces:");
+        // ui.heading("Show surfaces:");
 
         // ui.horizontal(|ui| {
 
@@ -47,7 +49,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             }
         }
 
-        ui.add_space(ITEM_SPACING);
+        // ui.add_space(ITEM_SPACING);
+
+        ui.heading(format!("ψ'' score: {:.10}", state.psi_pp_score));
 
         ui.add(
             egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
@@ -101,6 +105,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.heading("Wave functions and Weights:");
 
+        // todo: Scroll area
+
         // We use this var to avoid mutable/unmutable borrow conflicts
         let mut updated_wfs = false;
         for (id, basis) in state.wfs.iter_mut().enumerate() {
@@ -114,9 +120,18 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     ui.selectable_value(&mut selected, BasisFn::H100, BasisFn::H100.descrip());
                     ui.selectable_value(&mut selected, BasisFn::H200, BasisFn::H200.descrip());
                     ui.selectable_value(&mut selected, BasisFn::H300, BasisFn::H300.descrip());
-                    ui.selectable_value(&mut selected, BasisFn::H210, BasisFn::H210.descrip());
-                    ui.selectable_value(&mut selected, BasisFn::H211, BasisFn::H211.descrip());
-                    ui.selectable_value(&mut selected, BasisFn::H21M1, BasisFn::H21M1.descrip());
+                    ui.selectable_value(
+                        &mut selected,
+                        BasisFn::H210(Vec3::new_zero()),
+                        BasisFn::H210(Vec3::new_zero()).descrip(),
+                    );
+                    ui.selectable_value(
+                        &mut selected,
+                        BasisFn::Sto(1.),
+                        BasisFn::Sto(1.).descrip(),
+                    );
+                    // ui.selectable_value(&mut selected, BasisFn::H211, BasisFn::H211.descrip());
+                    // ui.selectable_value(&mut selected, BasisFn::H21M1, BasisFn::H21M1.descrip());
                 });
 
             if selected != basis.f {
@@ -135,6 +150,39 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 })
                 .text("Weight"),
             );
+
+            match basis.f {
+                BasisFn::Sto(mut slater_exp) => {
+                    let mut entry = slater_exp.to_string();
+
+                    let response =
+                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                    if response.changed() {
+                        let exp = entry.parse::<f64>().unwrap_or(1.);
+                        basis.f = BasisFn::Sto(exp);
+                        updated_wfs = true;
+                    }
+                }
+                BasisFn::H210(mut axis) => {
+                    // todo: DRY
+                    let mut entry = "0.".to_owned(); // angle
+
+                    let response =
+                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                    if response.changed() {
+                        let angle = entry.parse::<f64>().unwrap_or(0.);
+
+                        // todo: locked to Z rotation axis for now.
+                        let rotation_axis = Vec3::new(0., 0., 1.);
+                        let rotation = Quaternion::from_axis_angle(rotation_axis, angle);
+                        let new_axis = rotation.rotate_vec(Vec3::new(1., 0., 0.));
+                        basis.f = BasisFn::H210(new_axis);
+
+                        updated_wfs = true;
+                    }
+                }
+                _ => (),
+            }
         }
 
         ui.add_space(ITEM_SPACING);
@@ -181,10 +229,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             render::update_meshes(&state.surfaces, state.z_displayed, scene);
         }
-
-        ui.add_space(ITEM_SPACING);
-
-        ui.heading(format!("ψ'' score: {:.10}", state.psi_pp_score));
 
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.

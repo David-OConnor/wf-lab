@@ -7,8 +7,7 @@
 // todo: Hylleraas basis functions?
 
 #![allow(non_snake_case)]
-
-use std::f64::consts::PI;
+#![allow(mixed_script_confusables)]
 
 use lin_alg2::f64::Vec3;
 
@@ -83,7 +82,7 @@ pub struct Surfaces {
 impl Default for Surfaces {
     /// Fills with 0.s
     fn default() -> Self {
-        let mut data = new_data();
+        let data = new_data();
 
         Self {
             V: data.clone(),
@@ -178,11 +177,11 @@ pub struct State {
     /// Surface name
     pub surface_names: [String; NUM_SURFACES],
     pub show_surfaces: [bool; NUM_SURFACES],
-    /// This defines how our 3D grid is subdivided in different areas.
-    /// todo: FIgure this out.
-    /// todo: We should possibly remove grid divisions, as we may move
-    /// today away from the grid for all but plotting.
-    pub grid_divisions: Vec<Vec<Vec<u8>>>,
+    // /// This defines how our 3D grid is subdivided in different areas.
+    // /// todo: FIgure this out.
+    // /// todo: We should possibly remove grid divisions, as we may move
+    // /// today away from the grid for all but plotting.
+    // pub grid_divisions: Vec<Vec<Vec<u8>>>,
     /// Experimenting with gaussians; if this works out, it should possibly be
     /// combined with the BasisFn (wfs field).
     pub gaussians: Vec<Gaussian>,
@@ -346,7 +345,7 @@ fn nudge_wf(
     gauss: &mut Vec<Gaussian>,
     E: f64,
 ) {
-    let mut nudge_amount = 0.0001;
+    let nudge_amount = 0.0001;
 
     let num_nudges = 1;
     let d_psi = 0.001;
@@ -508,19 +507,20 @@ fn eval_wf(
 }
 
 fn main() {
+    let x_axis = Vec3::new(1., 0., 0.);
     let wfs = vec![
         Basis::new(BasisFn::H100, Vec3::new(-1., 0., 0.), 1.),
         Basis::new(BasisFn::H100, Vec3::new(1., 0., 0.), -1.),
         Basis::new(BasisFn::H200, Vec3::new(-1., 0., 0.), 0.),
         Basis::new(BasisFn::H200, Vec3::new(1., 0., 0.), 0.),
-        Basis::new(BasisFn::H210, Vec3::new(-1., 0., 0.), 0.),
-        Basis::new(BasisFn::H210, Vec3::new(1., 0., 0.), 0.),
+        Basis::new(BasisFn::H210(x_axis), Vec3::new(-1., 0., 0.), 0.),
+        Basis::new(BasisFn::H210(x_axis), Vec3::new(1., 0., 0.), 0.),
         Basis::new(BasisFn::H300, Vec3::new(-1., 0., 0.), 0.),
-        Basis::new(BasisFn::H300, Vec3::new(1., 0., 0.), 0.),
+        Basis::new(BasisFn::Sto(1.), Vec3::new(1., 0., 0.), 0.),
     ];
 
-    let gaussians = vec![Gaussian::new_symmetric(Vec3::new(0., 0., 0.), 0.1, 2.)];
-    let gaussians = vec![];
+    // let gaussians = vec![Gaussian::new_symmetric(Vec3::new(0., 0., 0.), 0.1, 2.)];
+    let gaussians = Vec::new();
 
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
@@ -550,9 +550,9 @@ fn main() {
         "Aux 2".to_owned(),
     ];
 
-    let z = vec![4; N];
-    let y = vec![z; N];
-    let grid_divisions = vec![y; N];
+    // let z = vec![4; N];
+    // let y = vec![z; N];
+    // let grid_divisions = vec![y; N];
 
     let state = State {
         wfs,
@@ -563,8 +563,7 @@ fn main() {
         psi_pp_score,
         surface_names,
         show_surfaces,
-        grid_divisions,
-
+        // grid_divisions,
         gaussians,
     };
 

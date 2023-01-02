@@ -20,32 +20,42 @@ pub enum BasisFn {
     H100,
     H200,
     H300,
-    H210,
-    H211,
-    H21M1,
-    // todo etc
+    H210(Vec3), // axis
+    // H211,
+    // H21M1,
+    Sto(f64), // Slater exponent
 }
 
 impl BasisFn {
-    pub fn f(&self) -> &dyn Fn(Vec3, Vec3) -> f64 {
+    /// The box is required, instead of a ref, to deal with the closures.
+    pub fn f(&self) -> Box<dyn Fn(Vec3, Vec3) -> f64 + '_> {
         match self {
-            Self::H100 => &h_wf_100,
-            Self::H200 => &h_wf_200,
-            Self::H300 => &h_wf_300,
-            Self::H210 => &h_wf_210,
-            Self::H211 => &h_wf_211,
-            Self::H21M1 => &h_wf_21m1,
+            Self::H100 => Box::new(h_wf_100),
+            Self::H200 => Box::new(h_wf_200),
+            Self::H300 => Box::new(h_wf_300),
+            Self::H210(axis) => Box::new(|a, b| h_wf_210(a, b, *axis)),
+            // Self::H211 => &h_wf_211,
+            // Self::H21M1 => &h_wf_21m1,
+            Self::Sto(slater_exp) => Box::new(|a, b| slater(a, b, *slater_exp)),
         }
     }
 
     pub fn descrip(&self) -> String {
         match self {
-            Self::H100 => "H100: n=1, l=0, m=0",
-            Self::H200 => "H200: n=2, l=0, m=0",
-            Self::H300 => "H300: n=3, l=0, m=0",
-            Self::H210 => "H210: n=2, l=1, m=0",
-            Self::H211 => "H211: n=2, l=1, m=1",
-            Self::H21M1 => "H21-1: n=2, l=1, m=-1",
+            // Self::H100 => "H100: n=1, l=0, m=0",
+            // Self::H200 => "H200: n=2, l=0, m=0",
+            // Self::H300 => "H300: n=3, l=0, m=0",
+            // Self::H210(_) => "H210: n=2, l=1, m=0",
+            // // Self::H211 => "H211: n=2, l=1, m=1",
+            // // Self::H21M1 => "H21-1: n=2, l=1, m=-1",
+            // Self::Sto(_) => "STO",
+            Self::H100 => "H100",
+            Self::H200 => "H200",
+            Self::H300 => "H300",
+            Self::H210(_) => "H210",
+            // Self::H211 => "H211: n=2, l=1, m=1",
+            // Self::H21M1 => "H21-1: n=2, l=1, m=-1",
+            Self::Sto(_) => "STO",
         }
         .to_owned()
     }
@@ -84,23 +94,15 @@ pub fn h_wf_300(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
         * (-ρ / 3.).exp()
 }
 
-// todo: Axis arg.
-pub fn h_wf_210(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
+// We assume the axis is already normalized.
+pub fn h_wf_210(posit_nuc: Vec3, posit_sample: Vec3, axis_through_lobes: Vec3) -> f64 {
     let r = r_from_pts(posit_nuc, posit_sample);
     // We take Cos theta below, so no need for cos^-1 here.
-
-    // todo: For now, let's say the axis that goes through the lobes is
-    // todo the x axis.
-    let axis_through_lobes = Vec3::new(1., 0., 0.);
-    ////  We could imagine the lobes spinning around this axis.
-    // let axis_perp = Vec3::new(0., 0., 1.);
 
     // todo: Duplicate creations of `diff`; here and in `r_from_pts`.
     let posit_sample_rel = posit_sample - posit_nuc;
 
-    let cos_theta = posit_sample_rel
-        .to_normalized()
-        .dot(axis_through_lobes);
+    let cos_theta = posit_sample_rel.to_normalized().dot(axis_through_lobes);
 
     let ρ = Z_H * r / A_0;
     1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * ρ * (-ρ / 2.).exp() * cos_theta
