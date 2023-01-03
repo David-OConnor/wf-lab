@@ -68,7 +68,24 @@ fn charge_editor(charges: &mut Vec<(Vec3, f64)>, updated_wfs: &mut bool, ui: &mu
 fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) {
     egui::containers::ScrollArea::vertical().show(ui, |ui| {
         for (id, basis) in state.wfs.iter_mut().enumerate() {
-            // Clone here so we can properly check if it changed below.
+            // `prev...` is to check if it changed below.
+            let prev_charge_id = basis.charge_id; 
+            let mut selected = basis.charge_id;
+
+            egui::ComboBox::from_id_source(id + 1_000)
+                .width(60.)
+                .selected_text(basis.charge_id.to_string())
+                .show_ui(ui, |ui| {
+                    for (charge_i, (charge_posit, _)) in state.charges.iter().enumerate() {
+                        ui.selectable_value(&mut selected, charge_i, charge_i.to_string());
+                    }
+                    // todo: YOu need to update posit too.
+                });
+            if selected != prev_charge_id {
+                basis.posit = state.charges[selected].0;
+                *updated_wfs = true;
+            }
+
             let mut selected = basis.f.clone();
 
             egui::ComboBox::from_id_source(id)

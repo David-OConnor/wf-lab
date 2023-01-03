@@ -144,14 +144,20 @@ impl Gaussian {
 }
 
 pub struct Basis {
+    pub charge_id: usize, // id (perhaps index) of the associated charge.
     pub f: BasisFn,
     pub posit: Vec3,
     pub weight: f64,
 }
 
 impl Basis {
-    pub fn new(f: BasisFn, posit: Vec3, weight: f64) -> Self {
-        Self { f, posit, weight }
+    pub fn new(charge_id: usize, f: BasisFn, posit: Vec3, weight: f64) -> Self {
+        Self {
+            charge_id,
+            f,
+            posit,
+            weight,
+        }
     }
 }
 
@@ -513,14 +519,14 @@ fn main() {
     let posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let wfs = vec![
-        Basis::new(BasisFn::H100, posit_charge_1, 1.),
-        Basis::new(BasisFn::H100, posit_charge_2, -1.),
-        Basis::new(BasisFn::H200, posit_charge_1, 0.),
-        Basis::new(BasisFn::H200, posit_charge_2, 0.),
-        Basis::new(BasisFn::H210(x_axis), posit_charge_1, 0.),
-        Basis::new(BasisFn::H210(x_axis), posit_charge_2, 0.),
-        Basis::new(BasisFn::H300, posit_charge_1, 0.),
-        Basis::new(BasisFn::Sto(1.), posit_charge_2, 0.),
+        Basis::new(0, BasisFn::H100, posit_charge_1, 1.),
+        Basis::new(1, BasisFn::H100, posit_charge_2, -1.),
+        Basis::new(0, BasisFn::H200, posit_charge_1, 0.),
+        Basis::new(1, BasisFn::H200, posit_charge_2, 0.),
+        Basis::new(0, BasisFn::H210(x_axis), posit_charge_1, 0.),
+        Basis::new(1, BasisFn::H210(x_axis), posit_charge_2, 0.),
+        Basis::new(0, BasisFn::H300, posit_charge_1, 0.),
+        Basis::new(1, BasisFn::Sto(1.), posit_charge_2, 0.),
     ];
 
     // let gaussians = vec![Gaussian::new_symmetric(Vec3::new(0., 0., 0.), 0.1, 2.)];
