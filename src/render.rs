@@ -7,18 +7,28 @@ use graphics::{
     Lighting, Mesh, PointLight, Scene, UiSettings,
 };
 
-use lin_alg2::f32::{Quaternion, Vec3};
+use lin_alg2::{
+    f32::{Quaternion, Vec3},
+    f64::Vec3 as Vec3F64,
+};
 
 use crate::{State, GRID_MAX, GRID_MIN};
+
+type Color = (f32, f32, f32);
 
 const WINDOW_TITLE: &str = "ψ lab";
 const WINDOW_SIZE_X: f32 = 1_100.;
 const WINDOW_SIZE_Y: f32 = 800.;
 const RENDER_DIST: f32 = 100.;
-const BACKGROUND_COLOR: (f32, f32, f32) = (0.5, 0.5, 0.5);
+const BACKGROUND_COLOR: Color = (0.5, 0.5, 0.5);
 const SIDE_PANEL_SIZE: f32 = 400.;
 
-const SURFACE_COLORS: [(f32, f32, f32); 7] = [
+const COLOR_POS_CHARGE: Color = (1., 0., 0.);
+const COLOR_NEG_CHARGE: Color = (0., 0., 1.);
+
+const CHARGE_SPHERE_SIZE: f32 = 0.05;
+
+const SURFACE_COLORS: [Color; 7] = [
     (0., 0., 1.),
     (0., 0.5, 0.2),
     (1., 0., 0.),
@@ -28,7 +38,14 @@ const SURFACE_COLORS: [(f32, f32, f32); 7] = [
     (0.5, 0., 0.5),
 ];
 
-const SURFACE_SHINYNESS: f32 = 1.;
+const SURFACE_SHINYNESS: f32 = 1.5;
+const CHARGE_SHINYNESS: f32 = 3.;
+
+// Our meshes are defined in terms of a start point,
+// and a step. Adjust the step to center the grid at
+// the renderer's center.
+const SFC_MESH_START: f32 = -4.;
+const SFC_MESH_STEP: f32 = -2. * SFC_MESH_START / crate::N as f32;
 
 fn event_handler(
     _state: &mut State,
@@ -84,6 +101,9 @@ pub fn update_meshes(
 
     let mut meshes = Vec::new();
 
+    // todo: You shouldn't update each mesh every time! Only update
+    // todo the meshes that change.
+
     for sfc in [
         &surfaces.V,
         &surfaces.psi,
@@ -94,34 +114,23 @@ pub fn update_meshes(
     ] {
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh(sfc, z_i),
-            -4.,
-            0.1,
+            // todo: Center! Maybe offset in entities.
+            SFC_MESH_START,
+            SFC_MESH_STEP,
             true,
         ));
     }
 
-    // for surface in surfaces.into_iter() {
-    //     let mut surface_2d = Vec::new();
-    //     // todo: Temp: Converting arr to vec. And indexing to the correct Z value.
-    //     for x in *surface {
-    //         let mut x_vec = Vec::new();
-    //         for y in x {
-    //             x_vec.push(y[z_i] as f32); // Convert from f64.
-    //         }
-    //         surface_2d.push(x_vec);
-    //     }
+    meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 8, 8));
 
-    //     meshes.push(Mesh::new_surface(&surface_2d, -4., 0.1, true));
-    // }
     scene.meshes = meshes;
 }
 
-/// Updates entities, but not meshes. For example, when hiding or showing a mesh.
-pub fn update_entities(
-    // surfaces: &[crate::Arr3d; crate::NUM_SURFACES],
-    show_surfaces: &[bool; crate::NUM_SURFACES],
-    scene: &mut Scene,
-) {
+/// Updates entities, but not meshes. For example, when hiding or
+/// showing a mesh.
+/// Note that currently, we update charge displays along
+/// with surfaces.
+pub fn update_entities(charges: &[(Vec3F64, f64)], show_surfaces: &[bool], scene: &mut Scene) {
     let mut entities = Vec::new();
     for i in 0..crate::NUM_SURFACES {
         if !show_surfaces[i] {
@@ -137,6 +146,31 @@ pub fn update_entities(
             SURFACE_SHINYNESS,
         ));
     }
+
+    for (posit, val) in charges {
+        entities.push(Entity::new(
+            crate::NUM_SURFACES, // Index 1 after surfaces.
+            // Todo: You may need to scale posit's Z.
+            // todo: Heper for this?
+            Vec3::new(
+                posit.x as f32,
+                // We invert Y and Z due to diff coord systems
+                // between the meshes and the renderer.
+                posit.z as f32,
+                posit.y as f32,
+            ),
+            Quaternion::new_identity(),
+            1.,
+            // todo: More fine-grained shading
+            if *val > 0. {
+                COLOR_POS_CHARGE
+            } else {
+                COLOR_NEG_CHARGE
+            },
+            CHARGE_SHINYNESS,
+        ));
+    }
+
     scene.entities = entities;
 }
 
@@ -181,7 +215,7 @@ pub fn render(state: State) {
     };
 
     update_meshes(&state.surfaces, state.z_displayed, &mut scene);
-    update_entities(&state.show_surfaces, &mut scene);
+    update_entities(&state.charges, &state.show_surfaces, &mut scene);
 
     let input_settings = InputSettings {
         initial_controls: ControlScheme::FreeCamera,

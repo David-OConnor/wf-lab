@@ -20,47 +20,71 @@ const WEIGHT_MAX: f64 = 2.;
 const ITEM_SPACING: f32 = 18.;
 const FLOAT_EDIT_WIDTH: f32 = 24.;
 
-fn text_edit_float(val: &mut f64, default: f64, updated_wfs: &mut bool, ui: &mut egui::Ui) {
+fn text_edit_float(val: &mut f64, default: f64, ui: &mut egui::Ui) {
     let mut entry = val.to_string();
 
     let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
     if response.changed() {
         *val = entry.parse::<f64>().unwrap_or(0.);
-        *updated_wfs = true;
     }
 }
 
 /// Ui elements that allow adding, removing, and changing the point
 /// charges that form our potential.
-fn charge_editor(charges: &mut Vec<(Vec3, f64)>, updated_wfs: &mut bool, ui: &mut egui::Ui) {
+fn charge_editor(
+    charges: &mut Vec<(Vec3, f64)>,
+    updated_wfs: &mut bool,
+    updated_entities: &mut bool,
+    ui: &mut egui::Ui,
+) {
     // todo: Scroll area?
 
     let mut charge_removed = None;
 
     for (i, (posit, val)) in charges.iter_mut().enumerate() {
+        // We store prev posit so we can know to update entities
+        // when charge posit changes.
+        let prev_posit = posit.clone();
+        let prev_charge = val.clone();
+
         ui.horizontal(|ui| {
-            text_edit_float(&mut posit.x, 0., updated_wfs, ui);
-            text_edit_float(&mut posit.y, 0., updated_wfs, ui);
-            text_edit_float(&mut posit.z, 0., updated_wfs, ui);
+            text_edit_float(&mut posit.x, 0., ui);
+            text_edit_float(&mut posit.y, 0., ui);
+            text_edit_float(&mut posit.z, 0., ui);
+
+            if prev_posit != *posit {
+                *updated_wfs = true;
+                *updated_entities = true;
+            }
 
             ui.add_space(20.);
-            text_edit_float(val, crate::Q_PROT, updated_wfs, ui);
+            text_edit_float(val, crate::Q_PROT, ui);
+
+            if prev_charge != *val {
+                *updated_wfs = true;
+                *updated_entities = true;
+            }
 
             if ui.button(RichText::new("❌").color(Color32::RED)).clicked() {
                 // Don't remove from a collection we're iterating over.
                 charge_removed = Some(i);
                 *updated_wfs = true;
+                // Update entities due to charge sphere placement.
+                *updated_entities = true;
             }
         });
     }
 
     if let Some(charge_i_removed) = charge_removed {
         charges.remove(charge_i_removed);
+        *updated_wfs = true;
+        *updated_entities = true;
     }
 
     if ui.add(egui::Button::new("Add charge")).clicked() {
         charges.push((Vec3::new_zero(), crate::Q_PROT));
         *updated_wfs = true;
+        *updated_entities = true;
     }
 }
 
@@ -68,51 +92,57 @@ fn charge_editor(charges: &mut Vec<(Vec3, f64)>, updated_wfs: &mut bool, ui: &mu
 fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) {
     egui::containers::ScrollArea::vertical().show(ui, |ui| {
         for (id, basis) in state.wfs.iter_mut().enumerate() {
-            // `prev...` is to check if it changed below.
-            let prev_charge_id = basis.charge_id; 
-            let mut selected = basis.charge_id;
+            ui.horizontal(|ui| {
+                // `prev...` is to check if it changed below.
+                let prev_charge_id = basis.charge_id;
 
-            egui::ComboBox::from_id_source(id + 1_000)
-                .width(60.)
-                .selected_text(basis.charge_id.to_string())
-                .show_ui(ui, |ui| {
-                    for (charge_i, (charge_posit, _)) in state.charges.iter().enumerate() {
-                        ui.selectable_value(&mut selected, charge_i, charge_i.to_string());
-                    }
-                    // todo: YOu need to update posit too.
-                });
-            if selected != prev_charge_id {
-                basis.posit = state.charges[selected].0;
-                *updated_wfs = true;
-            }
+                // Pair WFs with charge positions.
+                egui::ComboBox::from_id_source(id + 1_000)
+                    .width(50.)
+                    .selected_text(basis.charge_id.to_string())
+                    .show_ui(ui, |ui| {
+                        for (charge_i, (charge_posit, _)) in state.charges.iter().enumerate() {
+                            ui.selectable_value(
+                                &mut basis.charge_id,
+                                charge_i,
+                                charge_i.to_string(),
+                            );
+                        }
+                        // todo: YOu need to update posit too.
+                    });
+                if basis.charge_id != prev_charge_id {
+                    basis.posit = state.charges[basis.charge_id].0;
+                    *updated_wfs = true;
+                }
 
-            let mut selected = basis.f.clone();
+                let mut selected = basis.f.clone();
 
-            egui::ComboBox::from_id_source(id)
-                .width(60.)
-                .selected_text(basis.f.descrip())
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut selected, BasisFn::H100, BasisFn::H100.descrip());
-                    ui.selectable_value(&mut selected, BasisFn::H200, BasisFn::H200.descrip());
-                    ui.selectable_value(&mut selected, BasisFn::H300, BasisFn::H300.descrip());
-                    ui.selectable_value(
-                        &mut selected,
-                        BasisFn::H210(Vec3::new(1., 0., 0.)),
-                        BasisFn::H210(Vec3::new(1., 0., 0.)).descrip(),
-                    );
-                    ui.selectable_value(
-                        &mut selected,
-                        BasisFn::Sto(1.),
-                        BasisFn::Sto(1.).descrip(),
-                    );
-                    // ui.selectable_value(&mut selected, BasisFn::H211, BasisFn::H211.descrip());
-                    // ui.selectable_value(&mut selected, BasisFn::H21M1, BasisFn::H21M1.descrip());
-                });
+                egui::ComboBox::from_id_source(id)
+                    .width(60.)
+                    .selected_text(basis.f.descrip())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut selected, BasisFn::H100, BasisFn::H100.descrip());
+                        ui.selectable_value(&mut selected, BasisFn::H200, BasisFn::H200.descrip());
+                        ui.selectable_value(&mut selected, BasisFn::H300, BasisFn::H300.descrip());
+                        ui.selectable_value(
+                            &mut selected,
+                            BasisFn::H210(Vec3::new(1., 0., 0.)),
+                            BasisFn::H210(Vec3::new(1., 0., 0.)).descrip(),
+                        );
+                        ui.selectable_value(
+                            &mut selected,
+                            BasisFn::Sto(1.),
+                            BasisFn::Sto(1.).descrip(),
+                        );
+                        // ui.selectable_value(&mut selected, BasisFn::H211, BasisFn::H211.descrip());
+                        // ui.selectable_value(&mut selected, BasisFn::H21M1, BasisFn::H21M1.descrip());
+                    });
 
-            if selected != basis.f {
-                basis.f = selected;
-                *updated_wfs = true;
-            }
+                if selected != basis.f {
+                    basis.f = selected;
+                    *updated_wfs = true;
+                }
+            });
 
             ui.add(
                 egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
@@ -123,7 +153,7 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) 
 
                     basis.weight
                 })
-                .text("Weight"),
+                .text("Wt"),
             );
 
             match basis.f {
@@ -286,7 +316,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         let mut updated_wfs = false;
 
-        charge_editor(&mut state.charges, &mut updated_wfs, ui);
+        charge_editor(
+            &mut state.charges,
+            &mut updated_wfs,
+            &mut engine_updates.entities,
+            ui,
+        );
 
         ui.add_space(ITEM_SPACING);
 
@@ -313,7 +348,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.
         if engine_updates.entities {
-            render::update_entities(&state.show_surfaces, scene);
+            render::update_entities(&state.charges, &state.show_surfaces, scene);
         }
     });
 
