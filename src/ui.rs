@@ -19,6 +19,129 @@ const WEIGHT_MAX: f64 = 2.;
 
 const ITEM_SPACING: f32 = 16.;
 
+/// Ui elements that allow adding, removing, and changing the point
+/// charges that form our potential.
+fn charge_editor(
+    charges: &mut Vec<(Vec3, f64)>,
+    updated_wfs: &mut bool,
+    engine_updates: &mut EngineUpdates,
+    ui: &mut egui::Ui,
+) {
+    // todo: Scroll area?
+
+    for charge in charges {
+        ui.heading("CHARRRRRGE");
+    }
+}
+
+/// Ui elements that allow mixing various basis WFs.
+fn basis_fn_mixer(
+    state: &mut State,
+    updated_wfs: &mut bool,
+    engine_updates: &mut EngineUpdates,
+    ui: &mut egui::Ui,
+) {
+    egui::containers::ScrollArea::vertical().show(ui, |ui| {
+        for (id, basis) in state.wfs.iter_mut().enumerate() {
+            // Clone here so we can properly check if it changed below.
+            let mut selected = basis.f.clone();
+
+            egui::ComboBox::from_id_source(id)
+                .width(60.)
+                .selected_text(basis.f.descrip())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut selected, BasisFn::H100, BasisFn::H100.descrip());
+                    ui.selectable_value(&mut selected, BasisFn::H200, BasisFn::H200.descrip());
+                    ui.selectable_value(&mut selected, BasisFn::H300, BasisFn::H300.descrip());
+                    ui.selectable_value(
+                        &mut selected,
+                        BasisFn::H210(Vec3::new(1., 0., 0.)),
+                        BasisFn::H210(Vec3::new(1., 0., 0.)).descrip(),
+                    );
+                    ui.selectable_value(
+                        &mut selected,
+                        BasisFn::Sto(1.),
+                        BasisFn::Sto(1.).descrip(),
+                    );
+                    // ui.selectable_value(&mut selected, BasisFn::H211, BasisFn::H211.descrip());
+                    // ui.selectable_value(&mut selected, BasisFn::H21M1, BasisFn::H21M1.descrip());
+                });
+
+            if selected != basis.f {
+                basis.f = selected;
+                *updated_wfs = true;
+            }
+
+            ui.add(
+                egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
+                    if let Some(v_) = v {
+                        basis.weight = v_;
+                        *updated_wfs = true;
+                    }
+
+                    basis.weight
+                })
+                .text("Weight"),
+            );
+
+            match basis.f {
+                BasisFn::Sto(mut slater_exp) => {
+                    let mut entry = slater_exp.to_string();
+
+                    let response =
+                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                    if response.changed() {
+                        let exp = entry.parse::<f64>().unwrap_or(1.);
+                        basis.f = BasisFn::Sto(exp);
+                        *updated_wfs = true;
+                    }
+                }
+                BasisFn::H210(mut axis) => {
+                    // todo: DRY
+                    let mut entry = "0.".to_owned(); // angle
+
+                    let response =
+                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                    if response.changed() {
+                        let angle = entry.parse::<f64>().unwrap_or(0.);
+
+                        // todo: locked to Z rotation axis for now.
+                        let rotation_axis = Vec3::new(0., 0., 1.);
+                        let rotation = Quaternion::from_axis_angle(rotation_axis, angle);
+                        let new_axis = rotation.rotate_vec(Vec3::new(1., 0., 0.));
+                        basis.f = BasisFn::H210(new_axis);
+
+                        *updated_wfs = true;
+                    }
+                }
+                _ => (),
+            }
+        }
+
+        ui.add_space(ITEM_SPACING);
+
+        if ui.add(egui::Button::new("Nudge WF")).clicked() {
+            crate::nudge_wf(
+                &mut state.surfaces,
+                &state.wfs,
+                &state.charges,
+                &mut state.gaussians,
+                state.E,
+            );
+
+            // todo: DRY
+            engine_updates.meshes = true;
+
+            state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
+
+            // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
+            // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
+
+            *updated_wfs = true;
+        }
+    });
+}
+
 /// This function draws the (immediate-mode) GUI.
 /// [UI items](https://docs.rs/egui/latest/egui/struct.Ui.html#method.heading)
 pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> EngineUpdates {
@@ -124,111 +247,14 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         let mut updated_wfs = false;
 
-        egui::containers::ScrollArea::vertical().show(ui, |ui| {
+        charge_editor(
+            &mut state.charges,
+            &mut updated_wfs,
+            &mut engine_updates,
+            ui,
+        );
 
-            for (id, basis) in state.wfs.iter_mut().enumerate() {
-                // Clone here so we can properly check if it changed below.
-                let mut selected = basis.f.clone();
-
-                egui::ComboBox::from_id_source(id)
-                    .width(60.)
-                    .selected_text(basis.f.descrip())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut selected, BasisFn::H100, BasisFn::H100.descrip());
-                        ui.selectable_value(&mut selected, BasisFn::H200, BasisFn::H200.descrip());
-                        ui.selectable_value(&mut selected, BasisFn::H300, BasisFn::H300.descrip());
-                        ui.selectable_value(
-                            &mut selected,
-                            BasisFn::H210(Vec3::new(1., 0., 0.)),
-                            BasisFn::H210(Vec3::new(1., 0., 0.)).descrip(),
-                        );
-                        ui.selectable_value(
-                            &mut selected,
-                            BasisFn::Sto(1.),
-                            BasisFn::Sto(1.).descrip(),
-                        );
-                        // ui.selectable_value(&mut selected, BasisFn::H211, BasisFn::H211.descrip());
-                        // ui.selectable_value(&mut selected, BasisFn::H21M1, BasisFn::H21M1.descrip());
-                    });
-
-                if selected != basis.f {
-                    basis.f = selected;
-                    updated_wfs = true;
-                }
-
-                ui.add(
-                    egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
-                        if let Some(v_) = v {
-                            basis.weight = v_;
-                            updated_wfs = true;
-                        }
-
-                        basis.weight
-                    })
-                    .text("Weight"),
-                );
-
-                match basis.f {
-                    BasisFn::Sto(mut slater_exp) => {
-                        let mut entry = slater_exp.to_string();
-
-                        let response =
-                            ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-                        if response.changed() {
-                            let exp = entry.parse::<f64>().unwrap_or(1.);
-                            basis.f = BasisFn::Sto(exp);
-                            updated_wfs = true;
-                        }
-                    }
-                    BasisFn::H210(mut axis) => {
-                        // todo: DRY
-                        let mut entry = "0.".to_owned(); // angle
-
-                        let response =
-                            ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-                        if response.changed() {
-                            let angle = entry.parse::<f64>().unwrap_or(0.);
-
-                            // todo: locked to Z rotation axis for now.
-                            let rotation_axis = Vec3::new(0., 0., 1.);
-                            let rotation = Quaternion::from_axis_angle(rotation_axis, angle);
-                            let new_axis = rotation.rotate_vec(Vec3::new(1., 0., 0.));
-                            basis.f = BasisFn::H210(new_axis);
-
-                            updated_wfs = true;
-                        }
-                    }
-                    _ => (),
-                }
-            }
-
-            ui.add_space(ITEM_SPACING);
-
-            if ui.add(egui::Button::new("Nudge WF")).clicked() {
-                crate::nudge_wf(
-                    &mut state.surfaces,
-                    &state.wfs,
-                    &state.charges,
-                    &mut state.gaussians,
-                    state.E,
-                );
-
-                // todo: DRY
-                engine_updates.meshes = true;
-
-                state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
-
-                // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
-                // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
-
-                render::update_meshes(
-                    &state.surfaces,
-                    state.z_displayed,
-                    // &mut state.surfaces,
-                    scene,
-                );
-            }
-        });
+        basis_fn_mixer(state, &mut updated_wfs, &mut engine_updates, ui);
 
         if updated_wfs {
             engine_updates.meshes = true;
