@@ -12,6 +12,7 @@ use std::f64::consts::PI;
 
 use lin_alg2::f64::Vec3;
 
+// Hartree units.
 const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
 
@@ -154,9 +155,6 @@ pub fn h_wf_21m1(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
 /// Experimenting with Slater orbitals
 pub fn slater(posit_nuc: Vec3, posit_sample: Vec3, slater_exp: f64) -> f64 {
     let r = r_from_pts(posit_nuc, posit_sample);
-
-    // let ρ = Z_H * r / A_0;
-    // 1. / PI.sqrt() * (Z_H / A_0).powf(3. / 2.) * (-ρ).exp()
 
     (slater_exp.powi(3) / PI).sqrt() * (-slater_exp * r).exp()
 }

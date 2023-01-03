@@ -19,10 +19,11 @@ mod ui;
 
 const NUM_SURFACES: usize = 6;
 
+// We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 const K_C: f64 = 1.;
 const Q_PROT: f64 = 1.;
 const Q_ELEC: f64 = -1.;
-const M_ELEC: f64 = 1.; // todo: Which?
+const M_ELEC: f64 = 1.;
 const ħ: f64 = 1.;
 
 // Compute these statically, to avoid continuous calls during excecution.
@@ -508,15 +509,18 @@ fn eval_wf(
 
 fn main() {
     let x_axis = Vec3::new(1., 0., 0.);
+    let posit_charge_1 = Vec3::new(-1., 0., 0.);
+    let posit_charge_2 = Vec3::new(-2., 0., 0.);
+
     let wfs = vec![
-        Basis::new(BasisFn::H100, Vec3::new(-1., 0., 0.), 1.),
-        Basis::new(BasisFn::H100, Vec3::new(1., 0., 0.), -1.),
-        Basis::new(BasisFn::H200, Vec3::new(-1., 0., 0.), 0.),
-        Basis::new(BasisFn::H200, Vec3::new(1., 0., 0.), 0.),
-        Basis::new(BasisFn::H210(x_axis), Vec3::new(-1., 0., 0.), 0.),
-        Basis::new(BasisFn::H210(x_axis), Vec3::new(1., 0., 0.), 0.),
-        Basis::new(BasisFn::H300, Vec3::new(-1., 0., 0.), 0.),
-        Basis::new(BasisFn::Sto(1.), Vec3::new(1., 0., 0.), 0.),
+        Basis::new(BasisFn::H100, posit_charge_1, 1.),
+        Basis::new(BasisFn::H100, posit_charge_2, -1.),
+        Basis::new(BasisFn::H200, posit_charge_1, 0.),
+        Basis::new(BasisFn::H200, posit_charge_2, 0.),
+        Basis::new(BasisFn::H210(x_axis), posit_charge_1, 0.),
+        Basis::new(BasisFn::H210(x_axis), posit_charge_2, 0.),
+        Basis::new(BasisFn::H300, posit_charge_1, 0.),
+        Basis::new(BasisFn::Sto(1.), posit_charge_2, 0.),
     ];
 
     // let gaussians = vec![Gaussian::new_symmetric(Vec3::new(0., 0., 0.), 0.1, 2.)];
@@ -525,8 +529,8 @@ fn main() {
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges = vec![
-        (Vec3::new(-1., 0., 0.), Q_PROT),
-        (Vec3::new(1., 0., 0.), Q_PROT),
+        (posit_charge_1, Q_PROT),
+        (posit_charge_2, Q_PROT),
         // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
