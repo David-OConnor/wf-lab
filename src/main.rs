@@ -35,7 +35,7 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 // Note: Using this as our fine grid. We will potentially subdivide it once
 // or twice per axis, hence the multiple of 4 constraint.
 // const N: usize = 21 * 4;
-const N: usize = 50;
+const N: usize = 30;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
@@ -510,7 +510,7 @@ fn eval_wf(
 fn main() {
     let x_axis = Vec3::new(1., 0., 0.);
     let posit_charge_1 = Vec3::new(-1., 0., 0.);
-    let posit_charge_2 = Vec3::new(-2., 0., 0.);
+    let posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let wfs = vec![
         Basis::new(BasisFn::H100, posit_charge_1, 1.),

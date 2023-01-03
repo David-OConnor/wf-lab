@@ -17,30 +17,55 @@ const E_MAX: f64 = 2.;
 const WEIGHT_MIN: f64 = -2.;
 const WEIGHT_MAX: f64 = 2.;
 
-const ITEM_SPACING: f32 = 16.;
+const ITEM_SPACING: f32 = 18.;
+const FLOAT_EDIT_WIDTH: f32 = 24.;
+
+fn text_edit_float(val: &mut f64, default: f64, updated_wfs: &mut bool, ui: &mut egui::Ui) {
+    let mut entry = val.to_string();
+
+    let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
+    if response.changed() {
+        *val = entry.parse::<f64>().unwrap_or(0.);
+        *updated_wfs = true;
+    }
+}
 
 /// Ui elements that allow adding, removing, and changing the point
 /// charges that form our potential.
-fn charge_editor(
-    charges: &mut Vec<(Vec3, f64)>,
-    updated_wfs: &mut bool,
-    engine_updates: &mut EngineUpdates,
-    ui: &mut egui::Ui,
-) {
+fn charge_editor(charges: &mut Vec<(Vec3, f64)>, updated_wfs: &mut bool, ui: &mut egui::Ui) {
     // todo: Scroll area?
 
-    for charge in charges {
-        ui.heading("CHARRRRRGE");
+    let mut charge_removed = None;
+
+    for (i, (posit, val)) in charges.iter_mut().enumerate() {
+        ui.horizontal(|ui| {
+            text_edit_float(&mut posit.x, 0., updated_wfs, ui);
+            text_edit_float(&mut posit.y, 0., updated_wfs, ui);
+            text_edit_float(&mut posit.z, 0., updated_wfs, ui);
+
+            ui.add_space(20.);
+            text_edit_float(val, crate::Q_PROT, updated_wfs, ui);
+
+            if ui.button(RichText::new("❌").color(Color32::RED)).clicked() {
+                // Don't remove from a collection we're iterating over.
+                charge_removed = Some(i);
+                *updated_wfs = true;
+            }
+        });
+    }
+
+    if let Some(charge_i_removed) = charge_removed {
+        charges.remove(charge_i_removed);
+    }
+
+    if ui.add(egui::Button::new("Add charge")).clicked() {
+        charges.push((Vec3::new_zero(), crate::Q_PROT));
+        *updated_wfs = true;
     }
 }
 
 /// Ui elements that allow mixing various basis WFs.
-fn basis_fn_mixer(
-    state: &mut State,
-    updated_wfs: &mut bool,
-    engine_updates: &mut EngineUpdates,
-    ui: &mut egui::Ui,
-) {
+fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) {
     egui::containers::ScrollArea::vertical().show(ui, |ui| {
         for (id, basis) in state.wfs.iter_mut().enumerate() {
             // Clone here so we can properly check if it changed below.
@@ -128,9 +153,6 @@ fn basis_fn_mixer(
                 &mut state.gaussians,
                 state.E,
             );
-
-            // todo: DRY
-            engine_updates.meshes = true;
 
             state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
 
@@ -247,14 +269,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         let mut updated_wfs = false;
 
-        charge_editor(
-            &mut state.charges,
-            &mut updated_wfs,
-            &mut engine_updates,
-            ui,
-        );
+        charge_editor(&mut state.charges, &mut updated_wfs, ui);
 
-        basis_fn_mixer(state, &mut updated_wfs, &mut engine_updates, ui);
+        ui.add_space(ITEM_SPACING);
+
+        basis_fn_mixer(state, &mut updated_wfs, ui);
 
         if updated_wfs {
             engine_updates.meshes = true;
