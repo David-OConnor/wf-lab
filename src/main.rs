@@ -194,8 +194,10 @@ pub struct State {
     pub gaussians: Vec<Gaussian>,
 }
 
-/// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2
-fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
+/// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
+/// This requires normalizing the wave functions we're comparing.
+/// todo: Curretly not working.
+fn wf_fidelity(sfcs: &Surfaces, E: f64) -> f64 {
     // "The accuracy should be scored by the fidelity of the wavefunction compared
     // to the true wavefunction. Fidelity is defined as |<psi_trial | psi_true >|^2.
     // For normalized states, this will always be bounded from above by 1.0. So it's
@@ -209,25 +211,13 @@ fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
     // todo: Dkn't allocate each time?
     // let mut psi_fm_meas = new_data();
 
-    // const EPS: f64 = 0.0001;
+    // todo: Should we compaer psi''s, or psi. (With a psi back-calculated
+    // from psi'' measured using the Schrodinger eq?)
 
     // Create normalization const.
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                // norm_sq_trial += sfcs.psi[i][j][k].powi(2);
-
-                // Numerical anomolies that should balance a very low number by
-                // a very high one don't work out here; set to 0.(?)
-                // todo: QC if this is really solving your problem with spike ring.
-                // psi_fm_meas[i][j][k] = if (E - sfcs.V[i][j][k]).abs() < EPS {
-                //     0.
-                // } else {
-                //     KE_COEFF_INV / (E - sfcs.V[i][j][k]) * sfcs.psi_pp_measured[i][j][k]
-                // };
-
-                // norm_sq_meas += psi_fm_meas[i][j][k].powi(2);
-
                 norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].powi(2);
                 norm_sq_meas += sfcs.psi_pp_measured[i][j][k].powi(2);
             }
@@ -237,25 +227,36 @@ fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
     let norm_calc = norm_sq_calc.sqrt();
     let norm_meas = norm_sq_meas.sqrt();
 
-    let mut fidelity = 0.;
+    // Now that we have both wave functions and normalized them, calculate fidelity.
+    let mut result = 0.;
 
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                fidelity +=
-                    // (psi_fm_meas[i][j][k] / norm_sq_meas) * (sfcs.psi[i][j][k] / norm_trial);
-                    // sfcs.psi_pp_calculated[i][j][k] / norm_sq_calc * sfcs.psi_pp_measured[i][j][k] / norm_sq_meas;
-                    // (sfcs.psi_pp_calculated[i][j][k] / norm_sq_calc) * (sfcs.psi_pp_calculated[i][j][k] / norm_sq_calc);
-                    // (sfcs.psi_pp_measured[i][j][k] / norm_sq_meas) * (sfcs.psi_pp_measured[i][j][k] / norm_sq_meas);
-
-                    // todo: I can't get "fidelity" working; bakc to leaset-squares
-                    (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).powi(2)
+                result += sfcs.psi_pp_calculated[i][j][k] / norm_sq_calc
+                    * sfcs.psi_pp_calculated[i][j][k]
+                    / norm_sq_calc;
             }
         }
     }
 
-    // fidelity.powi(2)
-    fidelity
+    result.powi(2)
+}
+
+/// Score a wave function by comparing the least-squares sum of its measured and
+/// calculated second derivaties.
+fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
+    let mut result = 0.;
+
+    for i in 0..N {
+        for j in 0..N {
+            for k in 0..N {
+                result += (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).powi(2)
+            }
+        }
+    }
+
+    result
 }
 
 /// Single-point Coulomb potential, eg a hydrogen nuclei.
