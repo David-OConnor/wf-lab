@@ -12,6 +12,8 @@ use std::f64::consts::PI;
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
+use crate::complex_nums::{Cplx, IM};
+
 // Hartree units.
 const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
@@ -152,14 +154,65 @@ pub fn h_wf_21m1(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
 
 // todo: Below this, is an experimental new approach to generic basis fns
 
-/// Represents a spherical harmonic, at given l and m quantum numbers.
-/// Note that we do not represent degenerate orientations as separate
-/// values.
-/// todo: Instead of an enum, is there a procedural way to represent
-/// *any* spherical harmonic using a single function?
+/// Represents a spherical harmonic, at a given l quantum numbers.
+/// `l` represents the shape of the orbital.
+/// orientation, we use a quaternion.
+///
+/// https://en.wikipedia.org/wiki/Table_of_spherical_harmonics#Spherical_harmonics
+///
+/// Todo: Real vs complex spherical harmonics.
+/// For now, represents a complex spherical harmonic.
+///
+/// The base orientation is... // todo
 #[derive(Clone, Copy, PartialEq)]
-pub enum SphericalHarmonic {
-    // todo: Should orientation be baked into this? Should we have a fn that
+pub struct SphericalHarmonic {
+    /// The quantum number the describes orbital shape.
+    l: u8,
+    /// The quantum number that...
+    m: i8,
+    /// Orientation.
+    orientation: Quaternion,
+}
+
+// todo: If you use a continuous range, use a struct with parameter fields
+// todo instead of an enum that contains discrete values. This is your
+// todo likely approach.
+
+impl SphericalHarmonic {
+    /// Calculate the value of the spherical harmonic at a given θ
+    /// and ϕ.
+    /// Note that we do not include a normalization constant,
+    /// since we handle that at the basis fn level.
+    /// todo: ϕ as an `Option`?
+    pub fn value(θ: f64, ϕ: f64) -> Cplx {
+        // todo: Hard-coded match arms for now.
+
+        match self.l {
+            0 => 1.,
+            1 => match self.m {
+                -1 => (-IM * ϕ).exp() * θ.sin(),
+                0 => θ.cos(),
+                1 => (IM * ϕ).exp() * θ.sin(),
+            },
+            2 => {
+                match self.m {
+                    // todo: Populate
+                    -1 => (-IM * ϕ).exp() * θ.sin(),
+                    0 => θ.cos(),
+                    1 => (IM * ϕ).exp() * θ.sin(),
+                }
+            }
+            _ => unimplemented!(),
+        }
+
+        1.
+    }
+}
+
+// todo: Remove this enum if you use STOs as the only basis
+pub enum Basis {
+    Sto(SlaterOrbital),
+    H(HOrbital),
 }
 
 /// A Slater-Type Orbital (STO). Includes a `n`: The quantum number; the effective
@@ -170,12 +223,21 @@ pub struct SlaterOrbital {
     posit: Vec3,
     n: u32,
     harmonic: SphericalHarmonic,
-    orientation: Quaternion,
     eff_charge: f64,
     weight: f64,
 }
 
 impl SlaterOrbital {
+    pub fn new(posit: Vec3, n: u32, harmonic: SphericalHarmonic, eff_charge: f64, weight: f64) {
+        Self {
+            posit,
+            n,
+            harmonic,
+            eff_charge,
+            weight,
+        }
+    }
+
     /// Calculate this basis function's value at a given point.
     pub fn value(&self, posit_sample: Vec3) -> f64 {
         let diff = posit_sample - posit_nuc;
@@ -186,17 +248,11 @@ impl SlaterOrbital {
         let N = (slater_exp.powi(3) / PI).sqrt(); // todo: Update base on n.
         let radial = r.powi(self.n - 1) * (-self.eff_charge * r).exp();
 
-        let angular = 0.;
+        let θ = 0.;
+        let ϕ = 0.;
+        let angular = self.harmonic.value(θ, ϕ);
 
         N * radial * angular
-    }
-}
-
-impl SphericalHarmonic {
-    /// Calculate the value of the spherical harmonic at a given θ
-    /// and ϕ. The base orientation is... // todo
-    pub fn value(θ: f64, ϕ: f64, orientation: Quatenrion) {
-        //
     }
 }
 
@@ -208,11 +264,20 @@ pub struct HOrbital {
     posit: Vec3,
     n: u32,
     harmonic: SphericalHarmonic,
-    orientation: Quaternion,
     weight: f64,
 }
 
 impl HOrbital {
+    pub fn new(posit: Vec3, n: u32, harmonic: SphericalHarmonic, eff_charge: f64, weight: f64) {
+        Self {
+            posit,
+            n,
+            harmonic,
+            eff_charge,
+            weight,
+        }
+    }
+
     /// Calculate this basis function's value at a given point.
     pub fn value(&self, posit_sample: Vec3) -> f64 {
         let diff = posit_sample - posit_nuc;
@@ -227,7 +292,9 @@ impl HOrbital {
 
         // let cos_theta = diff.to_normalized().dot(axis_through_lobes);
 
-        let angular = 1.;
+        let θ = 0.;
+        let ϕ = 0.;
+        let angular = self.harmonic.value(θ, ϕ);
 
         N * radial * angular
     }

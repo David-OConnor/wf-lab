@@ -14,8 +14,11 @@ use lin_alg2::f64::Vec3;
 use basis_wfs::BasisFn;
 
 mod basis_wfs;
+mod complex_nums;
 mod render;
 mod ui;
+
+use basis_wfs::Basis;
 
 const NUM_SURFACES: usize = 6;
 
@@ -96,70 +99,71 @@ impl Default for Surfaces {
     }
 }
 
-/// Represents a gaussian function.
-/// "The parameter a is the height of the curve's peak, b is the
-/// position of the center of the peak, and c (the standard deviation,
-/// sometimes called the Gaussian RMS width) controls the width of the
-/// "bell"."
-#[derive(Clone, Copy)]
-pub struct Gaussian {
-    /// Aka `b`.
-    pub posit: Vec3,
-    pub a_x: f64,
-    pub a_y: f64,
-    pub a_z: f64,
-    pub c_x: f64,
-    pub c_y: f64,
-    pub c_z: f64,
-}
+// /// Represents a gaussian function.
+// /// "The parameter a is the height of the curve's peak, b is the
+// /// position of the center of the peak, and c (the standard deviation,
+// /// sometimes called the Gaussian RMS width) controls the width of the
+// /// "bell"."
+// #[derive(Clone, Copy)]
+// pub struct Gaussian {
+//     /// Aka `b`.
+//     pub posit: Vec3,
+//     pub a_x: f64,
+//     pub a_y: f64,
+//     pub a_z: f64,
+//     pub c_x: f64,
+//     pub c_y: f64,
+//     pub c_z: f64,
+// }
 
-impl Gaussian {
-    pub fn new_symmetric(posit: Vec3, a: f64, c: f64) -> Self {
-        Self {
-            posit,
-            a_x: a,
-            a_y: a,
-            a_z: a,
-            c_x: c,
-            c_y: c,
-            c_z: c,
-        }
-    }
+// impl Gaussian {
+//     pub fn new_symmetric(posit: Vec3, a: f64, c: f64) -> Self {
+//         Self {
+//             posit,
+//             a_x: a,
+//             a_y: a,
+//             a_z: a,
+//             c_x: c,
+//             c_y: c,
+//             c_z: c,
+//         }
+//     }
 
-    /// Helper fn
-    fn val_1d(x: f64, a: f64, b: f64, c: f64) -> f64 {
-        let part_1 = (x - b).powi(2) / (2. * c.powi(2));
-        a * (-part_1).exp()
-    }
+//     /// Helper fn
+//     fn val_1d(x: f64, a: f64, b: f64, c: f64) -> f64 {
+//         let part_1 = (x - b).powi(2) / (2. * c.powi(2));
+//         a * (-part_1).exp()
+//     }
 
-    pub fn val(&self, posit_sample: Vec3) -> f64 {
-        let diff = posit_sample - self.posit;
-        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+//     pub fn val(&self, posit_sample: Vec3) -> f64 {
+//         let diff = posit_sample - self.posit;
+//         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
-        // todo: QC how this works in 3d
-        Self::val_1d(r, self.a_x, self.posit.x, self.c_x)
-        // + Self::val_1d(posit_sample.y, self.a_y, self.posit.y, self.c_y)
-        // + Self::val_1d(posit_sample.z, self.a_z, self.posit.z, self.c_z)
-    }
-}
+//         // todo: QC how this works in 3d
+//         Self::val_1d(r, self.a_x, self.posit.x, self.c_x)
+//         // + Self::val_1d(posit_sample.y, self.a_y, self.posit.y, self.c_y)
+//         // + Self::val_1d(posit_sample.z, self.a_z, self.posit.z, self.c_z)
+//     }
+// }
 
-pub struct Basis {
-    pub charge_id: usize, // id (perhaps index) of the associated charge.
-    pub f: BasisFn,
-    pub posit: Vec3,
-    pub weight: f64,
-}
+// // todo: Deprecate this in favor of your more flexible API in `basis_wfs`.
+// pub struct Basis {
+//     pub charge_id: usize, // id (perhaps index) of the associated charge.
+//     pub f: BasisFn,
+//     pub posit: Vec3,
+//     pub weight: f64,
+// }
 
-impl Basis {
-    pub fn new(charge_id: usize, f: BasisFn, posit: Vec3, weight: f64) -> Self {
-        Self {
-            charge_id,
-            f,
-            posit,
-            weight,
-        }
-    }
-}
+// impl Basis {
+//     pub fn new(charge_id: usize, f: BasisFn, posit: Vec3, weight: f64) -> Self {
+//         Self {
+//             charge_id,
+//             f,
+//             posit,
+//             weight,
+//         }
+//     }
+// }
 
 // #[derive(Default)]
 pub struct State {
@@ -168,6 +172,7 @@ pub struct State {
     /// Wave functions, with weights
     // pub wfs: Vec<(impl Fn(Vec3, Vec3) -> f64 + 'static, f64)>,
     pub wfs: Vec<Basis>, // todo: Rename, eg `bases`
+    // pub wfs: Vec<SlaterOrbital>, // todo: Rename, eg `bases`
     // todo use an index for them.
     /// Nuclei. todo: H only for now.
     pub charges: Vec<(Vec3, f64)>,
@@ -184,14 +189,6 @@ pub struct State {
     /// Surface name
     pub surface_names: [String; NUM_SURFACES],
     pub show_surfaces: [bool; NUM_SURFACES],
-    // /// This defines how our 3D grid is subdivided in different areas.
-    // /// todo: FIgure this out.
-    // /// todo: We should possibly remove grid divisions, as we may move
-    // /// today away from the grid for all but plotting.
-    // pub grid_divisions: Vec<Vec<Vec<u8>>>,
-    /// Experimenting with gaussians; if this works out, it should possibly be
-    /// combined with the BasisFn (wfs field).
-    pub gaussians: Vec<Gaussian>,
 }
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
@@ -295,8 +292,9 @@ fn find_psi_pp_meas(
     psi: &Arr3d,
     posit_sample: Vec3,
     bases: &[Basis],
+    // bases: &[SlaterOrbital],
     charges: &[(Vec3, f64)],
-    gauss: &[Gaussian],
+    // gauss: &[Gaussian],
     i: usize,
     j: usize,
     k: usize,
@@ -329,14 +327,14 @@ fn find_psi_pp_meas(
         psi_z_next += wf(basis.posit, z_next) * basis.weight;
     }
 
-    for gauss_basis in gauss {
-        psi_x_prev += gauss_basis.val(x_prev);
-        psi_x_next += gauss_basis.val(x_next);
-        psi_y_prev += gauss_basis.val(y_prev);
-        psi_y_next += gauss_basis.val(y_next);
-        psi_z_prev += gauss_basis.val(z_prev);
-        psi_z_next += gauss_basis.val(z_next);
-    }
+    // for gauss_basis in gauss {
+    //     psi_x_prev += gauss_basis.val(x_prev);
+    //     psi_x_next += gauss_basis.val(x_next);
+    //     psi_y_prev += gauss_basis.val(y_prev);
+    //     psi_y_next += gauss_basis.val(y_next);
+    //     psi_z_prev += gauss_basis.val(z_prev);
+    //     psi_z_next += gauss_basis.val(z_next);
+    // }
 
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - 6. * psi[i][j][k];
@@ -349,8 +347,9 @@ fn find_psi_pp_meas(
 fn nudge_wf(
     sfcs: &mut Surfaces,
     wfs: &[Basis],
+    // wfs: &[SlaterOrbital],
     charges: &[(Vec3, f64)],
-    gauss: &mut Vec<Gaussian>,
+    // gauss: &mut Vec<Gaussian>,
     E: f64,
 ) {
     let nudge_amount = 0.0001;
@@ -459,7 +458,8 @@ fn nudge_wf(
 /// Modifies in place to conserve memory.
 fn eval_wf(
     bases: &[Basis],
-    gauss: &Vec<Gaussian>,
+    // bases: &[SlaterOrbital],
+    // gauss: &Vec<Gaussian>,
     charges: &[(Vec3, f64)],
     sfcs: &mut Surfaces,
     E: f64,
@@ -498,9 +498,9 @@ fn eval_wf(
                     sfcs.psi[i][j][k] += basis.f.f()(basis.posit, posit_sample) * basis.weight;
                 }
 
-                for gauss_basis in gauss {
-                    sfcs.psi[i][j][k] += gauss_basis.val(posit_sample);
-                }
+                // for gauss_basis in gauss {
+                //     sfcs.psi[i][j][k] += gauss_basis.val(posit_sample);
+                // }
 
                 sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
 
@@ -508,7 +508,7 @@ fn eval_wf(
                 // through charges, wfs, gauss etc.
 
                 sfcs.psi_pp_measured[i][j][k] =
-                    find_psi_pp_meas(&sfcs.psi, posit_sample, bases, charges, gauss, i, j, k);
+                    find_psi_pp_meas(&sfcs.psi, posit_sample, bases, charges, i, j, k);
             }
         }
     }
@@ -531,7 +531,7 @@ fn main() {
     ];
 
     // let gaussians = vec![Gaussian::new_symmetric(Vec3::new(0., 0., 0.), 0.1, 2.)];
-    let gaussians = Vec::new();
+    // let gaussians = Vec::new();
 
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
@@ -546,7 +546,7 @@ fn main() {
 
     let mut sfcs = Default::default();
 
-    eval_wf(&wfs, &gaussians, &charges, &mut sfcs, E);
+    eval_wf(&wfs, &charges, &mut sfcs, E);
 
     let psi_pp_score = score_wf(&sfcs, E);
 
@@ -575,7 +575,7 @@ fn main() {
         surface_names,
         show_surfaces,
         // grid_divisions,
-        gaussians,
+        // gaussians,
     };
 
     render::render(state);
