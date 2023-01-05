@@ -95,7 +95,7 @@ fn charge_editor(
 /// Ui elements that allow mixing various basis WFs.
 fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) {
     egui::containers::ScrollArea::vertical().show(ui, |ui| {
-        for (id, basis) in state.wfs.iter_mut().enumerate() {
+        for (id, basis) in state.bases.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 // `prev...` is to check if it changed below.
                 let prev_charge_id = basis.charge_id;
@@ -199,7 +199,7 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) 
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
             crate::nudge_wf(
                 &mut state.surfaces,
-                &state.wfs,
+                &state.bases,
                 &state.charges,
                 &mut state.gaussians,
                 state.E,
@@ -337,7 +337,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
 
             crate::eval_wf(
-                &state.wfs,
+                &state.bases,
                 &state.gaussians,
                 &state.charges,
                 &mut state.surfaces,

@@ -17,142 +17,6 @@ use crate::complex_nums::{Cplx, IM};
 // Hartree units.
 const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
-//
-// #[derive(Copy, Clone, PartialEq)]
-// pub enum BasisFn {
-//     H100,
-//     H200,
-//     H300,
-//     H210(Vec3), // axis
-//     // H211,
-//     // H21M1,
-//     Sto(f64), // Slater exponent
-// }
-//
-// impl BasisFn {
-//     /// The box is required, instead of a ref, to deal with the closures.
-//     pub fn f(&self) -> Box<dyn Fn(Vec3, Vec3) -> f64 + '_> {
-//         match self {
-//             Self::H100 => Box::new(h_wf_100),
-//             Self::H200 => Box::new(h_wf_200),
-//             Self::H300 => Box::new(h_wf_300),
-//             Self::H210(axis) => Box::new(|a, b| h_wf_210(a, b, *axis)),
-//             // Self::H211 => &h_wf_211,
-//             // Self::H21M1 => &h_wf_21m1,
-//             Self::Sto(slater_exp) => Box::new(|a, b| slater(a, b, *slater_exp)),
-//         }
-//     }
-//
-//     pub fn descrip(&self) -> String {
-//         match self {
-//             // Self::H100 => "H100: n=1, l=0, m=0",
-//             // Self::H200 => "H200: n=2, l=0, m=0",
-//             // Self::H300 => "H300: n=3, l=0, m=0",
-//             // Self::H210(_) => "H210: n=2, l=1, m=0",
-//             // // Self::H211 => "H211: n=2, l=1, m=1",
-//             // // Self::H21M1 => "H21-1: n=2, l=1, m=-1",
-//             // Self::Sto(_) => "STO",
-//             Self::H100 => "H100",
-//             Self::H200 => "H200",
-//             Self::H300 => "H300",
-//             Self::H210(_) => "H210",
-//             // Self::H211 => "H211: n=2, l=1, m=1",
-//             // Self::H21M1 => "H21-1: n=2, l=1, m=-1",
-//             Self::Sto(_) => "STO",
-//         }
-//         .to_owned()
-//     }
-// }
-//
-// fn r_from_pts(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
-//     let diff = posit_sample - posit_nuc;
-//     (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt()
-// }
-//
-// /// Analytic solution for n=1, s orbital
-// pub fn h_wf_100(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
-//     let r = r_from_pts(posit_nuc, posit_sample);
-//
-//     let ρ = Z_H * r / A_0;
-//     1. / PI.sqrt() * (Z_H / A_0).powf(3. / 2.) * (-ρ).exp()
-// }
-//
-// /// Analytic solution for n=2, s orbital
-// pub fn h_wf_200(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
-//     let r = r_from_pts(posit_nuc, posit_sample);
-//
-//     let ρ = Z_H * r / A_0;
-//     1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * (2. - ρ) * (-ρ / 2.).exp()
-// }
-//
-// /// Analytic solution for n=3, s orbital
-// pub fn h_wf_300(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
-//     let r = r_from_pts(posit_nuc, posit_sample);
-//
-//     let ρ = Z_H * r / A_0;
-//
-//     1. / (81. * (3. * PI).sqrt())
-//         * (Z_H / A_0).powf(3. / 2.)
-//         * (27. - 18. * ρ + 2. * ρ.powi(2))
-//         * (-ρ / 3.).exp()
-// }
-//
-// // We assume the axis is already normalized.
-// pub fn h_wf_210(posit_nuc: Vec3, posit_sample: Vec3, axis_through_lobes: Vec3) -> f64 {
-//     // We take Cos theta below, so no need for cos^-1 here.
-//     let diff = posit_sample - posit_nuc;
-//     (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
-//
-//     let cos_θ = diff.to_normalized().dot(axis_through_lobes);
-//
-//     let ρ = Z_H * r / A_0;
-//     1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * ρ * (-ρ / 2.).exp() * cos_θ
-// }
-//
-// /// todo: Not required, since it's a rotation of h_wf_210?
-// pub fn h_wf_211(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
-//     let r = r_from_pts(posit_nuc, posit_sample);
-//
-//     // todo wrong
-//     // We take Cos theta below, so no need for cos^-1 here.
-//     // todo: Not sure how we deal with diff phis?
-//     let sin_theta = posit_nuc.to_normalized().dot(posit_sample.to_normalized());
-//
-//     let i: f64 = 0.; // todo!!
-//     let phi: f64 = 0.; // todo!
-//
-//     let ρ = Z_H * r / A_0;
-//     1. / (64. * PI).sqrt()
-//         * (Z_H / A_0).powf(3. / 2.)
-//         * ρ
-//         * (-ρ / 2.).exp()
-//         * sin_theta
-//         * (i * phi).exp()
-// }
-//
-// /// todo: Not required, since it's a rotation of h_wf_210?
-// /// todo: Dry with above! Only diff is one change in sign.
-// pub fn h_wf_21m1(posit_nuc: Vec3, posit_sample: Vec3) -> f64 {
-//     let r = r_from_pts(posit_nuc, posit_sample);
-//
-//     // todo wrong
-//     // We take Cos theta below, so no need for cos^-1 here.
-//     // todo: Not sure how we deal with diff phis?
-//     let sin_theta = posit_nuc.to_normalized().dot(posit_sample.to_normalized());
-//
-//     let i: f64 = 0.; // todo!!
-//     let phi: f64 = 0.; // todo!
-//
-//     let ρ = Z_H * r / A_0;
-//     1. / (64. * PI).sqrt()
-//         * (Z_H / A_0).powf(3. / 2.)
-//         * ρ
-//         * (-ρ / 2.).exp()
-//         * sin_theta
-//         * (-i * phi).exp()
-// }
-
-// todo: Below this, is an experimental new approach to generic basis fns
 
 // todo: Remove this enum if you use STOs as the only basis
 pub enum Basis {
@@ -210,9 +74,9 @@ impl Basis {
 /// The base orientation is... // todo
 pub struct SphericalHarmonic {
     /// The quantum number the describes orbital shape.
-    l: u8,
+    l: u16,
     /// The quantum number that...
-    m: i8,
+    m: i16,
     /// Orientation.
     orientation: Quaternion,
 }
@@ -222,8 +86,8 @@ pub struct SphericalHarmonic {
 // todo likely approach.
 
 impl SphericalHarmonic {
-    pub fn new(l: u8, m: i8, orientation: Quaternion) -> Self {
-        assert!(m.abs() as u8 <= l);
+    pub fn new(l: u16, m: i16, orientation: Quaternion) -> Self {
+        assert!(m.abs() as u16 <= l);
 
         Self { l, m, orientation }
     }
@@ -232,22 +96,25 @@ impl SphericalHarmonic {
     /// and ϕ.
     /// Note that we do not include a normalization constant,
     /// since we handle that at the basis fn level.
+    ///
+    /// https://en.wikipedia.org/wiki/Table_of_spherical_harmonics
     /// todo: ϕ as an `Option`?
     pub fn value(&self, θ: f64, ϕ: f64) -> Cplx {
         // todo: Hard-coded match arms for now.
 
-        // todo: QC normalization const as it relates to radial part!
-
         // todo: Shortcut  vars or consts for repeated patterns A/R
 
+
+
         match self.l {
-            0 => 1.0.into(),
+            0 => (0.5 * (1./PI).sqrt()).into(),
             1 => match self.m {
-                -1 => (-IM * ϕ).exp() * θ.sin(),
-                0 => θ.cos().into(),
-                1 => (IM * ϕ).exp() * θ.sin(),
+                -1 => (-IM * ϕ).exp() * θ.sin() * 0.5 * (3./(2. * PI)).sqrt(),
+                0 => Cplx::from_real(θ.cos()) * 0.5 * (3./PI).sqrt(),
+                1 => (IM * ϕ).exp() * θ.sin() * -0.5 * (3./(2. * PI)).sqrt(),
                 _ => panic!("Invalid m quantum number"),
             },
+            // todo: Norm consts.
             2 => match self.m {
                 -2 => (-IM * -2. * ϕ).exp() * θ.sin().powi(2),
                 -1 => (-IM * ϕ).exp() * θ.sin() * θ.cos(),
@@ -351,26 +218,56 @@ impl HOrbital {
         }
     }
 
+    /// Calculate the radial part of a basis function.
+    /// We pass in `diff` and `r` to avoid duplicate calcs.
+    fn radial(&self, diff: Vec3, r: f64) -> f64 {
+          // N is the normalization constant for the radial part
+        let ρ = Z_H * r / (self.n as f64 * A_0);
+
+        // todo: Continue work.
+
+        let N_r = match self.n {
+            1 => {
+                match self.harmonic.l {
+                    // 1 => 2. * (Z_H / A_0).pow(3./2.) * (-Z_H * r / A_0).exp(),
+                    1 => 2. * (Z_H / A_0).powf(3./2.) * 69.,
+                    _ => panic!(),
+                }
+            }
+            2 => {
+                match self.harmonic.l {
+                    1 => 0.,
+                    2 => 0.,
+                    _ => panic!(),
+                }
+            }
+            _ => unimplemented!()
+        };
+
+
+        N_r * 69. * (-ρ).exp()
+    }
+
     /// Calculate this basis function's value at a given point.
     /// Does not include weight.
+    /// https://quantummechanics.ucsd.edu/ph130a/130_notes/node233.html
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
-        // N is the normalization constant.
-        let N = 1. / (32. * PI).sqrt();
-
-        // todo: Update this based on n.
-        let ρ = Z_H * r / A_0;
-        let radial = (Z_H / A_0).powf(3. / 2.) * ρ * (-ρ / 2.).exp();
+        let radial = self.radial(diff, r);
 
         // let cos_theta = diff.to_normalized().dot(axis_through_lobes);
 
-        let θ = 0.;
-        let ϕ = 0.;
+        // todo: QC these.
+        let θ = (diff.z / r).acos();
+        let a = diff.x / (diff.x.powi(2) + diff.y.powi(2)).sqrt(); // For legibility.
+        let ϕ = diff.y.signum() * a.acos();
+
         let angular = self.harmonic.value(θ, ϕ);
 
-        Cplx::from_real(N) * Cplx::from_real(radial) * angular
+        // Normalization consts are applied to radial and angular parts separately.
+        Cplx::from_real(radial) * angular
     }
 }
 

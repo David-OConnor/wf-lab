@@ -3,7 +3,7 @@
 use std::{
     f64::consts::E,
     fmt,
-    ops::{Add, Div, Mul, Neg, Sub},
+    ops::{Add, Div, Mul, MulAssign, Neg, Sub, AddAssign},
 };
 
 pub const IM: Cplx = Cplx { real: 0., im: 1. };
@@ -52,6 +52,22 @@ impl Cplx {
         // todo: QC this
         (Self::from_real(self.im.cos()) + IM * self.im.sin()) * E.powf(self.real)
     }
+
+    /// Take a power to an integer
+    pub fn powi(&self, val: u32) -> Self {
+        // todo: Better way?
+        let mut result = Self::new(1., 0.);
+        for _ in 0..val as usize {
+            result *= *self;
+        }
+
+        result
+    }
+
+    /// Multiply this value's complex conjugate by it. Is a real number.
+    pub fn abs_sq(&self) -> f64 {
+        (self.conj() * *self).real
+    }
 }
 
 impl From<f64> for Cplx {
@@ -71,6 +87,13 @@ impl Add for Cplx {
             real: self.real + other.real,
             im: self.im + other.im,
         }
+    }
+}
+
+impl AddAssign for Cplx {
+    fn add_assign(&mut self, other: Self) {
+        self.real = self.real + other.real;
+        self.im = self.im + other.im;
     }
 }
 
@@ -96,12 +119,31 @@ impl Mul<Cplx> for Cplx {
     }
 }
 
+impl MulAssign<Cplx> for Cplx {
+    fn mul_assign(&mut self, other: Self) {
+        let result = *self * other;
+        self.real = result.real;
+        self.im = result.im;
+    }
+}
+
 impl Mul<f64> for Cplx {
     type Output = Self;
 
     fn mul(self, other: f64) -> Self {
         Self {
             real: self.real * other,
+            im: self.im,
+        }
+    }
+}
+
+impl Div<f64> for Cplx {
+    type Output = Self;
+
+    fn div(self, other: f64) -> Self {
+        Self {
+            real: self.real / other,
             im: self.im,
         }
     }

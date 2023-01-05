@@ -51,7 +51,21 @@ const H_GRID: f64 = (GRID_MAX - GRID_MIN) / (N as f64);
 const H_GRID_SQ: f64 = H_GRID * H_GRID;
 
 // type Arr3d = Vec<Vec<Vec<f64>>>;
+type Arr3dReal = Vec<Vec<Vec<f64>>>;
 type Arr3d = Vec<Vec<Vec<Cplx>>>;
+
+/// Make a new 3D grid, as a nested Vec
+fn new_data_real() -> Arr3dReal {
+    z.resize(N, 0.);
+
+    let mut y = Vec::new();
+    y.resize(N, z);
+
+    let mut x = Vec::new();
+    x.resize(N, y);
+
+    x
+}
 
 /// Make a new 3D grid, as a nested Vec
 fn new_data() -> Arr3d {
@@ -73,7 +87,7 @@ fn new_data() -> Arr3d {
 /// to put them on the stack. Although, they are fixed-size.
 /// todo: Change name?
 pub struct Surfaces {
-    pub V: Arr3d,
+    pub V: Arr3dReal,
     pub psi: Arr3d,
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
@@ -88,7 +102,7 @@ impl Default for Surfaces {
         let data = new_data();
 
         Self {
-            V: data.clone(),
+            V: new_data_real(),
             psi: data.clone(),
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
@@ -98,79 +112,11 @@ impl Default for Surfaces {
     }
 }
 
-// /// Represents a gaussian function.
-// /// "The parameter a is the height of the curve's peak, b is the
-// /// position of the center of the peak, and c (the standard deviation,
-// /// sometimes called the Gaussian RMS width) controls the width of the
-// /// "bell"."
-// #[derive(Clone, Copy)]
-// pub struct Gaussian {
-//     /// Aka `b`.
-//     pub posit: Vec3,
-//     pub a_x: f64,
-//     pub a_y: f64,
-//     pub a_z: f64,
-//     pub c_x: f64,
-//     pub c_y: f64,
-//     pub c_z: f64,
-// }
-
-// impl Gaussian {
-//     pub fn new_symmetric(posit: Vec3, a: f64, c: f64) -> Self {
-//         Self {
-//             posit,
-//             a_x: a,
-//             a_y: a,
-//             a_z: a,
-//             c_x: c,
-//             c_y: c,
-//             c_z: c,
-//         }
-//     }
-
-//     /// Helper fn
-//     fn val_1d(x: f64, a: f64, b: f64, c: f64) -> f64 {
-//         let part_1 = (x - b).powi(2) / (2. * c.powi(2));
-//         a * (-part_1).exp()
-//     }
-
-//     pub fn val(&self, posit_sample: Vec3) -> f64 {
-//         let diff = posit_sample - self.posit;
-//         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
-
-//         // todo: QC how this works in 3d
-//         Self::val_1d(r, self.a_x, self.posit.x, self.c_x)
-//         // + Self::val_1d(posit_sample.y, self.a_y, self.posit.y, self.c_y)
-//         // + Self::val_1d(posit_sample.z, self.a_z, self.posit.z, self.c_z)
-//     }
-// }
-
-// // todo: Deprecate this in favor of your more flexible API in `basis_wfs`.
-// pub struct Basis {
-//     pub charge_id: usize, // id (perhaps index) of the associated charge.
-//     pub f: BasisFn,
-//     pub posit: Vec3,
-//     pub weight: f64,
-// }
-
-// impl Basis {
-//     pub fn new(charge_id: usize, f: BasisFn, posit: Vec3, weight: f64) -> Self {
-//         Self {
-//             charge_id,
-//             f,
-//             posit,
-//             weight,
-//         }
-//     }
-// }
-
-// #[derive(Default)]
 pub struct State {
     /// todo: Combine wfs and nuclei in into single tuple etc to enforce index pairing?
     /// todo: Or a sub struct?
     /// Wave functions, with weights
-    // pub wfs: Vec<(impl Fn(Vec3, Vec3) -> f64 + 'static, f64)>,
-    pub wfs: Vec<Basis>, // todo: Rename, eg `bases`
+    pub bases: Vec<Basis>,
     // pub wfs: Vec<SlaterOrbital>, // todo: Rename, eg `bases`
     // todo use an index for them.
     /// Nuclei. todo: H only for now.
@@ -224,19 +170,21 @@ fn wf_fidelity(sfcs: &Surfaces, E: f64) -> f64 {
     let norm_meas = norm_sq_meas.sqrt();
 
     // Now that we have both wave functions and normalized them, calculate fidelity.
-    let mut result = 0.;
+    let mut result = Cplx::new_zero()
 
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                result += sfcs.psi_pp_calculated[i][j][k] / norm_sq_calc
-                    * sfcs.psi_pp_calculated[i][j][k]
-                    / norm_sq_calc;
+                // todo: Put back etc.
+                // result += sfcs.psi_pp_calculated[i][j][k] / norm_sq_calc
+                //     * sfcs.psi_pp_calculated[i][j][k]
+                //     / norm_sq_calc;
             }
         }
     }
 
-    result.powi(2)
+    // result.powi(2)
+    result.abs_sq()
 }
 
 /// Score a wave function by comparing the least-squares sum of its measured and
@@ -247,7 +195,7 @@ fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                result += (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).powi(2)
+                result += (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).abs_sq();
             }
         }
     }
@@ -282,8 +230,9 @@ fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
 
 /// Calcualte psi'', calculated from psi, and E.
 /// At a given i, j, k.
-fn find_psi_pp_calc(sfcs: &Surfaces, E: f64, i: usize, j: usize, k: usize) -> f64 {
-    (E - sfcs.V[i][j][k]) * KE_COEFF * sfcs.psi[i][j][k]
+fn find_psi_pp_calc(sfcs: &Surfaces, E: f64, i: usize, j: usize, k: usize) -> Cplx {
+    // (E - sfcs.V[i][j][k]) * KE_COEFF * sfcs.psi[i][j][k]
+    sfcs.psi[i][j][k] * (E - sfcs.V[i][j][k]) * KE_COEFF
 }
 
 /// Calcualte psi'', measured, using the finite diff method, for a single value.
@@ -296,7 +245,7 @@ fn find_psi_pp_meas(
     i: usize,
     j: usize,
     k: usize,
-) -> f64 {
+) -> Cplx {
     // Calculate psi'' based on a numerical derivative of psi
     // in 3D.
 
@@ -340,7 +289,7 @@ fn find_psi_pp_meas(
     // }
 
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-        - 6. * psi[i][j][k];
+        - psi[i][j][k] * 6.;
 
     result / H.powi(2)
 }
@@ -398,20 +347,20 @@ fn nudge_wf(
                 // let psi_fm_meas =
                 //     KE_COEFF_INV / (E - sfcs.V[i][j][k]) * sfcs.psi_pp_measured[i][j][k];
 
-                let psi_fm_meas = if (E - sfcs.V[i][j][k]).abs() < 0.01
-                    || sfcs.psi_pp_measured[i][j][k].abs() < 0.01
-                {
-                    0.
-                } else {
-                    KE_COEFF_INV / (E - sfcs.V[i][j][k]) * sfcs.psi_pp_measured[i][j][k]
-                };
+                // let psi_fm_meas = if (E - sfcs.V[i][j][k]).abs() < 0.01
+                //     || sfcs.psi_pp_measured[i][j][k].abs() < 0.01
+                // {
+                //     0.
+                // } else {
+                //     sfcs.psi_pp_measured[i][j][k] * KE_COEFF_INV / (E - sfcs.V[i][j][k]);
+                // };
 
-                let psi_fm_diff = KE_COEFF_INV / (E - sfcs.V[i][j][k]) * diff;
-
-                sfcs.aux1[i][j][k] = diff;
-
-                // sfcs.aux2[i][j][k] = psi_fm_meas;
-                sfcs.aux2[i][j][k] = psi_fm_diff;
+                // let psi_fm_diff = KE_COEFF_INV / (E - sfcs.V[i][j][k]) * diff;
+                //
+                // sfcs.aux1[i][j][k] = diff;
+                //
+                // // sfcs.aux2[i][j][k] = psi_fm_meas;
+                // sfcs.aux2[i][j][k] = psi_fm_diff;
 
                 let a = diff * nudge_amount;
 
@@ -494,7 +443,7 @@ fn eval_wf(
                     sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
                 }
 
-                sfcs.psi[i][j][k] = 0.;
+                sfcs.psi[i][j][k] = Cplx::new_zero();
                 for basis in bases {
                     // sfcs.psi[i][j][k] += basis.f.f()(basis.posit(), posit_sample) * basis.weight();
                     sfcs.psi[i][j][k] += basis.value(posit_sample) * basis.weight();
@@ -513,7 +462,6 @@ fn eval_wf(
 }
 
 fn main() {
-    let x_axis = Vec3::new(1., 0., 0.);
     let posit_charge_1 = Vec3::new(-1., 0., 0.);
     let posit_charge_2 = Vec3::new(1., 0., 0.);
 
@@ -565,7 +513,7 @@ fn main() {
         )),
         Basis::Sto(Sto::new(
             posit_charge_1,
-            3,
+            1,
             SphericalHarmonic::default(),
             1.,
             0.,
@@ -616,7 +564,7 @@ fn main() {
     // let grid_divisions = vec![y; N];
 
     let state = State {
-        wfs,
+        bases: wfs,
         charges,
         surfaces: sfcs,
         E,
