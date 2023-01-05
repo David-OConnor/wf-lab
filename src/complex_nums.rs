@@ -1,9 +1,12 @@
 //! This module contains a `Complex` number type, and methods for it.
 
-use std::fmt;
-use std::ops::{Add, Div, Mul, Sub};
+use std::{
+    f64::consts::E,
+    fmt,
+    ops::{Add, Div, Mul, Neg, Sub},
+};
 
-pub const IM: Cplx = Cplx::new(0., 1.);
+pub const IM: Cplx = Cplx { real: 0., im: 1. };
 
 #[derive(Copy, Clone)]
 pub struct Cplx {
@@ -15,6 +18,10 @@ pub struct Cplx {
 impl Cplx {
     pub fn new(real: f64, im: f64) -> Self {
         Self { real, im }
+    }
+
+    pub fn new_zero() -> Self {
+        Self { real: 0., im: 0. }
     }
 
     pub fn conj(&self) -> Self {
@@ -30,6 +37,29 @@ impl Cplx {
 
     pub fn phase(&self) -> f64 {
         (self.im).atan2(self.real)
+    }
+
+    /// Convert a real value into a complex number with 0 imaginary part.
+    pub fn from_real(val_real: f64) -> Self {
+        Self {
+            real: val_real,
+            im: 0.,
+        }
+    }
+
+    /// e^this value
+    pub fn exp(&self) -> Self {
+        // todo: QC this
+        (Self::from_real(self.im.cos()) + IM * self.im.sin()) * E.powf(self.real)
+    }
+}
+
+impl From<f64> for Cplx {
+    fn from(real_num: f64) -> Self {
+        Self {
+            real: real_num,
+            im: 0.,
+        }
     }
 }
 
@@ -55,13 +85,35 @@ impl Sub for Cplx {
     }
 }
 
-impl Mul for Cplx {
+impl Mul<Cplx> for Cplx {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
         Self {
             real: self.real * other.real - self.im * other.im,
             im: self.real * other.im + self.im * other.real,
+        }
+    }
+}
+
+impl Mul<f64> for Cplx {
+    type Output = Self;
+
+    fn mul(self, other: f64) -> Self {
+        Self {
+            real: self.real * other,
+            im: self.im,
+        }
+    }
+}
+
+impl Neg for Cplx {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        Self {
+            real: -self.real,
+            im: -self.im,
         }
     }
 }

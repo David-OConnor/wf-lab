@@ -2,7 +2,11 @@ use egui::{self, Color32, RichText};
 
 use graphics::{EngineUpdates, Scene};
 
-use crate::{basis_wfs::BasisFn, render, State, N};
+// use crate::{basis_wfs::BasisFn, render, State, N};
+use crate::{
+    basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto},
+    render, State, N,
+};
 
 use lin_alg2::f64::{Quaternion, Vec3};
 

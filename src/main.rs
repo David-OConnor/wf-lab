@@ -8,17 +8,17 @@
 
 #![allow(non_snake_case)]
 #![allow(mixed_script_confusables)]
+#![allow(uncommon_codepoints)]
 
-use lin_alg2::f64::Vec3;
-
-use basis_wfs::BasisFn;
+use lin_alg2::f64::{Quaternion, Vec3};
 
 mod basis_wfs;
 mod complex_nums;
 mod render;
 mod ui;
 
-use basis_wfs::Basis;
+use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
+use complex_nums::Cplx;
 
 const NUM_SURFACES: usize = 6;
 
@@ -38,7 +38,7 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 // Note: Using this as our fine grid. We will potentially subdivide it once
 // or twice per axis, hence the multiple of 4 constraint.
 // const N: usize = 21 * 4;
-const N: usize = 30;
+const N: usize = 80;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
@@ -50,15 +50,14 @@ const GRID_MAX: f64 = 4.;
 const H_GRID: f64 = (GRID_MAX - GRID_MIN) / (N as f64);
 const H_GRID_SQ: f64 = H_GRID * H_GRID;
 
-type Arr3d = Vec<Vec<Vec<f64>>>;
-// type WfType = dyn Fn(Vec3, Vec3) -> f64;
-// type wf_type = dyn Fn(Vec3, Vec3) -> f64;
-// type wf_type = fn(Vec3, Vec3) -> f64;
+// type Arr3d = Vec<Vec<Vec<f64>>>;
+type Arr3d = Vec<Vec<Vec<Cplx>>>;
 
 /// Make a new 3D grid, as a nested Vec
 fn new_data() -> Arr3d {
     let mut z = Vec::new();
-    z.resize(N, 0.);
+    z.resize(N, Cplx::new_zero());
+    // z.resize(N, 0.);
 
     let mut y = Vec::new();
     y.resize(N, z);
@@ -294,7 +293,6 @@ fn find_psi_pp_meas(
     bases: &[Basis],
     // bases: &[SlaterOrbital],
     charges: &[(Vec3, f64)],
-    // gauss: &[Gaussian],
     i: usize,
     j: usize,
     k: usize,
@@ -309,22 +307,27 @@ fn find_psi_pp_meas(
     let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
     let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
 
-    let mut psi_x_prev = 0.;
-    let mut psi_x_next = 0.;
-    let mut psi_y_prev = 0.;
-    let mut psi_y_next = 0.;
-    let mut psi_z_prev = 0.;
-    let mut psi_z_next = 0.;
+    let mut psi_x_prev = Cplx::new_zero();
+    let mut psi_x_next = Cplx::new_zero();
+    let mut psi_y_prev = Cplx::new_zero();
+    let mut psi_y_next = Cplx::new_zero();
+    let mut psi_z_prev = Cplx::new_zero();
+    let mut psi_z_next = Cplx::new_zero();
 
     for basis in bases {
-        let wf = basis.f.f();
+        psi_x_prev += basis.value(x_prev) * basis.weight();
+        psi_x_next += basis.value(x_next) * basis.weight();
+        psi_y_prev += basis.value(y_prev) * basis.weight();
+        psi_y_next += basis.value(y_next) * basis.weight();
+        psi_z_prev += basis.value(z_prev) * basis.weight();
+        psi_z_next += basis.value(z_next) * basis.weight();
 
-        psi_x_prev += wf(basis.posit, x_prev) * basis.weight;
-        psi_x_next += wf(basis.posit, x_next) * basis.weight;
-        psi_y_prev += wf(basis.posit, y_prev) * basis.weight;
-        psi_y_next += wf(basis.posit, y_next) * basis.weight;
-        psi_z_prev += wf(basis.posit, z_prev) * basis.weight;
-        psi_z_next += wf(basis.posit, z_next) * basis.weight;
+        // psi_x_prev += wf(basis.posit(), x_prev) * basis.weight();
+        // psi_x_next += wf(basis.posit(), x_next) * basis.weight();
+        // psi_y_prev += wf(basis.posit(), y_prev) * basis.weight();
+        // psi_y_next += wf(basis.posit(), y_next) * basis.weight();
+        // psi_z_prev += wf(basis.posit(), z_prev) * basis.weight();
+        // psi_z_next += wf(basis.posit(), z_next) * basis.weight();
     }
 
     // for gauss_basis in gauss {
@@ -349,7 +352,6 @@ fn nudge_wf(
     wfs: &[Basis],
     // wfs: &[SlaterOrbital],
     charges: &[(Vec3, f64)],
-    // gauss: &mut Vec<Gaussian>,
     E: f64,
 ) {
     let nudge_amount = 0.0001;
@@ -459,7 +461,6 @@ fn nudge_wf(
 fn eval_wf(
     bases: &[Basis],
     // bases: &[SlaterOrbital],
-    // gauss: &Vec<Gaussian>,
     charges: &[(Vec3, f64)],
     sfcs: &mut Surfaces,
     E: f64,
@@ -495,12 +496,9 @@ fn eval_wf(
 
                 sfcs.psi[i][j][k] = 0.;
                 for basis in bases {
-                    sfcs.psi[i][j][k] += basis.f.f()(basis.posit, posit_sample) * basis.weight;
+                    // sfcs.psi[i][j][k] += basis.f.f()(basis.posit(), posit_sample) * basis.weight();
+                    sfcs.psi[i][j][k] += basis.value(posit_sample) * basis.weight();
                 }
-
-                // for gauss_basis in gauss {
-                //     sfcs.psi[i][j][k] += gauss_basis.val(posit_sample);
-                // }
 
                 sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
 
@@ -519,15 +517,67 @@ fn main() {
     let posit_charge_1 = Vec3::new(-1., 0., 0.);
     let posit_charge_2 = Vec3::new(1., 0., 0.);
 
+    let neutral = Quaternion::new_identity();
+
+    // todo: Clean up constructor sequene for these basis fns A/R.
     let wfs = vec![
-        Basis::new(0, BasisFn::H100, posit_charge_1, 1.),
-        Basis::new(1, BasisFn::H100, posit_charge_2, -1.),
-        Basis::new(0, BasisFn::H200, posit_charge_1, 0.),
-        Basis::new(1, BasisFn::H200, posit_charge_2, 0.),
-        Basis::new(0, BasisFn::H210(x_axis), posit_charge_1, 0.),
-        Basis::new(1, BasisFn::H210(x_axis), posit_charge_2, 0.),
-        Basis::new(0, BasisFn::H300, posit_charge_1, 0.),
-        Basis::new(1, BasisFn::Sto(1.), posit_charge_2, 0.),
+        Basis::H(HOrbital::new(
+            posit_charge_1,
+            1,
+            SphericalHarmonic::default(),
+            1.,
+        )),
+        Basis::H(HOrbital::new(
+            posit_charge_2,
+            1,
+            SphericalHarmonic::default(),
+            1.,
+        )),
+        Basis::H(HOrbital::new(
+            posit_charge_1,
+            2,
+            SphericalHarmonic::default(),
+            0.,
+        )),
+        Basis::H(HOrbital::new(
+            posit_charge_2,
+            2,
+            SphericalHarmonic::default(),
+            0.,
+        )),
+        Basis::H(HOrbital::new(
+            posit_charge_1,
+            2,
+            SphericalHarmonic::new(1, 0, neutral),
+            0.,
+        )),
+        Basis::H(HOrbital::new(
+            posit_charge_2,
+            2,
+            SphericalHarmonic::new(1, 0, neutral),
+            0.,
+        )),
+        Basis::H(HOrbital::new(
+            posit_charge_1,
+            3,
+            SphericalHarmonic::default(),
+            0.,
+        )),
+        Basis::Sto(Sto::new(
+            posit_charge_1,
+            3,
+            SphericalHarmonic::default(),
+            1.,
+            0.,
+        )),
+        // Basis::new(0, BasisFn::H100, posit_charge_1, 1.),
+        // Basis::new(1, BasisFn::H100, posit_charge_2, -1.),
+        // Basis::new(0, BasisFn::H200, posit_charge_1, 0.),
+        // Basis::new(1, BasisFn::H200, posit_charge_2, 0.),
+        // Basis::new(0, BasisFn::H210(x_axis), posit_charge_1, 0.),
+        // Basis::new(1, BasisFn::H210(x_axis), posit_charge_2, 0.),
+        // Basis::new(0, BasisFn::H300, posit_charge_1, 0.),
+        // Basis::new(1, BasisFn::Sto(1.), posit_charge_2, 0.),
     ];
 
     // let gaussians = vec![Gaussian::new_symmetric(Vec3::new(0., 0., 0.), 0.1, 2.)];
