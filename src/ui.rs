@@ -98,100 +98,110 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) 
         for (id, basis) in state.bases.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 // `prev...` is to check if it changed below.
-                let prev_charge_id = basis.charge_id;
+                let prev_charge_id = basis.charge_id();
 
                 // Pair WFs with charge positions.
                 egui::ComboBox::from_id_source(id + 1_000)
                     .width(50.)
-                    .selected_text(basis.charge_id.to_string())
+                    .selected_text(basis.charge_id().to_string())
                     .show_ui(ui, |ui| {
-                        for (charge_i, (charge_posit, _)) in state.charges.iter().enumerate() {
+                        for (mut charge_i, (charge_posit, _amt)) in state.charges.iter().enumerate() {
                             ui.selectable_value(
-                                &mut basis.charge_id,
-                                charge_i,
+                                &mut basis.charge_id_mut(),
+                                // &mut charge_i,
+                                &mut 0, // todo
                                 charge_i.to_string(),
                             );
                         }
-                        // todo: YOu need to update posit too.
                     });
-                if basis.charge_id != prev_charge_id {
-                    basis.posit = state.charges[basis.charge_id].0;
+                if basis.charge_id() != prev_charge_id {
+                    *basis.posit_mut() = state.charges[basis.charge_id()].0;
                     *updated_wfs = true;
                 }
 
-                let mut selected = basis.f.clone();
+                // let mut selected = basis;
 
-                egui::ComboBox::from_id_source(id)
-                    .width(60.)
-                    .selected_text(basis.f.descrip())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut selected, BasisFn::H100, BasisFn::H100.descrip());
-                        ui.selectable_value(&mut selected, BasisFn::H200, BasisFn::H200.descrip());
-                        ui.selectable_value(&mut selected, BasisFn::H300, BasisFn::H300.descrip());
-                        ui.selectable_value(
-                            &mut selected,
-                            BasisFn::H210(Vec3::new(1., 0., 0.)),
-                            BasisFn::H210(Vec3::new(1., 0., 0.)).descrip(),
-                        );
-                        ui.selectable_value(
-                            &mut selected,
-                            BasisFn::Sto(1.),
-                            BasisFn::Sto(1.).descrip(),
-                        );
-                        // ui.selectable_value(&mut selected, BasisFn::H211, BasisFn::H211.descrip());
-                        // ui.selectable_value(&mut selected, BasisFn::H21M1, BasisFn::H21M1.descrip());
-                    });
+                // Maybe a basis-type enum?
+                let mut h_basis = Basis::H(HOrbital::new(Vec3::new_zero(), 1, Default::default(), 1., 0));
+                let mut sto_basis = Basis::Sto(Sto::new(Vec3::new_zero(), 1, Default::default(), 1., 1., 0));
 
-                if selected != basis.f {
-                    basis.f = selected;
-                    *updated_wfs = true;
-                }
+                // egui::ComboBox::from_id_source(id)
+                //     .width(60.)
+                //     .selected_text(basis.descrip())
+                //     .show_ui(ui, |ui| {
+                //         // ui.selectable_value(&mut selected, BasisFn::H100, BasisFn::H100.descrip());
+                //         // ui.selectable_value(&mut selected, BasisFn::H200, BasisFn::H200.descrip());
+                //         // ui.selectable_value(&mut selected, BasisFn::H300, BasisFn::H300.descrip());
+                //         ui.selectable_value(
+                //             &mut selected,
+                //             &mut h_basis,
+                //             "STO orbital"
+                //         );
+                //         ui.selectable_value(
+                //             &mut selected,
+                //             &mut sto_basis,
+                //             "H orbital"
+                //         );
+                //         // ui.selectable_value(&mut selected, BasisFn::H211, BasisFn::H211.descrip());
+                //         // ui.selectable_value(&mut selected, BasisFn::H21M1, BasisFn::H21M1.descrip());
+                //     });
+
+                // Just comparing type, based on partialEq impl
+                // todo: Put back etc
+                // if selected != basis {
+                //     // basis = selected;
+                //     *updated_wfs = true;
+                // }
             });
+
+            // todo: Text edit or dropdown for n.
 
             ui.add(
                 egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
                     if let Some(v_) = v {
-                        basis.weight = v_;
+                        *basis.weight_mut() = v_;
                         *updated_wfs = true;
                     }
 
-                    basis.weight
+                    basis.weight()
                 })
                 .text("Wt"),
             );
 
-            match basis.f {
-                BasisFn::Sto(mut slater_exp) => {
-                    let mut entry = slater_exp.to_string();
+            // todo: Text edits etc for all the fields.
 
-                    let response =
-                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-                    if response.changed() {
-                        let exp = entry.parse::<f64>().unwrap_or(1.);
-                        basis.f = BasisFn::Sto(exp);
-                        *updated_wfs = true;
-                    }
-                }
-                BasisFn::H210(mut axis) => {
-                    // todo: DRY
-                    let mut entry = "0.".to_owned(); // angle
-
-                    let response =
-                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-                    if response.changed() {
-                        let angle = entry.parse::<f64>().unwrap_or(0.);
-
-                        // todo: locked to Z rotation axis for now.
-                        let rotation_axis = Vec3::new(0., 0., 1.);
-                        let rotation = Quaternion::from_axis_angle(rotation_axis, angle);
-                        let new_axis = rotation.rotate_vec(Vec3::new(1., 0., 0.));
-                        basis.f = BasisFn::H210(new_axis);
-
-                        *updated_wfs = true;
-                    }
-                }
-                _ => (),
-            }
+            // match basis.f {
+            //     BasisFn::Sto(mut slater_exp) => {
+            //         let mut entry = slater_exp.to_string();
+            //
+            //         let response =
+            //             ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+            //         if response.changed() {
+            //             let exp = entry.parse::<f64>().unwrap_or(1.);
+            //             basis.f = BasisFn::Sto(exp);
+            //             *updated_wfs = true;
+            //         }
+            //     }
+            //     BasisFn::H210(mut axis) => {
+            //         // todo: DRY
+            //         let mut entry = "0.".to_owned(); // angle
+            //
+            //         let response =
+            //             ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+            //         if response.changed() {
+            //             let angle = entry.parse::<f64>().unwrap_or(0.);
+            //
+            //             // todo: locked to Z rotation axis for now.
+            //             let rotation_axis = Vec3::new(0., 0., 1.);
+            //             let rotation = Quaternion::from_axis_angle(rotation_axis, angle);
+            //             let new_axis = rotation.rotate_vec(Vec3::new(1., 0., 0.));
+            //             basis.f = BasisFn::H210(new_axis);
+            //
+            //             *updated_wfs = true;
+            //         }
+            //     }
+            //     _ => (),
+            // }
         }
 
         ui.add_space(ITEM_SPACING);
@@ -201,7 +211,6 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) 
                 &mut state.surfaces,
                 &state.bases,
                 &state.charges,
-                &mut state.gaussians,
                 state.E,
             );
 
@@ -338,7 +347,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             crate::eval_wf(
                 &state.bases,
-                &state.gaussians,
+                // &state.gaussians,
                 &state.charges,
                 &mut state.surfaces,
                 state.E,

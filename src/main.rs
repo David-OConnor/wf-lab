@@ -38,7 +38,7 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 // Note: Using this as our fine grid. We will potentially subdivide it once
 // or twice per axis, hence the multiple of 4 constraint.
 // const N: usize = 21 * 4;
-const N: usize = 80;
+const N: usize = 60;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
@@ -56,6 +56,7 @@ type Arr3d = Vec<Vec<Vec<Cplx>>>;
 
 /// Make a new 3D grid, as a nested Vec
 fn new_data_real() -> Arr3dReal {
+    let mut z = Vec::new();
     z.resize(N, 0.);
 
     let mut y = Vec::new();
@@ -160,8 +161,8 @@ fn wf_fidelity(sfcs: &Surfaces, E: f64) -> f64 {
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].powi(2);
-                norm_sq_meas += sfcs.psi_pp_measured[i][j][k].powi(2);
+                norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].abs_sq();
+                norm_sq_meas += sfcs.psi_pp_measured[i][j][k].abs_sq();
             }
         }
     }
@@ -170,7 +171,7 @@ fn wf_fidelity(sfcs: &Surfaces, E: f64) -> f64 {
     let norm_meas = norm_sq_meas.sqrt();
 
     // Now that we have both wave functions and normalized them, calculate fidelity.
-    let mut result = Cplx::new_zero()
+    let mut result = Cplx::new_zero();
 
     for i in 0..N {
         for j in 0..N {
@@ -231,7 +232,6 @@ fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
 /// Calcualte psi'', calculated from psi, and E.
 /// At a given i, j, k.
 fn find_psi_pp_calc(sfcs: &Surfaces, E: f64, i: usize, j: usize, k: usize) -> Cplx {
-    // (E - sfcs.V[i][j][k]) * KE_COEFF * sfcs.psi[i][j][k]
     sfcs.psi[i][j][k] * (E - sfcs.V[i][j][k]) * KE_COEFF
 }
 
@@ -474,42 +474,49 @@ fn main() {
             1,
             SphericalHarmonic::default(),
             1.,
+            0,
         )),
         Basis::H(HOrbital::new(
             posit_charge_2,
             1,
             SphericalHarmonic::default(),
             1.,
+            1,
         )),
         Basis::H(HOrbital::new(
             posit_charge_1,
             2,
             SphericalHarmonic::default(),
             0.,
+            0,
         )),
         Basis::H(HOrbital::new(
             posit_charge_2,
             2,
             SphericalHarmonic::default(),
             0.,
+            1,
         )),
         Basis::H(HOrbital::new(
             posit_charge_1,
             2,
             SphericalHarmonic::new(1, 0, neutral),
             0.,
+            0,
         )),
         Basis::H(HOrbital::new(
             posit_charge_2,
             2,
             SphericalHarmonic::new(1, 0, neutral),
             0.,
+            1
         )),
         Basis::H(HOrbital::new(
             posit_charge_1,
             3,
             SphericalHarmonic::default(),
             0.,
+            0,
         )),
         Basis::Sto(Sto::new(
             posit_charge_1,
@@ -517,6 +524,7 @@ fn main() {
             SphericalHarmonic::default(),
             1.,
             0.,
+            1,
         )),
         // Basis::new(0, BasisFn::H100, posit_charge_1, 1.),
         // Basis::new(1, BasisFn::H100, posit_charge_2, -1.),

@@ -25,7 +25,7 @@ pub enum Basis {
 }
 
 impl Basis {
-    /// These getters allow access to common values (all but slater weight) without unpacking.
+    /// These getters and setters allow access to common values (all but slater weight) without unpacking.
     pub fn posit(&self) -> Vec3 {
         match self {
             Self::Sto(v) => v.posit,
@@ -33,10 +33,24 @@ impl Basis {
         }
     }
 
+    pub fn posit_mut(&mut self) -> &mut Vec3 {
+        match self {
+            Self::Sto(v) => &mut v.posit,
+            Self::H(v) => &mut v.posit,
+        }
+    }
+
     pub fn n(&self) -> u16 {
         match self {
             Self::Sto(v) => v.n,
             Self::H(v) => v.n,
+        }
+    }
+
+    pub fn n_mut(&mut self) -> &mut u16 {
+        match self {
+            Self::Sto(v) => &mut v.n,
+            Self::H(v) => &mut v.n,
         }
     }
 
@@ -54,10 +68,58 @@ impl Basis {
         }
     }
 
+    pub fn weight_mut(&mut self) -> &mut f64 {
+        match self {
+            Self::Sto(v) => &mut v.weight,
+            Self::H(v) => &mut v.weight,
+        }
+    }
+
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         match self {
             Self::Sto(v) => v.value(posit_sample),
             Self::H(v) => v.value(posit_sample),
+        }
+    }
+
+    pub fn charge_id(&self) -> usize {
+        match self {
+            Self::Sto(v) => v.charge_id,
+            Self::H(v) => v.charge_id,
+        }
+    }
+
+    pub fn charge_id_mut(&mut self) -> &mut usize {
+        match self {
+            Self::Sto(v) => &mut v.charge_id,
+            Self::H(v) => &mut v.charge_id,
+        }
+    }
+
+    pub fn descrip(&self) -> String {
+        match self {
+            Self::Sto(_) => "STO",
+            Self::H(_) => "H",
+        }.to_owned()
+    }
+}
+
+impl PartialEq for Basis {
+    /// Just compares if the main type is the same.
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Self::Sto(_) => {
+                match other {
+                    Self::Sto(_) => true,
+                    _ => false,
+                }
+            }
+            Self::H(_) => {
+                match other {
+                    Self::Sto(_) => false,
+                    _ => true,
+                }
+            }
         }
     }
 }
@@ -154,11 +216,13 @@ impl Default for SphericalHarmonic {
 /// can represent "electron shielding".(?)
 /// todo: Update to include angular part
 pub struct Sto {
-    posit: Vec3,
-    n: u16,
-    harmonic: SphericalHarmonic,
-    eff_charge: f64,
-    weight: f64,
+    pub posit: Vec3,
+    pub n: u16,
+    pub harmonic: SphericalHarmonic,
+    pub eff_charge: f64,
+    pub weight: f64,
+    /// Somewhat degenerate with `posit`.
+    pub charge_id: usize,
 }
 
 impl Sto {
@@ -168,13 +232,17 @@ impl Sto {
         harmonic: SphericalHarmonic,
         eff_charge: f64,
         weight: f64,
+        charge_id: usize,
     ) -> Self {
+        assert!(harmonic.l < n);
+
         Self {
             posit,
             n,
             harmonic,
             eff_charge,
             weight,
+            charge_id,
         }
     }
 
@@ -202,50 +270,58 @@ impl Sto {
 /// todo: If this turns out to be teh same as an STO but with effective-
 /// charge always equal to one, remove it.
 pub struct HOrbital {
-    posit: Vec3,
-    n: u16,
-    harmonic: SphericalHarmonic,
-    weight: f64,
+    pub posit: Vec3,
+    pub n: u16,
+    pub harmonic: SphericalHarmonic,
+    pub weight: f64,
+    /// Somewhat degenerate with `posit`.
+    pub charge_id: usize,
 }
 
 impl HOrbital {
-    pub fn new(posit: Vec3, n: u16, harmonic: SphericalHarmonic, weight: f64) -> Self {
+    pub fn new(posit: Vec3, n: u16, harmonic: SphericalHarmonic, weight: f64, charge_id: usize) -> Self {
+        assert!(harmonic.l < n);
+
         Self {
             posit,
             n,
             harmonic,
             weight,
+            charge_id,
         }
     }
 
     /// Calculate the radial part of a basis function.
     /// We pass in `diff` and `r` to avoid duplicate calcs.
-    fn radial(&self, diff: Vec3, r: f64) -> f64 {
+    /// https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Map%3A_Inorganic_Chemistry_(Miessler_Fischer_Tarr)/02%3A_Atomic_Structure/2.02%3A_The_Schrodinger_equation_particle_in_a_box_and_atomic_wavefunctions/2.2.02%3A_Quantum_Numbers_and_Atomic_Wave_Functions
+    fn radial(&self, r: f64, l: u16) -> f64 {
           // N is the normalization constant for the radial part
         let ρ = Z_H * r / (self.n as f64 * A_0);
 
-        // todo: Continue work.
-
-        let N_r = match self.n {
-            1 => {
-                match self.harmonic.l {
-                    // 1 => 2. * (Z_H / A_0).pow(3./2.) * (-Z_H * r / A_0).exp(),
-                    1 => 2. * (Z_H / A_0).powf(3./2.) * 69.,
-                    _ => panic!(),
-                }
-            }
+        // todo: More abstractions based on rules?
+        let part1 = match self.n {
+            1 => 2. * (Z_H / A_0).powf(3./2.),
             2 => {
-                match self.harmonic.l {
-                    1 => 0.,
-                    2 => 0.,
+                match l {
+                    0 => 2. * (Z_H / (2. * A_0)).powf(3./2.) * (2. - Z_H / A_0),
+                    1 => 1. / 3.0_f64.sqrt() * (Z_H / (3. * A_0)).powf(3./2.) * (Z_H / A_0),
                     _ => panic!(),
                 }
             }
-            _ => unimplemented!()
+            3 => {
+                match l {
+                    0 => 2./27. * (Z_H / (3. * A_0)).powf(3./2.) * (27. - 18. * Z_H / A_0 -
+                        2. * (Z_H/A_0).powi(2)),
+                    1 => 1. / (81. * 3.0_f64.sqrt()) * (2.*Z_H / A_0).powf(3./2.) * (6. - Z_H / A_0) * Z_H / A_0,
+                    2 => 1. / (81. * 15.0_f64.sqrt()) * (2. * Z_H / A_0).powf(3./2.) * (Z_H / A_0).powi(2),
+                    _ => panic!(),
+                }
+            }
+            _ => unimplemented!() // todo: More
         };
 
 
-        N_r * 69. * (-ρ).exp()
+        part1 * (-ρ).exp()
     }
 
     /// Calculate this basis function's value at a given point.
@@ -255,7 +331,7 @@ impl HOrbital {
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
-        let radial = self.radial(diff, r);
+        let radial = self.radial(r, self.harmonic.l);
 
         // let cos_theta = diff.to_normalized().dot(axis_through_lobes);
 

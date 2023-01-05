@@ -17,8 +17,8 @@ use crate::{State, GRID_MAX, GRID_MIN};
 type Color = (f32, f32, f32);
 
 const WINDOW_TITLE: &str = "ψ lab";
-const WINDOW_SIZE_X: f32 = 1_100.;
-const WINDOW_SIZE_Y: f32 = 800.;
+const WINDOW_SIZE_X: f32 = 1_600.;
+const WINDOW_SIZE_Y: f32 = 1_000.;
 const RENDER_DIST: f32 = 100.;
 const BACKGROUND_COLOR: Color = (0.5, 0.5, 0.5);
 const SIDE_PANEL_SIZE: f32 = 400.;
@@ -75,12 +75,27 @@ pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 
 }
 
 /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
-fn prepare_2d_mesh(surface: &crate::Arr3d, z_i: usize) -> Vec<Vec<f32>> {
+fn prepare_2d_mesh_real(surface: &crate::Arr3dReal, z_i: usize) -> Vec<Vec<f32>> {
     let mut result = Vec::new();
     for i in 0..crate::N {
         let mut y_vec = Vec::new();
         for j in 0..crate::N {
             y_vec.push(surface[i][j][z_i] as f32); // Convert from f64.
+        }
+        result.push(y_vec);
+    }
+
+    result
+}
+
+/// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
+fn prepare_2d_mesh(surface: &crate::Arr3d, z_i: usize) -> Vec<Vec<f32>> {
+    let mut result = Vec::new();
+    for i in 0..crate::N {
+        let mut y_vec = Vec::new();
+        for j in 0..crate::N {
+            // We are only plotting the real part for now.
+            y_vec.push(surface[i][j][z_i].real as f32); // Convert from f64.
         }
         result.push(y_vec);
     }
@@ -104,8 +119,15 @@ pub fn update_meshes(
     // todo: You shouldn't update each mesh every time! Only update
     // todo the meshes that change.
 
+    meshes.push(Mesh::new_surface(
+        &prepare_2d_mesh_real(&surfaces.V, z_i),
+        // todo: Center! Maybe offset in entities.
+        SFC_MESH_START,
+        SFC_MESH_STEP,
+        true,
+    ));
+
     for sfc in [
-        &surfaces.V,
         &surfaces.psi,
         &surfaces.psi_pp_calculated,
         &surfaces.psi_pp_measured,
