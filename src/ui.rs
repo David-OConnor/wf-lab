@@ -14,8 +14,8 @@ const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 260.;
 
-const E_MIN: f64 = -2.;
-const E_MAX: f64 = 2.;
+const E_MIN: f64 = -1.;
+const E_MAX: f64 = 1.;
 
 // Wave fn weights
 const WEIGHT_MIN: f64 = -2.;
@@ -102,10 +102,11 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) 
 
                 // Pair WFs with charge positions.
                 egui::ComboBox::from_id_source(id + 1_000)
-                    .width(50.)
+                    .width(30.)
                     .selected_text(basis.charge_id().to_string())
                     .show_ui(ui, |ui| {
-                        for (mut charge_i, (charge_posit, _amt)) in state.charges.iter().enumerate() {
+                        for (mut charge_i, (charge_posit, _amt)) in state.charges.iter().enumerate()
+                        {
                             ui.selectable_value(
                                 &mut basis.charge_id_mut(),
                                 // &mut charge_i,
@@ -122,10 +123,10 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) 
                 // let mut selected = basis;
 
                 // Maybe a basis-type enum?
-                let mut h_basis = Basis::H(HOrbital::new(Vec3::new_zero(), 1, Default::default(), 1., 0));
-                let mut sto_basis = Basis::Sto(Sto::new(Vec3::new_zero(), 1, Default::default(), 1., 1., 0));
-
-                // egui::ComboBox::from_id_source(id)
+                // let mut h_basis = Basis::H(HOrbital::new(basis.posit(), basis.n(), basis.harmonic().clone(), basis.weight(), basis.charge_id()));
+                // let mut sto_basis = Basis::Sto(Sto::new(basis.posit(), basis.n(), basis.harmonic().clone(), 1.,  basis.weight(), basis.charge_id()));
+                //
+                // egui::ComboBox::from_id_source(id + 2_000)
                 //     .width(60.)
                 //     .selected_text(basis.descrip())
                 //     .show_ui(ui, |ui| {
@@ -133,12 +134,12 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) 
                 //         // ui.selectable_value(&mut selected, BasisFn::H200, BasisFn::H200.descrip());
                 //         // ui.selectable_value(&mut selected, BasisFn::H300, BasisFn::H300.descrip());
                 //         ui.selectable_value(
-                //             &mut selected,
+                //             basis,
                 //             &mut h_basis,
                 //             "STO orbital"
                 //         );
                 //         ui.selectable_value(
-                //             &mut selected,
+                //             basis,
                 //             &mut sto_basis,
                 //             "H orbital"
                 //         );
@@ -152,6 +153,58 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) 
                 //     // basis = selected;
                 //     *updated_wfs = true;
                 // }
+
+                ui.heading("n:");
+
+                let n_prev = basis.n();
+                let l_prev = basis.l();
+                let m_prev = basis.m();
+
+                // todo: Helper fn to reduce DRY here.
+                egui::ComboBox::from_id_source(id + 2_000)
+                    .width(30.)
+                    .selected_text(basis.n().to_string())
+                    .show_ui(ui, |ui| {
+                        for i in 1..4 {
+                            ui.selectable_value(basis.n_mut(), i, i.to_string());
+                        }
+                    });
+
+                ui.heading("l:");
+
+                egui::ComboBox::from_id_source(id + 3_000)
+                    .width(30.)
+                    .selected_text(basis.l().to_string())
+                    .show_ui(ui, |ui| {
+                        for i in 0..basis.n() {
+                            ui.selectable_value(basis.l_mut(), i, i.to_string());
+                        }
+                    });
+
+                ui.heading("m:");
+
+                egui::ComboBox::from_id_source(id + 4_000)
+                    .width(30.)
+                    .selected_text(basis.m().to_string())
+                    .show_ui(ui, |ui| {
+                        for i in -1 * basis.l() as i16..basis.l() as i16 + 1 {
+                            ui.selectable_value(basis.m_mut(), i, i.to_string());
+                        }
+                    });
+
+                if basis.n() != n_prev || basis.l() != l_prev || basis.m() != m_prev {
+                    // Enforce quantum number constraints.
+                    if basis.l() >= basis.n() {
+                        *basis.l_mut() = basis.n() - 1;
+                    }
+                    if basis.m() < -1 * basis.l() as i16 {
+                        *basis.m_mut() = -1 * basis.l() as i16
+                    } else if basis.m() > basis.l() as i16 {
+                        *basis.m_mut() = basis.l() as i16
+                    }
+
+                    *updated_wfs = true;
+                }
             });
 
             // todo: Text edit or dropdown for n.
@@ -207,12 +260,7 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) 
         ui.add_space(ITEM_SPACING);
 
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
-            crate::nudge_wf(
-                &mut state.surfaces,
-                &state.bases,
-                &state.charges,
-                state.E,
-            );
+            crate::nudge_wf(&mut state.surfaces, &state.bases, &state.charges, state.E);
 
             state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
 

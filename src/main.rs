@@ -196,7 +196,8 @@ fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                result += (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).abs_sq();
+                result +=
+                    (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).abs_sq();
             }
         }
     }
@@ -509,7 +510,7 @@ fn main() {
             2,
             SphericalHarmonic::new(1, 0, neutral),
             0.,
-            1
+            1,
         )),
         Basis::H(HOrbital::new(
             posit_charge_1,

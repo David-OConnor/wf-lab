@@ -3,7 +3,7 @@
 use std::{
     f64::consts::E,
     fmt,
-    ops::{Add, Div, Mul, MulAssign, Neg, Sub, AddAssign},
+    ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub},
 };
 
 pub const IM: Cplx = Cplx { real: 0., im: 1. };

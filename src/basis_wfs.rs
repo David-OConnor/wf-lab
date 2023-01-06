@@ -19,6 +19,7 @@ const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
 
 // todo: Remove this enum if you use STOs as the only basis
+#[derive(Clone)]
 pub enum Basis {
     Sto(Sto),
     H(HOrbital),
@@ -51,6 +52,34 @@ impl Basis {
         match self {
             Self::Sto(v) => &mut v.n,
             Self::H(v) => &mut v.n,
+        }
+    }
+
+    pub fn l(&self) -> u16 {
+        match self {
+            Self::Sto(v) => v.harmonic.l,
+            Self::H(v) => v.harmonic.l,
+        }
+    }
+
+    pub fn l_mut(&mut self) -> &mut u16 {
+        match self {
+            Self::Sto(v) => &mut v.harmonic.l,
+            Self::H(v) => &mut v.harmonic.l,
+        }
+    }
+
+    pub fn m(&self) -> i16 {
+        match self {
+            Self::Sto(v) => v.harmonic.m,
+            Self::H(v) => v.harmonic.m,
+        }
+    }
+
+    pub fn m_mut(&mut self) -> &mut i16 {
+        match self {
+            Self::Sto(v) => &mut v.harmonic.m,
+            Self::H(v) => &mut v.harmonic.m,
         }
     }
 
@@ -100,7 +129,8 @@ impl Basis {
         match self {
             Self::Sto(_) => "STO",
             Self::H(_) => "H",
-        }.to_owned()
+        }
+        .to_owned()
     }
 }
 
@@ -108,18 +138,14 @@ impl PartialEq for Basis {
     /// Just compares if the main type is the same.
     fn eq(&self, other: &Self) -> bool {
         match self {
-            Self::Sto(_) => {
-                match other {
-                    Self::Sto(_) => true,
-                    _ => false,
-                }
-            }
-            Self::H(_) => {
-                match other {
-                    Self::Sto(_) => false,
-                    _ => true,
-                }
-            }
+            Self::Sto(_) => match other {
+                Self::Sto(_) => true,
+                _ => false,
+            },
+            Self::H(_) => match other {
+                Self::Sto(_) => false,
+                _ => true,
+            },
         }
     }
 }
@@ -134,6 +160,7 @@ impl PartialEq for Basis {
 /// For now, represents a complex spherical harmonic.
 ///
 /// The base orientation is... // todo
+#[derive(Clone)]
 pub struct SphericalHarmonic {
     /// The quantum number the describes orbital shape.
     l: u16,
@@ -166,14 +193,12 @@ impl SphericalHarmonic {
 
         // todo: Shortcut  vars or consts for repeated patterns A/R
 
-
-
         match self.l {
-            0 => (0.5 * (1./PI).sqrt()).into(),
+            0 => (0.5 * (1. / PI).sqrt()).into(),
             1 => match self.m {
-                -1 => (-IM * ϕ).exp() * θ.sin() * 0.5 * (3./(2. * PI)).sqrt(),
-                0 => Cplx::from_real(θ.cos()) * 0.5 * (3./PI).sqrt(),
-                1 => (IM * ϕ).exp() * θ.sin() * -0.5 * (3./(2. * PI)).sqrt(),
+                -1 => (-IM * ϕ).exp() * θ.sin() * 0.5 * (3. / (2. * PI)).sqrt(),
+                0 => Cplx::from_real(θ.cos()) * 0.5 * (3. / PI).sqrt(),
+                1 => (IM * ϕ).exp() * θ.sin() * -0.5 * (3. / (2. * PI)).sqrt(),
                 _ => panic!("Invalid m quantum number"),
             },
             // todo: Norm consts.
@@ -215,6 +240,7 @@ impl Default for SphericalHarmonic {
 /// charge slater exponent (ζ) may be used to simulate "effective charge", which
 /// can represent "electron shielding".(?)
 /// todo: Update to include angular part
+#[derive(Clone)]
 pub struct Sto {
     pub posit: Vec3,
     pub n: u16,
@@ -269,6 +295,7 @@ impl Sto {
 /// effective charge.
 /// todo: If this turns out to be teh same as an STO but with effective-
 /// charge always equal to one, remove it.
+#[derive(Clone)]
 pub struct HOrbital {
     pub posit: Vec3,
     pub n: u16,
@@ -279,7 +306,13 @@ pub struct HOrbital {
 }
 
 impl HOrbital {
-    pub fn new(posit: Vec3, n: u16, harmonic: SphericalHarmonic, weight: f64, charge_id: usize) -> Self {
+    pub fn new(
+        posit: Vec3,
+        n: u16,
+        harmonic: SphericalHarmonic,
+        weight: f64,
+        charge_id: usize,
+    ) -> Self {
         assert!(harmonic.l < n);
 
         Self {
@@ -295,31 +328,42 @@ impl HOrbital {
     /// We pass in `diff` and `r` to avoid duplicate calcs.
     /// https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Map%3A_Inorganic_Chemistry_(Miessler_Fischer_Tarr)/02%3A_Atomic_Structure/2.02%3A_The_Schrodinger_equation_particle_in_a_box_and_atomic_wavefunctions/2.2.02%3A_Quantum_Numbers_and_Atomic_Wave_Functions
     fn radial(&self, r: f64, l: u16) -> f64 {
-          // N is the normalization constant for the radial part
+        // N is the normalization constant for the radial part
         let ρ = Z_H * r / (self.n as f64 * A_0);
+
+        // Z is the charge of the nucleus.
 
         // todo: More abstractions based on rules?
         let part1 = match self.n {
-            1 => 2. * (Z_H / A_0).powf(3./2.),
-            2 => {
-                match l {
-                    0 => 2. * (Z_H / (2. * A_0)).powf(3./2.) * (2. - Z_H / A_0),
-                    1 => 1. / 3.0_f64.sqrt() * (Z_H / (3. * A_0)).powf(3./2.) * (Z_H / A_0),
-                    _ => panic!(),
+            1 => 2. * (Z_H / A_0).powf(3. / 2.),
+            2 => match l {
+                0 => 2. * (Z_H / (2. * A_0)).powf(3. / 2.) * (2. - Z_H * r / A_0),
+                1 => 1. / 3.0_f64.sqrt() * (Z_H / (3. * A_0)).powf(3. / 2.) * (Z_H * r / A_0),
+                _ => panic!(),
+            },
+            3 => match l {
+                0 => {
+                    2. / 27.
+                        * (Z_H / (3. * A_0)).powf(3. / 2.)
+                        * (27. - 18. * Z_H * r / A_0 - 2. * (Z_H * r / A_0).powi(2))
                 }
-            }
-            3 => {
-                match l {
-                    0 => 2./27. * (Z_H / (3. * A_0)).powf(3./2.) * (27. - 18. * Z_H / A_0 -
-                        2. * (Z_H/A_0).powi(2)),
-                    1 => 1. / (81. * 3.0_f64.sqrt()) * (2.*Z_H / A_0).powf(3./2.) * (6. - Z_H / A_0) * Z_H / A_0,
-                    2 => 1. / (81. * 15.0_f64.sqrt()) * (2. * Z_H / A_0).powf(3./2.) * (Z_H / A_0).powi(2),
-                    _ => panic!(),
+                1 => {
+                    1. / (81. * 3.0_f64.sqrt())
+                        * (2. * Z_H / A_0).powf(3. / 2.)
+                        * (6. - Z_H * r / A_0)
+                        * Z_H
+                        * r
+                        / A_0
                 }
-            }
-            _ => unimplemented!() // todo: More
+                2 => {
+                    1. / (81. * 15.0_f64.sqrt())
+                        * (2. * Z_H * r / A_0).powf(3. / 2.)
+                        * (Z_H / A_0).powi(2)
+                }
+                _ => panic!(),
+            },
+            _ => unimplemented!(), // todo: More
         };
-
 
         part1 * (-ρ).exp()
     }
