@@ -35,16 +35,14 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-// Note: Using this as our fine grid. We will potentially subdivide it once
-// or twice per axis, hence the multiple of 4 constraint.
-// const N: usize = 21 * 4;
-const N: usize = 60;
+const N: usize = 70;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
 const H: f64 = 0.00001;
-const GRID_MIN: f64 = -4.;
-const GRID_MAX: f64 = 4.;
+const H_SQ: f64 = H * H;
+const GRID_MIN: f64 = -3.;
+const GRID_MAX: f64 = 3.;
 
 // For finding psi_pp_meas, using only values on the grid
 const H_GRID: f64 = (GRID_MAX - GRID_MIN) / (N as f64);
@@ -241,7 +239,6 @@ fn find_psi_pp_meas(
     psi: &Arr3d,
     posit_sample: Vec3,
     bases: &[Basis],
-    // bases: &[SlaterOrbital],
     charges: &[(Vec3, f64)],
     i: usize,
     j: usize,
@@ -271,29 +268,18 @@ fn find_psi_pp_meas(
         psi_y_next += basis.value(y_next) * basis.weight();
         psi_z_prev += basis.value(z_prev) * basis.weight();
         psi_z_next += basis.value(z_next) * basis.weight();
-
-        // psi_x_prev += wf(basis.posit(), x_prev) * basis.weight();
-        // psi_x_next += wf(basis.posit(), x_next) * basis.weight();
-        // psi_y_prev += wf(basis.posit(), y_prev) * basis.weight();
-        // psi_y_next += wf(basis.posit(), y_next) * basis.weight();
-        // psi_z_prev += wf(basis.posit(), z_prev) * basis.weight();
-        // psi_z_next += wf(basis.posit(), z_next) * basis.weight();
     }
-
-    // for gauss_basis in gauss {
-    //     psi_x_prev += gauss_basis.val(x_prev);
-    //     psi_x_next += gauss_basis.val(x_next);
-    //     psi_y_prev += gauss_basis.val(y_prev);
-    //     psi_y_next += gauss_basis.val(y_next);
-    //     psi_z_prev += gauss_basis.val(z_prev);
-    //     psi_z_next += gauss_basis.val(z_next);
-    // }
 
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - psi[i][j][k] * 6.;
 
-    result / H.powi(2)
+    result / H_SQ
 }
+
+// /// Interpolate a value from a discrete wave function, assuming (what about curvature)
+// fn interp_wf(psi: &Arr3d, posit_sample: Vec3) -> Cplx {
+//     // Maybe a polynomial?
+// }
 
 /// Apply a correction to the WF, in attempt to make our two psi''s closer.
 /// Uses our numerically-calculated WF. Updates psi, and both psi''s.
@@ -304,7 +290,7 @@ fn nudge_wf(
     charges: &[(Vec3, f64)],
     E: f64,
 ) {
-    let nudge_amount = 0.0001;
+    let nudge_amount = 0.0000000001;
 
     let num_nudges = 1;
     let d_psi = 0.001;
@@ -323,7 +309,7 @@ fn nudge_wf(
 
     // todo: DRY with eval_wf
 
-    let skip = 20;
+    // let skip = 20;
 
     // for _ in 0..num_nudges {
     for (i, x) in x_vals.iter().enumerate() {
@@ -341,6 +327,8 @@ fn nudge_wf(
                 let posit_sample = Vec3::new(*x, *y, *z);
 
                 let diff = sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k];
+
+                sfcs.psi[i][j][k] -= diff * nudge_amount;
 
                 sfcs.aux1[i][j][k] = diff;
                 // todo: aux 2 should be calcing psi from this.
@@ -363,7 +351,7 @@ fn nudge_wf(
                 // // sfcs.aux2[i][j][k] = psi_fm_meas;
                 // sfcs.aux2[i][j][k] = psi_fm_diff;
 
-                let a = diff * nudge_amount;
+                // let a = diff * nudge_amount;
 
                 // gauss.push(Gaussian {
                 //     posit: posit_sample,
@@ -378,30 +366,62 @@ fn nudge_wf(
         }
         // }
 
-        // for (i, x) in x_vals.iter().enumerate() {
-        //     for (j, y) in y_vals.iter().enumerate() {
-        //         for (k, z) in z_vals.iter().enumerate() {
-        //             let posit_sample = Vec3::new(*x, *y, *z);
+        for (i, x) in x_vals.iter().enumerate() {
+            for (j, y) in y_vals.iter().enumerate() {
+                for (k, z) in z_vals.iter().enumerate() {
+                    let posit_sample = Vec3::new(*x, *y, *z);
 
-        //             // todo: Maybe you can wrap up the psi and /or psi calc into the psi_pp_meas fn?
+                    // todo: Maybe you can wrap up the psi and /or psi calc into the psi_pp_meas fn?
 
-        //             sfcs.psi[i][j][k] = 0.;
+                    // for (i_charge, (posit_charge, charge_amt)) in charges.iter().enumerate() {
+                    //     let (basis, weight) = &wfs[i_charge];
+                    //
+                    //     let wf = basis.f();
+                    //
+                    //     sfcs.psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
+                    // }
 
-        //             for (i_charge, (posit_charge, charge_amt)) in charges.iter().enumerate() {
-        //                 let (basis, weight) = &wfs[i_charge];
+                    // sfcs.psi_pp_measured[i][j][k] =
+                    //     find_psi_pp_meas(&sfcs.psi, posit_sample, wfs, charges, gauss, i, j, k);
 
-        //                 let wf = basis.f();
 
-        //                 sfcs.psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
-        //             }
+                    let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
+                    let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
+                    let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
+                    let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
+                    let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
+                    let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
 
-        //             sfcs.psi_pp_measured[i][j][k] =
-        //                 find_psi_pp_meas(&sfcs.psi, posit_sample, wfs, charges, gauss, i, j, k);
+                    // let mut psi_x_prev = interp_wf(&sfcs.psi, x_prev);
+                    // let mut psi_x_next = interp_wf(&sfcs.psi, x_next);
+                    // let mut psi_y_prev = interp_wf(&sfcs.psi, y_prev);
+                    // let mut psi_y_next = interp_wf(&sfcs.psi, y_next);
+                    // let mut psi_z_prev = interp_wf(&sfcs.psi, z_prev);
+                    // let mut psi_z_next = interp_wf(&sfcs.psi, z_next);
 
-        //             sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
-        //         }
-        //     }
-        // }
+                    sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
+
+                    // todo: YOu can exit each part
+                    if i == 0 || i == N-1 || j == 0 || j == N-1 || k == 0 || k == N-1 {
+                        continue
+                    }
+
+                    let mut psi_x_prev = sfcs.psi[i-1][j][k];
+                    let mut psi_x_next = sfcs.psi[i+1][j][k];
+                    let mut psi_y_prev = sfcs.psi[i][j-1][k];
+                    let mut psi_y_next = sfcs.psi[i][j+1][k];
+                    let mut psi_z_prev = sfcs.psi[i][j][k-1];
+                    let mut psi_z_next = sfcs.psi[i][j][k+1];
+
+                    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+                        - sfcs.psi[i][j][k] * 6.;
+
+                    sfcs.psi_pp_measured[i][j][k] = result / H_SQ;
+
+
+                }
+            }
+        }
     }
 }
 
@@ -414,6 +434,7 @@ fn eval_wf(
     charges: &[(Vec3, f64)],
     sfcs: &mut Surfaces,
     E: f64,
+    update_charges: bool,
 ) {
     // output score. todo: Move score to a diff fn?
     // ) -> (Vec<(Arr3d, String)>, f64) {
@@ -423,37 +444,33 @@ fn eval_wf(
     // psi(r)'' = (E - V(r)) * 2*m/ħ**2 * psi(r)
     // psi(r) = (E - V(R))^-1 * ħ**2/2m * psi(r)''
 
-    // todo: Store these somewhere to save on computation; minor pt.
-    let x_vals = linspace((GRID_MIN, GRID_MAX), N);
-    let y_vals = linspace((GRID_MIN, GRID_MAX), N);
-    let z_vals = linspace((GRID_MIN, GRID_MAX), N);
+    // todo: Store these somewhere to save on computation? minor pt.
+    let vals_1d = linspace((GRID_MIN, GRID_MAX), N);
 
     // Our initial psi'' measured uses our analytic LCAO system, which doesn't have the
     // grid edge and precision issues of the fixed numerical grid we use to tune the trial
     // WF.
-    for (i, x) in x_vals.iter().enumerate() {
-        for (j, y) in y_vals.iter().enumerate() {
-            for (k, z) in z_vals.iter().enumerate() {
+    for (i, x) in vals_1d.iter().enumerate() {
+        for (j, y) in vals_1d.iter().enumerate() {
+            for (k, z) in vals_1d.iter().enumerate() {
                 let posit_sample = Vec3::new(*x, *y, *z);
 
                 // Calculate psi'' based on a numerical derivative of psi
                 // in 3D.
 
-                sfcs.V[i][j][k] = 0.;
-                for (posit_charge, charge_amt) in charges.iter() {
-                    sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
+                if update_charges {
+                    sfcs.V[i][j][k] = 0.;
+                    for (posit_charge, charge_amt) in charges.iter() {
+                        sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
+                    }
                 }
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
                 for basis in bases {
-                    // sfcs.psi[i][j][k] += basis.f.f()(basis.posit(), posit_sample) * basis.weight();
                     sfcs.psi[i][j][k] += basis.value(posit_sample) * basis.weight();
                 }
 
                 sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
-
-                // todo: By delegating psi_pp_measured, we are causing an additional loop
-                // through charges, wfs, gauss etc.
 
                 sfcs.psi_pp_measured[i][j][k] =
                     find_psi_pp_meas(&sfcs.psi, posit_sample, bases, charges, i, j, k);
@@ -553,7 +570,7 @@ fn main() {
 
     let mut sfcs = Default::default();
 
-    eval_wf(&wfs, &charges, &mut sfcs, E);
+    eval_wf(&wfs, &charges, &mut sfcs, E, true);
 
     let psi_pp_score = score_wf(&sfcs, E);
 

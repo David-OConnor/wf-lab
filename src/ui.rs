@@ -14,8 +14,8 @@ const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 260.;
 
-const E_MIN: f64 = -1.;
-const E_MAX: f64 = 1.;
+const E_MIN: f64 = -1.2;
+const E_MAX: f64 = 0.2;
 
 // Wave fn weights
 const WEIGHT_MIN: f64 = -2.;
@@ -38,6 +38,7 @@ fn text_edit_float(val: &mut f64, default: f64, ui: &mut egui::Ui) {
 fn charge_editor(
     charges: &mut Vec<(Vec3, f64)>,
     updated_wfs: &mut bool,
+    updated_charges: &mut bool,
     updated_entities: &mut bool,
     ui: &mut egui::Ui,
 ) {
@@ -58,6 +59,7 @@ fn charge_editor(
 
             if prev_posit != *posit {
                 *updated_wfs = true;
+                *updated_charges = true;
                 *updated_entities = true;
             }
 
@@ -66,6 +68,7 @@ fn charge_editor(
 
             if prev_charge != *val {
                 *updated_wfs = true;
+                *updated_charges = true;
                 *updated_entities = true;
             }
 
@@ -73,6 +76,7 @@ fn charge_editor(
                 // Don't remove from a collection we're iterating over.
                 charge_removed = Some(i);
                 *updated_wfs = true;
+                *updated_charges = true;
                 // Update entities due to charge sphere placement.
                 *updated_entities = true;
             }
@@ -82,18 +86,23 @@ fn charge_editor(
     if let Some(charge_i_removed) = charge_removed {
         charges.remove(charge_i_removed);
         *updated_wfs = true;
+        *updated_charges = true;
         *updated_entities = true;
     }
 
     if ui.add(egui::Button::new("Add charge")).clicked() {
         charges.push((Vec3::new_zero(), crate::Q_PROT));
         *updated_wfs = true;
+        *updated_charges = true;
         *updated_entities = true;
     }
 }
 
 /// Ui elements that allow mixing various basis WFs.
-fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) {
+fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui, engine_updates:
+&mut EngineUpdates, scene: &mut Scene) {
+
+    // Select with charge (and its position) this basis fn is associated with.
     egui::containers::ScrollArea::vertical().show(ui, |ui| {
         for (id, basis) in state.bases.iter_mut().enumerate() {
             ui.horizontal(|ui| {
@@ -105,16 +114,16 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) 
                     .width(30.)
                     .selected_text(basis.charge_id().to_string())
                     .show_ui(ui, |ui| {
-                        for (mut charge_i, (charge_posit, _amt)) in state.charges.iter().enumerate()
+                        for (mut charge_i, (_charge_posit, _amt)) in state.charges.iter().enumerate()
                         {
                             ui.selectable_value(
-                                &mut basis.charge_id_mut(),
-                                // &mut charge_i,
-                                &mut 0, // todo
+                                basis.charge_id_mut(),
+                                charge_i,
                                 charge_i.to_string(),
                             );
                         }
                     });
+
                 if basis.charge_id() != prev_charge_id {
                     *basis.posit_mut() = state.charges[basis.charge_id()].0;
                     *updated_wfs = true;
@@ -262,12 +271,15 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui) 
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
             crate::nudge_wf(&mut state.surfaces, &state.bases, &state.charges, state.E);
 
+            render::update_meshes(&state.surfaces, state.z_displayed, scene); // todo!
+            engine_updates.meshes = true;
+
             state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
 
             // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
             // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
 
-            *updated_wfs = true;
+            // *updated_wfs = true;
         }
     });
 }
@@ -373,25 +385,27 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         // ui.add_space(ITEM_SPACING);
 
-        ui.heading("Wave functions and weights:");
-
         let mut updated_wfs = false;
+        let mut updated_charges = false;
+
+        ui.heading("Charges:");
 
         charge_editor(
             &mut state.charges,
             &mut updated_wfs,
+            &mut updated_charges,
             &mut engine_updates.entities,
             ui,
         );
 
         ui.add_space(ITEM_SPACING);
 
-        basis_fn_mixer(state, &mut updated_wfs, ui);
+        ui.heading("Wave functions and weights:");
+
+        basis_fn_mixer(state, &mut updated_wfs, ui, &mut engine_updates, scene);
 
         if updated_wfs {
             engine_updates.meshes = true;
-
-            // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
 
             crate::eval_wf(
                 &state.bases,
@@ -399,17 +413,18 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &state.charges,
                 &mut state.surfaces,
                 state.E,
+                updated_charges,
             );
 
             state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
 
-            render::update_meshes(&state.surfaces, state.z_displayed, scene);
+            render::update_meshes(&state.surfaces, state.z_displayed, scene); // todo!
         }
 
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.
         if engine_updates.entities {
-            render::update_entities(&state.charges, &state.show_surfaces, scene);
+            render::update_entities(&state.charges, &state.show_surfaces, scene); // todo
         }
     });
 

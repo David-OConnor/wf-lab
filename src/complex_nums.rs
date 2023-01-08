@@ -3,7 +3,7 @@
 use std::{
     f64::consts::E,
     fmt,
-    ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub},
+    ops::{Add, AddAssign, SubAssign, Div, Mul, MulAssign, Neg, Sub},
 };
 
 pub const IM: Cplx = Cplx { real: 0., im: 1. };
@@ -105,6 +105,13 @@ impl Sub for Cplx {
             real: self.real - other.real,
             im: self.im - other.im,
         }
+    }
+}
+
+impl SubAssign for Cplx {
+    fn sub_assign(&mut self, other: Self) {
+        self.real = self.real - other.real;
+        self.im = self.im - other.im;
     }
 }
 

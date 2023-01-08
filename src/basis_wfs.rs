@@ -187,7 +187,6 @@ impl SphericalHarmonic {
     /// since we handle that at the basis fn level.
     ///
     /// https://en.wikipedia.org/wiki/Table_of_spherical_harmonics
-    /// todo: ϕ as an `Option`?
     pub fn value(&self, θ: f64, ϕ: f64) -> Cplx {
         // todo: Hard-coded match arms for now.
 
@@ -203,21 +202,21 @@ impl SphericalHarmonic {
             },
             // todo: Norm consts.
             2 => match self.m {
-                -2 => (-IM * -2. * ϕ).exp() * θ.sin().powi(2),
-                -1 => (-IM * ϕ).exp() * θ.sin() * θ.cos(),
-                0 => (3. * θ.cos().powi(2) - 1.).into(),
-                1 => (IM * ϕ).exp() * θ.sin() * θ.cos(),
-                2 => (IM * 2. * ϕ).exp() * θ.sin().sin().powi(2),
+                -2 => (-IM * -2. * ϕ).exp() * θ.sin().powi(2) * 0.25 * (15./(2.*PI)).sqrt(),
+                -1 => (-IM * ϕ).exp() * θ.sin() * θ.cos() * 0.5 * (15./(2.*PI)).sqrt(),
+                0 => (3. * (θ.cos().powi(2) - 1.) * 0.25 * (5./PI).sqrt()).into(),
+                1 => (IM * ϕ).exp() * θ.sin() * θ.cos() * -0.5 * (15./(2.*PI)).sqrt(),
+                2 => (IM * 2. * ϕ).exp() * θ.sin().sin().powi(2) * 0.25 * (15./(2.*PI)).sqrt(),
                 _ => panic!("Invalid m quantum number"),
             },
             3 => match self.m {
-                -3 => (-IM * -3. * ϕ).exp() * θ.sin().powi(3),
-                -2 => (-IM * -2. * ϕ).exp() * θ.sin().powi(2) * θ.cos(),
-                -1 => (-IM * ϕ).exp() * θ.sin() * (5. * θ.cos().powi(2) - 1.),
-                0 => (5. * θ.cos().powi(3) - 3. * θ.cos()).into(),
-                1 => (IM * ϕ).exp() * θ.sin() * (5. * θ.cos().powi(2) - 1.),
-                2 => (IM * 2. * ϕ).exp() * θ.sin().powi(2) * θ.cos(),
-                3 => (IM * 3. * ϕ).exp() * θ.sin().sin().powi(3),
+                -3 => (-IM * -3. * ϕ).exp() * θ.sin().powi(3) * 0.125 * (35./PI).sqrt(),
+                -2 => (-IM * -2. * ϕ).exp() * θ.sin().powi(2) * θ.cos() * 0.25 * (105./(2.*PI)).sqrt(),
+                -1 => (-IM * ϕ).exp() * θ.sin() * (5. * θ.cos().powi(2) - 1.) * 0.125 * (21./PI).sqrt(),
+                0 => (5. * θ.cos().powi(3) - 3. * θ.cos() * 0.25 * (7./PI).sqrt()).into(),
+                1 => (IM * ϕ).exp() * θ.sin() * (5. * θ.cos().powi(2) - 1.) * -0.125 * (21./PI).sqrt(),
+                2 => (IM * 2. * ϕ).exp() * θ.sin().powi(2) * θ.cos() * 0.25 * (105./(2.*PI)).sqrt(),
+                3 => (IM * 3. * ϕ).exp() * θ.sin().sin().powi(3) * -0.125 * (35./PI).sqrt(),
                 _ => panic!("Invalid m quantum number"),
             },
             _ => unimplemented!(),
@@ -333,6 +332,9 @@ impl HOrbital {
 
         // Z is the charge of the nucleus.
 
+        // function to solve for any n and l?
+        // https://bingweb.binghamton.edu/~suzuki/QuantumMechanicsII/4-3_Radial-wave_function.pdf
+
         // todo: More abstractions based on rules?
         let part1 = match self.n {
             1 => 2. * (Z_H / A_0).powf(3. / 2.),
@@ -351,14 +353,12 @@ impl HOrbital {
                     1. / (81. * 3.0_f64.sqrt())
                         * (2. * Z_H / A_0).powf(3. / 2.)
                         * (6. - Z_H * r / A_0)
-                        * Z_H
-                        * r
-                        / A_0
+                        * (Z_H * r / A_0)
                 }
                 2 => {
                     1. / (81. * 15.0_f64.sqrt())
-                        * (2. * Z_H * r / A_0).powf(3. / 2.)
-                        * (Z_H / A_0).powi(2)
+                        * (2. * Z_H / A_0).powf(3. / 2.)
+                        * (Z_H * r / A_0).powi(2)
                 }
                 _ => panic!(),
             },
@@ -372,6 +372,11 @@ impl HOrbital {
     /// Does not include weight.
     /// https://quantummechanics.ucsd.edu/ph130a/130_notes/node233.html
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
+        const EPS: f64 = 0.00001;
+        if self.weight.abs() < EPS {
+            return Cplx::new_zero(); // saves some computation.
+        }
+
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
