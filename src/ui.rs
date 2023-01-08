@@ -281,6 +281,20 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui, 
 
             // *updated_wfs = true;
         }
+
+        if ui.add(egui::Button::new("Find E")).clicked() {
+            crate::find_E(&mut state.surfaces, &mut state.E);
+
+            render::update_meshes(&state.surfaces, state.z_displayed, scene);
+            engine_updates.meshes = true;
+
+            state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
+
+            // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
+            // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
+
+            // *updated_wfs = true;
+        }
     });
 }
 

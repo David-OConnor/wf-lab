@@ -35,7 +35,7 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-const N: usize = 70;
+const N: usize = 60;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
@@ -191,11 +191,19 @@ fn wf_fidelity(sfcs: &Surfaces, E: f64) -> f64 {
 fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
     let mut result = 0.;
 
+    // Avoids numerical precision issues. Without this, certain values of N will lead
+    // to a bogus score. Values of N both too high and too low can lead to this. Likely due to
+    // if a grid value is too close to a charge source, the value baloons.
+    const SCORE_THRESH: f64 = 1_000_000.;
+
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                result +=
-                    (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).abs_sq();
+                let val = (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).abs_sq();
+                if val < SCORE_THRESH {
+                    result += val;
+                }
+
             }
         }
     }
@@ -276,6 +284,44 @@ fn find_psi_pp_meas(
     result / H_SQ
 }
 
+/// Find the E that minimizes score, by narrowing it down. Note that if the relationship
+/// between E and psi'' score isn't straightforward, this will converge on a local minimum.
+fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
+    // todo: WHere to configure these mins and maxes
+    let mut E_min = -2.;
+    let mut E_max = 2.;
+    let mut E_range_div2 = 2.;
+    let vals_per_iter = 8;
+
+    let num_iters = 10;
+
+    for _ in 0..num_iters {
+       let E_vals = linspace((E_min, E_max), vals_per_iter);
+        let mut best_score = 100_000_000.;
+        let mut best_E = 0.;
+
+        for E_trial in E_vals {
+            for i in 0..N {
+                for j in 0..N {
+                    for k in 0..N {
+                        sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(&sfcs, E_trial, i, j, k);
+                    }
+                }
+            }
+
+            let score = score_wf(sfcs, E_trial);
+            if score < best_score {
+                best_score = score;
+                best_E = E_trial;
+                *E = E_trial;
+            }
+        }
+        E_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
+        E_min = best_E - E_range_div2;
+        E_max = best_E + E_range_div2;
+    }
+}
+
 // /// Interpolate a value from a discrete wave function, assuming (what about curvature)
 // fn interp_wf(psi: &Arr3d, posit_sample: Vec3) -> Cplx {
 //     // Maybe a polynomial?
@@ -290,7 +336,7 @@ fn nudge_wf(
     charges: &[(Vec3, f64)],
     E: f64,
 ) {
-    let nudge_amount = 0.0000000001;
+    let nudge_amount = 0.00000000001;
 
     let num_nudges = 1;
     let d_psi = 0.001;
@@ -366,6 +412,8 @@ fn nudge_wf(
         }
         // }
 
+        let divisor = ((GRID_MAX - GRID_MIN) / N as f64).powi(2);
+
         for (i, x) in x_vals.iter().enumerate() {
             for (j, y) in y_vals.iter().enumerate() {
                 for (k, z) in z_vals.iter().enumerate() {
@@ -416,9 +464,7 @@ fn nudge_wf(
                     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
                         - sfcs.psi[i][j][k] * 6.;
 
-                    sfcs.psi_pp_measured[i][j][k] = result / H_SQ;
-
-
+                    sfcs.psi_pp_measured[i][j][k] = result / divisor;
                 }
             }
         }
