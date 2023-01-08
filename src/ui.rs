@@ -99,9 +99,13 @@ fn charge_editor(
 }
 
 /// Ui elements that allow mixing various basis WFs.
-fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui, engine_updates:
-&mut EngineUpdates, scene: &mut Scene) {
-
+fn basis_fn_mixer(
+    state: &mut State,
+    updated_wfs: &mut bool,
+    ui: &mut egui::Ui,
+    engine_updates: &mut EngineUpdates,
+    scene: &mut Scene,
+) {
     // Select with charge (and its position) this basis fn is associated with.
     egui::containers::ScrollArea::vertical().show(ui, |ui| {
         for (id, basis) in state.bases.iter_mut().enumerate() {
@@ -114,7 +118,8 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui, 
                     .width(30.)
                     .selected_text(basis.charge_id().to_string())
                     .show_ui(ui, |ui| {
-                        for (mut charge_i, (_charge_posit, _amt)) in state.charges.iter().enumerate()
+                        for (mut charge_i, (_charge_posit, _amt)) in
+                            state.charges.iter().enumerate()
                         {
                             ui.selectable_value(
                                 basis.charge_id_mut(),
@@ -269,7 +274,13 @@ fn basis_fn_mixer(state: &mut State, updated_wfs: &mut bool, ui: &mut egui::Ui, 
         ui.add_space(ITEM_SPACING);
 
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
-            crate::nudge_wf(&mut state.surfaces, &state.bases, &state.charges, state.E);
+            crate::nudge_wf(
+                &mut state.surfaces,
+                &state.bases,
+                &state.charges,
+                &mut state.nudge_amount,
+                &mut state.E,
+            );
 
             render::update_meshes(&state.surfaces, state.z_displayed, scene); // todo!
             engine_updates.meshes = true;
@@ -397,6 +408,19 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             .text("Z slice"),
         );
 
+        ui.add(
+            // -0.1 is a kludge.
+            egui::Slider::from_get_set(0.0..=0.1, |v| {
+                if let Some(v_) = v {
+                    state.nudge_amount = v_;
+                }
+
+                state.nudge_amount
+            })
+            .text("Nudge amount")
+            .logarithmic(true),
+        );
+
         // ui.add_space(ITEM_SPACING);
 
         let mut updated_wfs = false;
@@ -438,7 +462,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.
         if engine_updates.entities {
-            render::update_entities(&state.charges, &state.show_surfaces, scene); // todo
+            render::update_entities(&state.charges, &state.show_surfaces, scene);
+            // todo
         }
     });
 

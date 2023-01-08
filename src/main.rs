@@ -35,7 +35,7 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-const N: usize = 60;
+const N: usize = 70;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
@@ -43,6 +43,9 @@ const H: f64 = 0.00001;
 const H_SQ: f64 = H * H;
 const GRID_MIN: f64 = -3.;
 const GRID_MAX: f64 = 3.;
+
+// todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
+// todo less precision further away?
 
 // For finding psi_pp_meas, using only values on the grid
 const H_GRID: f64 = (GRID_MAX - GRID_MIN) / (N as f64);
@@ -53,30 +56,30 @@ type Arr3dReal = Vec<Vec<Vec<f64>>>;
 type Arr3d = Vec<Vec<Vec<Cplx>>>;
 
 /// Make a new 3D grid, as a nested Vec
-fn new_data_real() -> Arr3dReal {
+fn new_data_real(n: usize) -> Arr3dReal {
     let mut z = Vec::new();
-    z.resize(N, 0.);
+    z.resize(n, 0.);
 
     let mut y = Vec::new();
-    y.resize(N, z);
+    y.resize(n, z);
 
     let mut x = Vec::new();
-    x.resize(N, y);
+    x.resize(n, y);
 
     x
 }
 
 /// Make a new 3D grid, as a nested Vec
-fn new_data() -> Arr3d {
+fn new_data(n: usize) -> Arr3d {
     let mut z = Vec::new();
-    z.resize(N, Cplx::new_zero());
+    z.resize(n, Cplx::new_zero());
     // z.resize(N, 0.);
 
     let mut y = Vec::new();
-    y.resize(N, z);
+    y.resize(n, z);
 
     let mut x = Vec::new();
-    x.resize(N, y);
+    x.resize(n, y);
 
     x
 }
@@ -98,10 +101,10 @@ pub struct Surfaces {
 impl Default for Surfaces {
     /// Fills with 0.s
     fn default() -> Self {
-        let data = new_data();
+        let data = new_data(N);
 
         Self {
-            V: new_data_real(),
+            V: new_data_real(N),
             psi: data.clone(),
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
@@ -133,6 +136,8 @@ pub struct State {
     /// Surface name
     pub surface_names: [String; NUM_SURFACES],
     pub show_surfaces: [bool; NUM_SURFACES],
+    pub grid_n: usize,
+    pub nudge_amount: f64,
 }
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
@@ -199,11 +204,11 @@ fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                let val = (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).abs_sq();
+                let val =
+                    (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).abs_sq();
                 if val < SCORE_THRESH {
                     result += val;
                 }
-
             }
         }
     }
@@ -296,7 +301,7 @@ fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
     let num_iters = 10;
 
     for _ in 0..num_iters {
-       let E_vals = linspace((E_min, E_max), vals_per_iter);
+        let E_vals = linspace((E_min, E_max), vals_per_iter);
         let mut best_score = 100_000_000.;
         let mut best_E = 0.;
 
@@ -334,14 +339,17 @@ fn nudge_wf(
     wfs: &[Basis],
     // wfs: &[SlaterOrbital],
     charges: &[(Vec3, f64)],
-    E: f64,
+    nudge_amount: &mut f64,
+    E: &mut f64,
 ) {
-    let nudge_amount = 0.00000000001;
+    let num_nudges = 20;
 
-    let num_nudges = 1;
-    let d_psi = 0.001;
+    // let nudge_width = 0.1;
 
-    let nudge_width = 0.1;
+    // Consider applying a lowpass after each nudge, and using a high nudge amount.
+    // todo: Perhaps you lowpass the diffs... Make a grid of diffs, lowpass that,
+    // todo, then nudge based on it. (?)
+    // todo: Or, analyze diff result, and dynamically adjust nudge amount.
 
     // todo: Once out of the shower, look for more you can optimize out!
 
@@ -349,125 +357,129 @@ fn nudge_wf(
 
     // todo: Variational method and perterbation theory.
 
+    // todo: Cheap lowpass for now on diff: Average it with its neighbors?
+
+    // Find E before and after the nudge.
+    find_E(sfcs, E);
+
+    // Really, the outliers are generally spiked very very high. (much higher than this)
+    // This probably occurs near the nucleus.
+    let outlier_thresh = 10_000.;
+
     let x_vals = linspace((GRID_MIN, GRID_MAX), N);
-    let y_vals = linspace((GRID_MIN, GRID_MAX), N);
-    let z_vals = linspace((GRID_MIN, GRID_MAX), N);
 
-    // todo: DRY with eval_wf
+    // We revert to this if we've nudged too far.
+    let mut psi_backup = sfcs.psi.clone();
+    let mut psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
+    let mut psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
+    let mut current_score = score_wf(sfcs, *E);
 
-    // let skip = 20;
+    // We use diff map so we can lowpass the entire map before applying corrections.
+    // let mut diff_map = new_data(N);
 
-    // for _ in 0..num_nudges {
-    for (i, x) in x_vals.iter().enumerate() {
-        // if i % skip != 0 {
-        //     continue;
-        // }
-        for (j, y) in y_vals.iter().enumerate() {
-            // if j % skip != 0 {
-            //     continue;
-            // }
-            for (k, z) in z_vals.iter().enumerate() {
-                // if k % skip != 0 {
-                //     continue;
-                // }
-                let posit_sample = Vec3::new(*x, *y, *z);
-
-                let diff = sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k];
-
-                sfcs.psi[i][j][k] -= diff * nudge_amount;
-
-                sfcs.aux1[i][j][k] = diff;
-                // todo: aux 2 should be calcing psi from this.
-
-                // let psi_fm_meas =
-                //     KE_COEFF_INV / (E - sfcs.V[i][j][k]) * sfcs.psi_pp_measured[i][j][k];
-
-                // let psi_fm_meas = if (E - sfcs.V[i][j][k]).abs() < 0.01
-                //     || sfcs.psi_pp_measured[i][j][k].abs() < 0.01
-                // {
-                //     0.
-                // } else {
-                //     sfcs.psi_pp_measured[i][j][k] * KE_COEFF_INV / (E - sfcs.V[i][j][k]);
-                // };
-
-                // let psi_fm_diff = KE_COEFF_INV / (E - sfcs.V[i][j][k]) * diff;
-                //
-                // sfcs.aux1[i][j][k] = diff;
-                //
-                // // sfcs.aux2[i][j][k] = psi_fm_meas;
-                // sfcs.aux2[i][j][k] = psi_fm_diff;
-
-                // let a = diff * nudge_amount;
-
-                // gauss.push(Gaussian {
-                //     posit: posit_sample,
-                //     a_x: a,
-                //     a_y: a,
-                //     a_z: a,
-                //     c_x: nudge_width,
-                //     c_y: nudge_width,
-                //     c_z: nudge_width,
-                // })
-            }
-        }
-        // }
-
-        let divisor = ((GRID_MAX - GRID_MIN) / N as f64).powi(2);
-
+    for _ in 0..num_nudges {
+        // for _ in 0..num_nudges {
         for (i, x) in x_vals.iter().enumerate() {
-            for (j, y) in y_vals.iter().enumerate() {
-                for (k, z) in z_vals.iter().enumerate() {
-                    let posit_sample = Vec3::new(*x, *y, *z);
+            for (j, y) in x_vals.iter().enumerate() {
+                for (k, z) in x_vals.iter().enumerate() {
+                    // let posit_sample = Vec3::new(*x, *y, *z);
 
-                    // todo: Maybe you can wrap up the psi and /or psi calc into the psi_pp_meas fn?
+                    let diff = sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k];
 
-                    // for (i_charge, (posit_charge, charge_amt)) in charges.iter().enumerate() {
-                    //     let (basis, weight) = &wfs[i_charge];
-                    //
-                    //     let wf = basis.f();
-                    //
-                    //     sfcs.psi[i][j][k] += wf(*posit_charge, posit_sample) * weight;
-                    // }
-
-                    // sfcs.psi_pp_measured[i][j][k] =
-                    //     find_psi_pp_meas(&sfcs.psi, posit_sample, wfs, charges, gauss, i, j, k);
-
-
-                    let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
-                    let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
-                    let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
-                    let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
-                    let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
-                    let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
-
-                    // let mut psi_x_prev = interp_wf(&sfcs.psi, x_prev);
-                    // let mut psi_x_next = interp_wf(&sfcs.psi, x_next);
-                    // let mut psi_y_prev = interp_wf(&sfcs.psi, y_prev);
-                    // let mut psi_y_next = interp_wf(&sfcs.psi, y_next);
-                    // let mut psi_z_prev = interp_wf(&sfcs.psi, z_prev);
-                    // let mut psi_z_next = interp_wf(&sfcs.psi, z_next);
-
-                    sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
-
-                    // todo: YOu can exit each part
-                    if i == 0 || i == N-1 || j == 0 || j == N-1 || k == 0 || k == N-1 {
-                        continue
+                    // epxerimental approach to avoid anomolies. Likely from blown-up values
+                    // near the nuclei.
+                    // if diff.mag() > outlier_thresh {
+                    if diff.real.abs() > outlier_thresh {
+                        // Cheaper than mag()
+                        // todo: Nudge amt?
+                        continue;
                     }
 
-                    let mut psi_x_prev = sfcs.psi[i-1][j][k];
-                    let mut psi_x_next = sfcs.psi[i+1][j][k];
-                    let mut psi_y_prev = sfcs.psi[i][j-1][k];
-                    let mut psi_y_next = sfcs.psi[i][j+1][k];
-                    let mut psi_z_prev = sfcs.psi[i][j][k-1];
-                    let mut psi_z_next = sfcs.psi[i][j][k+1];
+                    // diff_map[i][j][k] = diff;
 
-                    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-                        - sfcs.psi[i][j][k] * 6.;
+                    sfcs.psi[i][j][k] -= diff * *nudge_amount;
+                    sfcs.aux1[i][j][k] = diff;
+                }
+            }
 
-                    sfcs.psi_pp_measured[i][j][k] = result / divisor;
+            let divisor = ((GRID_MAX - GRID_MIN) / N as f64).powi(2);
+
+            // todo: DRY with eval_wf
+
+            for (i, x) in x_vals.iter().enumerate() {
+                if i == 0 || i == N - 1 {
+                    continue;
+                }
+                for (j, y) in x_vals.iter().enumerate() {
+                    if j == 0 || j == N - 1 {
+                        continue;
+                    }
+                    for (k, z) in x_vals.iter().enumerate() {
+                        if k == 0 || k == N - 1 {
+                            continue;
+                        }
+                        // let posit_sample = Vec3::new(*x, *y, *z);
+
+                        // todo: Maybe you can wrap up the psi and /or psi calc into the psi_pp_meas fn?
+
+                        // sfcs.psi_pp_measured[i][j][k] =
+                        //     find_psi_pp_meas(&sfcs.psi, posit_sample, wfs, charges, gauss, i, j, k);
+
+                        // let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
+                        // let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
+                        // let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
+                        // let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
+                        // let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
+                        // let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+
+                        // let mut psi_x_prev = interp_wf(&sfcs.psi, x_prev);
+                        // let mut psi_x_next = interp_wf(&sfcs.psi, x_next);
+                        // let mut psi_y_prev = interp_wf(&sfcs.psi, y_prev);
+                        // let mut psi_y_next = interp_wf(&sfcs.psi, y_next);
+                        // let mut psi_z_prev = interp_wf(&sfcs.psi, z_prev);
+                        // let mut psi_z_next = interp_wf(&sfcs.psi, z_next);
+
+                        sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, *E, i, j, k);
+
+                        let mut psi_x_prev = sfcs.psi[i - 1][j][k];
+                        let mut psi_x_next = sfcs.psi[i + 1][j][k];
+                        let mut psi_y_prev = sfcs.psi[i][j - 1][k];
+                        let mut psi_y_next = sfcs.psi[i][j + 1][k];
+                        let mut psi_z_prev = sfcs.psi[i][j][k - 1];
+                        let mut psi_z_next = sfcs.psi[i][j][k + 1];
+
+                        let result = psi_x_prev
+                            + psi_x_next
+                            + psi_y_prev
+                            + psi_y_next
+                            + psi_z_prev
+                            + psi_z_next
+                            - sfcs.psi[i][j][k] * 6.;
+
+                        sfcs.psi_pp_measured[i][j][k] = result / divisor;
+                    }
                 }
             }
         }
+        let score = score_wf(sfcs, *E);
+
+        // todo: Maybe update temp ones above instead of the main ones?
+        if score > current_score {
+            // We've nudged too much; revert.
+            *nudge_amount *= 0.7;
+            sfcs.psi = psi_backup.clone();
+            sfcs.psi_pp_calculated = psi_pp_calc_backup.clone();
+            sfcs.psi_pp_measured = psi_pp_meas_backup.clone();
+        } else {
+            // Our nudge was good; get a bit more aggressive.
+            *nudge_amount *= 1.2;
+            psi_backup = sfcs.psi.clone();
+            psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
+            psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
+            current_score = score;
+            find_E(sfcs, E);
+        }
+        // todo: Update state's score here so we don't need to explicitly after.
     }
 }
 
@@ -646,6 +658,8 @@ fn main() {
         show_surfaces,
         // grid_divisions,
         // gaussians,
+        grid_n: N,
+        nudge_amount: 0.002,
     };
 
     render::render(state);

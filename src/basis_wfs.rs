@@ -202,21 +202,45 @@ impl SphericalHarmonic {
             },
             // todo: Norm consts.
             2 => match self.m {
-                -2 => (-IM * -2. * ϕ).exp() * θ.sin().powi(2) * 0.25 * (15./(2.*PI)).sqrt(),
-                -1 => (-IM * ϕ).exp() * θ.sin() * θ.cos() * 0.5 * (15./(2.*PI)).sqrt(),
-                0 => (3. * (θ.cos().powi(2) - 1.) * 0.25 * (5./PI).sqrt()).into(),
-                1 => (IM * ϕ).exp() * θ.sin() * θ.cos() * -0.5 * (15./(2.*PI)).sqrt(),
-                2 => (IM * 2. * ϕ).exp() * θ.sin().sin().powi(2) * 0.25 * (15./(2.*PI)).sqrt(),
+                -2 => (-IM * -2. * ϕ).exp() * θ.sin().powi(2) * 0.25 * (15. / (2. * PI)).sqrt(),
+                -1 => (-IM * ϕ).exp() * θ.sin() * θ.cos() * 0.5 * (15. / (2. * PI)).sqrt(),
+                0 => (3. * (θ.cos().powi(2) - 1.) * 0.25 * (5. / PI).sqrt()).into(),
+                1 => (IM * ϕ).exp() * θ.sin() * θ.cos() * -0.5 * (15. / (2. * PI)).sqrt(),
+                2 => (IM * 2. * ϕ).exp() * θ.sin().sin().powi(2) * 0.25 * (15. / (2. * PI)).sqrt(),
                 _ => panic!("Invalid m quantum number"),
             },
             3 => match self.m {
-                -3 => (-IM * -3. * ϕ).exp() * θ.sin().powi(3) * 0.125 * (35./PI).sqrt(),
-                -2 => (-IM * -2. * ϕ).exp() * θ.sin().powi(2) * θ.cos() * 0.25 * (105./(2.*PI)).sqrt(),
-                -1 => (-IM * ϕ).exp() * θ.sin() * (5. * θ.cos().powi(2) - 1.) * 0.125 * (21./PI).sqrt(),
-                0 => (5. * θ.cos().powi(3) - 3. * θ.cos() * 0.25 * (7./PI).sqrt()).into(),
-                1 => (IM * ϕ).exp() * θ.sin() * (5. * θ.cos().powi(2) - 1.) * -0.125 * (21./PI).sqrt(),
-                2 => (IM * 2. * ϕ).exp() * θ.sin().powi(2) * θ.cos() * 0.25 * (105./(2.*PI)).sqrt(),
-                3 => (IM * 3. * ϕ).exp() * θ.sin().sin().powi(3) * -0.125 * (35./PI).sqrt(),
+                -3 => (-IM * -3. * ϕ).exp() * θ.sin().powi(3) * 0.125 * (35. / PI).sqrt(),
+                -2 => {
+                    (-IM * -2. * ϕ).exp()
+                        * θ.sin().powi(2)
+                        * θ.cos()
+                        * 0.25
+                        * (105. / (2. * PI)).sqrt()
+                }
+                -1 => {
+                    (-IM * ϕ).exp()
+                        * θ.sin()
+                        * (5. * θ.cos().powi(2) - 1.)
+                        * 0.125
+                        * (21. / PI).sqrt()
+                }
+                0 => (5. * θ.cos().powi(3) - 3. * θ.cos() * 0.25 * (7. / PI).sqrt()).into(),
+                1 => {
+                    (IM * ϕ).exp()
+                        * θ.sin()
+                        * (5. * θ.cos().powi(2) - 1.)
+                        * -0.125
+                        * (21. / PI).sqrt()
+                }
+                2 => {
+                    (IM * 2. * ϕ).exp()
+                        * θ.sin().powi(2)
+                        * θ.cos()
+                        * 0.25
+                        * (105. / (2. * PI)).sqrt()
+                }
+                3 => (IM * 3. * ϕ).exp() * θ.sin().sin().powi(3) * -0.125 * (35. / PI).sqrt(),
                 _ => panic!("Invalid m quantum number"),
             },
             _ => unimplemented!(),
