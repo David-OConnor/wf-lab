@@ -35,11 +35,11 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-const N: usize = 70;
+const N: usize = 50;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
-const H: f64 = 0.00001;
+const H: f64 = 0.0001;
 const H_SQ: f64 = H * H;
 const GRID_MIN: f64 = -3.;
 const GRID_MAX: f64 = 3.;
@@ -332,6 +332,40 @@ fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
 //     // Maybe a polynomial?
 // }
 
+/// A crude low pass
+fn smooth_array(arr: &mut Arr3d) {
+    let orig = arr.clone();
+
+    let mut smoothing_amt = 0.05;
+
+    for i in 0..N {
+        if i == 0 || i == N - 1 {
+            continue;
+        }
+        for j in 0..N {
+            if j == 0 || j == N - 1 {
+                continue;
+            }
+            for k in 0..N {
+                if k == 0 || k == N - 1 {
+                    continue;
+                }
+                let neighbor_avg = (orig[i - 1][j][k]
+                    + orig[i + 1][j][k]
+                    + orig[i][j - 1][k]
+                    + orig[i][j + 1][k]
+                    + orig[i][j][k - 1]
+                    + orig[i][j][k + 1])
+                    / 6.;
+
+                let diff_from_neighbors = neighbor_avg - arr[i][j][k];
+
+                arr[i][j][k] += diff_from_neighbors * smoothing_amt;
+            }
+        }
+    }
+}
+
 /// Apply a correction to the WF, in attempt to make our two psi''s closer.
 /// Uses our numerically-calculated WF. Updates psi, and both psi''s.
 fn nudge_wf(
@@ -342,7 +376,7 @@ fn nudge_wf(
     nudge_amount: &mut f64,
     E: &mut f64,
 ) {
-    let num_nudges = 20;
+    let num_nudges = 1;
 
     // let nudge_width = 0.1;
 
@@ -375,7 +409,9 @@ fn nudge_wf(
     let mut current_score = score_wf(sfcs, *E);
 
     // We use diff map so we can lowpass the entire map before applying corrections.
-    // let mut diff_map = new_data(N);
+    let mut diff_map = new_data(N);
+
+    let divisor = ((GRID_MAX - GRID_MIN) / N as f64).powi(2);
 
     for _ in 0..num_nudges {
         // for _ in 0..num_nudges {
@@ -395,14 +431,14 @@ fn nudge_wf(
                         continue;
                     }
 
-                    // diff_map[i][j][k] = diff;
+                    diff_map[i][j][k] = diff;
 
-                    sfcs.psi[i][j][k] -= diff * *nudge_amount;
-                    sfcs.aux1[i][j][k] = diff;
+                    // sfcs.psi[i][j][k] -= diff * *nudge_amount;
+                    // sfcs.aux1[i][j][k] = diff;
                 }
             }
 
-            let divisor = ((GRID_MAX - GRID_MIN) / N as f64).powi(2);
+            smooth_array(&mut diff_map);
 
             // todo: DRY with eval_wf
 
@@ -418,6 +454,11 @@ fn nudge_wf(
                         if k == 0 || k == N - 1 {
                             continue;
                         }
+
+                        sfcs.aux1[i][j][k] = diff_map[i][j][k]; // post smooth
+
+                        sfcs.psi[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
+
                         // let posit_sample = Vec3::new(*x, *y, *z);
 
                         // todo: Maybe you can wrap up the psi and /or psi calc into the psi_pp_meas fn?
@@ -466,7 +507,7 @@ fn nudge_wf(
         // todo: Maybe update temp ones above instead of the main ones?
         if score > current_score {
             // We've nudged too much; revert.
-            *nudge_amount *= 0.7;
+            *nudge_amount *= 0.5;
             sfcs.psi = psi_backup.clone();
             sfcs.psi_pp_calculated = psi_pp_calc_backup.clone();
             sfcs.psi_pp_measured = psi_pp_meas_backup.clone();
