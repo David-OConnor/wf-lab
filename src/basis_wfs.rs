@@ -90,6 +90,13 @@ impl Basis {
         }
     }
 
+    pub fn harmonic_mut(&mut self) -> &mut SphericalHarmonic {
+        match self {
+            Self::Sto(v) => &mut v.harmonic,
+            Self::H(v) => &mut v.harmonic,
+        }
+    }
+
     pub fn weight(&self) -> f64 {
         match self {
             Self::Sto(v) => v.weight,
@@ -163,11 +170,11 @@ impl PartialEq for Basis {
 #[derive(Clone)]
 pub struct SphericalHarmonic {
     /// The quantum number the describes orbital shape.
-    l: u16,
+    pub l: u16,
     /// The quantum number that...
-    m: i16,
+    pub m: i16,
     /// Orientation.
-    orientation: Quaternion,
+    pub orientation: Quaternion,
 }
 
 // todo: If you use a continuous range, use a struct with parameter fields
@@ -192,6 +199,7 @@ impl SphericalHarmonic {
 
         // todo: Shortcut  vars or consts for repeated patterns A/R
 
+        // println!("θ: {} ϕ: {}, l: {}, m: {}", θ, ϕ, self.l, self.m);
         match self.l {
             0 => (0.5 * (1. / PI).sqrt()).into(),
             1 => match self.m {
@@ -408,10 +416,14 @@ impl HOrbital {
 
         // let cos_theta = diff.to_normalized().dot(axis_through_lobes);
 
+        // todo: QC this; good chance it isn't right.
+        let diff_r = self.harmonic.orientation.inverse().rotate_vec(diff);
+
         // todo: QC these.
-        let θ = (diff.z / r).acos();
-        let a = diff.x / (diff.x.powi(2) + diff.y.powi(2)).sqrt(); // For legibility.
-        let ϕ = diff.y.signum() * a.acos();
+        // https://en.wikipedia.org/wiki/Spherical_coordinate_system
+        let θ = (diff_r.z / r).acos();
+        let a = diff_r.x / (diff_r.x.powi(2) + diff_r.y.powi(2)).sqrt(); // For legibility.
+        let ϕ = diff_r.y.signum() * a.acos();
 
         let angular = self.harmonic.value(θ, ϕ);
 

@@ -1,3 +1,5 @@
+use std::f64::consts::TAU;
+
 use egui::{self, Color32, RichText};
 
 use graphics::{EngineUpdates, Scene};
@@ -219,6 +221,41 @@ fn basis_fn_mixer(
 
                     *updated_wfs = true;
                 }
+
+                // For now, we use an azimuth, elevation API for orientation.
+                ui.heading("Yaw");
+
+                // todo: Not working
+                if basis.l() >= 1 && basis.weight().abs() > 0.00001 {
+                    // todo: QC!!! Your `to_euler` (and its inverse) in lin_alg lib may not be correct.
+                    let (mut pitch, mut yaw, mut roll) = basis.harmonic().orientation.to_euler(); // (Pitch, yaw, roll)
+
+                    ui.add(
+                        egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
+                            if let Some(v_) = v {
+                                yaw = v_;
+                                // phi, psi, theta??
+                                basis.harmonic_mut().orientation =
+                                    Quaternion::from_euler(pitch, yaw, roll);
+                                *updated_wfs = true;
+                            }
+
+                            yaw
+                        })
+                        .text("Yaw"),
+                    );
+                }
+                //
+                // egui::ComboBox::from_id_source(id + 5_000)
+                //     .width(30.)
+                //     .selected_text(basis.m().to_string())
+                //     .show_ui(ui, |ui| {
+                //         for i in 0.0..TAU {
+                //             ui.selectable_value(&mut az, i, i.to_string()); // todo: Float format?
+                //         }
+                //     });
+
+                // todo: If this works, do pitch and roll too.
             });
 
             // todo: Text edit or dropdown for n.
@@ -269,42 +306,6 @@ fn basis_fn_mixer(
             //     }
             //     _ => (),
             // }
-        }
-
-        ui.add_space(ITEM_SPACING);
-
-        if ui.add(egui::Button::new("Nudge WF")).clicked() {
-            crate::nudge_wf(
-                &mut state.surfaces,
-                &state.bases,
-                &state.charges,
-                &mut state.nudge_amount,
-                &mut state.E,
-            );
-
-            render::update_meshes(&state.surfaces, state.z_displayed, scene); // todo!
-            engine_updates.meshes = true;
-
-            state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
-
-            // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
-            // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
-
-            // *updated_wfs = true;
-        }
-
-        if ui.add(egui::Button::new("Find E")).clicked() {
-            crate::find_E(&mut state.surfaces, &mut state.E);
-
-            render::update_meshes(&state.surfaces, state.z_displayed, scene);
-            engine_updates.meshes = true;
-
-            state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
-
-            // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
-            // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
-
-            // *updated_wfs = true;
         }
     });
 }
@@ -374,8 +375,14 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     for i in 0..N {
                         for j in 0..N {
                             for k in 0..N {
-                                state.surfaces.psi_pp_calculated[i][j][k] =
-                                    crate::find_psi_pp_calc(&state.surfaces, state.E, i, j, k)
+                                state.surfaces.psi_pp_calculated[i][j][k] = crate::find_psi_pp_calc(
+                                    &state.surfaces.psi,
+                                    &state.surfaces.V,
+                                    state.E,
+                                    i,
+                                    j,
+                                    k,
+                                )
                             }
                         }
                     }
@@ -441,6 +448,65 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.heading("Wave functions and weights:");
 
         basis_fn_mixer(state, &mut updated_wfs, ui, &mut engine_updates, scene);
+
+        ui.add_space(ITEM_SPACING);
+
+        ui.horizontal(|ui| {
+            if ui.add(egui::Button::new("Nudge WF")).clicked() {
+                crate::nudge_wf(
+                    &mut state.surfaces,
+                    &state.bases,
+                    &state.charges,
+                    &mut state.nudge_amount,
+                    &mut state.E,
+                );
+
+                render::update_meshes(&state.surfaces, state.z_displayed, scene); // todo!
+                engine_updates.meshes = true;
+
+                state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
+
+                // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
+                // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
+
+                // *updated_wfs = true;
+            }
+
+            if ui.add(egui::Button::new("Create e- V")).clicked() {
+                // hard-coded as first item for now.
+                crate::elec_V_density_fm_psi(
+                    &state.surfaces.psi,
+                    &mut state.surfaces.elec_charges[0],
+                    1,
+                );
+
+                updated_wfs = true;
+                updated_charges = true;
+            }
+
+            if ui.add(egui::Button::new("Empty e- V")).clicked() {
+                // hard-coded as first item for now.
+                state.surfaces.elec_charges[0] = crate::new_data_real(crate::N);
+
+
+                updated_wfs = true;
+                updated_charges = true;
+            }
+
+            if ui.add(egui::Button::new("Find E")).clicked() {
+                crate::find_E(&mut state.surfaces, &mut state.E);
+
+                render::update_meshes(&state.surfaces, state.z_displayed, scene);
+                engine_updates.meshes = true;
+
+                state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
+
+                // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
+                // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
+
+                // *updated_wfs = true;
+            }
+        });
 
         if updated_wfs {
             engine_updates.meshes = true;

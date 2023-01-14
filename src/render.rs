@@ -41,10 +41,14 @@ const SURFACE_COLORS: [Color; 7] = [
 const SURFACE_SHINYNESS: f32 = 1.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
+const PSI_SCALER: f32 = 4.; // to make WF more visually significant.
+const ELEC_V_SCALER: f32 = 3_000_000.; // to make WF more visually significant.
+
 // Our meshes are defined in terms of a start point,
 // and a step. Adjust the step to center the grid at
 // the renderer's center.
-const SFC_MESH_START: f32 = -4.;
+// const SFC_MESH_START: f32 = -4.;
+const SFC_MESH_START: f32 = crate::GRID_MIN as f32; // todo: Sync graphics and atomic coords?
 const SFC_MESH_STEP: f32 = -2. * SFC_MESH_START / crate::N as f32;
 
 fn event_handler(
@@ -75,12 +79,12 @@ pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 
 }
 
 /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
-fn prepare_2d_mesh_real(surface: &crate::Arr3dReal, z_i: usize) -> Vec<Vec<f32>> {
+fn prepare_2d_mesh_real(surface: &crate::Arr3dReal, z_i: usize, scaler: f32) -> Vec<Vec<f32>> {
     let mut result = Vec::new();
     for i in 0..crate::N {
         let mut y_vec = Vec::new();
         for j in 0..crate::N {
-            y_vec.push(surface[i][j][z_i] as f32); // Convert from f64.
+            y_vec.push(surface[i][j][z_i] as f32 * scaler); // Convert from f64.
         }
         result.push(y_vec);
     }
@@ -89,13 +93,13 @@ fn prepare_2d_mesh_real(surface: &crate::Arr3dReal, z_i: usize) -> Vec<Vec<f32>>
 }
 
 /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
-fn prepare_2d_mesh(surface: &crate::Arr3d, z_i: usize) -> Vec<Vec<f32>> {
+fn prepare_2d_mesh(surface: &crate::Arr3d, z_i: usize, scaler: f32) -> Vec<Vec<f32>> {
     let mut result = Vec::new();
     for i in 0..crate::N {
         let mut y_vec = Vec::new();
         for j in 0..crate::N {
             // We are only plotting the real part for now.
-            y_vec.push(surface[i][j][z_i].real as f32); // Convert from f64.
+            y_vec.push(surface[i][j][z_i].real as f32 * scaler); // Convert from f64.
         }
         result.push(y_vec);
     }
@@ -120,7 +124,15 @@ pub fn update_meshes(
     // todo the meshes that change.
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh_real(&surfaces.V, z_i),
+        &prepare_2d_mesh_real(&surfaces.V, z_i, 1.),
+        // todo: Center! Maybe offset in entities.
+        SFC_MESH_START,
+        SFC_MESH_STEP,
+        true,
+    ));
+
+    meshes.push(Mesh::new_surface(
+        &prepare_2d_mesh(&surfaces.psi, z_i, PSI_SCALER),
         // todo: Center! Maybe offset in entities.
         SFC_MESH_START,
         SFC_MESH_STEP,
@@ -128,20 +140,27 @@ pub fn update_meshes(
     ));
 
     for sfc in [
-        &surfaces.psi,
         &surfaces.psi_pp_calculated,
         &surfaces.psi_pp_measured,
         &surfaces.aux1,
-        &surfaces.aux2,
+        // &surfaces.aux2,
     ] {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(sfc, z_i),
+            &prepare_2d_mesh(sfc, z_i, 1.),
             // todo: Center! Maybe offset in entities.
             SFC_MESH_START,
             SFC_MESH_STEP,
             true,
         ));
     }
+
+    meshes.push(Mesh::new_surface(
+        &prepare_2d_mesh_real(&surfaces.aux2, z_i, ELEC_V_SCALER),
+        // todo: Center! Maybe offset in entities.
+        SFC_MESH_START,
+        SFC_MESH_STEP,
+        true,
+    ));
 
     meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 8, 8));
 

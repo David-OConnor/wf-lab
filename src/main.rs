@@ -35,14 +35,14 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-const N: usize = 50;
+const N: usize = 80;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
 const H: f64 = 0.0001;
 const H_SQ: f64 = H * H;
-const GRID_MIN: f64 = -3.;
-const GRID_MAX: f64 = 3.;
+const GRID_MIN: f64 = -4.;
+const GRID_MAX: f64 = 4.;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -95,21 +95,25 @@ pub struct Surfaces {
     pub psi_pp_measured: Arr3d,
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3d,
-    pub aux2: Arr3d,
+    pub aux2: Arr3dReal,
+    pub elec_charges: Vec<Arr3dReal>,
 }
 
 impl Default for Surfaces {
     /// Fills with 0.s
     fn default() -> Self {
         let data = new_data(N);
+        let data_real = new_data_real(N);
 
         Self {
-            V: new_data_real(N),
+            V: data_real.clone(),
             psi: data.clone(),
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
             aux1: data.clone(),
-            aux2: data,
+            aux2: data_real.clone(),
+            // todo: For now, an empty one.
+            elec_charges: vec![data_real],
         }
     }
 }
@@ -191,6 +195,40 @@ fn wf_fidelity(sfcs: &Surfaces, E: f64) -> f64 {
     result.abs_sq()
 }
 
+/// Convert an array of Psi to one of electron potential. Modifies in place
+/// to avoid unecessary allocations.
+fn elec_V_density_fm_psi(psi: &Arr3d, V_elec: &mut Arr3dReal, num_elecs: usize) {
+    // Normalize <ψ|ψ>
+    let mut psi_sq_size = 0.;
+    for i in 0..N {
+        for j in 0..N {
+            for k in 0..N {
+                psi_sq_size += psi[i][j][k].abs_sq();
+            }
+        }
+    }
+
+    // Save computation on this constant factor.
+    let c = num_elecs as f64 / psi_sq_size;
+
+    for i in 0..N {
+        for j in 0..N {
+            for k in 0..N {
+                V_elec[i][j][k] = psi[i][j][k].abs_sq(); * c;
+            }
+        }
+    }
+}
+
+/// Convert an array of Psi to one of electron potential. Modifies in place
+/// to avoid unecessary allocations.
+fn elec_V_density_fm_psi_one(psi: &Arr3d, num_elecs: usize, i: usize, j: usize, k: usize) -> f64 {
+    // Save computation on this constant factor.
+    let c = num_elecs as f64 / N.pow(3) as f64;
+    let mag = psi[i][j][k].abs_sq();
+    mag * c
+}
+
 /// Score a wave function by comparing the least-squares sum of its measured and
 /// calculated second derivaties.
 fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
@@ -243,8 +281,8 @@ fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
 
 /// Calcualte psi'', calculated from psi, and E.
 /// At a given i, j, k.
-fn find_psi_pp_calc(sfcs: &Surfaces, E: f64, i: usize, j: usize, k: usize) -> Cplx {
-    sfcs.psi[i][j][k] * (E - sfcs.V[i][j][k]) * KE_COEFF
+fn find_psi_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
+    psi[i][j][k] * (E - V[i][j][k]) * KE_COEFF
 }
 
 /// Calcualte psi'', measured, using the finite diff method, for a single value.
@@ -309,7 +347,8 @@ fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
             for i in 0..N {
                 for j in 0..N {
                     for k in 0..N {
-                        sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(&sfcs, E_trial, i, j, k);
+                        sfcs.psi_pp_calculated[i][j][k] =
+                            find_psi_pp_calc(&sfcs.psi, &sfcs.V, E_trial, i, j, k);
                     }
                 }
             }
@@ -333,10 +372,8 @@ fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
 // }
 
 /// A crude low pass
-fn smooth_array(arr: &mut Arr3d) {
+fn smooth_array(arr: &mut Arr3d, smoothing_amt: f64) {
     let orig = arr.clone();
-
-    let mut smoothing_amt = 0.05;
 
     for i in 0..N {
         if i == 0 || i == N - 1 {
@@ -402,6 +439,9 @@ fn nudge_wf(
 
     let x_vals = linspace((GRID_MIN, GRID_MAX), N);
 
+    // todo: COnsider again if you can model how psi'' calc and measured
+    // todo react to a change in psi, and try a nudge that sends them on a collision course
+
     // We revert to this if we've nudged too far.
     let mut psi_backup = sfcs.psi.clone();
     let mut psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
@@ -411,7 +451,10 @@ fn nudge_wf(
     // We use diff map so we can lowpass the entire map before applying corrections.
     let mut diff_map = new_data(N);
 
-    let divisor = ((GRID_MAX - GRID_MIN) / N as f64).powi(2);
+    let dx = (GRID_MAX - GRID_MIN) / N as f64;
+    let divisor = (dx).powi(2);
+
+    let h = 0.0001; // todo
 
     for _ in 0..num_nudges {
         // for _ in 0..num_nudges {
@@ -421,6 +464,12 @@ fn nudge_wf(
                     // let posit_sample = Vec3::new(*x, *y, *z);
 
                     let diff = sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k];
+
+                    // let psi_pp_calc_nudged = (sfcs.psi[i][j][k] + h.into())  * (E - sfcs.V[i][j][k]) * KE_COEFF;
+                    // let psi_pp_meas_nudged = asdf
+                    //
+                    // let d_psi_pp_calc__d_psi = (psi_pp_calc_nudged - sfcs.psi_pp_calculated[i][j][k]) / h;
+                    // let d_psi_pp_meas__d_psi = (psi_pp_meas_nudged - sfcs.psi_pp_measured[i][j][k]) / h;
 
                     // epxerimental approach to avoid anomolies. Likely from blown-up values
                     // near the nuclei.
@@ -438,7 +487,7 @@ fn nudge_wf(
                 }
             }
 
-            smooth_array(&mut diff_map);
+            smooth_array(&mut diff_map, 0.4);
 
             // todo: DRY with eval_wf
 
@@ -458,6 +507,14 @@ fn nudge_wf(
                         sfcs.aux1[i][j][k] = diff_map[i][j][k]; // post smooth
 
                         sfcs.psi[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
+
+                        // todo: Experimenting with nudging neighbors too.
+                        // sfcs.psi[i-1][j][k] += diff_map[i][j][k] * *nudge_amount;
+                        // sfcs.psi[i+1][j][k] += diff_map[i][j][k] * *nudge_amount;
+                        // sfcs.psi[i][j-1][k] += diff_map[i][j][k] * *nudge_amount;
+                        // sfcs.psi[i][j+1][k] += diff_map[i][j][k] * *nudge_amount;
+                        // sfcs.psi[i][j][k-1] += diff_map[i][j][k] * *nudge_amount;
+                        // sfcs.psi[i][j][k+1] += diff_map[i][j][k] * *nudge_amount;
 
                         // let posit_sample = Vec3::new(*x, *y, *z);
 
@@ -480,7 +537,10 @@ fn nudge_wf(
                         // let mut psi_z_prev = interp_wf(&sfcs.psi, z_prev);
                         // let mut psi_z_next = interp_wf(&sfcs.psi, z_next);
 
-                        sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, *E, i, j, k);
+                        sfcs.psi_pp_calculated[i][j][k] =
+                            find_psi_pp_calc(&sfcs.psi, &sfcs.V, *E, i, j, k);
+
+                        // Don't calcualte extrapolated edge diffs; they'll be sifniciantly off from calculated.
 
                         let mut psi_x_prev = sfcs.psi[i - 1][j][k];
                         let mut psi_x_next = sfcs.psi[i + 1][j][k];
@@ -505,7 +565,9 @@ fn nudge_wf(
         let score = score_wf(sfcs, *E);
 
         // todo: Maybe update temp ones above instead of the main ones?
-        if score > current_score {
+        // if score > current_score {
+        if (score - current_score) > 0. {
+            // hacky
             // We've nudged too much; revert.
             *nudge_amount *= 0.5;
             sfcs.psi = psi_backup.clone();
@@ -562,6 +624,9 @@ fn eval_wf(
                     for (posit_charge, charge_amt) in charges.iter() {
                         sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
                     }
+
+                    // todo: Hard coded ito index 0.
+                    sfcs.V[i][j][k] += sfcs.elec_charges[0][i][j][k];
                 }
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
@@ -569,10 +634,12 @@ fn eval_wf(
                     sfcs.psi[i][j][k] += basis.value(posit_sample) * basis.weight();
                 }
 
-                sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(sfcs, E, i, j, k);
+                sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
 
                 sfcs.psi_pp_measured[i][j][k] =
                     find_psi_pp_meas(&sfcs.psi, posit_sample, bases, charges, i, j, k);
+
+                sfcs.aux2[i][j][k] = elec_V_density_fm_psi_one(&sfcs.psi, 1, i, j, k);
             }
         }
     }
