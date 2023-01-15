@@ -35,26 +35,22 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-const N: usize = 80;
+const N: usize = 100;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Too small might lead to numerical issues though (?)
 // Applies to dx, dy, and dz
-const H: f64 = 0.001;
+const H: f64 = 0.01;
 const H_SQ: f64 = H * H;
 
 // Of note, these grids need to extend beyond where the WF curves, or we get poor
 // results. I'm not sure why, but it may have to do with making sure there is
 // little curvature at the edges.
-const GRID_MIN: f64 = -7.;
-const GRID_MAX: f64 = 7.;
+// const GRID_MIN: f64 = -16.;
+// const GRID_MAX: f64 = 16.;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
-
-// For finding psi_pp_meas, using only values on the grid
-const H_GRID: f64 = (GRID_MAX - GRID_MIN) / (N as f64);
-const H_GRID_SQ: f64 = H_GRID * H_GRID;
 
 // type Arr3d = Vec<Vec<Vec<f64>>>;
 type Arr3dReal = Vec<Vec<Vec<f64>>>;
@@ -146,7 +142,13 @@ pub struct State {
     pub surface_names: [String; NUM_SURFACES],
     pub show_surfaces: [bool; NUM_SURFACES],
     pub grid_n: usize,
+    pub grid_min: f64,
+    pub grid_max: f64,
     pub nudge_amount: f64,
+    // vals for h_grid and h_grid_sq, need to be updated when grid changes. A cache.
+    // For finding psi_pp_meas, using only values on the grid
+    pub h_grid: f64,
+    pub h_grid_sq: f64,
 }
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
@@ -235,9 +237,9 @@ fn score_wf(sfcs: &Surfaces) -> f64 {
     result
 }
 
-/// Convert an array of Psi to one of electron potential. Modifies in place
+/// Convert an array of Psi to one of electron charge through space. Modifies in place
 /// to avoid unecessary allocations.
-fn elec_V_density_fm_psi(psi: &Arr3d, V_elec: &mut Arr3dReal, num_elecs: usize) {
+fn charge_density_fm_psi(psi: &Arr3d, V_elec: &mut Arr3dReal, num_elecs: usize) {
     // Normalize <ψ|ψ>
     let mut psi_sq_size = 0.;
     for i in 0..N {
@@ -261,10 +263,11 @@ fn elec_V_density_fm_psi(psi: &Arr3d, V_elec: &mut Arr3dReal, num_elecs: usize) 
 }
 
 /// Convert an array of Psi to one of electron potential. Modifies in place
-/// to avoid unecessary allocations.
-fn elec_V_density_fm_psi_one(psi: &Arr3d, num_elecs: usize, i: usize, j: usize, k: usize) -> f64 {
+/// to avoid unecessary allocations. Not-normalized.
+fn charge_density_fm_psi_one(psi: &Arr3d, num_elecs: usize, i: usize, j: usize, k: usize) -> f64 {
     // Save computation on this constant factor.
-    let c = num_elecs as f64 / N.pow(3) as f64;
+    let psi_sq_size = 1.; // todo: Wrong! This should be a normalization constant.
+    let c = -Q_ELEC * num_elecs as f64 / psi_sq_size;
     let mag = psi[i][j][k].abs_sq();
     mag * c
 }
@@ -429,6 +432,8 @@ fn nudge_wf(
     charges: &[(Vec3, f64)],
     nudge_amount: &mut f64,
     E: &mut f64,
+    grid_min: f64,
+    grid_max: f64,
 ) {
     let num_nudges = 1;
 
@@ -455,7 +460,7 @@ fn nudge_wf(
     // Keep this low to avoid numerical precision issues.
     const OUTLIER_THRESH: f64 = 10.;
 
-    let x_vals = linspace((GRID_MIN, GRID_MAX), N);
+    let x_vals = linspace((grid_min, grid_max), N);
 
     // todo: COnsider again if you can model how psi'' calc and measured
     // todo react to a change in psi, and try a nudge that sends them on a collision course
@@ -469,7 +474,7 @@ fn nudge_wf(
     // We use diff map so we can lowpass the entire map before applying corrections.
     let mut diff_map = new_data(N);
 
-    let dx = (GRID_MAX - GRID_MIN) / N as f64;
+    let dx = (grid_max - grid_min) / N as f64;
     let divisor = (dx).powi(2);
 
     let h = 0.0001; // todo
@@ -614,6 +619,8 @@ fn eval_wf(
     sfcs: &mut Surfaces,
     E: f64,
     update_charges: bool,
+    grid_min: f64,
+    grid_max: f64,
 ) {
     // output score. todo: Move score to a diff fn?
     // ) -> (Vec<(Arr3d, String)>, f64) {
@@ -624,7 +631,7 @@ fn eval_wf(
     // psi(r) = (E - V(R))^-1 * ħ**2/2m * psi(r)''
 
     // todo: Store these somewhere to save on computation? minor pt.
-    let vals_1d = linspace((GRID_MIN, GRID_MAX), N);
+    let vals_1d = linspace((grid_min, grid_max), N);
 
     // Our initial psi'' measured uses our analytic LCAO system, which doesn't have the
     // grid edge and precision issues of the fixed numerical grid we use to tune the trial
@@ -674,7 +681,7 @@ fn eval_wf(
                 sfcs.psi_pp_measured[i][j][k] =
                     find_psi_pp_meas(&sfcs.psi, posit_sample, bases, charges, i, j, k);
 
-                sfcs.aux2[i][j][k] = elec_V_density_fm_psi_one(&sfcs.psi, 1, i, j, k);
+                // sfcs.aux2[i][j][k] = charge_density_fm_psi_one(&sfcs.psi, 1, i, j, k);
             }
         }
     }
@@ -768,10 +775,14 @@ fn main() {
 
     let z_displayed = 0.;
     let E = -0.7;
+    let (grid_min, grid_max) = (-6., 6.);
+
+    let h_grid = (grid_max - grid_min) / (N as f64);
+    let h_grid_sq = h_grid.powi(2);
 
     let mut sfcs = Default::default();
 
-    eval_wf(&wfs, &charges, &mut sfcs, E, true);
+    eval_wf(&wfs, &charges, &mut sfcs, E, true, grid_min, grid_max);
 
     let psi_pp_score = score_wf(&sfcs);
 
@@ -802,7 +813,11 @@ fn main() {
         // grid_divisions,
         // gaussians,
         grid_n: N,
+        grid_min,
+        grid_max,
         nudge_amount: 0.002,
+        h_grid,
+        h_grid_sq,
     };
 
     render::render(state);

@@ -12,7 +12,7 @@ use lin_alg2::{
     f64::Vec3 as Vec3F64,
 };
 
-use crate::{State, GRID_MAX, GRID_MIN};
+use crate::State;
 
 type Color = (f32, f32, f32);
 
@@ -43,13 +43,6 @@ const CHARGE_SHINYNESS: f32 = 3.;
 
 const PSI_SCALER: f32 = 4.; // to make WF more visually significant.
 const ELEC_V_SCALER: f32 = 100_000.; // to make WF more visually significant.
-
-// Our meshes are defined in terms of a start point,
-// and a step. Adjust the step to center the grid at
-// the renderer's center.
-// const SFC_MESH_START: f32 = -4.;
-const SFC_MESH_START: f32 = crate::GRID_MIN as f32; // todo: Sync graphics and atomic coords?
-const SFC_MESH_STEP: f32 = -2. * SFC_MESH_START / crate::N as f32;
 
 fn event_handler(
     _state: &mut State,
@@ -114,9 +107,18 @@ pub fn update_meshes(
     // surfaces: &[crate::Arr3d; crate::NUM_SURFACES],
     z_displayed: f64,
     scene: &mut Scene,
+    grid_min: f64,
+    grid_max: f64,
 ) {
+    // Our meshes are defined in terms of a start point,
+    // and a step. Adjust the step to center the grid at
+    // the renderer's center.
+    // const SFC_MESH_START: f32 = -4.;
+    let sfc_mesh_start = grid_min as f32; // todo: Sync graphics and atomic coords?
+    let sfc_mesh_step: f32 = -2. * sfc_mesh_start / crate::N as f32;
+
     // `z_displayed` is a value float. Convert this to an index.
-    let z_i = map_linear(z_displayed, (GRID_MIN, GRID_MAX), (0., crate::N as f64)) as usize;
+    let z_i = map_linear(z_displayed, (grid_min, grid_max), (0., crate::N as f64)) as usize;
 
     let mut meshes = Vec::new();
 
@@ -126,16 +128,16 @@ pub fn update_meshes(
     meshes.push(Mesh::new_surface(
         &prepare_2d_mesh_real(&surfaces.V, z_i, 1.),
         // todo: Center! Maybe offset in entities.
-        SFC_MESH_START,
-        SFC_MESH_STEP,
+        sfc_mesh_start,
+        sfc_mesh_step,
         true,
     ));
 
     meshes.push(Mesh::new_surface(
         &prepare_2d_mesh(&surfaces.psi, z_i, PSI_SCALER),
         // todo: Center! Maybe offset in entities.
-        SFC_MESH_START,
-        SFC_MESH_STEP,
+        sfc_mesh_start,
+        sfc_mesh_step,
         true,
     ));
 
@@ -148,8 +150,8 @@ pub fn update_meshes(
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh(sfc, z_i, 1.),
             // todo: Center! Maybe offset in entities.
-            SFC_MESH_START,
-            SFC_MESH_STEP,
+            sfc_mesh_start,
+            sfc_mesh_step,
             true,
         ));
     }
@@ -157,8 +159,8 @@ pub fn update_meshes(
     meshes.push(Mesh::new_surface(
         &prepare_2d_mesh_real(&surfaces.aux2, z_i, ELEC_V_SCALER),
         // todo: Center! Maybe offset in entities.
-        SFC_MESH_START,
-        SFC_MESH_STEP,
+        sfc_mesh_start,
+        sfc_mesh_step,
         true,
     ));
 
@@ -255,7 +257,13 @@ pub fn render(state: State) {
         window_title: WINDOW_TITLE.to_owned(),
     };
 
-    update_meshes(&state.surfaces, state.z_displayed, &mut scene);
+    update_meshes(
+        &state.surfaces,
+        state.z_displayed,
+        &mut scene,
+        state.grid_min,
+        state.grid_max,
+    );
     update_entities(&state.charges, &state.show_surfaces, &mut scene);
 
     let input_settings = InputSettings {

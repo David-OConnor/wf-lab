@@ -23,6 +23,10 @@ const E_MAX: f64 = 0.2;
 const WEIGHT_MIN: f64 = -2.;
 const WEIGHT_MAX: f64 = 2.;
 
+// sets range of -size to +size
+const GRID_SIZE_MIN: f64 = 0.;
+const GRID_SIZE_MAX: f64 = 30.;
+
 const ITEM_SPACING: f32 = 18.;
 const FLOAT_EDIT_WIDTH: f32 = 24.;
 
@@ -358,6 +362,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         // ui.add_space(ITEM_SPACING);
 
+        let mut updated_wfs = false;
+        let mut updated_charges = false;
+
         ui.heading(format!("ψ'' score: {:.10}", state.psi_pp_score));
 
         ui.add(
@@ -390,7 +397,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // state.psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
                     state.psi_pp_score = crate::score_wf(&state.surfaces);
 
-                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
+                    render::update_meshes(
+                        &state.surfaces,
+                        state.z_displayed,
+                        scene,
+                        state.grid_min,
+                        state.grid_max,
+                    );
                     engine_updates.meshes = true;
                 }
 
@@ -401,17 +414,41 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.add(
             // -0.1 is a kludge.
-            egui::Slider::from_get_set(crate::GRID_MIN..=crate::GRID_MAX - 0.1, |v| {
+            egui::Slider::from_get_set(state.grid_min..=state.grid_max - 0.1, |v| {
                 if let Some(v_) = v {
                     state.z_displayed = v_;
                     engine_updates.meshes = true;
 
-                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
+                    render::update_meshes(
+                        &state.surfaces,
+                        state.z_displayed,
+                        scene,
+                        state.grid_min,
+                        state.grid_max,
+                    );
                 }
 
                 state.z_displayed
             })
             .text("Z slice"),
+        );
+
+        ui.add(
+            egui::Slider::from_get_set(GRID_SIZE_MIN..=GRID_SIZE_MAX, |v| {
+                if let Some(v_) = v {
+                    state.grid_min = -v_;
+                    state.grid_max = v_;
+
+                    state.h_grid = (state.grid_max - state.grid_min) / (N as f64);
+                    state.h_grid_sq = state.h_grid.powi(2);
+
+                    updated_wfs = true;
+                    updated_charges = true; // Seems to be required.
+                }
+
+                state.grid_max
+            })
+            .text("Grid range"),
         );
 
         ui.add(
@@ -427,10 +464,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             .logarithmic(true),
         );
 
-        // ui.add_space(ITEM_SPACING);
-
-        let mut updated_wfs = false;
-        let mut updated_charges = false;
+        ui.add_space(ITEM_SPACING);
 
         ui.heading("Charges:");
 
@@ -458,9 +492,17 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &state.charges,
                     &mut state.nudge_amount,
                     &mut state.E,
+                    state.grid_min,
+                    state.grid_max,
                 );
 
-                render::update_meshes(&state.surfaces, state.z_displayed, scene); // todo!
+                render::update_meshes(
+                    &state.surfaces,
+                    state.z_displayed,
+                    scene,
+                    state.grid_min,
+                    state.grid_max,
+                ); // todo!
                 engine_updates.meshes = true;
 
                 state.psi_pp_score = crate::score_wf(&state.surfaces);
@@ -473,7 +515,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             if ui.add(egui::Button::new("Create e- V")).clicked() {
                 // hard-coded as first item for now.
-                crate::elec_V_density_fm_psi(
+                crate::charge_density_fm_psi(
                     &state.surfaces.psi,
                     &mut state.surfaces.elec_charges[0],
                     1,
@@ -494,7 +536,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             if ui.add(egui::Button::new("Find E")).clicked() {
                 crate::find_E(&mut state.surfaces, &mut state.E);
 
-                render::update_meshes(&state.surfaces, state.z_displayed, scene);
+                render::update_meshes(
+                    &state.surfaces,
+                    state.z_displayed,
+                    scene,
+                    state.grid_min,
+                    state.grid_max,
+                );
                 engine_updates.meshes = true;
 
                 state.psi_pp_score = crate::score_wf(&state.surfaces);
@@ -516,11 +564,19 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.surfaces,
                 state.E,
                 updated_charges,
+                state.grid_min,
+                state.grid_max,
             );
 
             state.psi_pp_score = crate::score_wf(&state.surfaces);
 
-            render::update_meshes(&state.surfaces, state.z_displayed, scene); // todo!
+            render::update_meshes(
+                &state.surfaces,
+                state.z_displayed,
+                scene,
+                state.grid_min,
+                state.grid_max,
+            ); // todo!
         }
 
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
