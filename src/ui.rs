@@ -317,6 +317,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         .default_width(SIDE_PANEL_SIZE);
 
     panel.show(cx, |ui| {
+        engine_updates.ui_size = ui.available_width();
         ui.spacing_mut().item_spacing = egui::vec2(10.0, 12.0);
 
         // todo: Wider values on larger windows?

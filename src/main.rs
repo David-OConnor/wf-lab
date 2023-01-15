@@ -35,14 +35,19 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-const N: usize = 30;
+const N: usize = 80;
 
 // Used for calculating numerical psi''.
-// Smaller is more precise. Applies to dx, dy, and dz
-const H: f64 = 0.0001;
+// Smaller is more precise. Too small might lead to numerical issues though (?)
+// Applies to dx, dy, and dz
+const H: f64 = 0.001;
 const H_SQ: f64 = H * H;
-const GRID_MIN: f64 = -4.;
-const GRID_MAX: f64 = 4.;
+
+// Of note, these grids need to extend beyond where the WF curves, or we get poor
+// results. I'm not sure why, but it may have to do with making sure there is
+// little curvature at the edges.
+const GRID_MIN: f64 = -7.;
+const GRID_MAX: f64 = 7.;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -163,7 +168,7 @@ fn fidelity(sfcs: &Surfaces) -> f64 {
     let mut norm_calc = Cplx::new_zero();
     let mut norm_meas = Cplx::new_zero();
 
-    const SCORE_THRESH: f64 = 1_000.;
+    const SCORE_THRESH: f64 = 100.;
 
     // Create normalization const.
     for i in 0..N {
@@ -213,7 +218,7 @@ fn score_wf(sfcs: &Surfaces) -> f64 {
     // Avoids numerical precision issues. Without this, certain values of N will lead
     // to a bogus score. Values of N both too high and too low can lead to this. Likely due to
     // if a grid value is too close to a charge source, the value baloons.
-    const SCORE_THRESH: f64 = 1_000.;
+    const SCORE_THRESH: f64 = 10.;
 
     for i in 0..N {
         for j in 0..N {
@@ -292,6 +297,8 @@ fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
 /// Calcualte psi'', calculated from psi, and E.
 /// At a given i, j, k.
 fn find_psi_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
+    // todo: Do you need to multiply KE_COEFF, or part of it, by the number of electrons
+    // todo: in this WF?
     psi[i][j][k] * (E - V[i][j][k]) * KE_COEFF
 }
 
@@ -445,7 +452,8 @@ fn nudge_wf(
 
     // Really, the outliers are generally spiked very very high. (much higher than this)
     // This probably occurs near the nucleus.
-    let outlier_thresh = 10_000.;
+    // Keep this low to avoid numerical precision issues.
+    const OUTLIER_THRESH: f64 = 10.;
 
     let x_vals = linspace((GRID_MIN, GRID_MAX), N);
 
@@ -484,7 +492,7 @@ fn nudge_wf(
                     // epxerimental approach to avoid anomolies. Likely from blown-up values
                     // near the nuclei.
                     // if diff.mag() > outlier_thresh {
-                    if diff.real.abs() > outlier_thresh {
+                    if diff.real.abs() > OUTLIER_THRESH {
                         // Cheaper than mag()
                         // todo: Nudge amt?
                         continue;
