@@ -227,20 +227,18 @@ fn basis_fn_mixer(
 
                 // todo: Not working
                 if basis.l() >= 1 && basis.weight().abs() > 0.00001 {
-                    // todo: QC!!! Your `to_euler` (and its inverse) in lin_alg lib may not be correct.
-                    let (mut pitch, mut yaw, mut roll) = basis.harmonic().orientation.to_euler(); // (Pitch, yaw, roll)
+                    let mut euler = basis.harmonic().orientation.to_euler();
 
                     ui.add(
                         egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
                             if let Some(v_) = v {
-                                yaw = v_;
+                                euler.yaw = v_;
                                 // phi, psi, theta??
-                                basis.harmonic_mut().orientation =
-                                    Quaternion::from_euler(pitch, yaw, roll);
+                                basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
                                 *updated_wfs = true;
                             }
 
-                            yaw
+                            euler.yaw
                         })
                         .text("Yaw"),
                     );
@@ -389,7 +387,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                     // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
                     // state.psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
-                    state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
+                    state.psi_pp_score = crate::score_wf(&state.surfaces);
 
                     render::update_meshes(&state.surfaces, state.z_displayed, scene);
                     engine_updates.meshes = true;
@@ -464,7 +462,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 render::update_meshes(&state.surfaces, state.z_displayed, scene); // todo!
                 engine_updates.meshes = true;
 
-                state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
+                state.psi_pp_score = crate::score_wf(&state.surfaces);
 
                 // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
                 // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
@@ -488,7 +486,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // hard-coded as first item for now.
                 state.surfaces.elec_charges[0] = crate::new_data_real(crate::N);
 
-
                 updated_wfs = true;
                 updated_charges = true;
             }
@@ -499,7 +496,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 render::update_meshes(&state.surfaces, state.z_displayed, scene);
                 engine_updates.meshes = true;
 
-                state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
+                state.psi_pp_score = crate::score_wf(&state.surfaces);
 
                 // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
                 // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
@@ -520,7 +517,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 updated_charges,
             );
 
-            state.psi_pp_score = crate::score_wf(&state.surfaces, state.E);
+            state.psi_pp_score = crate::score_wf(&state.surfaces);
 
             render::update_meshes(&state.surfaces, state.z_displayed, scene); // todo!
         }

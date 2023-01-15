@@ -4,7 +4,7 @@ use core::f32::consts::TAU;
 
 use graphics::{
     self, Camera, ControlScheme, DeviceEvent, EngineUpdates, Entity, InputSettings, LightType,
-    Lighting, Mesh, PointLight, Scene, UiSettings,
+    Lighting, Mesh, PointLight, Scene, UiLayout, UiSettings,
 };
 
 use lin_alg2::{
@@ -42,7 +42,7 @@ const SURFACE_SHINYNESS: f32 = 1.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
 const PSI_SCALER: f32 = 4.; // to make WF more visually significant.
-const ELEC_V_SCALER: f32 = 3_000_000.; // to make WF more visually significant.
+const ELEC_V_SCALER: f32 = 100_000.; // to make WF more visually significant.
 
 // Our meshes are defined in terms of a start point,
 // and a step. Adjust the step to center the grid at
@@ -263,9 +263,10 @@ pub fn render(state: State) {
         ..Default::default()
     };
     let ui_settings = UiSettings {
+        layout: UiLayout::Left,
         // todo: How to handle this? For blocking keyboard and moues inputs when over the UI.
         // width: gui::UI_WIDTH as f64, // todo: Not working correctly.
-        width: 500.,
+        size: 500.,
         icon_path: None,
     };
 

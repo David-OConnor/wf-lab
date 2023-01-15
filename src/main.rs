@@ -35,7 +35,7 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-const N: usize = 80;
+const N: usize = 30;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Applies to dx, dy, and dz
@@ -147,7 +147,10 @@ pub struct State {
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
 /// This requires normalizing the wave functions we're comparing.
 /// todo: Curretly not working.
-fn wf_fidelity(sfcs: &Surfaces, E: f64) -> f64 {
+/// todo: I don't think you can use this approach comparing psi''s with fidelity, since they're
+/// todo not normalizsble.
+// fn wf_fidelity(sfcs: &Surfaces) -> f64 {
+fn fidelity(sfcs: &Surfaces) -> f64 {
     // "The accuracy should be scored by the fidelity of the wavefunction compared
     // to the true wavefunction. Fidelity is defined as |<psi_trial | psi_true >|^2.
     // For normalized states, this will always be bounded from above by 1.0. So it's
@@ -155,27 +158,29 @@ fn wf_fidelity(sfcs: &Surfaces, E: f64) -> f64 {
     // able to exactly express it.""
 
     // For normalization.
-    let mut norm_sq_calc = 0.;
-    let mut norm_sq_meas = 0.;
+    // let mut norm_sq_calc = 0.;
+    // let mut norm_sq_meas = 0.;
+    let mut norm_calc = Cplx::new_zero();
+    let mut norm_meas = Cplx::new_zero();
 
-    // todo: Dkn't allocate each time?
-    // let mut psi_fm_meas = new_data();
-
-    // todo: Should we compaer psi''s, or psi. (With a psi back-calculated
-    // from psi'' measured using the Schrodinger eq?)
+    const SCORE_THRESH: f64 = 1_000.;
 
     // Create normalization const.
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].abs_sq();
-                norm_sq_meas += sfcs.psi_pp_measured[i][j][k].abs_sq();
+                // norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].abs_sq();
+                // norm_sq_meas += sfcs.psi_pp_measured[i][j][k].abs_sq();
+                // todo: .real is temp
+                if sfcs.psi_pp_calculated[i][j][k].real.abs() < SCORE_THRESH
+                    && sfcs.psi_pp_measured[i][j][k].real.abs() < SCORE_THRESH
+                {
+                    norm_calc += sfcs.psi_pp_calculated[i][j][k];
+                    norm_meas += sfcs.psi_pp_measured[i][j][k];
+                }
             }
         }
     }
-
-    let norm_calc = norm_sq_calc.sqrt();
-    let norm_meas = norm_sq_meas.sqrt();
 
     // Now that we have both wave functions and normalized them, calculate fidelity.
     let mut result = Cplx::new_zero();
@@ -183,61 +188,32 @@ fn wf_fidelity(sfcs: &Surfaces, E: f64) -> f64 {
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                // todo: Put back etc.
-                // result += sfcs.psi_pp_calculated[i][j][k] / norm_sq_calc
-                //     * sfcs.psi_pp_calculated[i][j][k]
-                //     / norm_sq_calc;
+                // todo: .reals here may be a kludge and not working with complex psi.
+
+                // todo: LHS should be conjugated.
+                if sfcs.psi_pp_calculated[i][j][k].real.abs() < SCORE_THRESH
+                    && sfcs.psi_pp_measured[i][j][k].real.abs() < SCORE_THRESH
+                {
+                    result += sfcs.psi_pp_calculated[i][j][k] / norm_calc.real
+                        * sfcs.psi_pp_calculated[i][j][k]
+                        / norm_calc.real;
+                }
             }
         }
     }
 
-    // result.powi(2)
     result.abs_sq()
-}
-
-/// Convert an array of Psi to one of electron potential. Modifies in place
-/// to avoid unecessary allocations.
-fn elec_V_density_fm_psi(psi: &Arr3d, V_elec: &mut Arr3dReal, num_elecs: usize) {
-    // Normalize <ψ|ψ>
-    let mut psi_sq_size = 0.;
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
-                psi_sq_size += psi[i][j][k].abs_sq();
-            }
-        }
-    }
-
-    // Save computation on this constant factor.
-    let c = num_elecs as f64 / psi_sq_size;
-
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
-                V_elec[i][j][k] = psi[i][j][k].abs_sq(); * c;
-            }
-        }
-    }
-}
-
-/// Convert an array of Psi to one of electron potential. Modifies in place
-/// to avoid unecessary allocations.
-fn elec_V_density_fm_psi_one(psi: &Arr3d, num_elecs: usize, i: usize, j: usize, k: usize) -> f64 {
-    // Save computation on this constant factor.
-    let c = num_elecs as f64 / N.pow(3) as f64;
-    let mag = psi[i][j][k].abs_sq();
-    mag * c
 }
 
 /// Score a wave function by comparing the least-squares sum of its measured and
 /// calculated second derivaties.
-fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
+fn score_wf(sfcs: &Surfaces) -> f64 {
     let mut result = 0.;
 
     // Avoids numerical precision issues. Without this, certain values of N will lead
     // to a bogus score. Values of N both too high and too low can lead to this. Likely due to
     // if a grid value is too close to a charge source, the value baloons.
-    const SCORE_THRESH: f64 = 1_000_000.;
+    const SCORE_THRESH: f64 = 1_000.;
 
     for i in 0..N {
         for j in 0..N {
@@ -254,9 +230,43 @@ fn score_wf(sfcs: &Surfaces, E: f64) -> f64 {
     result
 }
 
+/// Convert an array of Psi to one of electron potential. Modifies in place
+/// to avoid unecessary allocations.
+fn elec_V_density_fm_psi(psi: &Arr3d, V_elec: &mut Arr3dReal, num_elecs: usize) {
+    // Normalize <ψ|ψ>
+    let mut psi_sq_size = 0.;
+    for i in 0..N {
+        for j in 0..N {
+            for k in 0..N {
+                psi_sq_size += psi[i][j][k].abs_sq();
+            }
+        }
+    }
+
+    // Save computation on this constant factor.
+    let c = -Q_ELEC * num_elecs as f64 / psi_sq_size;
+
+    for i in 0..N {
+        for j in 0..N {
+            for k in 0..N {
+                V_elec[i][j][k] = psi[i][j][k].abs_sq() * c;
+            }
+        }
+    }
+}
+
+/// Convert an array of Psi to one of electron potential. Modifies in place
+/// to avoid unecessary allocations.
+fn elec_V_density_fm_psi_one(psi: &Arr3d, num_elecs: usize, i: usize, j: usize, k: usize) -> f64 {
+    // Save computation on this constant factor.
+    let c = num_elecs as f64 / N.pow(3) as f64;
+    let mag = psi[i][j][k].abs_sq();
+    mag * c
+}
+
 /// Single-point Coulomb potential, eg a hydrogen nuclei.
-fn V_coulomb(posit_nuc: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
-    let diff = posit_sample - posit_nuc;
+fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
+    let diff = posit_sample - posit_charge;
     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
     -K_C * charge / r
@@ -353,7 +363,7 @@ fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
                 }
             }
 
-            let score = score_wf(sfcs, E_trial);
+            let score = score_wf(sfcs);
             if score < best_score {
                 best_score = score;
                 best_E = E_trial;
@@ -446,7 +456,7 @@ fn nudge_wf(
     let mut psi_backup = sfcs.psi.clone();
     let mut psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
     let mut psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
-    let mut current_score = score_wf(sfcs, *E);
+    let mut current_score = score_wf(sfcs);
 
     // We use diff map so we can lowpass the entire map before applying corrections.
     let mut diff_map = new_data(N);
@@ -562,7 +572,7 @@ fn nudge_wf(
                 }
             }
         }
-        let score = score_wf(sfcs, *E);
+        let score = score_wf(sfcs);
 
         // todo: Maybe update temp ones above instead of the main ones?
         // if score > current_score {
@@ -625,8 +635,25 @@ fn eval_wf(
                         sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
                     }
 
+                    // Re why the electron interaction, in many cases, appears to be very small compared to protons: After thinking about it, the protons, being point charges (approximately) are pulling from a single direction. While most of the smudged out electron gets cancelled out in the area of interest
+                    // But, it should follow that at a distance, the electsron force and potential is as strong as the proton's
+                    // (Yet, at a distance, the electron and proton charges cancel each other out largely, unless it's an ion...)
+                    // So I guess it follows that the interesting bits are in the intermediate distances...
                     // todo: Hard coded ito index 0.
-                    sfcs.V[i][j][k] += sfcs.elec_charges[0][i][j][k];
+
+                    // Oh boy... this will slow things down... Simulating a charge at every grid point.,
+                    // acting on every other grid point.
+
+                    // todo: This is going to be a deal breaker most likely.
+                    // for (i2, x2) in vals_1d.iter().enumerate() {
+                    //     for (j2, y2) in vals_1d.iter().enumerate() {
+                    //         for (k2, z2) in vals_1d.iter().enumerate() {
+                    //             let posit_sample_electron = Vec3::new(*x2, *y2, *z2);
+                    //             // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
+                    //             sfcs.V[i][j][k] += V_coulomb(posit_sample_electron, posit_sample, sfcs.elec_charges[0][i2][j2][k2]);
+                    //         }
+                    //     }
+                    // }
                 }
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
@@ -738,7 +765,7 @@ fn main() {
 
     eval_wf(&wfs, &charges, &mut sfcs, E, true);
 
-    let psi_pp_score = score_wf(&sfcs, E);
+    let psi_pp_score = score_wf(&sfcs);
 
     let show_surfaces = [true, true, true, true, false, false];
 
