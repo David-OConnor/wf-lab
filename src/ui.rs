@@ -6,7 +6,7 @@ use graphics::{EngineUpdates, Scene};
 
 // use crate::{basis_wfs::BasisFn, render, State, N};
 use crate::{
-    basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto},
+    basis_wfs::{Basis},
     render, State, N,
 };
 
@@ -25,7 +25,7 @@ const WEIGHT_MAX: f64 = 2.;
 
 // sets range of -size to +size
 const GRID_SIZE_MIN: f64 = 0.;
-const GRID_SIZE_MAX: f64 = 30.;
+const GRID_SIZE_MAX: f64 = 40.;
 
 const ITEM_SPACING: f32 = 18.;
 const FLOAT_EDIT_WIDTH: f32 = 24.;
@@ -43,6 +43,7 @@ fn text_edit_float(val: &mut f64, default: f64, ui: &mut egui::Ui) {
 /// charges that form our potential.
 fn charge_editor(
     charges: &mut Vec<(Vec3, f64)>,
+    basis_fns: &mut Vec<Basis>,
     updated_wfs: &mut bool,
     updated_charges: &mut bool,
     updated_entities: &mut bool,
@@ -67,6 +68,13 @@ fn charge_editor(
                 *updated_wfs = true;
                 *updated_charges = true;
                 *updated_entities = true;
+
+                // Updated basis centers based on the updated charge positions.
+                for basis in basis_fns.iter_mut() {
+                    if basis.charge_id() == i {
+                        *basis.posit_mut() = *posit;
+                    }
+                }
             }
 
             ui.add_space(20.);
@@ -109,8 +117,8 @@ fn basis_fn_mixer(
     state: &mut State,
     updated_wfs: &mut bool,
     ui: &mut egui::Ui,
-    engine_updates: &mut EngineUpdates,
-    scene: &mut Scene,
+    // engine_updates: &mut EngineUpdates,
+    // scene: &mut Scene,
 ) {
     // Select with charge (and its position) this basis fn is associated with.
     egui::containers::ScrollArea::vertical().show(ui, |ui| {
@@ -139,40 +147,6 @@ fn basis_fn_mixer(
                     *basis.posit_mut() = state.charges[basis.charge_id()].0;
                     *updated_wfs = true;
                 }
-
-                // let mut selected = basis;
-
-                // Maybe a basis-type enum?
-                // let mut h_basis = Basis::H(HOrbital::new(basis.posit(), basis.n(), basis.harmonic().clone(), basis.weight(), basis.charge_id()));
-                // let mut sto_basis = Basis::Sto(Sto::new(basis.posit(), basis.n(), basis.harmonic().clone(), 1.,  basis.weight(), basis.charge_id()));
-                //
-                // egui::ComboBox::from_id_source(id + 2_000)
-                //     .width(60.)
-                //     .selected_text(basis.descrip())
-                //     .show_ui(ui, |ui| {
-                //         // ui.selectable_value(&mut selected, BasisFn::H100, BasisFn::H100.descrip());
-                //         // ui.selectable_value(&mut selected, BasisFn::H200, BasisFn::H200.descrip());
-                //         // ui.selectable_value(&mut selected, BasisFn::H300, BasisFn::H300.descrip());
-                //         ui.selectable_value(
-                //             basis,
-                //             &mut h_basis,
-                //             "STO orbital"
-                //         );
-                //         ui.selectable_value(
-                //             basis,
-                //             &mut sto_basis,
-                //             "H orbital"
-                //         );
-                //         // ui.selectable_value(&mut selected, BasisFn::H211, BasisFn::H211.descrip());
-                //         // ui.selectable_value(&mut selected, BasisFn::H21M1, BasisFn::H21M1.descrip());
-                //     });
-
-                // Just comparing type, based on partialEq impl
-                // todo: Put back etc
-                // if selected != basis {
-                //     // basis = selected;
-                //     *updated_wfs = true;
-                // }
 
                 ui.heading("n:");
 
@@ -381,7 +355,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     for i in 0..N {
                         for j in 0..N {
                             for k in 0..N {
-                                state.surfaces.psi_pp_calculated[i][j][k] = crate::find_psi_pp_calc(
+                                state.surfaces.psi_pp_calculated[i][j][k] = crate::find_ψ_pp_calc(
                                     &state.surfaces.psi,
                                     &state.surfaces.V,
                                     state.E,
@@ -470,6 +444,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         charge_editor(
             &mut state.charges,
+            &mut state.bases,
             &mut updated_wfs,
             &mut updated_charges,
             &mut engine_updates.entities,
@@ -480,7 +455,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.heading("Wave functions and weights:");
 
-        basis_fn_mixer(state, &mut updated_wfs, ui, &mut engine_updates, scene);
+        // basis_fn_mixer(state, &mut updated_wfs, ui, &mut engine_updates, scene);
+        basis_fn_mixer(state, &mut updated_wfs, ui);
 
         ui.add_space(ITEM_SPACING);
 

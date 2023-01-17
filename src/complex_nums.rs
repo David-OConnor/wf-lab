@@ -53,16 +53,18 @@ impl Cplx {
         (Self::from_real(self.im.cos()) + IM * self.im.sin()) * E.powf(self.real)
     }
 
-    /// Take a power to an integer
-    pub fn powi(&self, val: u32) -> Self {
-        // todo: Better way?
-        let mut result = Self::new(1., 0.);
-        for _ in 0..val as usize {
-            result *= *self;
-        }
-
-        result
-    }
+    // /// Take a power to an integer
+    // pub fn powi(&self, val: u32) -> Self {
+    //     // todo: Better way?
+    //
+    //     let mut result = Self::new(1., 0.);
+    //
+    //     for _ in 0..val as usize {
+    //         result *= *self;
+    //     }
+    //
+    //     result
+    // }
 
     /// Multiply this value's complex conjugate by it. Is a real number.
     pub fn abs_sq(&self) -> f64 {

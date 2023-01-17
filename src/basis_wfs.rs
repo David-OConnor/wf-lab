@@ -357,10 +357,16 @@ impl HOrbital {
 
     /// Calculate the radial part of a basis function.
     /// We pass in `diff` and `r` to avoid duplicate calcs.
-    /// https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Map%3A_Inorganic_Chemistry_(Miessler_Fischer_Tarr)/02%3A_Atomic_Structure/2.02%3A_The_Schrodinger_equation_particle_in_a_box_and_atomic_wavefunctions/2.2.02%3A_Quantum_Numbers_and_Atomic_Wave_Functions
+    /// https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Map%3A_Inorganic_Chemistry_(Miessler_Fischer_Tarr)/
+    /// 02%3A_Atomic_Structure/2.02%3A_The_Schrodinger_equation_particle_in_a_box_and_atomic_wavefunctions/2.2.02%3A_Quantum_Numbers_and_Atomic_Wave_Functions
+    ///
+    /// todo: That link above has errors! Ref this:
+    /// https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Map%3A_Physical_Chemistry_for_the_Biosciences_(Chang)/11%3A_Quantum_Mechanics_and_Atomic_Structure/11.10%3A_The_Schrodinger_Wave_Equation_for_the_Hydrogen_Atom
     fn radial(&self, r: f64, l: u16) -> f64 {
         // N is the normalization constant for the radial part
-        let ρ = Z_H * r / (self.n as f64 * A_0);
+        let c = Z_H * r / (self.n as f64 * A_0);
+
+        let ρ = Z_H * r / A_0;
 
         // Z is the charge of the nucleus.
 
@@ -371,40 +377,42 @@ impl HOrbital {
         let part1 = match self.n {
             1 => 2. * (Z_H / A_0).powf(3. / 2.),
             2 => match l {
-                0 => 2. * (Z_H / (2. * A_0)).powf(3. / 2.) * (2. - Z_H * r / A_0),
+                0 => 2. * (Z_H / (2. * A_0)).powf(3. / 2.) * (2. - ρ),
                 1 => 1. / 3.0_f64.sqrt() * (Z_H / (3. * A_0)).powf(3. / 2.) * (Z_H * r / A_0),
                 _ => panic!(),
             },
+            // compare to this: https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Map%3A_Physical_Chemistry_for_the_Biosciences_(Chang)/11%3A_Quantum_Mechanics_and_Atomic_Structure/11.10%3A_The_Schrodinger_Wave_Equation_for_the_Hydrogen_Atom
             3 => match l {
                 0 => {
                     2. / 27.
                         * (Z_H / (3. * A_0)).powf(3. / 2.)
-                        * (27. - 18. * Z_H * r / A_0 - 2. * (Z_H * r / A_0).powi(2))
+                        * (27. - 18. * ρ + 2. * ρ.powi(2)) // todo + 2. or -
+                        // * (27. - 18. * ρ - 2. * ρ.powi(2)) // todo + 2. or -
                 }
                 1 => {
                     1. / (81. * 3.0_f64.sqrt())
                         * (2. * Z_H / A_0).powf(3. / 2.)
                         * (6. - Z_H * r / A_0)
-                        * (Z_H * r / A_0)
+                        * ρ
                 }
                 2 => {
                     1. / (81. * 15.0_f64.sqrt())
                         * (2. * Z_H / A_0).powf(3. / 2.)
-                        * (Z_H * r / A_0).powi(2)
+                        * ρ.powi(2)
                 }
                 _ => panic!(),
             },
             _ => unimplemented!(), // todo: More
         };
 
-        part1 * (-ρ).exp()
+        part1 * (-c).exp()
     }
 
     /// Calculate this basis function's value at a given point.
     /// Does not include weight.
     /// https://quantummechanics.ucsd.edu/ph130a/130_notes/node233.html
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
-        const EPS: f64 = 0.00001;
+        const EPS: f64 = 0.0001;
         if self.weight.abs() < EPS {
             return Cplx::new_zero(); // saves some computation.
         }
@@ -418,12 +426,21 @@ impl HOrbital {
 
         // todo: QC this; good chance it isn't right.
         let diff_r = self.harmonic.orientation.inverse().rotate_vec(diff);
+        // todo t
+        // let diff_r = diff;
 
         // todo: QC these.
         // https://en.wikipedia.org/wiki/Spherical_coordinate_system
-        let θ = (diff_r.z / r).acos();
-        let a = diff_r.x / (diff_r.x.powi(2) + diff_r.y.powi(2)).sqrt(); // For legibility.
-        let ϕ = diff_r.y.signum() * a.acos();
+        // let θ = (diff_r.z / r).acos();
+        // let a = diff_r.x / (diff_r.x.powi(2) + diff_r.y.powi(2)).sqrt(); // For legibility.
+        // let ϕ = diff_r.y.signum() * a.acos();
+
+        // todo: Looks like the diff between above and below is which coord is which.
+        // todo: They're also in different forms.
+
+        // alt take from https://keisan.casio.com/exec/system/1359533867:
+        let θ = diff_r.y.atan2(diff_r.x);
+        let ϕ = (diff_r.x.powi(2) + diff_r.y.powi(2)).sqrt().atan2(diff_r.z);
 
         let angular = self.harmonic.value(θ, ϕ);
 

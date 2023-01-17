@@ -35,7 +35,7 @@ const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-const N: usize = 100;
+const N: usize = 50;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Too small might lead to numerical issues though (?)
@@ -225,6 +225,8 @@ fn score_wf(sfcs: &Surfaces) -> f64 {
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
+                // todo: Check if either individual is outside a thresh?
+
                 let val =
                     (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).abs_sq();
                 if val < SCORE_THRESH {
@@ -299,14 +301,14 @@ fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
 
 /// Calcualte psi'', calculated from psi, and E.
 /// At a given i, j, k.
-fn find_psi_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
+fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
     // todo: Do you need to multiply KE_COEFF, or part of it, by the number of electrons
     // todo: in this WF?
     psi[i][j][k] * (E - V[i][j][k]) * KE_COEFF
 }
 
-/// Calcualte psi'', measured, using the finite diff method, for a single value.
-fn find_psi_pp_meas(
+/// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.
+fn find_ψ_pp_meas(
     psi: &Arr3d,
     posit_sample: Vec3,
     bases: &[Basis],
@@ -315,7 +317,7 @@ fn find_psi_pp_meas(
     j: usize,
     k: usize,
 ) -> Cplx {
-    // Calculate psi'' based on a numerical derivative of psi
+    // Calculate ψ'' based on a numerical derivative of psi
     // in 3D.
 
     let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
@@ -368,7 +370,7 @@ fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
                 for j in 0..N {
                     for k in 0..N {
                         sfcs.psi_pp_calculated[i][j][k] =
-                            find_psi_pp_calc(&sfcs.psi, &sfcs.V, E_trial, i, j, k);
+                            find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E_trial, i, j, k);
                     }
                 }
             }
@@ -561,7 +563,7 @@ fn nudge_wf(
                         // let mut psi_z_next = interp_wf(&sfcs.psi, z_next);
 
                         sfcs.psi_pp_calculated[i][j][k] =
-                            find_psi_pp_calc(&sfcs.psi, &sfcs.V, *E, i, j, k);
+                            find_ψ_pp_calc(&sfcs.psi, &sfcs.V, *E, i, j, k);
 
                         // Don't calcualte extrapolated edge diffs; they'll be sifniciantly off from calculated.
 
@@ -676,10 +678,10 @@ fn eval_wf(
                     sfcs.psi[i][j][k] += basis.value(posit_sample) * basis.weight();
                 }
 
-                sfcs.psi_pp_calculated[i][j][k] = find_psi_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
+                sfcs.psi_pp_calculated[i][j][k] = find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
 
                 sfcs.psi_pp_measured[i][j][k] =
-                    find_psi_pp_meas(&sfcs.psi, posit_sample, bases, charges, i, j, k);
+                    find_ψ_pp_meas(&sfcs.psi, posit_sample, bases, charges, i, j, k);
 
                 // sfcs.aux2[i][j][k] = charge_density_fm_psi_one(&sfcs.psi, 1, i, j, k);
             }
