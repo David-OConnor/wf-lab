@@ -5,16 +5,14 @@ use egui::{self, Color32, RichText};
 use graphics::{EngineUpdates, Scene};
 
 // use crate::{basis_wfs::BasisFn, render, State, N};
-use crate::{
-    basis_wfs::{Basis},
-    render, State, N,
-};
+use crate::{basis_wfs::Basis, render, State, N};
 
-use lin_alg2::f64::{Quaternion, Vec3};
+use lin_alg2::f64::{EulerAngle, Quaternion, Vec3};
 
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 260.;
+const SLIDER_WIDTH_ORIENTATION: f32 = 100.;
 
 const E_MIN: f64 = -1.2;
 const E_MAX: f64 = 0.2;
@@ -124,6 +122,8 @@ fn basis_fn_mixer(
     egui::containers::ScrollArea::vertical().show(ui, |ui| {
         for (id, basis) in state.bases.iter_mut().enumerate() {
             ui.horizontal(|ui| {
+                ui.spacing_mut().slider_width = SLIDER_WIDTH_ORIENTATION; // Only affects sliders in this section.
+
                 // `prev...` is to check if it changed below.
                 let prev_charge_id = basis.charge_id();
 
@@ -201,37 +201,49 @@ fn basis_fn_mixer(
                 }
 
                 // For now, we use an azimuth, elevation API for orientation.
-                ui.heading("Yaw");
-
                 // todo: Not working
                 if basis.l() >= 1 && basis.weight().abs() > 0.00001 {
                     let mut euler = basis.harmonic().orientation.to_euler();
 
+                    // todo: DRY between the 3.
                     ui.add(
-                        egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
+                        // Offsets are to avoid gimball lock.
+                        egui::Slider::from_get_set(-TAU/4.0 + 0.001..=TAU/4.0 - 0.001, |v| {
+                            if let Some(v_) = v {
+                                euler.pitch = v_;
+                                basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
+                                *updated_wfs = true;
+                            }
+
+                            euler.pitch
+                        })
+                        .text("P"),
+                    );
+                    ui.add(
+                        egui::Slider::from_get_set(-TAU/2.0..=TAU/2.0, |v| {
+                            if let Some(v_) = v {
+                                euler.roll = v_;
+                                basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
+                                *updated_wfs = true;
+                            }
+
+                            euler.roll
+                        })
+                        .text("R"),
+                    );
+                    ui.add(
+                        egui::Slider::from_get_set(0.0..=TAU, |v| {
                             if let Some(v_) = v {
                                 euler.yaw = v_;
-                                // phi, psi, theta??
                                 basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
                                 *updated_wfs = true;
                             }
 
                             euler.yaw
                         })
-                        .text("Yaw"),
+                        .text("Y"),
                     );
                 }
-                //
-                // egui::ComboBox::from_id_source(id + 5_000)
-                //     .width(30.)
-                //     .selected_text(basis.m().to_string())
-                //     .show_ui(ui, |ui| {
-                //         for i in 0.0..TAU {
-                //             ui.selectable_value(&mut az, i, i.to_string()); // todo: Float format?
-                //         }
-                //     });
-
-                // todo: If this works, do pitch and roll too.
             });
 
             // todo: Text edit or dropdown for n.
@@ -400,6 +412,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         state.grid_min,
                         state.grid_max,
                     );
+
+                    // println!("A: {:?}", state.surfaces.psi[25][25][24]);
+                    // println!("B: {:?}", state.surfaces.psi[25][25][23]);
+                    // println!("C: {:?}", state.surfaces.psi[25][25][22]);
+                    // println!("D: {:?}", state.surfaces.psi[25][25][21]);
+                    // println!("E: {:?}", state.surfaces.psi[25][25][20]);
+                    // println!("F: {:?}\n", state.surfaces.psi[25][25][19]);
                 }
 
                 state.z_displayed

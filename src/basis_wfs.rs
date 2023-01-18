@@ -364,48 +364,38 @@ impl HOrbital {
     /// https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Map%3A_Physical_Chemistry_for_the_Biosciences_(Chang)/11%3A_Quantum_Mechanics_and_Atomic_Structure/11.10%3A_The_Schrodinger_Wave_Equation_for_the_Hydrogen_Atom
     fn radial(&self, r: f64, l: u16) -> f64 {
         // N is the normalization constant for the radial part
-        let c = Z_H * r / (self.n as f64 * A_0);
-
         let ρ = Z_H * r / A_0;
+
+        let c = (Z_H * A_0).powf(3. / 2.);
 
         // Z is the charge of the nucleus.
 
         // function to solve for any n and l?
         // https://bingweb.binghamton.edu/~suzuki/QuantumMechanicsII/4-3_Radial-wave_function.pdf
 
+        // todo: If this is correct, you can factor out (ZH/AO)^3/2 into its own part
+
         // todo: More abstractions based on rules?
         let part1 = match self.n {
-            1 => 2. * (Z_H / A_0).powf(3. / 2.),
+            1 => 2.,
             2 => match l {
-                0 => 2. * (Z_H / (2. * A_0)).powf(3. / 2.) * (2. - ρ),
-                1 => 1. / 3.0_f64.sqrt() * (Z_H / (3. * A_0)).powf(3. / 2.) * (Z_H * r / A_0),
+                0 => 2. * (2. - ρ),           // todo: z/a0 vice / 2a0?
+                1 => 1. / 3.0_f64.sqrt() * ρ, // z/a0 vs /3a0?
                 _ => panic!(),
             },
             // compare to this: https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Map%3A_Physical_Chemistry_for_the_Biosciences_(Chang)/11%3A_Quantum_Mechanics_and_Atomic_Structure/11.10%3A_The_Schrodinger_Wave_Equation_for_the_Hydrogen_Atom
             3 => match l {
-                0 => {
-                    2. / 27.
-                        * (Z_H / (3. * A_0)).powf(3. / 2.)
-                        * (27. - 18. * ρ + 2. * ρ.powi(2)) // todo + 2. or -
-                        // * (27. - 18. * ρ - 2. * ρ.powi(2)) // todo + 2. or -
-                }
-                1 => {
-                    1. / (81. * 3.0_f64.sqrt())
-                        * (2. * Z_H / A_0).powf(3. / 2.)
-                        * (6. - Z_H * r / A_0)
-                        * ρ
-                }
-                2 => {
-                    1. / (81. * 15.0_f64.sqrt())
-                        * (2. * Z_H / A_0).powf(3. / 2.)
-                        * ρ.powi(2)
-                }
+                0 => 2. / 27. * (27. - 18. * ρ + 2. * ρ.powi(2)),
+                1 => 1. / (81. * 3.0_f64.sqrt()) * (6. - ρ.powi(2)),
+                2 => 1. / (81. * 15.0_f64.sqrt()) * ρ.powi(2),
                 _ => panic!(),
             },
             _ => unimplemented!(), // todo: More
         };
 
-        part1 * (-c).exp()
+        let part2 = (-ρ / self.n as f64).exp();
+
+        part1 * part2 * c
     }
 
     /// Calculate this basis function's value at a given point.
@@ -438,57 +428,24 @@ impl HOrbital {
         // todo: Looks like the diff between above and below is which coord is which.
         // todo: They're also in different forms.
 
+        // Alternative formulations using acos etc can result in NaNs.
+
         // alt take from https://keisan.casio.com/exec/system/1359533867:
-        let θ = diff_r.y.atan2(diff_r.x);
-        let ϕ = (diff_r.x.powi(2) + diff_r.y.powi(2)).sqrt().atan2(diff_r.z);
+        // let θ = diff_r.y.atan2(diff_r.x);
+        // let ϕ = (diff_r.x.powi(2) + diff_r.y.powi(2)).sqrt().atan2(diff_r.z);
+
+        let ϕ = diff_r.y.atan2(diff_r.x);
+        let θ = (diff_r.x.powi(2) + diff_r.y.powi(2)).sqrt().atan2(diff_r.z);
+
+        // The rub: θ = NaN!!!
 
         let angular = self.harmonic.value(θ, ϕ);
+
+        if angular.real.is_nan() {
+            println!("θ: {}, ϕ: {}", θ, ϕ);
+        }
 
         // Normalization consts are applied to radial and angular parts separately.
         Cplx::from_real(radial) * angular
     }
 }
-
-// /// A Slater-Type Orbital (STO). Includes a `n`: The quantum number; the effective
-// /// charge slater exponent (ζ) may be used to simulate "effective charge", which
-// /// can represent "electron shielding".(?)
-// /// todo: Update to include angular part
-// pub fn slater(
-//     posit_nuc: Vec3,
-//     posit_sample: Vec3,
-//     n: u16,
-//     eff_charge: f64,
-//     harmonic: SphericalHarmonic,
-//     orientation: Quaternion,
-// ) -> f64 {
-//     let diff = posit_sample - posit_nuc;
-//     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
-
-//     // todo: Update the normalization constant based on n!
-
-//     // todo: Find formula for N, and confirm the one here is even correct.
-//     let N = (slater_exp.powi(3) / PI).sqrt(); // todo: Update base on n.
-//     let radial = N * r.powi(n - 1) * (-eff_charge * r).exp();
-
-//     let angular = 0.;
-
-//     radial * angular
-// }
-
-// /// A basis function for hydrogen orbitals. Can be used to represent any
-// /// H basis function.
-// pub fn h_basis(
-//     posit_nuc: Vec3,
-//     posit_sample: Vec3,
-//     n: u32,
-//     harmonic: SphericalHarmonic,
-//     orientation: Quaternion,
-// ) -> f64 {
-//     let diff = posit_sample - posit_nuc;
-//     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
-
-//     let cos_theta = diff.to_normalized().dot(axis_through_lobes);
-
-//     let ρ = Z_H * r / A_0;
-//     1. / (32. * PI).sqrt() * (Z_H / A_0).powf(3. / 2.) * ρ * (-ρ / 2.).exp() * cos_theta
-// }
