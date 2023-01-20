@@ -106,8 +106,8 @@ pub struct Surfaces {
     /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
     /// between psi'' measured and calcualted, which is complex.
     pub nudge_amounts: Arr3dReal,
-    /// Used to revert values back after nudging.
-    pub psi_prev: Arr3d,
+    // /// Used to revert values back after nudging.
+    // pub psi_prev: Arr3d, // todo: Probably
     /// Electric charge at each point in space. Probably will be unused
     /// todo going forward, since this is *very* computationally intensive
     pub elec_charges: Vec<Arr3dReal>,
@@ -136,7 +136,7 @@ impl Default for Surfaces {
             aux1: data.clone(),
             aux2: data_real.clone(),
             nudge_amounts: default_nudges,
-            psi_prev: data.clone(),
+            // psi_prev: data.clone(),
             elec_charges: vec![data_real.clone()],
         }
     }
@@ -485,7 +485,7 @@ fn nudge_wf(
     // Keep this low to avoid numerical precision issues.
     const OUTLIER_THRESH: f64 = 10.;
 
-    let x_vals = linspace((grid_min, grid_max), N);
+    // let x_vals = linspace((grid_min, grid_max), N);
 
     // todo: COnsider again if you can model how psi'' calc and measured
     // todo react to a change in psi, and try a nudge that sends them on a collision course
@@ -505,10 +505,18 @@ fn nudge_wf(
     // let h = 0.0001; // todo
 
     for _ in 0..num_nudges {
+        // let mut diff_pre_smooth = new_data(N); // todo experimenting
+
         // for _ in 0..num_nudges {
-        for (i, x) in x_vals.iter().enumerate() {
-            for (j, y) in x_vals.iter().enumerate() {
-                for (k, z) in x_vals.iter().enumerate() {
+        // for (i, x) in x_vals.iter().enumerate() {
+        //     for (j, y) in x_vals.iter().enumerate() {
+        //         for (k, z) in x_vals.iter().enumerate() {
+
+        for i in 0..N {
+            for j in 0..N {
+                for k in 0..N {
+                    // }
+                    // }
                     // let posit_sample = Vec3::new(*x, *y, *z);
 
                     let diff = sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k];
@@ -530,106 +538,76 @@ fn nudge_wf(
 
                     diff_map[i][j][k] = diff;
                 }
-            }
+                // }
+            } // todo: COmmenting this out, and adding one towards the bottom makes a dramatic improvement
+              // todo, but why??!
 
+            // Note: It turns out smoothing makes a big difference, as does the smoothing coefficient.
+            // diff_pre_smooth = diff_map.clone();
             smooth_array(&mut diff_map, 0.4);
 
-            // todo: DRY with eval_wf
+            sfcs.aux1 = diff_map.clone();
 
-            for (i, x) in x_vals.iter().enumerate() {
-                for (j, y) in x_vals.iter().enumerate() {
-                    for (k, z) in x_vals.iter().enumerate() {
-                        sfcs.aux1[i][j][k] = diff_map[i][j][k]; // post smooth
-
+            for i in 0..N {
+                for j in 0..N {
+                    for k in 0..N {
                         // sfcs.psi[i][j][k] -= diff_map[i][j][k] * sfcs.nudge_amounts[i][j][k];
                         sfcs.psi[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
-                        // todo: Experimenting with nudging neighbors too.
-                        // sfcs.psi[i-1][j][k] += diff_map[i][j][k] * *nudge_amount;
-                        // sfcs.psi[i+1][j][k] += diff_map[i][j][k] * *nudge_amount;
-                        // sfcs.psi[i][j-1][k] += diff_map[i][j][k] * *nudge_amount;
-                        // sfcs.psi[i][j+1][k] += diff_map[i][j][k] * *nudge_amount;
-                        // sfcs.psi[i][j][k-1] += diff_map[i][j][k] * *nudge_amount;
-                        // sfcs.psi[i][j][k+1] += diff_map[i][j][k] * *nudge_amount;
-
-                        // let posit_sample = Vec3::new(*x, *y, *z);
-
-                        // todo: Maybe you can wrap up the psi and /or psi calc into the psi_pp_meas fn?
-
-                        // sfcs.psi_pp_measured[i][j][k] =
-                        //     find_psi_pp_meas(&sfcs.psi, posit_sample, wfs, charges, gauss, i, j, k);
-
-                        // let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
-                        // let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
-                        // let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
-                        // let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
-                        // let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
-                        // let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
-
-                        // let mut psi_x_prev = interp_wf(&sfcs.psi, x_prev);
-                        // let mut psi_x_next = interp_wf(&sfcs.psi, x_next);
-                        // let mut psi_y_prev = interp_wf(&sfcs.psi, y_prev);
-                        // let mut psi_y_next = interp_wf(&sfcs.psi, y_next);
-                        // let mut psi_z_prev = interp_wf(&sfcs.psi, z_prev);
-                        // let mut psi_z_next = interp_wf(&sfcs.psi, z_next);
-
                         sfcs.psi_pp_calculated[i][j][k] =
                             find_ψ_pp_calc(&sfcs.psi, &sfcs.V, *E, i, j, k);
-
-                        // Don't calcualte extrapolated edge diffs; they'll be sifniciantly off from calculated.
-
-                        // let mut psi_x_prev = sfcs.psi[i - 1][j][k];
-                        // let mut psi_x_next = sfcs.psi[i + 1][j][k];
-                        // let mut psi_y_prev = sfcs.psi[i][j - 1][k];
-                        // let mut psi_y_next = sfcs.psi[i][j + 1][k];
-                        // let mut psi_z_prev = sfcs.psi[i][j][k - 1];
-                        // let mut psi_z_next = sfcs.psi[i][j][k + 1];
-                        //
-                        // let finite_diff = psi_x_prev
-                        //     + psi_x_next
-                        //     + psi_y_prev
-                        //     + psi_y_next
-                        //     + psi_z_prev
-                        //     + psi_z_next
-                        //     - sfcs.psi[i][j][k] * 6.;
-                        //
-                        // sfcs.psi_pp_measured[i][j][k] = finite_diff / divisor;
                     }
-                }
-            }
-        }
-
-        // Calculated psi'' measured in a separate loop after updating psi, since it depends on
-        // neighboring psi values as well.
-        for i in 0..N {
-            if i == 0 || i == N - 1 {
-                continue;
+                } //todo: Commenting this out and closing the loop after the first i helps a lot. Why?
+                  // }
             }
 
-            for j in 0..N {
-                if j == 0 || j == N - 1 {
+            // Calculated psi'' measured in a separate loop after updating psi, since it depends on
+            // neighboring psi values as well.
+            for i in 0..N {
+                if i == 0 || i == N - 1 {
                     continue;
                 }
 
-                for k in 0..N {
-                    if k == 0 || k == N - 1 {
+                for j in 0..N {
+                    if j == 0 || j == N - 1 {
                         continue;
                     }
 
-                    let mut psi_x_prev = sfcs.psi[i - 1][j][k];
-                    let mut psi_x_next = sfcs.psi[i + 1][j][k];
-                    let mut psi_y_prev = sfcs.psi[i][j - 1][k];
-                    let mut psi_y_next = sfcs.psi[i][j + 1][k];
-                    let mut psi_z_prev = sfcs.psi[i][j][k - 1];
-                    let mut psi_z_next = sfcs.psi[i][j][k + 1];
+                    for k in 0..N {
+                        if k == 0 || k == N - 1 {
+                            continue;
+                        }
 
-                    let finite_diff =
-                        psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+                        let mut psi_x_prev = sfcs.psi[i - 1][j][k];
+                        let mut psi_x_next = sfcs.psi[i + 1][j][k];
+                        let mut psi_y_prev = sfcs.psi[i][j - 1][k];
+                        let mut psi_y_next = sfcs.psi[i][j + 1][k];
+                        let mut psi_z_prev = sfcs.psi[i][j][k - 1];
+                        let mut psi_z_next = sfcs.psi[i][j][k + 1];
+
+                        let finite_diff = psi_x_prev
+                            + psi_x_next
+                            + psi_y_prev
+                            + psi_y_next
+                            + psi_z_prev
+                            + psi_z_next
                             - sfcs.psi[i][j][k] * 6.;
 
-                    sfcs.psi_pp_measured[i][j][k] = finite_diff / divisor;
+                        sfcs.psi_pp_measured[i][j][k] = finite_diff / divisor;
 
-                    // todo: Update nudge amounts here a/r
+                        // Compare smoothed, or pre-smoothed diffs?
+                        // if diff_pre_smooth[i][k][k].abs_sq() < sfcs.aux1[i][j][k].abs_sq() {
+                        //     sfcs.nudge_amounts[i][k][k] *= 1.2;
+                        // } else {
+                        //     sfcs.nudge_amounts[i][k][k] *= 0.5;
+                        //     sfcs.psi[i][j][k] = psi_backup[i][j][k];
+                        // }
+                        //
+                        // // sfcs.aux1[i][j][k] = diff_map[i][j][k]; // post smooth
+                        // sfcs.aux1[i][j][k] = diff_pre_smooth[i][j][k]; // post smooth
+
+                        // todo: Update nudge amounts here a/r
+                    }
                 }
             }
         }
