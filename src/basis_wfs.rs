@@ -414,10 +414,7 @@ impl HOrbital {
 
         // let cos_theta = diff.to_normalized().dot(axis_through_lobes);
 
-        // todo: QC this; good chance it isn't right.
         let diff_r = self.harmonic.orientation.inverse().rotate_vec(diff);
-        // todo t
-        // let diff_r = diff;
 
         // todo: QC these.
         // https://en.wikipedia.org/wiki/Spherical_coordinate_system

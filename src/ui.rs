@@ -28,6 +28,9 @@ const GRID_SIZE_MAX: f64 = 40.;
 const ITEM_SPACING: f32 = 18.;
 const FLOAT_EDIT_WIDTH: f32 = 24.;
 
+const NUDGE_MIN: f64 = 0.;
+const NUDGE_MAX: f64 = 0.2;
+
 fn text_edit_float(val: &mut f64, default: f64, ui: &mut egui::Ui) {
     let mut entry = val.to_string();
 
@@ -208,7 +211,7 @@ fn basis_fn_mixer(
                     // todo: DRY between the 3.
                     ui.add(
                         // Offsets are to avoid gimball lock.
-                        egui::Slider::from_get_set(-TAU/4.0 + 0.001..=TAU/4.0 - 0.001, |v| {
+                        egui::Slider::from_get_set(-TAU / 4.0 + 0.001..=TAU / 4.0 - 0.001, |v| {
                             if let Some(v_) = v {
                                 euler.pitch = v_;
                                 basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
@@ -220,7 +223,7 @@ fn basis_fn_mixer(
                         .text("P"),
                     );
                     ui.add(
-                        egui::Slider::from_get_set(-TAU/2.0..=TAU/2.0, |v| {
+                        egui::Slider::from_get_set(-TAU / 2.0..=TAU / 2.0, |v| {
                             if let Some(v_) = v {
                                 euler.roll = v_;
                                 basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
@@ -446,7 +449,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.add(
             // -0.1 is a kludge.
-            egui::Slider::from_get_set(0.0..=0.1, |v| {
+            egui::Slider::from_get_set(NUDGE_MIN..=NUDGE_MAX, |v| {
                 if let Some(v_) = v {
                     state.nudge_amount = v_;
                 }

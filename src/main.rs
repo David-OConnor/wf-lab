@@ -43,6 +43,12 @@ const N: usize = 50;
 const H: f64 = 0.01;
 const H_SQ: f64 = H * H;
 
+const NUDGE_DEFAULT: f64 = 0.01;
+// const NUDGE_DEFAULT2: Cplx = Cplx {
+//     real: 0.002,
+//     im: 0.002,
+// };
+
 // Of note, these grids need to extend beyond where the WF curves, or we get poor
 // results. I'm not sure why, but it may have to do with making sure there is
 // little curvature at the edges.
@@ -97,6 +103,13 @@ pub struct Surfaces {
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3d,
     pub aux2: Arr3dReal,
+    /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
+    /// between psi'' measured and calcualted, which is complex.
+    pub nudge_amounts: Arr3dReal,
+    /// Used to revert values back after nudging.
+    pub psi_prev: Arr3d,
+    /// Electric charge at each point in space. Probably will be unused
+    /// todo going forward, since this is *very* computationally intensive
     pub elec_charges: Vec<Arr3dReal>,
 }
 
@@ -106,6 +119,15 @@ impl Default for Surfaces {
         let data = new_data(N);
         let data_real = new_data_real(N);
 
+        let mut default_nudges = data_real.clone();
+        for i in 0..N {
+            for j in 0..N {
+                for k in 0..N {
+                    default_nudges[i][j][k] = NUDGE_DEFAULT;
+                }
+            }
+        }
+
         Self {
             V: data_real.clone(),
             psi: data.clone(),
@@ -113,8 +135,9 @@ impl Default for Surfaces {
             psi_pp_measured: data.clone(),
             aux1: data.clone(),
             aux2: data_real.clone(),
-            // todo: For now, an empty one.
-            elec_charges: vec![data_real],
+            nudge_amounts: default_nudges,
+            psi_prev: data.clone(),
+            elec_charges: vec![data_real.clone()],
         }
     }
 }
@@ -479,7 +502,7 @@ fn nudge_wf(
     let dx = (grid_max - grid_min) / N as f64;
     let divisor = (dx).powi(2);
 
-    let h = 0.0001; // todo
+    // let h = 0.0001; // todo
 
     for _ in 0..num_nudges {
         // for _ in 0..num_nudges {
@@ -506,9 +529,6 @@ fn nudge_wf(
                     }
 
                     diff_map[i][j][k] = diff;
-
-                    // sfcs.psi[i][j][k] -= diff * *nudge_amount;
-                    // sfcs.aux1[i][j][k] = diff;
                 }
             }
 
@@ -517,20 +537,11 @@ fn nudge_wf(
             // todo: DRY with eval_wf
 
             for (i, x) in x_vals.iter().enumerate() {
-                if i == 0 || i == N - 1 {
-                    continue;
-                }
                 for (j, y) in x_vals.iter().enumerate() {
-                    if j == 0 || j == N - 1 {
-                        continue;
-                    }
                     for (k, z) in x_vals.iter().enumerate() {
-                        if k == 0 || k == N - 1 {
-                            continue;
-                        }
-
                         sfcs.aux1[i][j][k] = diff_map[i][j][k]; // post smooth
 
+                        // sfcs.psi[i][j][k] -= diff_map[i][j][k] * sfcs.nudge_amounts[i][j][k];
                         sfcs.psi[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
                         // todo: Experimenting with nudging neighbors too.
@@ -567,26 +578,63 @@ fn nudge_wf(
 
                         // Don't calcualte extrapolated edge diffs; they'll be sifniciantly off from calculated.
 
-                        let mut psi_x_prev = sfcs.psi[i - 1][j][k];
-                        let mut psi_x_next = sfcs.psi[i + 1][j][k];
-                        let mut psi_y_prev = sfcs.psi[i][j - 1][k];
-                        let mut psi_y_next = sfcs.psi[i][j + 1][k];
-                        let mut psi_z_prev = sfcs.psi[i][j][k - 1];
-                        let mut psi_z_next = sfcs.psi[i][j][k + 1];
-
-                        let result = psi_x_prev
-                            + psi_x_next
-                            + psi_y_prev
-                            + psi_y_next
-                            + psi_z_prev
-                            + psi_z_next
-                            - sfcs.psi[i][j][k] * 6.;
-
-                        sfcs.psi_pp_measured[i][j][k] = result / divisor;
+                        // let mut psi_x_prev = sfcs.psi[i - 1][j][k];
+                        // let mut psi_x_next = sfcs.psi[i + 1][j][k];
+                        // let mut psi_y_prev = sfcs.psi[i][j - 1][k];
+                        // let mut psi_y_next = sfcs.psi[i][j + 1][k];
+                        // let mut psi_z_prev = sfcs.psi[i][j][k - 1];
+                        // let mut psi_z_next = sfcs.psi[i][j][k + 1];
+                        //
+                        // let finite_diff = psi_x_prev
+                        //     + psi_x_next
+                        //     + psi_y_prev
+                        //     + psi_y_next
+                        //     + psi_z_prev
+                        //     + psi_z_next
+                        //     - sfcs.psi[i][j][k] * 6.;
+                        //
+                        // sfcs.psi_pp_measured[i][j][k] = finite_diff / divisor;
                     }
                 }
             }
         }
+
+        // Calculated psi'' measured in a separate loop after updating psi, since it depends on
+        // neighboring psi values as well.
+        for i in 0..N {
+            if i == 0 || i == N - 1 {
+                continue;
+            }
+
+            for j in 0..N {
+                if j == 0 || j == N - 1 {
+                    continue;
+                }
+
+                for k in 0..N {
+                    if k == 0 || k == N - 1 {
+                        continue;
+                    }
+
+                    let mut psi_x_prev = sfcs.psi[i - 1][j][k];
+                    let mut psi_x_next = sfcs.psi[i + 1][j][k];
+                    let mut psi_y_prev = sfcs.psi[i][j - 1][k];
+                    let mut psi_y_next = sfcs.psi[i][j + 1][k];
+                    let mut psi_z_prev = sfcs.psi[i][j][k - 1];
+                    let mut psi_z_next = sfcs.psi[i][j][k + 1];
+
+                    let finite_diff =
+                        psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+                            - sfcs.psi[i][j][k] * 6.;
+
+                    sfcs.psi_pp_measured[i][j][k] = finite_diff / divisor;
+
+                    // todo: Update nudge amounts here a/r
+                }
+            }
+        }
+
+        // If you use individual nudges, evaluate how you want to handle this.
         let score = score_wf(sfcs);
 
         // todo: Maybe update temp ones above instead of the main ones?
@@ -600,7 +648,7 @@ fn nudge_wf(
             sfcs.psi_pp_measured = psi_pp_meas_backup.clone();
         } else {
             // Our nudge was good; get a bit more aggressive.
-            *nudge_amount *= 1.2;
+            *nudge_amount *= 1.5;
             psi_backup = sfcs.psi.clone();
             psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
             psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
@@ -690,7 +738,7 @@ fn eval_wf(
 }
 
 fn main() {
-    let posit_charge_1 = Vec3::new(0., 0., 0.);
+    let posit_charge_1 = Vec3::new(-1., 0., 0.);
     let posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let neutral = Quaternion::new_identity();
@@ -708,7 +756,7 @@ fn main() {
             posit_charge_2,
             1,
             SphericalHarmonic::default(),
-            0.,
+            1.,
             1,
         )),
         Basis::H(HOrbital::new(
@@ -754,24 +802,13 @@ fn main() {
             0.,
             1,
         )),
-        // Basis::new(0, BasisFn::H100, posit_charge_1, 1.),
-        // Basis::new(1, BasisFn::H100, posit_charge_2, -1.),
-        // Basis::new(0, BasisFn::H200, posit_charge_1, 0.),
-        // Basis::new(1, BasisFn::H200, posit_charge_2, 0.),
-        // Basis::new(0, BasisFn::H210(x_axis), posit_charge_1, 0.),
-        // Basis::new(1, BasisFn::H210(x_axis), posit_charge_2, 0.),
-        // Basis::new(0, BasisFn::H300, posit_charge_1, 0.),
-        // Basis::new(1, BasisFn::Sto(1.), posit_charge_2, 0.),
     ];
-
-    // let gaussians = vec![Gaussian::new_symmetric(Vec3::new(0., 0., 0.), 0.1, 2.)];
-    // let gaussians = Vec::new();
 
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges = vec![
         (posit_charge_1, Q_PROT),
-        // (posit_charge_2, Q_PROT),
+        (posit_charge_2, Q_PROT),
         // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
@@ -817,7 +854,7 @@ fn main() {
         grid_n: N,
         grid_min,
         grid_max,
-        nudge_amount: 0.002,
+        nudge_amount: NUDGE_DEFAULT,
         h_grid,
         h_grid_sq,
     };
