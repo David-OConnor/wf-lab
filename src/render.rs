@@ -12,7 +12,12 @@ use lin_alg2::{
     f64::Vec3 as Vec3F64,
 };
 
-use crate::State;
+use crate::{
+    State,
+    wf_ops::N,
+};
+
+const NUM_SURFACES: usize = 6;
 
 type Color = (f32, f32, f32);
 
@@ -74,9 +79,9 @@ pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 
 /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
 fn prepare_2d_mesh_real(surface: &crate::Arr3dReal, z_i: usize, scaler: f32) -> Vec<Vec<f32>> {
     let mut result = Vec::new();
-    for i in 0..crate::N {
+    for i in 0..N {
         let mut y_vec = Vec::new();
-        for j in 0..crate::N {
+        for j in 0..N {
             y_vec.push(surface[i][j][z_i] as f32 * scaler); // Convert from f64.
         }
         result.push(y_vec);
@@ -88,9 +93,9 @@ fn prepare_2d_mesh_real(surface: &crate::Arr3dReal, z_i: usize, scaler: f32) -> 
 /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
 fn prepare_2d_mesh(surface: &crate::Arr3d, z_i: usize, scaler: f32) -> Vec<Vec<f32>> {
     let mut result = Vec::new();
-    for i in 0..crate::N {
+    for i in 0..N {
         let mut y_vec = Vec::new();
-        for j in 0..crate::N {
+        for j in 0..N {
             // We are only plotting the real part for now.
             y_vec.push(surface[i][j][z_i].real as f32 * scaler); // Convert from f64.
         }
@@ -104,7 +109,7 @@ fn prepare_2d_mesh(surface: &crate::Arr3d, z_i: usize, scaler: f32) -> Vec<Vec<f
 /// Note that this is where we decide which Z to render.
 pub fn update_meshes(
     surfaces: &crate::Surfaces,
-    // surfaces: &[crate::Arr3d; crate::NUM_SURFACES],
+    // surfaces: &[crate::Arr3d; NUM_SURFACES],
     z_displayed: f64,
     scene: &mut Scene,
     grid_min: f64,
@@ -115,10 +120,10 @@ pub fn update_meshes(
     // the renderer's center.
     // const SFC_MESH_START: f32 = -4.;
     let sfc_mesh_start = grid_min as f32; // todo: Sync graphics and atomic coords?
-    let sfc_mesh_step: f32 = -2. * sfc_mesh_start / crate::N as f32;
+    let sfc_mesh_step: f32 = -2. * sfc_mesh_start / N as f32;
 
     // `z_displayed` is a value float. Convert this to an index.
-    let z_i = map_linear(z_displayed, (grid_min, grid_max), (0., crate::N as f64)) as usize;
+    let z_i = map_linear(z_displayed, (grid_min, grid_max), (0., N as f64)) as usize;
 
     let mut meshes = Vec::new();
 
@@ -175,7 +180,7 @@ pub fn update_meshes(
 /// with surfaces.
 pub fn update_entities(charges: &[(Vec3F64, f64)], show_surfaces: &[bool], scene: &mut Scene) {
     let mut entities = Vec::new();
-    for i in 0..crate::NUM_SURFACES {
+    for i in 0..NUM_SURFACES {
         if !show_surfaces[i] {
             continue;
         }
@@ -192,7 +197,7 @@ pub fn update_entities(charges: &[(Vec3F64, f64)], show_surfaces: &[bool], scene
 
     for (posit, val) in charges {
         entities.push(Entity::new(
-            crate::NUM_SURFACES, // Index 1 after surfaces.
+            NUM_SURFACES, // Index 1 after surfaces.
             // Todo: You may need to scale posit's Z.
             // todo: Heper for this?
             Vec3::new(

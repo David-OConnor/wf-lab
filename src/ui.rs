@@ -4,8 +4,7 @@ use egui::{self, Color32, RichText};
 
 use graphics::{EngineUpdates, Scene};
 
-// use crate::{basis_wfs::BasisFn, render, State, N};
-use crate::{basis_wfs::Basis, render, State, N};
+use crate::{basis_wfs::Basis, render, wf_ops::{self, N}, State};
 
 use lin_alg2::f64::{EulerAngle, Quaternion, Vec3};
 
@@ -370,21 +369,22 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     for i in 0..N {
                         for j in 0..N {
                             for k in 0..N {
-                                state.surfaces.psi_pp_calculated[i][j][k] = crate::find_ψ_pp_calc(
-                                    &state.surfaces.psi,
-                                    &state.surfaces.V,
-                                    state.E,
-                                    i,
-                                    j,
-                                    k,
-                                )
+                                state.surfaces.psi_pp_calculated[i][j][k] =
+                                    crate::wf_ops::find_ψ_pp_calc(
+                                        &state.surfaces.psi,
+                                        &state.surfaces.V,
+                                        state.E,
+                                        i,
+                                        j,
+                                        k,
+                                    )
                             }
                         }
                     }
 
                     // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
                     // state.psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
-                    state.psi_pp_score = crate::score_wf(&state.surfaces);
+                    state.psi_pp_score = crate::wf_ops::score_wf(&state.surfaces);
 
                     render::update_meshes(
                         &state.surfaces,
@@ -484,10 +484,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.horizontal(|ui| {
             if ui.add(egui::Button::new("Nudge WF")).clicked() {
-                crate::nudge_wf(
+                crate::nudge::nudge_wf(
                     &mut state.surfaces,
-                    &state.bases,
-                    &state.charges,
+                    // &state.bases,
+                    // &state.charges,
                     &mut state.nudge_amount,
                     &mut state.E,
                     state.grid_min,
@@ -503,7 +503,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 ); // todo!
                 engine_updates.meshes = true;
 
-                state.psi_pp_score = crate::score_wf(&state.surfaces);
+                state.psi_pp_score = crate::wf_ops::score_wf(&state.surfaces);
 
                 // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
                 // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
@@ -513,7 +513,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             if ui.add(egui::Button::new("Create e- V")).clicked() {
                 // hard-coded as first item for now.
-                crate::charge_density_fm_psi(
+                crate::wf_ops::charge_density_fm_psi(
                     &state.surfaces.psi,
                     &mut state.surfaces.elec_charges[0],
                     1,
@@ -525,14 +525,14 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             if ui.add(egui::Button::new("Empty e- V")).clicked() {
                 // hard-coded as first item for now.
-                state.surfaces.elec_charges[0] = crate::new_data_real(crate::N);
+                state.surfaces.elec_charges[0] = wf_ops::new_data_real(N);
 
                 updated_wfs = true;
                 updated_charges = true;
             }
 
             if ui.add(egui::Button::new("Find E")).clicked() {
-                crate::find_E(&mut state.surfaces, &mut state.E);
+                wf_ops::find_E(&mut state.surfaces, &mut state.E);
 
                 render::update_meshes(
                     &state.surfaces,
@@ -543,7 +543,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 );
                 engine_updates.meshes = true;
 
-                state.psi_pp_score = crate::score_wf(&state.surfaces);
+                state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
 
                 // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
                 // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
@@ -555,7 +555,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         if updated_wfs {
             engine_updates.meshes = true;
 
-            crate::eval_wf(
+            wf_ops::eval_wf(
                 &state.bases,
                 // &state.gaussians,
                 &state.charges,
@@ -566,7 +566,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 state.grid_max,
             );
 
-            state.psi_pp_score = crate::score_wf(&state.surfaces);
+            state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
 
             render::update_meshes(
                 &state.surfaces,
