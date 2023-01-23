@@ -32,9 +32,13 @@ pub const N: usize = 50;
 const H: f64 = 0.01;
 const H_SQ: f64 = H * H;
 
-/// todo: This should probably be a method on `State`.
-/// This is our main computation function for sfcs.
-/// Modifies in place to conserve memory.
+/// This is our main computation function for sfcs. It:
+/// - Computes V from charges
+/// - Computes a trial ψ from basis functions
+/// - Computes ψ'' calculated, and measured from the trial ψ
+/// Modifies in place to conserve memory. These operations are combined in the same function to
+/// save computation, since they're often run at once, and can be iterated through using a single loop
+/// through all grid points.
 pub fn eval_wf(
     bases: &[Basis],
     charges: &[(Vec3, f64)],
@@ -61,6 +65,7 @@ pub fn eval_wf(
     for (i, x) in vals_1d.iter().enumerate() {
         for (j, y) in vals_1d.iter().enumerate() {
             for (k, z) in vals_1d.iter().enumerate() {
+
                 let posit_sample = Vec3::new(*x, *y, *z);
 
                 // Calculate psi'' based on a numerical derivative of psi
@@ -94,19 +99,21 @@ pub fn eval_wf(
                 }
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
+
                 for basis in bases {
                     sfcs.psi[i][j][k] += basis.value(posit_sample) * basis.weight();
                 }
 
                 sfcs.psi_pp_calculated[i][j][k] = find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
 
+                // We can compute ψ'' measured this in the same loop here, since we're using an analytic
+                // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
                 sfcs.psi_pp_measured[i][j][k] =
                     find_ψ_pp_meas(&sfcs.psi, posit_sample, bases, charges, i, j, k);
-
-                // sfcs.aux2[i][j][k] = charge_density_fm_psi_one(&sfcs.psi, 1, i, j, k);
             }
         }
     }
+
 }
 
 /// Make a new 3D grid, as a nested Vec

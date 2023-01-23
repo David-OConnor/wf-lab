@@ -19,7 +19,7 @@ pub fn nudge_wf(
     grid_min: f64,
     grid_max: f64,
 ) {
-    let num_nudges = 1;
+    let num_nudges = 5;
 
     // Consider applying a lowpass after each nudge, and using a high nudge amount.
     // todo: Perhaps you lowpass the diffs... Make a grid of diffs, lowpass that,

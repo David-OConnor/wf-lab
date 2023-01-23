@@ -1,3 +1,7 @@
+#![allow(non_snake_case)]
+#![allow(mixed_script_confusables)]
+#![allow(uncommon_codepoints)]
+
 //! This program explores solving the wave equation for
 //! arbitrary potentials. It visualizes the wave function in 3d, with user interaction.
 
@@ -5,10 +9,6 @@
 // functions, which are more general. Make a fn to generate them.
 
 // todo: Hylleraas basis functions?
-
-#![allow(non_snake_case)]
-#![allow(mixed_script_confusables)]
-#![allow(uncommon_codepoints)]
 
 // Idea, once your nudging etc code is faster and more accurate:
 // Create template WFs based on ICs. Ie, multi-charge potential starting points
