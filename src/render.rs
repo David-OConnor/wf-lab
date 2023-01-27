@@ -12,10 +12,7 @@ use lin_alg2::{
     f64::Vec3 as Vec3F64,
 };
 
-use crate::{
-    State,
-    wf_ops::N,
-};
+use crate::{wf_ops::N, State};
 
 const NUM_SURFACES: usize = 6;
 

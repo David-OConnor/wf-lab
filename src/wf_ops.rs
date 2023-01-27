@@ -3,8 +3,8 @@
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    util,
-    util::{Arr3d, Arr3dReal},
+    util::{self, Arr3d, Arr3dReal},
+    interp,
 };
 
 use lin_alg2::f64::Vec3;
@@ -65,7 +65,6 @@ pub fn init_wf(
     for (i, x) in vals_1d.iter().enumerate() {
         for (j, y) in vals_1d.iter().enumerate() {
             for (k, z) in vals_1d.iter().enumerate() {
-
                 let posit_sample = Vec3::new(*x, *y, *z);
 
                 // Calculate psi'' based on a numerical derivative of psi
@@ -109,11 +108,10 @@ pub fn init_wf(
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
                 sfcs.psi_pp_measured[i][j][k] =
-                    find_ψ_pp_meas(posit_sample, bases, sfcs.psi[i][j][k]);
+                    find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
             }
         }
     }
-
 }
 
 /// Make a new 3D grid, as a nested Vec
@@ -260,11 +258,7 @@ pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k
 }
 
 /// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.
-pub(crate) fn find_ψ_pp_meas(
-    posit_sample: Vec3,
-    bases: &[Basis],
-    psi_sample_loc: Cplx,
-) -> Cplx {
+pub(crate) fn find_ψ_pp_meas_fm_bases(posit_sample: Vec3, bases: &[Basis], psi_sample_loc: Cplx) -> Cplx {
     // Calculate ψ'' based on a numerical derivative of psi
     // in 3D.
 
@@ -302,9 +296,16 @@ pub(crate) fn find_ψ_pp_meas_from_interp(
     posit_sample: Vec3,
     psi: &Arr3d,
     psi_sample_loc: Cplx,
+    grid_min: f64,
+    grid_max: f64,
+    i: usize,
+    j: usize,
+    k: usize,
 ) -> Cplx {
     // Calculate ψ'' based on a numerical derivative of psi
     // in 3D.
+
+    // todo: DRy with `find_ψ_pp_meas_from_bases`
 
     let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
     let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
@@ -313,12 +314,37 @@ pub(crate) fn find_ψ_pp_meas_from_interp(
     let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
     let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
 
-    let mut psi_x_prev = Cplx::new_zero();
-    let mut psi_x_next = Cplx::new_zero();
-    let mut psi_y_prev = Cplx::new_zero();
-    let mut psi_y_next = Cplx::new_zero();
-    let mut psi_z_prev = Cplx::new_zero();
-    let mut psi_z_next = Cplx::new_zero();
+    // let mut psi_x_prev = Cplx::new_zero();
+    // let mut psi_x_next = Cplx::new_zero();
+    // let mut psi_y_prev = Cplx::new_zero();
+    // let mut psi_y_next = Cplx::new_zero();
+    // let mut psi_z_prev = Cplx::new_zero();
+    // let mut psi_z_next = Cplx::new_zero();
+
+    let vals_1d = util::linspace((grid_min, grid_max), N);
+
+    let posits = [x_prev, x_next, y_prev, y_next, z_prev, z_next];
+
+    // todo: Unecessary alloc.
+    let psis_near: Vec<Cplx> = posits.iter().map(|posit| {
+        interp::linear_3d_cplx(
+            *posit,
+            (vals_1d[i-1], vals_1d[i+1]),
+            (vals_1d[j-1], vals_1d[j+1]),
+            (vals_1d[k-1], vals_1d[k+1]),
+            // todo: Coordinate system consistency? Does it matter here?
+            psi[i-1][j+1][k-1],
+            psi[i-1][j-1][k-1],
+            psi[i+1][j+1][k-1],
+            psi[i+1][j-1][k-1],
+            psi[i-1][j+1][k+1],
+            psi[i-1][j-1][k+1],
+            psi[i+1][j+1][k+1],
+            psi[i+1][j-1][k+1],
+        )
+    }).collect();
+
+    let result = psis_near[0] + psis_near[1] + psis_near[2] + psis_near[3] + psis_near[4] + psis_near[5] - psi_sample_loc * 6.;
 
     // for basis in bases {
     //     psi_x_prev += basis.value(x_prev) * basis.weight();
@@ -328,9 +354,9 @@ pub(crate) fn find_ψ_pp_meas_from_interp(
     //     psi_z_prev += basis.value(z_prev) * basis.weight();
     //     psi_z_next += basis.value(z_next) * basis.weight();
     // }
-
-    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-        - psi_sample_loc * 6.;
+    //
+    // let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+    //     - psi_sample_loc * 6.;
 
     result / H_SQ
 }

@@ -44,7 +44,5 @@ pub fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
 // f(2) = -19(2)² + 77(2) - 53 = -76 + 154 - 53 = 25
 // f(3) = -19(3)² + 77(3) - 53 = -171 + 231 - 53 = 7
 
-
 // 2: https://www.wolframalpha.com/input?i=InterpolatingPolynomial%5B%7B%7Bx1%2C+y1%7D%2C+%7Bx2%2C+y2%7D%7D%2C+x%5D
 // 3: https://www.wolframalpha.com/input?i=InterpolatingPolynomial%5B%7B%7Bx1%2C+y1%7D%2C+%7Bx2%2C+y2%7D%2C+%7Bx3%2C+y3%7D%7D%2C+x%5D
-

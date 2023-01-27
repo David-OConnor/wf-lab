@@ -4,7 +4,12 @@ use egui::{self, Color32, RichText};
 
 use graphics::{EngineUpdates, Scene};
 
-use crate::{basis_wfs::Basis, render, wf_ops::{self, N}, State};
+use crate::{
+    basis_wfs::Basis,
+    render,
+    wf_ops::{self, N},
+    State,
+};
 
 use lin_alg2::f64::{EulerAngle, Quaternion, Vec3};
 

@@ -4,11 +4,10 @@
 /// using this package as a library.
 pub mod basis_wfs;
 pub mod complex_nums;
+pub mod interp;
 pub mod nudge;
 pub mod util;
 pub mod wf_ops;
-pub mod interp;
-
 
 pub use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic},
@@ -30,7 +29,7 @@ fn create_trial_wfs(charges: &[(Vec3, f64)]) -> Vec<Basis> {
             *charge_posit,
             1,
             SphericalHarmonic::default(),
-             // todo no idea if this even is better than setting to 1.
+            // todo no idea if this even is better than setting to 1.
             if charge_amt > &0. { 1. } else { -1. },
             id, // todo unused?
         )))
@@ -51,7 +50,6 @@ pub fn psi_from_pt_charges(charges: &[(Vec3, f64)], grid_bounds: (f64, f64)) -> 
     let wfs = create_trial_wfs(charges);
 
     let mut E = 0.5;
-
 
     // todo: grids that aren't centered at 0? Non-cube grids?
 

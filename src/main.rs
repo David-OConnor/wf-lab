@@ -26,13 +26,13 @@ mod complex_nums;
 mod interp;
 mod nudge;
 mod render;
-mod util;
 mod ui;
+mod util;
 mod wf_ops;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use complex_nums::Cplx;
-use wf_ops::{ħ, Surfaces, M_ELEC, Q_PROT, N};
+use wf_ops::{ħ, Surfaces, M_ELEC, N, Q_PROT};
 
 use util::{Arr3d, Arr3dReal};
 

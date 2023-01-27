@@ -86,7 +86,7 @@ pub fn nudge_wf(
                 }
                 // }
             } // todo: COmmenting this out, and adding one towards the bottom makes a dramatic improvement
-            // todo, but why??!
+              // todo, but why??!
 
             // Note: It turns out smoothing makes a big difference, as does the smoothing coefficient.
             // diff_pre_smooth = diff_map.clone();
