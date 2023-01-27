@@ -5,13 +5,14 @@
 pub mod basis_wfs;
 pub mod complex_nums;
 pub mod nudge;
-pub mod types;
+pub mod util;
 pub mod wf_ops;
+pub mod interp;
 
 
-use crate::{
+pub use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic},
-    types::{Arr3d, Arr3dReal},
+    util::{Arr3d, Arr3dReal},
 };
 
 use lin_alg2::f64::Vec3;
@@ -40,7 +41,7 @@ fn create_trial_wfs(charges: &[(Vec3, f64)]) -> Vec<Basis> {
 
 /// Interface from external programs. Main API for solving the wave function.
 // pub fn psi_from_V(V: &Arr3dReal, grid_bounds: (f64, f64)) -> Arr3d {
-pub fn psi_from_V(charges: &[(Vec3, f64)], grid_bounds: (f64, f64)) -> Arr3d {
+pub fn psi_from_pt_charges(charges: &[(Vec3, f64)], grid_bounds: (f64, f64)) -> Arr3d {
     // todo: Input is V, or charges? We use charges for now, since it
     // saves a pass in our initial WF. Perhaps though, we want to pass V intact.
     // todo: Output is psi, or psi^2?
@@ -51,9 +52,12 @@ pub fn psi_from_V(charges: &[(Vec3, f64)], grid_bounds: (f64, f64)) -> Arr3d {
 
     let mut E = 0.5;
 
+
+    // todo: grids that aren't centered at 0? Non-cube grids?
+
     // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
     // and our basis-function based trial wave function.
-    wf_ops::eval_wf(
+    wf_ops::init_wf(
         &wfs,
         &charges,
         &mut sfcs,
@@ -63,13 +67,15 @@ pub fn psi_from_V(charges: &[(Vec3, f64)], grid_bounds: (f64, f64)) -> Arr3d {
         grid_bounds.1,
     );
 
-    nudge::nudge_wf(
-        &mut sfcs,
-        &mut 0.1,
-        &mut E,
-        grid_bounds.0,
-        grid_bounds.1,
-    );
+    // todo: Temp removing nudge to test performance
+
+    // nudge::nudge_wf(
+    //     &mut sfcs,
+    //     &mut 0.1,
+    //     &mut E,
+    //     grid_bounds.0,
+    //     grid_bounds.1,
+    // );
 
     // let psi_pp_score = wf_ops::score_wf(&sfcs);
 

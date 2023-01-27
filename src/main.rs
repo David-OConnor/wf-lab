@@ -23,9 +23,10 @@ use lin_alg2::f64::{Quaternion, Vec3};
 
 mod basis_wfs;
 mod complex_nums;
+mod interp;
 mod nudge;
 mod render;
-mod types;
+mod util;
 mod ui;
 mod wf_ops;
 
@@ -33,7 +34,7 @@ use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use complex_nums::Cplx;
 use wf_ops::{ħ, Surfaces, M_ELEC, Q_PROT, N};
 
-use types::{Arr3d, Arr3dReal};
+use util::{Arr3d, Arr3dReal};
 
 const NUM_SURFACES: usize = 6;
 
@@ -161,7 +162,7 @@ fn main() {
 
     let mut sfcs = Default::default();
 
-    wf_ops::eval_wf(&wfs, &charges, &mut sfcs, E, true, grid_min, grid_max);
+    wf_ops::init_wf(&wfs, &charges, &mut sfcs, E, true, grid_min, grid_max);
 
     let psi_pp_score = wf_ops::score_wf(&sfcs);
 

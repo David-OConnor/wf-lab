@@ -3,8 +3,8 @@
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    types,
-    types::{Arr3d, Arr3dReal},
+    util,
+    util::{Arr3d, Arr3dReal},
 };
 
 use lin_alg2::f64::Vec3;
@@ -24,7 +24,7 @@ const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 50;
+pub const N: usize = 30;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Too small might lead to numerical issues though (?)
@@ -39,7 +39,7 @@ const H_SQ: f64 = H * H;
 /// Modifies in place to conserve memory. These operations are combined in the same function to
 /// save computation, since they're often run at once, and can be iterated through using a single loop
 /// through all grid points.
-pub fn eval_wf(
+pub fn init_wf(
     bases: &[Basis],
     charges: &[(Vec3, f64)],
     sfcs: &mut Surfaces,
@@ -57,7 +57,7 @@ pub fn eval_wf(
     // psi(r) = (E - V(R))^-1 * ħ**2/2m * psi(r)''
 
     // todo: Store these somewhere to save on computation? minor pt.
-    let vals_1d = types::linspace((grid_min, grid_max), N);
+    let vals_1d = util::linspace((grid_min, grid_max), N);
 
     // Our initial psi'' measured uses our analytic LCAO system, which doesn't have the
     // grid edge and precision issues of the fixed numerical grid we use to tune the trial
@@ -109,7 +109,7 @@ pub fn eval_wf(
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
                 sfcs.psi_pp_measured[i][j][k] =
-                    find_ψ_pp_meas(&sfcs.psi, posit_sample, bases, charges, i, j, k);
+                    find_ψ_pp_meas(posit_sample, bases, sfcs.psi[i][j][k]);
             }
         }
     }
@@ -260,14 +260,10 @@ pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k
 }
 
 /// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.
-fn find_ψ_pp_meas(
-    psi: &Arr3d,
+pub(crate) fn find_ψ_pp_meas(
     posit_sample: Vec3,
     bases: &[Basis],
-    charges: &[(Vec3, f64)],
-    i: usize,
-    j: usize,
-    k: usize,
+    psi_sample_loc: Cplx,
 ) -> Cplx {
     // Calculate ψ'' based on a numerical derivative of psi
     // in 3D.
@@ -296,14 +292,52 @@ fn find_ψ_pp_meas(
     }
 
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-        - psi[i][j][k] * 6.;
+        - psi_sample_loc * 6.;
+
+    result / H_SQ
+}
+
+/// Calcualte ψ'' measured, using a discrete function, interpolated.
+pub(crate) fn find_ψ_pp_meas_from_interp(
+    posit_sample: Vec3,
+    psi: &Arr3d,
+    psi_sample_loc: Cplx,
+) -> Cplx {
+    // Calculate ψ'' based on a numerical derivative of psi
+    // in 3D.
+
+    let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
+    let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
+    let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
+    let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
+    let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
+    let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+
+    let mut psi_x_prev = Cplx::new_zero();
+    let mut psi_x_next = Cplx::new_zero();
+    let mut psi_y_prev = Cplx::new_zero();
+    let mut psi_y_next = Cplx::new_zero();
+    let mut psi_z_prev = Cplx::new_zero();
+    let mut psi_z_next = Cplx::new_zero();
+
+    // for basis in bases {
+    //     psi_x_prev += basis.value(x_prev) * basis.weight();
+    //     psi_x_next += basis.value(x_next) * basis.weight();
+    //     psi_y_prev += basis.value(y_prev) * basis.weight();
+    //     psi_y_next += basis.value(y_next) * basis.weight();
+    //     psi_z_prev += basis.value(z_prev) * basis.weight();
+    //     psi_z_next += basis.value(z_next) * basis.weight();
+    // }
+
+    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+        - psi_sample_loc * 6.;
 
     result / H_SQ
 }
 
 /// Convert an array of Psi to one of electron charge through space. Modifies in place
 /// to avoid unecessary allocations.
-pub fn charge_density_fm_psi(psi: &Arr3d, V_elec: &mut Arr3dReal, num_elecs: usize) {
+pub fn charge_density_fm_psi(psi: &Arr3d, charge_density: &mut Arr3dReal, num_elecs: usize) {
     // Normalize <ψ|ψ>
     let mut psi_sq_size = 0.;
     for i in 0..N {
@@ -320,7 +354,7 @@ pub fn charge_density_fm_psi(psi: &Arr3d, V_elec: &mut Arr3dReal, num_elecs: usi
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                V_elec[i][j][k] = psi[i][j][k].abs_sq() * c;
+                charge_density[i][j][k] = psi[i][j][k].abs_sq() * c;
             }
         }
     }
@@ -338,7 +372,7 @@ pub fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
     let num_iters = 10;
 
     for _ in 0..num_iters {
-        let E_vals = types::linspace((E_min, E_max), vals_per_iter);
+        let E_vals = util::linspace((E_min, E_max), vals_per_iter);
         let mut best_score = 100_000_000.;
         let mut best_E = 0.;
 

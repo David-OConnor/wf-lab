@@ -555,7 +555,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         if updated_wfs {
             engine_updates.meshes = true;
 
-            wf_ops::eval_wf(
+            wf_ops::init_wf(
                 &state.bases,
                 // &state.gaussians,
                 &state.charges,

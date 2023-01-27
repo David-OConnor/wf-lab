@@ -1,7 +1,7 @@
 //! This module contains functionality to nudge a wave function to better match the
 //! Schrodinger equation.
 
-use crate::wf_ops::{Surfaces, N};
+use crate::wf_ops::{self, Surfaces, N};
 
 use lin_alg2::f64::Vec3;
 
@@ -86,7 +86,7 @@ pub fn nudge_wf(
                 }
                 // }
             } // todo: COmmenting this out, and adding one towards the bottom makes a dramatic improvement
-              // todo, but why??!
+            // todo, but why??!
 
             // Note: It turns out smoothing makes a big difference, as does the smoothing coefficient.
             // diff_pre_smooth = diff_map.clone();
@@ -107,6 +107,23 @@ pub fn nudge_wf(
 
             // Calculated psi'' measured in a separate loop after updating psi, since it depends on
             // neighboring psi values as well.
+
+            // todo: Consider using find_ψ_pp_meas(&sfcs.psi, posit_sample, bases, sfcs.psi[i][j][k]);
+            // todo after applying a polynomial fit to create a continuous function.
+            // todo at teh edges, you may need to handle separately eg linearly.
+
+            // todo: Note that because you're using interpolation vice bases, you'll need
+            // todo to modify find_ψ_pp_meas to be more general, or invoke a special case of it
+            // todo using this interpolation vice from bases.
+            // for (i, x) in vals_1d.iter().enumerate() {
+            //     for (j, y) in vals_1d.iter().enumerate() {
+            //         for (k, z) in vals_1d.iter().enumerate() {
+            //             let posit_sample = Vec3::new(*x, *y, *z);
+            //
+            //              sfcs.psi_pp_measured[i][j][k] = wf_ops::find_ψ_pp_meas(posit_sample, bases, sfcs.psi[i][j][k])
+            //         }
+            //     }
+            // }
 
             // Note re these edge-cases: Hopefully it doesn't matter, since the WF is flat around
             // the edges, if the boundaries are chosen appropriately.
