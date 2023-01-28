@@ -163,7 +163,7 @@ pub fn nudge_wf(
                             j,
                             k,
                         );
-                        //
+
                         // let mut psi_x_prev = sfcs.psi[i - 1][j][k];
                         // let mut psi_x_next = sfcs.psi[i + 1][j][k];
                         // let mut psi_y_prev = sfcs.psi[i][j - 1][k];

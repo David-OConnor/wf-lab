@@ -56,6 +56,8 @@ pub fn linear_3d_cplx(
     Cplx { real, im }
 }
 
+/// Naming convention: Up means positive Y. Right means positive X. Forward means positive Z.
+/// This must be adhered to when positioning the value paremeters.
 pub fn linear_3d(
     posit_sample: Vec3,
     x_range: (f64, f64),
@@ -70,8 +72,6 @@ pub fn linear_3d(
     v_up_r_a: f64,
     v_dn_r_a: f64,
 ) -> f64 {
-    // Up for portion x and L for portion y chosen arbitrarily; doesn't matter for regular grids.
-
     let f_face = linear_2d(
         (posit_sample.x, posit_sample.y),
         x_range,
@@ -92,11 +92,10 @@ pub fn linear_3d(
     );
 
     // Up for portion x and L for portion y chosen arbitrarily; doesn't matter for regular grids.
-    linear_1d(posit_sample.z, z_range, f_face, a_face)
+    linear_1d(posit_sample.z, z_range, a_face, f_face)
 }
 
-/// These points are (X, Y, function value)
-// fn linear_2d(val: (f64, f64), pt_up_l: (f64, f64, f64), pt_dn_l: (f64, f64, f64), pt_up_r: (f64, f64, f64), pt_dn_r: (f64, f64, f64)) -> f64 {
+/// Naming convention: Up means positive Y. Right means positive X.
 fn linear_2d(
     posit_sample: (f64, f64),
     x_range: (f64, f64),
@@ -114,7 +113,7 @@ fn linear_2d(
     let b_edge = linear_1d(posit_sample.0, x_range, v_dn_l, v_dn_r);
 
     // Up for portion x and L for portion y chosen arbitrarily; doesn't matter for regular grids.
-    linear_1d(posit_sample.1, y_range, t_edge, b_edge)
+    linear_1d(posit_sample.1, y_range, b_edge, t_edge)
 }
 
 /// Utility function to linearly map an input value to an output
