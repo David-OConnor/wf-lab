@@ -128,24 +128,24 @@ pub fn nudge_wf(
             //     }
             // }
 
-            let vals_1d = util::linspace((grid_min, grid_max), N);
+            let grid_1d = util::linspace((grid_min, grid_max), N);
 
             // Note re these edge-cases: Hopefully it doesn't matter, since the WF is flat around
             // the edges, if the boundaries are chosen appropriately.
             // for i in 0..N {
-            for (i, x) in vals_1d.iter().enumerate() {
+            for (i, x) in grid_1d.iter().enumerate() {
                 if i == 0 || i == N - 1 {
                     continue;
                 }
 
                 // for j in 0..N {
-                for (j, y) in vals_1d.iter().enumerate() {
+                for (j, y) in grid_1d.iter().enumerate() {
                     if j == 0 || j == N - 1 {
                         continue;
                     }
 
                     // for k in 0..N {
-                    for (k, z) in vals_1d.iter().enumerate() {
+                    for (k, z) in grid_1d.iter().enumerate() {
                         if k == 0 || k == N - 1 {
                             continue;
                         }

@@ -116,11 +116,17 @@ fn linear_2d(
     linear_1d(posit_sample.1, y_range, b_edge, t_edge)
 }
 
+pub fn linear_1d_cplx(posit_sample: f64, range: (f64, f64), val_l: Cplx, val_r: Cplx) -> Cplx {
+    let real = linear_1d(posit_sample, range, val_l.real, val_r.real);
+    let im = linear_1d(posit_sample, range, val_l.im, val_r.im);
+
+    Cplx { real, im }
+}
+
 /// Utility function to linearly map an input value to an output
 /// (Similar to `map_linear` function you use in other projects, but with different
 /// organization of input parameters)
-// fn linear_1d(posit_sample: f64, pt0: (f64, f64), pt1: (f64, f64)) -> f64 {
-fn linear_1d(posit_sample: f64, range: (f64, f64), val_l: f64, val_r: f64) -> f64 {
+pub fn linear_1d(posit_sample: f64, range: (f64, f64), val_l: f64, val_r: f64) -> f64 {
     // todo: You may be able to optimize calls to this by having the ranges pre-store
     // todo the total range vals.
     let portion = (posit_sample - range.0) / (range.1 - range.0);

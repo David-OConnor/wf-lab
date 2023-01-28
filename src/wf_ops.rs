@@ -258,14 +258,13 @@ pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k
 }
 
 /// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.
+/// Calculate ψ'' based on a numerical derivative of psi
+/// in 3D.
 pub(crate) fn find_ψ_pp_meas_fm_bases(
     posit_sample: Vec3,
     bases: &[Basis],
     psi_sample_loc: Cplx,
 ) -> Cplx {
-    // Calculate ψ'' based on a numerical derivative of psi
-    // in 3D.
-
     let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
     let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
     let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
@@ -296,6 +295,8 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
 }
 
 /// Calcualte ψ'' measured, using a discrete function, interpolated.
+/// Calculate ψ'' based on a numerical derivative of psi
+/// in 3D.
 pub(crate) fn find_ψ_pp_meas_from_interp(
     posit_sample: Vec3,
     psi: &Arr3d,
@@ -305,11 +306,6 @@ pub(crate) fn find_ψ_pp_meas_from_interp(
     j: usize,
     k: usize,
 ) -> Cplx {
-    // Calculate ψ'' based on a numerical derivative of psi
-    // in 3D.
-
-    // todo: DRy with `find_ψ_pp_meas_from_bases`
-
     let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
     let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
     let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
@@ -317,128 +313,143 @@ pub(crate) fn find_ψ_pp_meas_from_interp(
     let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
     let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
 
-    let grid_1d = util::linspace((grid_min, grid_max), N);
-
     let grid_dx = (grid_max - grid_min) / N as f64;
 
-    // let posits = [x_prev, x_next, y_prev, y_next, z_prev, z_next];
+    // Given the points we're sampling are along the grid lines, we can (conveniently! do 1D
+    // interpolation here, vice 3D.
 
-    // todo: Unecessary alloc.
-    // let psis_near: Vec<Cplx> = posits
-    //     .iter()
-    //     .map(|posit| {
-    //         interp::linear_3d_cplx(
-    //             *posit,
-    //             (grid_1d[i - 1], grid_1d[i + 1]),
-    //             (grid_1d[j - 1], grid_1d[j + 1]),
-    //             (grid_1d[k - 1], grid_1d[k + 1]),
-    //             // todo: Coordinate system consistency? Does it matter here?
-    //             psi[i - 1][j + 1][k - 1],
-    //             psi[i - 1][j - 1][k - 1],
-    //             psi[i + 1][j + 1][k - 1],
-    //             psi[i + 1][j - 1][k - 1],
-    //             psi[i - 1][j + 1][k + 1],
-    //             psi[i - 1][j - 1][k + 1],
-    //             psi[i + 1][j + 1][k + 1],
-    //             psi[i + 1][j - 1][k + 1],
-    //         )
-    //     })
-    //     .collect();
-
-    let psi_x_prev = interp::linear_3d_cplx(
-        x_prev,
+    let psi_x_prev = interp::linear_1d_cplx(
+        x_prev.x,
         (posit_sample.x - grid_dx, posit_sample.x),
-        (posit_sample.y, posit_sample.y + grid_dx), // On the edge; arbitrary which box we picked
-        (posit_sample.z, posit_sample.z + grid_dx), // On the edge; arbitrary which box we picked
-        // todo: Coordinate system consistency? Does it matter here?
-        psi[i - 1][j + 1][k + 1],
-        psi[i - 1][j][k + 1],
-        psi[i][j + 1][k + 1],
-        psi[i][j][k + 1],
-        psi[i - 1][j + 1][k],
         psi[i - 1][j][k],
-        psi[i][j + 1][k],
         psi[i][j][k],
     );
 
-    let psi_x_next = interp::linear_3d_cplx(
-        x_next,
+    let psi_x_next = interp::linear_1d_cplx(
+        x_next.x,
         (posit_sample.x, posit_sample.x + grid_dx),
-        (posit_sample.y, posit_sample.y + grid_dx), // On the edge; arbitrary which box we picked
-        (posit_sample.z, posit_sample.z + grid_dx), // On the edge; arbitrary which box we picked
-        psi[i][j + 1][k + 1],
-        psi[i][j][k + 1],
-        psi[i + 1][j + 1][k + 1],
-        psi[i + 1][j][k + 1],
-        psi[i][j + 1][k],
         psi[i][j][k],
-        psi[i + 1][j + 1][k],
         psi[i + 1][j][k],
     );
 
-    let psi_y_prev = interp::linear_3d_cplx(
-        y_prev,
-        (posit_sample.x, posit_sample.x + grid_dx), // On the edge; arbitrary which box we picked
+    let psi_y_prev = interp::linear_1d_cplx(
+        y_prev.y,
         (posit_sample.y - grid_dx, posit_sample.y),
-        (posit_sample.z, posit_sample.z + grid_dx), // On the edge; arbitrary which box we picked
-        psi[i][j][k + 1],
-        psi[i][j - 1][k + 1],
-        psi[i + 1][j][k + 1],
-        psi[i + 1][j - 1][k + 1],
-        psi[i][j][k],
         psi[i][j - 1][k],
-        psi[i + 1][j][k],
-        psi[i + 1][j - 1][k],
+        psi[i][j][k],
     );
 
-    let psi_y_next = interp::linear_3d_cplx(
-        y_next,
-        (posit_sample.x, posit_sample.x + grid_dx), // On the edge; arbitrary which box we picked
+    let psi_y_next = interp::linear_1d_cplx(
+        y_next.y,
         (posit_sample.y, posit_sample.y + grid_dx),
-        (posit_sample.z, posit_sample.z + grid_dx), // On the edge; arbitrary which box we picked
-        psi[i][j + 1][k + 1],
-        psi[i][j][k + 1],
-        psi[i + 1][j + 1][k + 1],
-        psi[i + 1][j][k + 1],
-        psi[i][j + 1][k],
         psi[i][j][k],
-        psi[i + 1][j + 1][k],
-        psi[i + 1][j][k],
+        psi[i][j + 1][k],
     );
 
-    let psi_z_prev = interp::linear_3d_cplx(
-        z_prev,
-        (posit_sample.x, posit_sample.x + grid_dx), // On the edge; arbitrary which box we picked
-        (posit_sample.y, posit_sample.y + grid_dx), // On the edge; arbitrary which box we picked
+    let psi_z_prev = interp::linear_1d_cplx(
+        z_prev.z,
         (posit_sample.z - grid_dx, posit_sample.z),
-        psi[i][j + 1][k],
+        psi[i][j][k - 1],
         psi[i][j][k],
-        psi[i + 1][j + 1][k],
-        psi[i + 1][j][k],
-        psi[i][j + 1][k - 1],
-        psi[i][j][k - 1],
-        psi[i + 1][j + 1][k - 1],
-        psi[i + 1][j][k - 1],
     );
 
-    let psi_z_next = interp::linear_3d_cplx(
-        z_next,
-        (posit_sample.x, posit_sample.x + grid_dx), // On the edge; arbitrary which box we picked
-        (posit_sample.y, posit_sample.y + grid_dx), // On the edge; arbitrary which box we picked
+    let psi_z_next = interp::linear_1d_cplx(
+        z_next.z,
         (posit_sample.z, posit_sample.z + grid_dx),
-        psi[i][j + 1][k + 1],
+        psi[i][j][k],
         psi[i][j][k + 1],
-        psi[i + 1][j + 1][k + 1],
-        psi[i + 1][j][k + 1],
-        psi[i][j + 1][k],
-        psi[i][j][k - 1],
-        psi[i + 1][j + 1][k],
-        psi[i + 1][j][k],
     );
 
-    // let result =
-    //     psis_near[0] + psis_near[1] + psis_near[2] + psis_near[3] + psis_near[4] + psis_near[5]
-    //         - psi[i][j][k] * 6.;
+    // let psi_x_prev = interp::linear_3d_cplx(
+    //     x_prev,
+    //     (posit_sample.x - grid_dx, posit_sample.x),
+    //     (posit_sample.y, posit_sample.y + grid_dx), // On the edge; arbitrary which box we picked
+    //     (posit_sample.z, posit_sample.z + grid_dx), // On the edge; arbitrary which box we picked
+    //     // todo: Coordinate system consistency? Does it matter here?
+    //     psi[i - 1][j + 1][k + 1],
+    //     psi[i - 1][j][k + 1],
+    //     psi[i][j + 1][k + 1],
+    //     psi[i][j][k + 1],
+    //     psi[i - 1][j + 1][k],
+    //     psi[i - 1][j][k],
+    //     psi[i][j + 1][k],
+    //     psi[i][j][k],
+    // );
+    //
+    // let psi_x_next = interp::linear_3d_cplx(
+    //     x_next,
+    //     (posit_sample.x, posit_sample.x + grid_dx),
+    //     (posit_sample.y, posit_sample.y + grid_dx), // On the edge; arbitrary which box we picked
+    //     (posit_sample.z, posit_sample.z + grid_dx), // On the edge; arbitrary which box we picked
+    //     psi[i][j + 1][k + 1],
+    //     psi[i][j][k + 1],
+    //     psi[i + 1][j + 1][k + 1],
+    //     psi[i + 1][j][k + 1],
+    //     psi[i][j + 1][k],
+    //     psi[i][j][k],
+    //     psi[i + 1][j + 1][k],
+    //     psi[i + 1][j][k],
+    // );
+    //
+    // let psi_y_prev = interp::linear_3d_cplx(
+    //     y_prev,
+    //     (posit_sample.x, posit_sample.x + grid_dx), // On the edge; arbitrary which box we picked
+    //     (posit_sample.y - grid_dx, posit_sample.y),
+    //     (posit_sample.z, posit_sample.z + grid_dx), // On the edge; arbitrary which box we picked
+    //     psi[i][j][k + 1],
+    //     psi[i][j - 1][k + 1],
+    //     psi[i + 1][j][k + 1],
+    //     psi[i + 1][j - 1][k + 1],
+    //     psi[i][j][k],
+    //     psi[i][j - 1][k],
+    //     psi[i + 1][j][k],
+    //     psi[i + 1][j - 1][k],
+    // );
+    //
+    // let psi_y_next = interp::linear_3d_cplx(
+    //     y_next,
+    //     (posit_sample.x, posit_sample.x + grid_dx), // On the edge; arbitrary which box we picked
+    //     (posit_sample.y, posit_sample.y + grid_dx),
+    //     (posit_sample.z, posit_sample.z + grid_dx), // On the edge; arbitrary which box we picked
+    //     psi[i][j + 1][k + 1],
+    //     psi[i][j][k + 1],
+    //     psi[i + 1][j + 1][k + 1],
+    //     psi[i + 1][j][k + 1],
+    //     psi[i][j + 1][k],
+    //     psi[i][j][k],
+    //     psi[i + 1][j + 1][k],
+    //     psi[i + 1][j][k],
+    // );
+    //
+    // let psi_z_prev = interp::linear_3d_cplx(
+    //     z_prev,
+    //     (posit_sample.x, posit_sample.x + grid_dx), // On the edge; arbitrary which box we picked
+    //     (posit_sample.y, posit_sample.y + grid_dx), // On the edge; arbitrary which box we picked
+    //     (posit_sample.z - grid_dx, posit_sample.z),
+    //     psi[i][j + 1][k],
+    //     psi[i][j][k],
+    //     psi[i + 1][j + 1][k],
+    //     psi[i + 1][j][k],
+    //     psi[i][j + 1][k - 1],
+    //     psi[i][j][k - 1],
+    //     psi[i + 1][j + 1][k - 1],
+    //     psi[i + 1][j][k - 1],
+    // );
+    //
+    // let psi_z_next = interp::linear_3d_cplx(
+    //     z_next,
+    //     (posit_sample.x, posit_sample.x + grid_dx), // On the edge; arbitrary which box we picked
+    //     (posit_sample.y, posit_sample.y + grid_dx), // On the edge; arbitrary which box we picked
+    //     (posit_sample.z, posit_sample.z + grid_dx),
+    //     psi[i][j + 1][k + 1],
+    //     psi[i][j][k + 1],
+    //     psi[i + 1][j + 1][k + 1],
+    //     psi[i + 1][j][k + 1],
+    //     psi[i][j + 1][k],
+    //     psi[i][j][k - 1],
+    //     psi[i + 1][j + 1][k],
+    //     psi[i + 1][j][k],
+    // );
 
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - psi[i][j][k] * 6.;
