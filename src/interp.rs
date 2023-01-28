@@ -92,7 +92,7 @@ pub fn linear_3d(
     );
 
     // Up for portion x and L for portion y chosen arbitrarily; doesn't matter for regular grids.
-    linear_1d(posit_sample.z, (z_range.0, f_face), (z_range.1, a_face))
+    linear_1d(posit_sample.z, z_range, f_face, a_face)
 }
 
 /// These points are (X, Y, function value)
@@ -110,11 +110,23 @@ fn linear_2d(
     // let portion_x = (val.0 - x_range.0) / (x_range.1 - x_range.0);
     // todo: portion code is duped in `linear_1d` and below
     // We interpolate on the X axis first; could do Y instead.
-    let t_edge = linear_1d(posit_sample.0, (x_range.0, v_up_l), (x_range.1, v_up_r));
-    let b_edge = linear_1d(posit_sample.0, (x_range.0, v_dn_l), (x_range.1, v_dn_r));
+    let t_edge = linear_1d(posit_sample.0, x_range, v_up_l, v_up_r);
+    let b_edge = linear_1d(posit_sample.0, x_range, v_dn_l, v_dn_r);
 
     // Up for portion x and L for portion y chosen arbitrarily; doesn't matter for regular grids.
-    linear_1d(posit_sample.1, (y_range.0, t_edge), (y_range.1, b_edge))
+    linear_1d(posit_sample.1, y_range, t_edge, b_edge)
+}
+
+/// Utility function to linearly map an input value to an output
+/// (Similar to `map_linear` function you use in other projects, but with different
+/// organization of input parameters)
+// fn linear_1d(posit_sample: f64, pt0: (f64, f64), pt1: (f64, f64)) -> f64 {
+fn linear_1d(posit_sample: f64, range: (f64, f64), val_l: f64, val_r: f64) -> f64 {
+    // todo: You may be able to optimize calls to this by having the ranges pre-store
+    // todo the total range vals.
+    let portion = (posit_sample - range.0) / (range.1 - range.0);
+
+    portion * (val_r - val_l) + val_l
 }
 
 /// Compute the result of a Lagrange polynomial of order 3.
@@ -141,17 +153,6 @@ fn langrange_o3_1d(posit_sample: f64, pt0: (f64, f64), pt1: (f64, f64), pt2: (f6
     }
 
     result
-}
-
-/// Utility function to linearly map an input value to an output
-/// (Similar to `map_linear` function you use in other projects, but with different
-/// organization of input parameters)
-fn linear_1d(posit_sample: f64, pt0: (f64, f64), pt1: (f64, f64)) -> f64 {
-    // todo: You may be able to optimize calls to this by having the ranges pre-store
-    // todo the total range vals.
-    let portion = (posit_sample - pt0.0) / (pt1.0 - pt0.0);
-
-    portion * (pt1.1 - pt0.1) + pt0.1
 }
 
 // /// Utility function to linearly map an input value to an output

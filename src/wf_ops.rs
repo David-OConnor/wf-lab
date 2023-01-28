@@ -3,8 +3,8 @@
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    util::{self, Arr3d, Arr3dReal},
     interp,
+    util::{self, Arr3d, Arr3dReal},
 };
 
 use lin_alg2::f64::Vec3;
@@ -258,7 +258,11 @@ pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k
 }
 
 /// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.
-pub(crate) fn find_ψ_pp_meas_fm_bases(posit_sample: Vec3, bases: &[Basis], psi_sample_loc: Cplx) -> Cplx {
+pub(crate) fn find_ψ_pp_meas_fm_bases(
+    posit_sample: Vec3,
+    bases: &[Basis],
+    psi_sample_loc: Cplx,
+) -> Cplx {
     // Calculate ψ'' based on a numerical derivative of psi
     // in 3D.
 
@@ -295,7 +299,6 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(posit_sample: Vec3, bases: &[Basis], psi_
 pub(crate) fn find_ψ_pp_meas_from_interp(
     posit_sample: Vec3,
     psi: &Arr3d,
-    psi_sample_loc: Cplx,
     grid_min: f64,
     grid_max: f64,
     i: usize,
@@ -326,25 +329,30 @@ pub(crate) fn find_ψ_pp_meas_from_interp(
     let posits = [x_prev, x_next, y_prev, y_next, z_prev, z_next];
 
     // todo: Unecessary alloc.
-    let psis_near: Vec<Cplx> = posits.iter().map(|posit| {
-        interp::linear_3d_cplx(
-            *posit,
-            (vals_1d[i-1], vals_1d[i+1]),
-            (vals_1d[j-1], vals_1d[j+1]),
-            (vals_1d[k-1], vals_1d[k+1]),
-            // todo: Coordinate system consistency? Does it matter here?
-            psi[i-1][j+1][k-1],
-            psi[i-1][j-1][k-1],
-            psi[i+1][j+1][k-1],
-            psi[i+1][j-1][k-1],
-            psi[i-1][j+1][k+1],
-            psi[i-1][j-1][k+1],
-            psi[i+1][j+1][k+1],
-            psi[i+1][j-1][k+1],
-        )
-    }).collect();
+    let psis_near: Vec<Cplx> = posits
+        .iter()
+        .map(|posit| {
+            interp::linear_3d_cplx(
+                *posit,
+                (vals_1d[i - 1], vals_1d[i + 1]),
+                (vals_1d[j - 1], vals_1d[j + 1]),
+                (vals_1d[k - 1], vals_1d[k + 1]),
+                // todo: Coordinate system consistency? Does it matter here?
+                psi[i - 1][j + 1][k - 1],
+                psi[i - 1][j - 1][k - 1],
+                psi[i + 1][j + 1][k - 1],
+                psi[i + 1][j - 1][k - 1],
+                psi[i - 1][j + 1][k + 1],
+                psi[i - 1][j - 1][k + 1],
+                psi[i + 1][j + 1][k + 1],
+                psi[i + 1][j - 1][k + 1],
+            )
+        })
+        .collect();
 
-    let result = psis_near[0] + psis_near[1] + psis_near[2] + psis_near[3] + psis_near[4] + psis_near[5] - psi_sample_loc * 6.;
+    let result =
+        psis_near[0] + psis_near[1] + psis_near[2] + psis_near[3] + psis_near[4] + psis_near[5]
+            - psi[i][j][k] * 6.;
 
     // for basis in bases {
     //     psi_x_prev += basis.value(x_prev) * basis.weight();

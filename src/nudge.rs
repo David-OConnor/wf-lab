@@ -1,7 +1,10 @@
 //! This module contains functionality to nudge a wave function to better match the
 //! Schrodinger equation.
 
-use crate::wf_ops::{self, Surfaces, N};
+use crate::{
+    util,
+    wf_ops::{self, Surfaces, N},
+};
 
 use lin_alg2::f64::Vec3;
 
@@ -125,53 +128,58 @@ pub fn nudge_wf(
             //     }
             // }
 
+            let vals_1d = util::linspace((grid_min, grid_max), N);
+
             // Note re these edge-cases: Hopefully it doesn't matter, since the WF is flat around
             // the edges, if the boundaries are chosen appropriately.
-            for i in 0..N {
+            // for i in 0..N {
+            for (i, x) in vals_1d.iter().enumerate() {
                 if i == 0 || i == N - 1 {
                     continue;
                 }
 
-                for j in 0..N {
+                // for j in 0..N {
+                for (j, y) in vals_1d.iter().enumerate() {
                     if j == 0 || j == N - 1 {
                         continue;
                     }
 
-                    for k in 0..N {
+                    // for k in 0..N {
+                    for (k, z) in vals_1d.iter().enumerate() {
                         if k == 0 || k == N - 1 {
                             continue;
                         }
 
-                        let mut psi_x_prev = sfcs.psi[i - 1][j][k];
-                        let mut psi_x_next = sfcs.psi[i + 1][j][k];
-                        let mut psi_y_prev = sfcs.psi[i][j - 1][k];
-                        let mut psi_y_next = sfcs.psi[i][j + 1][k];
-                        let mut psi_z_prev = sfcs.psi[i][j][k - 1];
-                        let mut psi_z_next = sfcs.psi[i][j][k + 1];
+                        // todo: Trying interp-based approach to psi, vice choosing the nearest
+                        // todo grid points, for our finite difference.
+                        let posit_sample = Vec3::new(*x, *y, *z);
 
-                        let finite_diff = psi_x_prev
-                            + psi_x_next
-                            + psi_y_prev
-                            + psi_y_next
-                            + psi_z_prev
-                            + psi_z_next
-                            - sfcs.psi[i][j][k] * 6.;
-
-                        sfcs.psi_pp_measured[i][j][k] = finite_diff / divisor;
-
-                        // Compare smoothed, or pre-smoothed diffs?
-                        // if diff_pre_smooth[i][k][k].abs_sq() < sfcs.aux1[i][j][k].abs_sq() {
-                        //     sfcs.nudge_amounts[i][k][k] *= 1.2;
-                        // } else {
-                        //     sfcs.nudge_amounts[i][k][k] *= 0.5;
-                        //     sfcs.psi[i][j][k] = psi_backup[i][j][k];
-                        // }
+                        sfcs.psi_pp_measured[i][j][k] = wf_ops::find_ψ_pp_meas_from_interp(
+                            posit_sample,
+                            &sfcs.psi,
+                            grid_min,
+                            grid_max,
+                            i,
+                            j,
+                            k,
+                        );
                         //
-                        // // sfcs.aux1[i][j][k] = diff_map[i][j][k]; // post smooth
-                        // sfcs.aux1[i][j][k] = diff_pre_smooth[i][j][k]; // post smooth
-
-                        // todo: Update nudge amounts here a/r
-                        // }
+                        // let mut psi_x_prev = sfcs.psi[i - 1][j][k];
+                        // let mut psi_x_next = sfcs.psi[i + 1][j][k];
+                        // let mut psi_y_prev = sfcs.psi[i][j - 1][k];
+                        // let mut psi_y_next = sfcs.psi[i][j + 1][k];
+                        // let mut psi_z_prev = sfcs.psi[i][j][k - 1];
+                        // let mut psi_z_next = sfcs.psi[i][j][k + 1];
+                        //
+                        // let finite_diff = psi_x_prev
+                        //     + psi_x_next
+                        //     + psi_y_prev
+                        //     + psi_y_next
+                        //     + psi_z_prev
+                        //     + psi_z_next
+                        //     - sfcs.psi[i][j][k] * 6.;
+                        //
+                        // sfcs.psi_pp_measured[i][j][k] = finite_diff / divisor;
                     }
                 }
             }
