@@ -420,13 +420,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         state.grid_min,
                         state.grid_max,
                     );
-
-                    // println!("A: {:?}", state.surfaces.psi[25][25][24]);
-                    // println!("B: {:?}", state.surfaces.psi[25][25][23]);
-                    // println!("C: {:?}", state.surfaces.psi[25][25][22]);
-                    // println!("D: {:?}", state.surfaces.psi[25][25][21]);
-                    // println!("E: {:?}", state.surfaces.psi[25][25][20]);
-                    // println!("F: {:?}\n", state.surfaces.psi[25][25][19]);
                 }
 
                 state.z_displayed

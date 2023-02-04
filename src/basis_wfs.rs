@@ -137,7 +137,7 @@ impl Basis {
             Self::Sto(_) => "STO",
             Self::H(_) => "H",
         }
-        .to_owned()
+            .to_owned()
     }
 }
 
@@ -444,5 +444,95 @@ impl HOrbital {
 
         // Normalization consts are applied to radial and angular parts separately.
         Cplx::from_real(radial) * angular
+    }
+}
+
+/// Terms for this a sin + exponential basis, in a single dimension. Associated with a single
+/// point, where this a reasonable approximation of the wave function locally.
+#[derive(Debug, Default)]
+pub(crate) struct SinExpBasisTerm {
+    // todo: Complex exponential instead of sin? Probably.
+    // pub sin_weight: f64, //todo: Taken care of by amplitude?
+    pub sin_amp: f64,
+    pub sin_freq: f64, // todo: Angular (ω) or normal?
+    pub sin_phase: f64,
+    pub decaying_exp_amp: f64,
+    pub decaying_exp_rate: f64, // ie λ
+    // todo: 0-center these functions, and add a shift for decaying exp?
+    pub decaying_exp_shift: f64,
+
+}
+
+impl SinExpBasisTerm {
+    // todo: Cplx if you use a complex exponential for sin.
+    pub fn value(&self, posit: f64) -> f64 {
+        self.sin_amp * (self.sin_freq * posit + self.sin_phase).sin()
+            + self.decaying_exp_amp * (self.decaying_exp_rate * (posit - decaying_exp_shift)).exp() // todo dir of shift?
+    }
+
+    /// Create a basis point here from an H Orbital. (The intent is, do this for all relevant
+    /// orbitals, then sum them. Then modify, how?)
+    /// todo: Maybe a more general approach, ie not H-orbital specific, but an interpolation from
+    /// neighboring psi values?
+    /// todo: Cplx?
+    pub fn from_neighbors(val_this: f64, val_prev: f64, val_next: f64, h: f64) -> Self {
+        // Note that for decaying exponentials, the amplitude can be though of as used to define
+        // at what value the equation takes at position = 0. Is this also a weight for balancing
+        // with the sin term?
+
+        // todo: If it's from an H basis, then I think this truly is teh analytic solution we
+        // todo have for these exactly, at all positions. (?)
+
+        //
+
+        // todo: If we're fitting  a segment using interpolation of neighboring psi values,
+        // todo is 3 points per axis good to find a fit?
+        // todo: center using an additional offset?
+        // todo: Do you only need 2 points since there are only 2 unknowns?
+        // todo: Maybe you need 3 points, since there is a third unknown: The offset
+
+        // 3 unknowns: B, λ, shift.
+        // psi(x) = B·e^(-λ(x + shift))
+        // psi(x + h) = B·e^(-λ(x + shift + h))
+        // psi(x - h) = B·e^(-λ(x + shift - h))
+
+        // A higher exp rate causes the equation to trend towards 0 more quickly as position increases.
+
+        Self {
+            decaying_exp_amp: B,
+            decaying_exp_rate: λ,
+            decaying_exp_shift: shift,
+            ..Default::default() // No sin term for now.
+        }
+    }
+}
+
+/// Represents a local approximation of the wave function as a combination of terms that construct
+/// a sin wave overlaid with a decaying exponential, at a given point.
+/// Represents a point as A·sin(ωx + ϕ) + B·e^(-λx), for each of the 3 dimensions X, Y, Z.
+///
+/// todo note: Maybe polynomial term? It's in the H bases
+/// Todo: Complex exponential to replace sin term? To replace *both* terms?
+/// todo: Move this to another module if it works out
+#[derive(Debug)]
+pub(crate) struct SinExpBasisPt {
+    pub terms_x: SinExpBasisTerm,
+    pub terms_y: SinExpBasisTerm,
+    pub terms_z: SinExpBasisTerm,
+}
+
+impl SinExpBasisPt {
+    // todo: Cplx if you use a complex exponential for sin.
+    pub fn value(&self, posit: Vec3) -> f64 {
+        self.terms_x.value(posit.x) + self.terms_y.value(posit.y) + self.terms_z.value(posit.z)
+    }
+
+    /// Format of vals is (this, prev, next).
+    pub fn from_neighbors(vals_x: (f64, f64, f64),vals_y: (f64, f64, f64), vals_z: (f64, f64, f64), h: f64) -> Self {
+        Self {
+            terms_x: SinExpBasisTerm::from_neighbors(vals_x.0, vals_x.1, vals_x.2, h),
+            terms_y: SinExpBasisTerm::from_neighbors(vals_y.0, vals_y.1, vals_y.2, h),
+            terms_z: SinExpBasisTerm::from_neighbors(vals_z.0, vals_z.1, vals_z.2, h),
+        }
     }
 }
