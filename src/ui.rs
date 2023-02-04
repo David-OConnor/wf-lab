@@ -567,8 +567,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.surfaces,
                 state.E,
                 updated_charges,
-                state.grid_min,
-                state.grid_max,
+                &mut state.grid_min,
+                &mut state.grid_max,
             );
 
             state.psi_pp_score = wf_ops::score_wf(&state.surfaces);

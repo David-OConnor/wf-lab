@@ -22,7 +22,8 @@ pub fn nudge_wf(
     grid_min: f64,
     grid_max: f64,
 ) {
-    let num_nudges = 5;
+    let num_nudges = 3;
+    let smooth_amt = 0.4;
 
     // Consider applying a lowpass after each nudge, and using a high nudge amount.
     // todo: Perhaps you lowpass the diffs... Make a grid of diffs, lowpass that,
@@ -94,7 +95,7 @@ pub fn nudge_wf(
             // Note: It turns out smoothing makes a big difference, as does the smoothing coefficient.
             // diff_pre_smooth = diff_map.clone();
 
-            crate::wf_ops::smooth_array(&mut diff_map, 0.4);
+            crate::wf_ops::smooth_array(&mut diff_map, smooth_amt);
 
             for i in 0..N {
                 for j in 0..N {
@@ -105,28 +106,11 @@ pub fn nudge_wf(
                         sfcs.psi_pp_calculated[i][j][k] =
                             crate::wf_ops::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, *E, i, j, k);
                     }
-                } //todo: Commenting this out and closing the loop after the first i helps a lot. Why?
+                }
             }
 
             // Calculated psi'' measured in a separate loop after updating psi, since it depends on
             // neighboring psi values as well.
-
-            // todo: Consider using find_ψ_pp_meas(&sfcs.psi, posit_sample, bases, sfcs.psi[i][j][k]);
-            // todo after applying a polynomial fit to create a continuous function.
-            // todo at teh edges, you may need to handle separately eg linearly.
-
-            // todo: Note that because you're using interpolation vice bases, you'll need
-            // todo to modify find_ψ_pp_meas to be more general, or invoke a special case of it
-            // todo using this interpolation vice from bases.
-            // for (i, x) in vals_1d.iter().enumerate() {
-            //     for (j, y) in vals_1d.iter().enumerate() {
-            //         for (k, z) in vals_1d.iter().enumerate() {
-            //             let posit_sample = Vec3::new(*x, *y, *z);
-            //
-            //              sfcs.psi_pp_measured[i][j][k] = wf_ops::find_ψ_pp_meas(posit_sample, bases, sfcs.psi[i][j][k])
-            //         }
-            //     }
-            // }
 
             let grid_1d = util::linspace((grid_min, grid_max), N);
 
@@ -152,37 +136,38 @@ pub fn nudge_wf(
 
                         // todo: Trying interp-based approach to psi, vice choosing the nearest
                         // todo grid points, for our finite difference.
-                        let posit_sample = Vec3::new(*x, *y, *z);
 
-                        sfcs.psi_pp_measured[i][j][k] = wf_ops::find_ψ_pp_meas_from_interp(
-                            posit_sample,
-                            &sfcs.psi,
-                            grid_min,
-                            grid_max,
-                            i,
-                            j,
-                            k,
-                        );
+                        // let posit_sample = Vec3::new(*x, *y, *z);
+                        // sfcs.psi_pp_measured[i][j][k] = wf_ops::find_ψ_pp_meas_from_interp(
+                        //     posit_sample,
+                        //     &sfcs.psi,
+                        //     grid_min,
+                        //     grid_max,
+                        //     i,
+                        //     j,
+                        //     k,
+                        // );
 
-                        // let mut psi_x_prev = sfcs.psi[i - 1][j][k];
-                        // let mut psi_x_next = sfcs.psi[i + 1][j][k];
-                        // let mut psi_y_prev = sfcs.psi[i][j - 1][k];
-                        // let mut psi_y_next = sfcs.psi[i][j + 1][k];
-                        // let mut psi_z_prev = sfcs.psi[i][j][k - 1];
-                        // let mut psi_z_next = sfcs.psi[i][j][k + 1];
-                        //
-                        // let finite_diff = psi_x_prev
-                        //     + psi_x_next
-                        //     + psi_y_prev
-                        //     + psi_y_next
-                        //     + psi_z_prev
-                        //     + psi_z_next
-                        //     - sfcs.psi[i][j][k] * 6.;
-                        //
-                        // sfcs.psi_pp_measured[i][j][k] = finite_diff / divisor;
+                        let mut psi_x_prev = sfcs.psi[i - 1][j][k];
+                        let mut psi_x_next = sfcs.psi[i + 1][j][k];
+                        let mut psi_y_prev = sfcs.psi[i][j - 1][k];
+                        let mut psi_y_next = sfcs.psi[i][j + 1][k];
+                        let mut psi_z_prev = sfcs.psi[i][j][k - 1];
+                        let mut psi_z_next = sfcs.psi[i][j][k + 1];
+
+                        let finite_diff = psi_x_prev
+                            + psi_x_next
+                            + psi_y_prev
+                            + psi_y_next
+                            + psi_z_prev
+                            + psi_z_next
+                            - sfcs.psi[i][j][k] * 6.;
+
+                        sfcs.psi_pp_measured[i][j][k] = finite_diff / divisor;
                     }
                 }
-            }
+            } // todo: Here lies one of the strange bracket mismatches that is helping our cause
+              // todo (Uncomment one to engate the strange behavior)
         }
 
         // If you use individual nudges, evaluate how you want to handle this.
@@ -191,8 +176,9 @@ pub fn nudge_wf(
         // todo: Maybe update temp ones above instead of the main ones?
         // if score > current_score {
         if (score - current_score) > 0. {
-            // hacky
             // We've nudged too much; revert.
+
+            // todo: put back! Experimenting
             *nudge_amount *= 0.6;
             sfcs.psi = psi_backup.clone();
             sfcs.psi_pp_calculated = psi_pp_calc_backup.clone();

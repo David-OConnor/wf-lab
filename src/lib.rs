@@ -40,7 +40,7 @@ fn create_trial_wfs(charges: &[(Vec3, f64)]) -> Vec<Basis> {
 
 /// Interface from external programs. Main API for solving the wave function.
 // pub fn psi_from_V(V: &Arr3dReal, grid_bounds: (f64, f64)) -> Arr3d {
-pub fn psi_from_pt_charges(charges: &[(Vec3, f64)], grid_bounds: (f64, f64)) -> Arr3d {
+pub fn psi_from_pt_charges(charges: &[(Vec3, f64)], grid_bounds: &mut (f64, f64)) -> Arr3d {
     // todo: Input is V, or charges? We use charges for now, since it
     // saves a pass in our initial WF. Perhaps though, we want to pass V intact.
     // todo: Output is psi, or psi^2?
@@ -61,19 +61,13 @@ pub fn psi_from_pt_charges(charges: &[(Vec3, f64)], grid_bounds: (f64, f64)) -> 
         &mut sfcs,
         E,
         true,
-        grid_bounds.0,
-        grid_bounds.1,
+        &mut grid_bounds.0,
+        &mut grid_bounds.1,
     );
 
     // todo: Temp removing nudge to test performance
 
-    // nudge::nudge_wf(
-    //     &mut sfcs,
-    //     &mut 0.1,
-    //     &mut E,
-    //     grid_bounds.0,
-    //     grid_bounds.1,
-    // );
+    nudge::nudge_wf(&mut sfcs, &mut 0.1, &mut E, grid_bounds.0, grid_bounds.1);
 
     // let psi_pp_score = wf_ops::score_wf(&sfcs);
 

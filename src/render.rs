@@ -61,7 +61,12 @@ fn event_handler(
 
 /// This runs each frame. Currently, no updates.
 fn render_handler(_state: &mut State, _scene: &mut Scene, _dt: f32) -> EngineUpdates {
-    EngineUpdates::default()
+    // EngineUpdates::default()
+
+    EngineUpdates {
+        // compute: true,
+        ..Default::default()
+    }
 }
 
 /// Utility function to linearly map an input value to an output
@@ -288,5 +293,6 @@ pub fn render(state: State) {
         render_handler,
         event_handler,
         crate::ui::ui_handler,
+        include_str!("shader_compute.wgsl").into(),
     );
 }

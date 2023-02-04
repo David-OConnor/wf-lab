@@ -155,14 +155,22 @@ fn main() {
 
     let z_displayed = 0.;
     let E = -0.7;
-    let (grid_min, grid_max) = (-6., 6.);
+    let (mut grid_min, mut grid_max) = (-6., 6.);
 
     let h_grid = (grid_max - grid_min) / (N as f64);
     let h_grid_sq = h_grid.powi(2);
 
     let mut sfcs = Default::default();
 
-    wf_ops::init_wf(&wfs, &charges, &mut sfcs, E, true, grid_min, grid_max);
+    wf_ops::init_wf(
+        &wfs,
+        &charges,
+        &mut sfcs,
+        E,
+        true,
+        &mut grid_min,
+        &mut grid_max,
+    );
 
     let psi_pp_score = wf_ops::score_wf(&sfcs);
 

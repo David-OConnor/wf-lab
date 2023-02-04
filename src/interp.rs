@@ -168,3 +168,10 @@ fn langrange_o3_1d(posit_sample: f64, pt0: (f64, f64), pt1: (f64, f64), pt2: (f6
 //
 //     portion * (range_out.1 - range_out.0) + range_out.0
 // }
+
+/// todo: Experimental
+/// Estimate the value of psi at a given point, given its value defined
+/// at other points of arbitrary spacing and alignment.
+fn psi_at_pt(pt: Vec3, grid_vals: &[(Vec3, Cplx)]) -> Cplx {
+    Cplx::new_zero()
+}
