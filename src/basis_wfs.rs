@@ -10,9 +10,13 @@
 
 use std::f64::consts::PI;
 
+use crate::{
+    complex_nums::{Cplx, IM},
+    util::Arr3dBasis,
+};
+
 use lin_alg2::f64::{Quaternion, Vec3};
 
-use crate::complex_nums::{Cplx, IM};
 
 // Hartree units.
 const A_0: f64 = 1.;
@@ -449,8 +453,8 @@ impl HOrbital {
 
 /// Terms for this a sin + exponential basis, in a single dimension. Associated with a single
 /// point, where this a reasonable approximation of the wave function locally.
-#[derive(Debug, Default)]
-pub(crate) struct SinExpBasisTerm {
+#[derive(Clone, Debug, Default)]
+pub struct SinExpBasisTerm {
     // todo: Complex exponential instead of sin? Probably.
     // pub sin_weight: f64, //todo: Taken care of by amplitude?
     pub sin_amp: f64,
@@ -460,6 +464,12 @@ pub(crate) struct SinExpBasisTerm {
     pub decaying_exp_rate: f64, // ie λ
     // todo: 0-center these functions, and add a shift for decaying exp?
     pub decaying_exp_shift: f64,
+    /// Power 2
+    pub poly_a: f64,
+    /// Power 1
+    pub poly_b: f64,
+    /// Power 0
+    pub poly_c: f64,
 
 }
 
@@ -467,15 +477,13 @@ impl SinExpBasisTerm {
     // todo: Cplx if you use a complex exponential for sin.
     pub fn value(&self, posit: f64) -> f64 {
         self.sin_amp * (self.sin_freq * posit + self.sin_phase).sin()
-            + self.decaying_exp_amp * (self.decaying_exp_rate * (posit - decaying_exp_shift)).exp() // todo dir of shift?
+            + self.decaying_exp_amp * (self.decaying_exp_rate * (posit - self.decaying_exp_shift)).exp() // todo dir of shift?
+            + self.poly_a * posit.powi(2) + self.poly_b * posit + self.poly_c
     }
 
-    /// Create a basis point here from an H Orbital. (The intent is, do this for all relevant
-    /// orbitals, then sum them. Then modify, how?)
-    /// todo: Maybe a more general approach, ie not H-orbital specific, but an interpolation from
-    /// neighboring psi values?
+    /// Create a basis point here from neighboring values, in 1 dimension.
     /// todo: Cplx?
-    pub fn from_neighbors(val_this: f64, val_prev: f64, val_next: f64, h: f64) -> Self {
+    pub fn from_neighbors(val_this: f64, val_prev: f64, val_next: f64, posit_this: f64, h: f64) -> Self {
         // Note that for decaying exponentials, the amplitude can be though of as used to define
         // at what value the equation takes at position = 0. Is this also a weight for balancing
         // with the sin term?
@@ -491,17 +499,38 @@ impl SinExpBasisTerm {
         // todo: Do you only need 2 points since there are only 2 unknowns?
         // todo: Maybe you need 3 points, since there is a third unknown: The offset
 
-        // 3 unknowns: B, λ, shift.
+        // todo: I think this is untenable for just complex exponentials.
+        // todo another approach: Construct shiftless exponential from 2 pts
+        // todo another: Take another stab at degree-2 polynomial interp.
+        // todo: This brings up another Q: Can you treat dimensions independently?
+
+        // 3 unknowns: B, λ, shift. 3 equations, from 3 points.
         // psi(x) = B·e^(-λ(x + shift))
         // psi(x + h) = B·e^(-λ(x + shift + h))
         // psi(x - h) = B·e^(-λ(x + shift - h))
 
         // A higher exp rate causes the equation to trend towards 0 more quickly as position increases.
 
+        // https://math.stackexchange.com/questions/680646/get-polynomial-function-from-3-points
+        let posit_prev = posit_this - h;
+        let posit_next = posit_this + h;
+
+        let poly_a_num = posit_prev * (val_next - val_this) + posit_this * (val_prev - val_next) + posit_next * (val_this - val_prev);
+        let poly_a_denom = (posit_prev - posit_this) * (posit_prev - posit_next) * (posit_this - posit_next);
+
+        let poly_a = poly_a_num / poly_a_denom;
+
+        let poly_b = (val_this - val_prev) / (posit_this - posit_prev) - poly_a * (posit_prev + posit_this);
+
+        let poly_c = val_prev - poly_a * posit_prev.powi(2) - poly_b * posit_prev;
+
         Self {
-            decaying_exp_amp: B,
-            decaying_exp_rate: λ,
-            decaying_exp_shift: shift,
+            poly_a,
+            poly_b,
+            poly_c,
+            // decaying_exp_amp: B,
+            // decaying_exp_rate: λ,
+            // decaying_exp_shift: shift,
             ..Default::default() // No sin term for now.
         }
     }
@@ -514,8 +543,8 @@ impl SinExpBasisTerm {
 /// todo note: Maybe polynomial term? It's in the H bases
 /// Todo: Complex exponential to replace sin term? To replace *both* terms?
 /// todo: Move this to another module if it works out
-#[derive(Debug)]
-pub(crate) struct SinExpBasisPt {
+#[derive(Clone, Debug, Default)]
+pub struct SinExpBasisPt {
     pub terms_x: SinExpBasisTerm,
     pub terms_y: SinExpBasisTerm,
     pub terms_z: SinExpBasisTerm,
@@ -527,12 +556,48 @@ impl SinExpBasisPt {
         self.terms_x.value(posit.x) + self.terms_y.value(posit.y) + self.terms_z.value(posit.z)
     }
 
+    /// Create a basis point from equally-spaced neighbors, in 3 dimensions.
     /// Format of vals is (this, prev, next).
-    pub fn from_neighbors(vals_x: (f64, f64, f64),vals_y: (f64, f64, f64), vals_z: (f64, f64, f64), h: f64) -> Self {
+    /// todo: COmplex
+    pub fn from_neighbors(vals_x: (f64, f64, f64),vals_y: (f64, f64, f64), vals_z: (f64, f64, f64), posit: Vec3, h: f64) -> Self {
         Self {
-            terms_x: SinExpBasisTerm::from_neighbors(vals_x.0, vals_x.1, vals_x.2, h),
-            terms_y: SinExpBasisTerm::from_neighbors(vals_y.0, vals_y.1, vals_y.2, h),
-            terms_z: SinExpBasisTerm::from_neighbors(vals_z.0, vals_z.1, vals_z.2, h),
+            terms_x: SinExpBasisTerm::from_neighbors(vals_x.0, vals_x.1, vals_x.2, posit.x, h),
+            terms_y: SinExpBasisTerm::from_neighbors(vals_y.0, vals_y.1, vals_y.2, posit.y, h),
+            terms_z: SinExpBasisTerm::from_neighbors(vals_z.0, vals_z.1, vals_z.2, posit.z, h),
         }
     }
+}
+
+/// todo: Cplx?
+/// todo: Input args include indices, or not?
+fn interp_from_sin_exp_basis(
+    basis: &Arr3dBasis,
+    pt: Vec3,
+    i_tla: (usize, usize, usize), // todo: If you keep this apch, bundle
+    i_tra: (usize, usize, usize),
+    i_bla: (usize, usize, usize),
+    i_bra: (usize, usize, usize),
+    i_tlf: (usize, usize, usize),
+    i_trf: (usize, usize, usize),
+    i_blf: (usize, usize, usize),
+    i_brf: (usize, usize, usize),
+) -> f64 {
+    let tla = basis[i_tla.0][i_tla.1][i_tla.2].value(pt);
+    let tra = basis[i_tra.0][i_tra.1][i_tra.2].value(pt);
+    let bla = basis[i_bla.0][i_bla.1][i_bla.2].value(pt);
+    let bra = basis[i_bra.0][i_bra.1][i_bra.2].value(pt);
+    
+    let tlf = basis[i_tlf.0][i_tlf.1][i_tlf.2].value(pt);
+    let trf = basis[i_trf.0][i_trf.1][i_trf.2].value(pt);
+    let blf = basis[i_blf.0][i_blf.1][i_blf.2].value(pt);
+    let brf = basis[i_brf.0][i_brf.1][i_brf.2].value(pt);
+
+    tla * tla_weight +
+        tra * tra_weight +
+        bla * bla_weight +
+        bra * bra_weight +
+            tlf * tl_weight +
+        trf * trf_weight +
+        blf * blf_weight +
+        brf * brf_weight
 }

@@ -140,6 +140,9 @@ pub fn linear_1d(posit_sample: f64, range: (f64, f64), val_l: f64, val_r: f64) -
 /// todo: Figure out how to just calculate the coefficients for a more
 /// todo flexible approach. More eloquent, but tough to find info on compared
 /// todo to this approach.
+/// todo: For coefficients, maybe try here:
+/// https://math.stackexchange.com/questions/680646/get-polynomial-function-from-3-points
+/// todo: Not too tough to work it out yourself too...
 fn langrange_o3_1d(posit_sample: f64, pt0: (f64, f64), pt1: (f64, f64), pt2: (f64, f64)) -> f64 {
     let mut result = 0.;
 

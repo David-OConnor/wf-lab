@@ -1,10 +1,10 @@
 //! This module contains the bulk of the wave-function evalution and solving logic.
 
 use crate::{
-    basis_wfs::Basis,
+    basis_wfs::{Basis, SinExpBasisPt},
     complex_nums::Cplx,
     interp,
-    util::{self, Arr3d, Arr3dReal},
+    util::{self, Arr3d, Arr3dReal, Arr3dBasis},
 };
 
 use lin_alg2::f64::Vec3;
@@ -24,7 +24,7 @@ const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 40;
+pub const N: usize = 30;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Too small might lead to numerical issues though (?)
@@ -156,6 +156,19 @@ pub fn new_data(n: usize) -> Arr3d {
 pub fn new_data_real(n: usize) -> Arr3dReal {
     let mut z = Vec::new();
     z.resize(n, 0.);
+
+    let mut y = Vec::new();
+    y.resize(n, z);
+
+    let mut x = Vec::new();
+    x.resize(n, y);
+
+    x
+}
+
+pub fn new_data_basis(n: usize) -> Arr3dBasis {
+    let mut z = Vec::new();
+    z.resize(n, SinExpBasisPt::default());
 
     let mut y = Vec::new();
     y.resize(n, z);
@@ -605,6 +618,8 @@ pub struct Surfaces {
     /// Electric charge at each point in space. Probably will be unused
     /// todo going forward, since this is *very* computationally intensive
     pub elec_charges: Vec<Arr3dReal>,
+    /// todo: Experimental representation as a local analytic eq at each point.
+    pub bases: Arr3dBasis,
 }
 
 impl Default for Surfaces {
@@ -632,6 +647,7 @@ impl Default for Surfaces {
             nudge_amounts: default_nudges,
             // psi_prev: data.clone(),
             elec_charges: vec![data_real.clone()],
+            bases: new_data_basis(N),
         }
     }
 }
