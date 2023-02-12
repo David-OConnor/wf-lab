@@ -4,7 +4,7 @@ use crate::{
     basis_wfs::{Basis, SinExpBasisPt},
     complex_nums::Cplx,
     interp,
-    util::{self, Arr3d, Arr3dReal, Arr3dBasis},
+    util::{self, Arr3d, Arr3dBasis, Arr3dReal},
 };
 
 use lin_alg2::f64::Vec3;
@@ -130,8 +130,68 @@ pub fn init_wf(
 
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-                sfcs.psi_pp_measured[i][j][k] =
-                    find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
+
+                // todo: Commented out; see below while testing our new bases
+                // sfcs.psi_pp_measured[i][j][k] =
+                //     find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
+            }
+        }
+    }
+
+    let grid_dx = (*grid_max - *grid_min) / N as f64;
+
+    // Populate our exp/sin/poly bases, now that psi is populated. (These bases are functions of psi
+    // at a given point, and neighbors)
+    for (i, x) in grid_1d.iter().enumerate() {
+        if i == 0 || i == N - 1 {
+            continue;
+        }
+        for (j, y) in grid_1d.iter().enumerate() {
+            if j == 0 || j == N - 1 {
+                continue;
+            }
+            for (k, z) in grid_1d.iter().enumerate() {
+                if k == 0 || k == N - 1 {
+                    continue;
+                }
+
+                let posit_sample = Vec3::new(*x, *y, *z);
+
+                // todo: Consider the API to create these, eg arbitrary points, or fixed dists.
+                sfcs.bases[i][j][k] = SinExpBasisPt::from_neighbors(
+                    // todo: Do you need to incorporate the full 27 points around instead of just the 6
+                    // todo faces? Can you get a better interp from edges and corners?? Would probably
+                    // todo need a more expressive basis for that to work.
+                    (
+                        sfcs.psi[i - 1][j][k].real,
+                        sfcs.psi[i][j][k].real,
+                        sfcs.psi[i + 1][j][k].real,
+                    ),
+                    (
+                        sfcs.psi[i][j - 1][k].real,
+                        sfcs.psi[i][j][k].real,
+                        sfcs.psi[i][j + 1][k].real,
+                    ),
+                    (
+                        sfcs.psi[i][j][k - 1].real,
+                        sfcs.psi[i][j][k].real,
+                        sfcs.psi[i][j][k + 1].real,
+                    ),
+                    posit_sample,
+                    grid_dx,
+                );
+
+                // todo: testing our new approach.
+                sfcs.psi_pp_measured[i][j][k] = find_ψ_pp_meas_from_interp2(
+                    posit_sample,
+                    &sfcs.psi,
+                    &sfcs.bases,
+                    *grid_min,
+                    *grid_max,
+                    i,
+                    j,
+                    k,
+                );
             }
         }
     }
@@ -494,6 +554,50 @@ pub(crate) fn find_ψ_pp_meas_from_interp(
         psi[i + 1][j + 1][k],
         psi[i + 1][j][k],
     );
+
+    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+        - psi[i][j][k] * 6.;
+
+    // result / H_SQ
+    result / (h2 * h2)
+}
+
+/// Calcualte ψ'' measured, using our polynomial/sin/exp bases
+pub(crate) fn find_ψ_pp_meas_from_interp2(
+    posit_sample: Vec3,
+    psi: &Arr3d,
+    bases: &Arr3dBasis,
+    grid_min: f64,
+    grid_max: f64,
+    i: usize,
+    j: usize,
+    k: usize,
+) -> Cplx {
+    let grid_dx = (grid_max - grid_min) / N as f64;
+
+    // todo: For now, use only the basis function at the point, since we're using
+    // todo small diffs from it. In the future, consider if you'd like to interpolate
+    // todo from the basis-functions at neighboring points weighted by dist to each.
+
+    let h2 = grid_dx / 10.; // todo temp!!! Not working for values other than dx...
+
+    let h2 = 0.001;
+
+    let x_prev = Vec3::new(posit_sample.x - h2, posit_sample.y, posit_sample.z);
+    let x_next = Vec3::new(posit_sample.x + h2, posit_sample.y, posit_sample.z);
+    let y_prev = Vec3::new(posit_sample.x, posit_sample.y - h2, posit_sample.z);
+    let y_next = Vec3::new(posit_sample.x, posit_sample.y + h2, posit_sample.z);
+    let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - h2);
+    let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + h2);
+
+    // todo, since our bases for now produce real vals
+
+    let psi_x_prev = Cplx::from_real(bases[i][j][k].value(x_prev));
+    let psi_x_next = Cplx::from_real(bases[i][j][k].value(x_next));
+    let psi_y_prev = Cplx::from_real(bases[i][j][k].value(y_prev));
+    let psi_y_next = Cplx::from_real(bases[i][j][k].value(y_next));
+    let psi_z_prev = Cplx::from_real(bases[i][j][k].value(z_prev));
+    let psi_z_next = Cplx::from_real(bases[i][j][k].value(z_next));
 
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - psi[i][j][k] * 6.;

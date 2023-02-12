@@ -4,7 +4,9 @@
 // todo: This possibly needs complex support. Perhaps as a wrapper since you can treat the real and
 // todo complex parts separately.
 
-use crate::complex_nums::Cplx;
+use std::f64::consts::TAU;
+
+use crate::{complex_nums::Cplx, util};
 
 use lin_alg2::f64::Vec3;
 
@@ -175,6 +177,73 @@ fn langrange_o3_1d(posit_sample: f64, pt0: (f64, f64), pt1: (f64, f64), pt2: (f6
 /// todo: Experimental
 /// Estimate the value of psi at a given point, given its value defined
 /// at other points of arbitrary spacing and alignment.
-fn psi_at_pt(pt: Vec3, grid_vals: &[(Vec3, Cplx)]) -> Cplx {
+fn psi_at_pt(charges: Vec3, grid_vals: &[(Vec3, Cplx)]) -> Cplx {
     Cplx::new_zero()
+}
+
+fn test_rbf(charges: &[Vec3], grid_rng: (f64, f64)) {
+    // Determine how to set up our sample points
+    const N_LATS: usize = 10;
+    const N_LONS: usize = 10;
+
+    const N_DISTS: usize = 8;
+
+    const ANGLE_BW_LATS: f64 = (TAU / 2.) / N_RADIALS;
+    const ANGLE_BW_LONS: f64 = TAU / N_RADIALS;
+
+    const DIST_CONST: f64 = 0.05; // c^n_dists = max_dist
+
+    const N_SAMPLES: usize = N_LATS * N_LONS * N_DISTS * charges.len();
+
+    // todo: Dist falloff, since we use more dists closer to the nuclei?
+
+    // `xobs` is a an array of X, Y pts. Rust equiv type might be
+    // &[Vec3]
+    let mut xobs = [Vec3; N_SAMPLES];
+
+    let mut i = 0;
+
+    for lat_i in 0..N_LATS {
+        let theta = lat_i * ANGLE_BW_LATS; // todo which is which?
+                                           // We don't use dist = 0.
+
+        for lon_i in 0..N_LONS {
+            let phi = lon_i * ANGLE_BW_LONS; // todo which is which?
+
+            for dist_i in 1..N_DISTS + 1 {
+                // Don't use ring @ r=0.
+                // r = exp(DIST_DECAY_EXP * dist_i) * DIST_CONST
+                let r = dist_i.powi(2) * DIST_CONST;
+
+                for (charge_i, charge_posit) in charges.into_iter().enumerate() {
+                    xobs[i + charge_i] = util::spherical_to_cart(*charge_posit, theta, phi, r);
+                }
+
+                i += charges.len();
+            }
+        }
+    }
+
+    // z_slice = ctr[2]
+
+    // `yobs` is the function values at each of the sample points.
+    // eg `&[Cplx]`
+    let mut yobs = [f64; N_SAMPLES]; // todo: Cplx?
+
+    // Iterate over our random sample of points
+    for (i, grid_pt) in xobs.iter().enumerate() {
+        yobs[i] = h100(nuc1, Vec3(grid_pt[0], grid_pt[1], 0.))
+            + h100(nuc2, Vec3(grid_pt[0], grid_pt[1], 0.));
+    }
+
+    //
+    //
+    // xgrid = np.mgrid[grid_min:grid_max:50j, grid_min:grid_max:50j]
+    //
+    // xflat = xgrid.reshape(2, -1).T
+    //
+    //
+    // yflat = RBFInterpolator(xobs, yobs, kernel='cubic')(xflat)
+    //
+    // ygrid = yflat.reshape(50, 50)
 }

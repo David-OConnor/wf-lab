@@ -17,7 +17,6 @@ use crate::{
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
-
 // Hartree units.
 const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
@@ -141,7 +140,7 @@ impl Basis {
             Self::Sto(_) => "STO",
             Self::H(_) => "H",
         }
-            .to_owned()
+        .to_owned()
     }
 }
 
@@ -470,7 +469,6 @@ pub struct SinExpBasisTerm {
     pub poly_b: f64,
     /// Power 0
     pub poly_c: f64,
-
 }
 
 impl SinExpBasisTerm {
@@ -483,7 +481,7 @@ impl SinExpBasisTerm {
 
     /// Create a basis point here from neighboring values, in 1 dimension.
     /// todo: Cplx?
-    pub fn from_neighbors(val_this: f64, val_prev: f64, val_next: f64, posit_this: f64, h: f64) -> Self {
+    pub fn from_neighbors(v_prev: f64, v_this: f64, v_next: f64, p_this: f64, h: f64) -> Self {
         // Note that for decaying exponentials, the amplitude can be though of as used to define
         // at what value the equation takes at position = 0. Is this also a weight for balancing
         // with the sin term?
@@ -504,6 +502,10 @@ impl SinExpBasisTerm {
         // todo another: Take another stab at degree-2 polynomial interp.
         // todo: This brings up another Q: Can you treat dimensions independently?
 
+        // todo: Consider having the coeffs defined with the point being = 0, with actual coords
+        // todo stored, and applied as an offset. This could mitigate numerical precision issues,
+        // todo especially if using f32s on the GPU.
+
         // 3 unknowns: B, λ, shift. 3 equations, from 3 points.
         // psi(x) = B·e^(-λ(x + shift))
         // psi(x + h) = B·e^(-λ(x + shift + h))
@@ -511,21 +513,28 @@ impl SinExpBasisTerm {
 
         // A higher exp rate causes the equation to trend towards 0 more quickly as position increases.
 
+        // todo: If you want to make this system centered on 0 for numerical floating point reasons,
+        // todo, it may be as simple as setting posit_this here to 0, and offsetting downstream.
+        // let posit_this = 0.;
+
         // https://math.stackexchange.com/questions/680646/get-polynomial-function-from-3-points
-        let posit_prev = posit_this - h;
-        let posit_next = posit_this + h;
+        // Good article: https://cohost.org/tomforsyth/post/982199-polynomial-interpola
+        let p_prev = p_this - h;
+        let p_next = p_this + h;
 
-        let poly_a_num = posit_prev * (val_next - val_this) + posit_this * (val_prev - val_next) + posit_next * (val_this - val_prev);
-        let poly_a_denom = (posit_prev - posit_this) * (posit_prev - posit_next) * (posit_this - posit_next);
+        let poly_a_num =
+            p_prev * (v_next - v_this) + p_this * (v_prev - v_next) + p_next * (v_this - v_prev);
 
-        let poly_a = poly_a_num / poly_a_denom;
+        let poly_a_denom = (p_prev - p_this) * (p_prev - p_next) * (p_this - p_next);
 
-        let poly_b = (val_this - val_prev) / (posit_this - posit_prev) - poly_a * (posit_prev + posit_this);
+        let a = poly_a_num / poly_a_denom;
 
-        let poly_c = val_prev - poly_a * posit_prev.powi(2) - poly_b * posit_prev;
+        let poly_b = (v_this - v_prev) / (p_this - p_prev) - a * (p_prev + p_this);
+
+        let poly_c = v_prev - a * p_prev.powi(2) - poly_b * p_prev;
 
         Self {
-            poly_a,
+            poly_a: a,
             poly_b,
             poly_c,
             // decaying_exp_amp: B,
@@ -559,7 +568,13 @@ impl SinExpBasisPt {
     /// Create a basis point from equally-spaced neighbors, in 3 dimensions.
     /// Format of vals is (this, prev, next).
     /// todo: COmplex
-    pub fn from_neighbors(vals_x: (f64, f64, f64),vals_y: (f64, f64, f64), vals_z: (f64, f64, f64), posit: Vec3, h: f64) -> Self {
+    pub fn from_neighbors(
+        vals_x: (f64, f64, f64),
+        vals_y: (f64, f64, f64),
+        vals_z: (f64, f64, f64),
+        posit: Vec3,
+        h: f64,
+    ) -> Self {
         Self {
             terms_x: SinExpBasisTerm::from_neighbors(vals_x.0, vals_x.1, vals_x.2, posit.x, h),
             terms_y: SinExpBasisTerm::from_neighbors(vals_y.0, vals_y.1, vals_y.2, posit.y, h),
@@ -586,18 +601,30 @@ fn interp_from_sin_exp_basis(
     let tra = basis[i_tra.0][i_tra.1][i_tra.2].value(pt);
     let bla = basis[i_bla.0][i_bla.1][i_bla.2].value(pt);
     let bra = basis[i_bra.0][i_bra.1][i_bra.2].value(pt);
-    
+
     let tlf = basis[i_tlf.0][i_tlf.1][i_tlf.2].value(pt);
     let trf = basis[i_trf.0][i_trf.1][i_trf.2].value(pt);
     let blf = basis[i_blf.0][i_blf.1][i_blf.2].value(pt);
     let brf = basis[i_brf.0][i_brf.1][i_brf.2].value(pt);
 
-    tla * tla_weight +
-        tra * tra_weight +
-        bla * bla_weight +
-        bra * bra_weight +
-            tlf * tl_weight +
-        trf * trf_weight +
-        blf * blf_weight +
-        brf * brf_weight
+    // todo
+
+    let tla_weight = 1.;
+    let tra_weight = 1.;
+    let bra_weight = 1.;
+    let bla_weight = 1.;
+
+    let tlf_weight = 1.;
+    let trf_weight = 1.;
+    let brf_weight = 1.;
+    let blf_weight = 1.;
+
+    (tla * tla_weight
+        + tra * tra_weight
+        + bla * bla_weight
+        + bra * bra_weight
+        + tlf * tlf_weight
+        + trf * trf_weight
+        + blf * blf_weight
+        + brf * brf_weight)
 }

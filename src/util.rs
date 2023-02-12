@@ -1,9 +1,11 @@
-use crate::{complex_nums::Cplx, wf_ops::N, basis_wfs::SinExpBasisPt};
+use crate::{basis_wfs::SinExpBasisPt, complex_nums::Cplx, wf_ops::N};
 
 // type Arr3d = Vec<Vec<Vec<f64>>>;
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
 pub type Arr3d = Vec<Vec<Vec<Cplx>>>;
 pub type Arr3dBasis = Vec<Vec<Vec<SinExpBasisPt>>>;
+
+use lin_alg2::f64::Vec3;
 
 /// Create a set of values in a given range, with a given number of values.
 /// Similar to `numpy.linspace`.
@@ -21,6 +23,25 @@ pub fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
 
     result
 }
+
+/// theta and r are anchored to the centern point. The center point and returned value
+/// are in global, cartesian coords.
+pub fn polar_to_cart(ctr: (f64, f64), theta: f64, r: f64) -> (f64, f64) {
+    let x = ctr.0 + cos(theta) * r;
+    let y = ctr.1 + sin(theta) * r;
+
+    (x, y)
+}
+
+/// todo: WHich convention?
+pub fn spherical_to_cart(ctr: Vec3, θ: float, φ: float, r: float) -> Vec3 {
+    let x = ctr.x + r * φ.sin() * θ.cos();
+    let y = ctr.y + r * φ.sin() * θ.sin();
+    let z = ctr.z + r * φ.cos();
+
+    Vec3::new(x, y, z)
+}
+
 //
 // /// Quadratic interpolation in 3D, using spline interpolation.
 // /// Note: Assumes a cubic set of values. If we make it non-cubic in the future, range needs
