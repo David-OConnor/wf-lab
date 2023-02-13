@@ -6,7 +6,7 @@
 
 use std::f64::consts::TAU;
 
-use crate::{complex_nums::Cplx, util};
+use crate::{complex_nums::Cplx, rbf::Rbf, util};
 
 use lin_alg2::f64::Vec3;
 
@@ -208,7 +208,7 @@ fn test_rbf(charges: &[Vec3], grid_rng: (f64, f64)) {
 
     for lat_i in 0..N_LATS {
         let theta = lat_i as f64 * ANGLE_BW_LATS; // todo which is which?
-                                           // We don't use dist = 0.
+                                                  // We don't use dist = 0.
 
         for lon_i in 0..N_LONS {
             let phi = lon_i as f64 * ANGLE_BW_LONS; // todo which is which?
@@ -239,9 +239,11 @@ fn test_rbf(charges: &[Vec3], grid_rng: (f64, f64)) {
 
     // Iterate over our random sample of points
     for (i, grid_pt) in xobs.iter().enumerate() {
-        yobs[i] = h100(nuc1, Vec3::new(grid_pt.x, grid_pt.y, 0.))
-            + h100(nuc2, Vec3::new(grid_pt.x, grid_pt.y, 0.));
+        // yobs[i] = h100(nuc1, Vec3::new(grid_pt.x, grid_pt.y, 0.))
+        //     + h100(nuc2, Vec3::new(grid_pt.x, grid_pt.y, 0.));
     }
+
+    let rbf = Rbf::new(&xobs, &yobs, "linear", None);
 
     //
     //
