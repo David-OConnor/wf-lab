@@ -188,32 +188,35 @@ fn test_rbf(charges: &[Vec3], grid_rng: (f64, f64)) {
 
     const N_DISTS: usize = 8;
 
-    const ANGLE_BW_LATS: f64 = (TAU / 2.) / N_RADIALS;
-    const ANGLE_BW_LONS: f64 = TAU / N_RADIALS;
+    const ANGLE_BW_LATS: f64 = (TAU / 2.) / N_LATS as f64;
+    const ANGLE_BW_LONS: f64 = TAU / N_LONS as f64;
 
     const DIST_CONST: f64 = 0.05; // c^n_dists = max_dist
 
-    const N_SAMPLES: usize = N_LATS * N_LONS * N_DISTS * charges.len();
+    let n_samples = N_LATS * N_LONS * N_DISTS * charges.len();
 
     // todo: Dist falloff, since we use more dists closer to the nuclei?
 
     // `xobs` is a an array of X, Y pts. Rust equiv type might be
     // &[Vec3]
-    let mut xobs = [Vec3; N_SAMPLES];
+    let mut xobs = Vec::new();
+    for _ in 0..n_samples {
+        xobs.push(Vec3::new_zero());
+    }
 
     let mut i = 0;
 
     for lat_i in 0..N_LATS {
-        let theta = lat_i * ANGLE_BW_LATS; // todo which is which?
+        let theta = lat_i as f64 * ANGLE_BW_LATS; // todo which is which?
                                            // We don't use dist = 0.
 
         for lon_i in 0..N_LONS {
-            let phi = lon_i * ANGLE_BW_LONS; // todo which is which?
+            let phi = lon_i as f64 * ANGLE_BW_LONS; // todo which is which?
 
             for dist_i in 1..N_DISTS + 1 {
                 // Don't use ring @ r=0.
                 // r = exp(DIST_DECAY_EXP * dist_i) * DIST_CONST
-                let r = dist_i.powi(2) * DIST_CONST;
+                let r = (dist_i as f64).powi(2) * DIST_CONST;
 
                 for (charge_i, charge_posit) in charges.into_iter().enumerate() {
                     xobs[i + charge_i] = util::spherical_to_cart(*charge_posit, theta, phi, r);
@@ -227,13 +230,17 @@ fn test_rbf(charges: &[Vec3], grid_rng: (f64, f64)) {
     // z_slice = ctr[2]
 
     // `yobs` is the function values at each of the sample points.
-    // eg `&[Cplx]`
-    let mut yobs = [f64; N_SAMPLES]; // todo: Cplx?
+
+    // todo: Cplx?
+    let mut yobs = Vec::new();
+    for _ in 0..n_samples {
+        yobs.push(0.);
+    }
 
     // Iterate over our random sample of points
     for (i, grid_pt) in xobs.iter().enumerate() {
-        yobs[i] = h100(nuc1, Vec3(grid_pt[0], grid_pt[1], 0.))
-            + h100(nuc2, Vec3(grid_pt[0], grid_pt[1], 0.));
+        yobs[i] = h100(nuc1, Vec3::new(grid_pt.x, grid_pt.y, 0.))
+            + h100(nuc2, Vec3::new(grid_pt.x, grid_pt.y, 0.));
     }
 
     //

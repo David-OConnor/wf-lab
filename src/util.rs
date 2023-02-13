@@ -27,14 +27,14 @@ pub fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
 /// theta and r are anchored to the centern point. The center point and returned value
 /// are in global, cartesian coords.
 pub fn polar_to_cart(ctr: (f64, f64), theta: f64, r: f64) -> (f64, f64) {
-    let x = ctr.0 + cos(theta) * r;
-    let y = ctr.1 + sin(theta) * r;
+    let x = ctr.0 + theta.cos() * r;
+    let y = ctr.1 + theta.cos() * r;
 
     (x, y)
 }
 
 /// todo: WHich convention?
-pub fn spherical_to_cart(ctr: Vec3, θ: float, φ: float, r: float) -> Vec3 {
+pub fn spherical_to_cart(ctr: Vec3, θ: f64, φ: f64, r: f64) -> Vec3 {
     let x = ctr.x + r * φ.sin() * θ.cos();
     let y = ctr.y + r * φ.sin() * θ.sin();
     let z = ctr.z + r * φ.cos();

@@ -10,5 +10,9 @@ graphics = { path = "../graphics_wgpu" }
 lin-alg2 = { path = "../lin_alg" }
 egui = "^0.19"
 
+# Tempish: These are for adapting the RBF lib
+rulinalg = "^0.4"
+error-chain = "0.10"
+
 # todo: Experimenting with auot-diff
 # autodiff = "^0.6.0"
