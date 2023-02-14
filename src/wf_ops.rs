@@ -5,6 +5,7 @@ use crate::{
     complex_nums::Cplx,
     interp,
     util::{self, Arr3d, Arr3dBasis, Arr3dReal},
+    rbf::Rbf,
 };
 
 use lin_alg2::f64::Vec3;
@@ -24,7 +25,7 @@ const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 30;
+pub const N: usize = 50;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Too small might lead to numerical issues though (?)
@@ -132,11 +133,69 @@ pub fn init_wf(
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
 
                 // todo: Commented out; see below while testing our new bases
-                // sfcs.psi_pp_measured[i][j][k] =
-                //     find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
+                sfcs.psi_pp_measured[i][j][k] =
+                    find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
             }
         }
     }
+
+    // todo: Start RBF test
+
+    let charge_posits: Vec<Vec3> = charges.into_iter().map(|c| c.0).collect();
+
+    let rbf = interp::setup_rbf_interp(&charge_posits, bases);
+
+    // todo: Testing numerical diff based on RBF.
+    for (i, x) in grid_1d.iter().enumerate() {
+        if i == 0 || i == N - 1 {
+            continue;
+        }
+        for (j, y) in grid_1d.iter().enumerate() {
+            if j == 0 || j == N - 1 {
+                continue;
+            }
+            for (k, z) in grid_1d.iter().enumerate() {
+                if k == 0 || k == N - 1 {
+                    continue;
+                }
+
+                let posit_sample = Vec3::new(*x, *y, *z);
+
+                // todo: Set psi from thsi too to see if it looks right. Zooming in to demonstrate
+                // todo interp.
+                // sfcs.psi[i][j][k] = Cplx::from_real(rbf.interp_point(Vec3::new(
+                //     posit_sample.x / 4.,
+                //     posit_sample.y / 4.,
+                //     posit_sample.z / 4.,
+                // )));
+
+                sfcs.psi_pp_measured[i][j][k] =
+                    find_ψ_pp_meas_fm_rbf(posit_sample, sfcs.psi[i][k][k], &rbf, *grid_min, *grid_max);
+            }
+        }
+    }
+
+    // Code to test interpolation.
+    let b1 = &bases[0];
+
+    let rbf_compare_pts = vec![
+        Vec3::new(0., 0., 0.),
+        Vec3::new(1., 0., 0.),
+        Vec3::new(1., 1., 0.),
+        Vec3::new(0.5, 0.5, 0.5),
+    ];
+
+    for pt in &rbf_compare_pts {
+        println!(
+            "\nBasis: {:.5} \n Rbf: {:.5}",
+            b1.value(*pt).real * b1.weight(),
+            rbf.interp_point(*pt),
+        );
+    }
+
+    // todo end RBF test
+
+    // todo: Start sinexpbasispt testing
 
     let grid_dx = (*grid_max - *grid_min) / N as f64;
 
@@ -157,44 +216,46 @@ pub fn init_wf(
 
                 let posit_sample = Vec3::new(*x, *y, *z);
 
-                // todo: Consider the API to create these, eg arbitrary points, or fixed dists.
-                sfcs.bases[i][j][k] = SinExpBasisPt::from_neighbors(
-                    // todo: Do you need to incorporate the full 27 points around instead of just the 6
-                    // todo faces? Can you get a better interp from edges and corners?? Would probably
-                    // todo need a more expressive basis for that to work.
-                    (
-                        sfcs.psi[i - 1][j][k].real,
-                        sfcs.psi[i][j][k].real,
-                        sfcs.psi[i + 1][j][k].real,
-                    ),
-                    (
-                        sfcs.psi[i][j - 1][k].real,
-                        sfcs.psi[i][j][k].real,
-                        sfcs.psi[i][j + 1][k].real,
-                    ),
-                    (
-                        sfcs.psi[i][j][k - 1].real,
-                        sfcs.psi[i][j][k].real,
-                        sfcs.psi[i][j][k + 1].real,
-                    ),
-                    posit_sample,
-                    grid_dx,
-                );
-
-                // todo: testing our new approach.
-                sfcs.psi_pp_measured[i][j][k] = find_ψ_pp_meas_from_interp2(
-                    posit_sample,
-                    &sfcs.psi,
-                    &sfcs.bases,
-                    *grid_min,
-                    *grid_max,
-                    i,
-                    j,
-                    k,
-                );
+                // // todo: Consider the API to create these, eg arbitrary points, or fixed dists.
+                // sfcs.bases[i][j][k] = SinExpBasisPt::from_neighbors(
+                //     // todo: Do you need to incorporate the full 27 points around instead of just the 6
+                //     // todo faces? Can you get a better interp from edges and corners?? Would probably
+                //     // todo need a more expressive basis for that to work.
+                //     (
+                //         sfcs.psi[i - 1][j][k].real,
+                //         sfcs.psi[i][j][k].real,
+                //         sfcs.psi[i + 1][j][k].real,
+                //     ),
+                //     (
+                //         sfcs.psi[i][j - 1][k].real,
+                //         sfcs.psi[i][j][k].real,
+                //         sfcs.psi[i][j + 1][k].real,
+                //     ),
+                //     (
+                //         sfcs.psi[i][j][k - 1].real,
+                //         sfcs.psi[i][j][k].real,
+                //         sfcs.psi[i][j][k + 1].real,
+                //     ),
+                //     posit_sample,
+                //     grid_dx,
+                // );
+                //
+                // // todo: testing our new approach.
+                // sfcs.psi_pp_measured[i][j][k] = find_ψ_pp_meas_from_interp2(
+                //     posit_sample,
+                //     &sfcs.psi,
+                //     &sfcs.bases,
+                //     *grid_min,
+                //     *grid_max,
+                //     i,
+                //     j,
+                //     k,
+                // );
             }
         }
     }
+
+    // todo: end sinexpbasispt testing
 }
 
 /// Make a new 3D grid, as a nested Vec
@@ -388,6 +449,43 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
         - psi_sample_loc * 6.;
 
     result / H_SQ
+}
+
+/// Calcualte ψ'' measured, using a discrete function, interpolated.
+/// Calculate ψ'' based on a numerical derivative of psi
+/// in 3D.
+pub(crate) fn find_ψ_pp_meas_fm_rbf(
+    posit_sample: Vec3,
+    psi_sample: Cplx,
+    rbf: &Rbf,
+    grid_min: f64,
+    grid_max: f64,
+) -> Cplx {
+    let grid_dx = (grid_max - grid_min) / N as f64;
+
+    let h2 = grid_dx / 1.; // todo temp?
+
+    let x_prev = Vec3::new(posit_sample.x - h2, posit_sample.y, posit_sample.z);
+    let x_next = Vec3::new(posit_sample.x + h2, posit_sample.y, posit_sample.z);
+    let y_prev = Vec3::new(posit_sample.x, posit_sample.y - h2, posit_sample.z);
+    let y_next = Vec3::new(posit_sample.x, posit_sample.y + h2, posit_sample.z);
+    let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - h2);
+    let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + h2);
+
+    let psi_x_prev = rbf.interp_point(x_prev);
+    let psi_x_next = rbf.interp_point(x_next);
+    let psi_y_prev = rbf.interp_point(y_prev);
+    let psi_y_next = rbf.interp_point(y_next);
+    let psi_z_prev = rbf.interp_point(z_prev);
+    let psi_z_next = rbf.interp_point(z_next);
+
+    // todo: real only for now.
+
+    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+        - psi_sample.real * 6.;
+
+    // result / H_SQ
+    Cplx::from_real(result / (h2 * h2)) // todo real temp
 }
 
 /// Calcualte ψ'' measured, using a discrete function, interpolated.

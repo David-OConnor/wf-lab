@@ -33,11 +33,12 @@ pub fn polar_to_cart(ctr: (f64, f64), theta: f64, r: f64) -> (f64, f64) {
     (x, y)
 }
 
-/// todo: WHich convention?
+/// Converts spherical coordinates to cartesian. θ is inclination (lat). φ is azimuth (lon).
+/// θ is on a scale of 0 to τ/2. φ is on a scale of 0 to τ.
 pub fn spherical_to_cart(ctr: Vec3, θ: f64, φ: f64, r: f64) -> Vec3 {
-    let x = ctr.x + r * φ.sin() * θ.cos();
-    let y = ctr.y + r * φ.sin() * θ.sin();
-    let z = ctr.z + r * φ.cos();
+    let x = ctr.x + r * θ.sin() * φ.cos();
+    let y = ctr.y + r * θ.sin() * φ.sin();
+    let z = ctr.z + r * θ.cos();
 
     Vec3::new(x, y, z)
 }

@@ -99,7 +99,7 @@ fn main() {
             posit_charge_2,
             1,
             SphericalHarmonic::default(),
-            1.,
+            0.,
             1,
         )),
         Basis::H(HOrbital::new(
@@ -151,7 +151,7 @@ fn main() {
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges = vec![
         (posit_charge_1, Q_PROT),
-        (posit_charge_2, Q_PROT),
+        // (posit_charge_2, Q_PROT),
         // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
