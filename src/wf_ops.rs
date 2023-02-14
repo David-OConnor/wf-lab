@@ -4,8 +4,8 @@ use crate::{
     basis_wfs::{Basis, SinExpBasisPt},
     complex_nums::Cplx,
     interp,
-    util::{self, Arr3d, Arr3dBasis, Arr3dReal},
     rbf::Rbf,
+    util::{self, Arr3d, Arr3dBasis, Arr3dReal},
 };
 
 use lin_alg2::f64::Vec3;
@@ -25,13 +25,88 @@ const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 40;
+pub const N: usize = 30;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Too small might lead to numerical issues though (?)
 // Applies to dx, dy, and dz
 const H: f64 = 0.01;
 const H_SQ: f64 = H * H;
+
+/// Initialize a wave function using a charge-centric coordinate system, using RBF
+/// interpolation.
+fn init_wf_rbf(rbf: &Rbf, charges: &[(Vec3, f64)], bases: &[Basis], E: f64) {
+    // todo: Start RBF testing using its own grid
+
+    let mut psi_pp_calc_rbf = Vec::new();
+    let mut psi_pp_meas_rbf = Vec::new();
+
+    for (i, sample_pt) in rbf.obs_points.iter().enumerate() {
+        let psi_sample = rbf.fn_vals[i];
+
+        // calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
+
+        let V_sample = {
+            let mut result = 0.;
+            for (posit_charge, charge_amt) in charges.iter() {
+                result += V_coulomb(*posit_charge, *sample_pt, *charge_amt);
+            }
+
+            result
+        };
+
+        let calc = psi_sample * (E - V_sample) * KE_COEFF;
+
+        psi_pp_calc_rbf.push(calc);
+        psi_pp_meas_rbf.push(find_ψ_pp_meas_fm_rbf(
+            *sample_pt,
+            Cplx::from_real(psi_sample),
+            &rbf,
+        ));
+    }
+
+    println!(
+        "Comp1: {:?}, {:?}",
+        psi_pp_calc_rbf[100], psi_pp_meas_rbf[100]
+    );
+    println!(
+        "Comp2: {:?}, {:?}",
+        psi_pp_calc_rbf[10], psi_pp_meas_rbf[10]
+    );
+    println!(
+        "Comp3: {:?}, {:?}",
+        psi_pp_calc_rbf[20], psi_pp_meas_rbf[20]
+    );
+    println!(
+        "Comp4: {:?}, {:?}",
+        psi_pp_calc_rbf[30], psi_pp_meas_rbf[30]
+    );
+    println!(
+        "Comp5: {:?}, {:?}",
+        psi_pp_calc_rbf[40], psi_pp_meas_rbf[40]
+    );
+
+    // Code to test interpolation.
+    let b1 = &bases[0];
+
+    let rbf_compare_pts = vec![
+        Vec3::new(1., 0., 0.),
+        Vec3::new(1., 1., 0.),
+        Vec3::new(0., 0., 1.),
+        Vec3::new(5., 0.5, 0.5),
+        Vec3::new(6., 5., 0.5),
+        Vec3::new(6., 0., 0.5),
+    ];
+
+    println!("\n");
+    for pt in &rbf_compare_pts {
+        println!(
+            "\nBasis: {:.5} \n Rbf: {:.5}",
+            b1.value(*pt).real * b1.weight(),
+            rbf.interp_point(*pt),
+        );
+    }
+}
 
 /// This is our main computation function for sfcs. It:
 /// - Computes V from charges
@@ -145,54 +220,7 @@ pub fn init_wf(
 
     let rbf = interp::setup_rbf_interp(&charge_posits, bases);
 
-    // todo: Testing numerical diff based on RBF.
-    for (i, x) in grid_1d.iter().enumerate() {
-        if i == 0 || i == N - 1 {
-            continue;
-        }
-        for (j, y) in grid_1d.iter().enumerate() {
-            if j == 0 || j == N - 1 {
-                continue;
-            }
-            for (k, z) in grid_1d.iter().enumerate() {
-                if k == 0 || k == N - 1 {
-                    continue;
-                }
-
-                let posit_sample = Vec3::new(*x, *y, *z);
-
-                // todo: Set psi from thsi too to see if it looks right. Zooming in to demonstrate
-                // todo interp.
-                sfcs.psi[i][j][k] = Cplx::from_real(rbf.interp_point(Vec3::new(
-                    posit_sample.x / 1.,
-                    posit_sample.y / 1.,
-                    posit_sample.z / 1.,
-                )));
-
-                sfcs.psi_pp_measured[i][j][k] =
-                    find_ψ_pp_meas_fm_rbf(posit_sample, sfcs.psi[i][k][k], &rbf, *grid_min, *grid_max);
-            }
-        }
-    }
-
-    // Code to test interpolation.
-    let b1 = &bases[0];
-
-    let rbf_compare_pts = vec![
-        Vec3::new(0., 0., 0.),
-        Vec3::new(1., 0., 0.),
-        Vec3::new(1., 1., 0.),
-        Vec3::new(0.5, 0.5, 0.5),
-    ];
-
-    for pt in &rbf_compare_pts {
-        println!(
-            "\nBasis: {:.5} \n Rbf: {:.5}",
-            b1.value(*pt).real * b1.weight(),
-            rbf.interp_point(*pt),
-        );
-    }
-
+    init_wf_rbf(&rbf, charges, bases, E);
     // todo end RBF test
 
     // todo: Start sinexpbasispt testing
@@ -454,16 +482,8 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
 /// Calcualte ψ'' measured, using a discrete function, interpolated.
 /// Calculate ψ'' based on a numerical derivative of psi
 /// in 3D.
-pub(crate) fn find_ψ_pp_meas_fm_rbf(
-    posit_sample: Vec3,
-    psi_sample: Cplx,
-    rbf: &Rbf,
-    grid_min: f64,
-    grid_max: f64,
-) -> Cplx {
-    let grid_dx = (grid_max - grid_min) / N as f64;
-
-    let h2 = grid_dx / 1.; // todo temp?
+pub(crate) fn find_ψ_pp_meas_fm_rbf(posit_sample: Vec3, psi_sample: Cplx, rbf: &Rbf) -> Cplx {
+    let h2 = 0.01;
 
     let x_prev = Vec3::new(posit_sample.x - h2, posit_sample.y, posit_sample.z);
     let x_next = Vec3::new(posit_sample.x + h2, posit_sample.y, posit_sample.z);

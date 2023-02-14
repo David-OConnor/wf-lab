@@ -6,11 +6,11 @@ use lin_alg2::f64::Vec3;
 
 #[derive(Debug, Clone)]
 pub struct Rbf {
-    obs_points: Vec<Vec3>,
-    fn_vals: Vec<f64>,
-    weights: Vector<f64>,
-    distance_fn: fn(f64, f64) -> f64,
-    epsilon: f64,
+    pub obs_points: Vec<Vec3>,
+    pub fn_vals: Vec<f64>,
+    pub weights: Vector<f64>,
+    pub distance_fn: fn(f64, f64) -> f64,
+    pub epsilon: f64,
 }
 
 impl Rbf {
@@ -33,7 +33,7 @@ impl Rbf {
 
         let nb_pts = obs_points.len();
 
-        let mut mat = vec![0.; nb_pts * nb_pts ];
+        let mut mat = vec![0.; nb_pts * nb_pts];
         for j in 0..nb_pts {
             for i in 0..nb_pts {
                 mat[j * nb_pts + i] = _norm(&obs_points[i], &obs_points[j]);

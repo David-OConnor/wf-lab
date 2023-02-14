@@ -189,12 +189,13 @@ pub fn setup_rbf_interp(charge_posits: &[Vec3], bases: &[Basis]) -> rbf::Rbf {
     const N_LATS: usize = 10;
     const N_LONS: usize = N_LATS * 2;
 
-    const N_DISTS: usize = 12;
+    const N_DISTS: usize = 14;
 
     const ANGLE_BW_LATS: f64 = (TAU / 2.) / N_LATS as f64;
     const ANGLE_BW_LONS: f64 = TAU / N_LONS as f64;
 
-    const DIST_CONST: f64 = 0.05; // c^n_dists = max_dist
+    // A smaller value here will allow for more shells close to the nucleii.
+    const DIST_CONST: f64 = 0.03; // c^n_dists = max_dist
 
     let n_samples = N_LATS * N_LONS * N_DISTS * charge_posits.len();
 
@@ -210,7 +211,6 @@ pub fn setup_rbf_interp(charge_posits: &[Vec3], bases: &[Basis]) -> rbf::Rbf {
     let mut i = 0;
 
     // For latitudes, don't include the poles, since they create degenerate points.
-    // todo: Include a single point at each pole
     for lat_i in 1..N_LATS {
         // thata is latitudes; phi longitudes.
         let theta = lat_i as f64 * ANGLE_BW_LATS;
@@ -219,13 +219,27 @@ pub fn setup_rbf_interp(charge_posits: &[Vec3], bases: &[Basis]) -> rbf::Rbf {
             let phi = lon_i as f64 * ANGLE_BW_LONS; // todo which is which?
 
             // Don't use a ring @ r=0, hence the offset indices.
+            if lon_i == 0 {
+                println!("dists:");
+            }
             for dist_i in 1..N_DISTS + 1 {
                 // r = exp(DIST_DECAY_EXP * dist_i) * DIST_CONST
                 let r = (dist_i as f64).powi(2) * DIST_CONST;
 
-                for (charge_i, charge_posit) in charge_posits.into_iter().enumerate() {
+                if lat_i == 1 && lon_i == 0 {
+                    println!("R: {:?}", r);
+                }
+
+                for (_charge_i, charge_posit) in charge_posits.into_iter().enumerate() {
                     // xobs[i + charge_i] = util::spherical_to_cart(*charge_posit, theta, phi, r);
                     xobs.push(util::spherical_to_cart(*charge_posit, theta, phi, r));
+
+                    // Just once per distance, add a pole at the top and bottom (lat = 0 and TAU/2
+                    if lat_i == 1 && lon_i == 0 {
+                        xobs.push(util::spherical_to_cart(*charge_posit, 0., 0., r)); // bottom
+                        xobs.push(util::spherical_to_cart(*charge_posit, TAU / 2., 0., r));
+                        // top
+                    }
                 }
 
                 i += charge_posits.len();
@@ -250,11 +264,11 @@ pub fn setup_rbf_interp(charge_posits: &[Vec3], bases: &[Basis]) -> rbf::Rbf {
             yobs[i] += (basis.value(*grid_pt) * basis.weight()).real;
         }
     }
-
-    println!("Xobs: ");
-    for obs in &xobs {
-        println!("x:{:.2} y:{:.2} z:{:.2}", obs.x, obs.y, obs.z);
-    }
+    //
+    // println!("Xobs: ");
+    // for obs in &xobs {
+    //     println!("x:{:.2} y:{:.2} z:{:.2}", obs.x, obs.y, obs.z);
+    // }
 
     // println!("\n\nY obs: {:?}", yobs);
 
