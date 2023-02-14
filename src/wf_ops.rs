@@ -25,7 +25,7 @@ const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 50;
+pub const N: usize = 40;
 
 // Used for calculating numerical psi''.
 // Smaller is more precise. Too small might lead to numerical issues though (?)
@@ -163,11 +163,11 @@ pub fn init_wf(
 
                 // todo: Set psi from thsi too to see if it looks right. Zooming in to demonstrate
                 // todo interp.
-                // sfcs.psi[i][j][k] = Cplx::from_real(rbf.interp_point(Vec3::new(
-                //     posit_sample.x / 4.,
-                //     posit_sample.y / 4.,
-                //     posit_sample.z / 4.,
-                // )));
+                sfcs.psi[i][j][k] = Cplx::from_real(rbf.interp_point(Vec3::new(
+                    posit_sample.x / 1.,
+                    posit_sample.y / 1.,
+                    posit_sample.z / 1.,
+                )));
 
                 sfcs.psi_pp_measured[i][j][k] =
                     find_ψ_pp_meas_fm_rbf(posit_sample, sfcs.psi[i][k][k], &rbf, *grid_min, *grid_max);

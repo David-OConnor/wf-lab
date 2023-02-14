@@ -32,7 +32,8 @@ impl Rbf {
         };
 
         let nb_pts = obs_points.len();
-        let mut mat = vec![0.; nb_pts * nb_pts];
+
+        let mut mat = vec![0.; nb_pts * nb_pts ];
         for j in 0..nb_pts {
             for i in 0..nb_pts {
                 mat[j * nb_pts + i] = _norm(&obs_points[i], &obs_points[j]);
@@ -46,12 +47,6 @@ impl Rbf {
             sum_all(&mat) / (_nb.powi(2) - _nb)
         };
 
-        // for j in 0..nb_pts {
-        //     for i in 0..nb_pts {
-        //         mat[j * nb_pts + i] = distance_func(mat[j * nb_pts + i], eps);
-        //     }
-        // }
-
         for ix in 0..(nb_pts * nb_pts) {
             mat[ix] = distance_fn(mat[ix], eps);
         }
@@ -64,7 +59,6 @@ impl Rbf {
         let mat = Matrix::new(nb_pts, nb_pts, mat);
         let vec = Vector::new(values);
 
-        // let weights = mat.solve(vec).unwrap().into_iter().collect::<Vec<Float>>();
         let weights = mat.solve(vec).unwrap();
 
         Self {
