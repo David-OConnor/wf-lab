@@ -1,11 +1,12 @@
 use crate::{basis_wfs::SinExpBasisPt, complex_nums::Cplx, wf_ops::N};
 
+use lin_alg2::f64::Vec3;
+
 // type Arr3d = Vec<Vec<Vec<f64>>>;
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
 pub type Arr3d = Vec<Vec<Vec<Cplx>>>;
+pub type Arr3dVec = Vec<Vec<Vec<Vec3>>>;
 pub type Arr3dBasis = Vec<Vec<Vec<SinExpBasisPt>>>;
-
-use lin_alg2::f64::Vec3;
 
 /// Create a set of values in a given range, with a given number of values.
 /// Similar to `numpy.linspace`.

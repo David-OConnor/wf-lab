@@ -5,7 +5,7 @@ use crate::{
     complex_nums::Cplx,
     interp, num_diff,
     rbf::Rbf,
-    util::{self, Arr3d, Arr3dBasis, Arr3dReal},
+    util::{self, Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec},
 };
 
 use lin_alg2::f64::Vec3;
@@ -147,18 +147,24 @@ pub fn init_wf(
 
         *grid_max = max_abs_val + RANGE_PAD;
         *grid_min = -*grid_max;
+        update_grid_posits(&mut sfcs.grid_posits, *grid_min, *grid_max, 1.);
     }
 
     // todo: Store these somewhere to save on computation? minor pt.
-    let grid_1d = util::linspace((*grid_min, *grid_max), N);
+    // let grid_1d = util::linspace((*grid_min, *grid_max), N);
 
     // Our initial psi'' measured uses our analytic LCAO system, which doesn't have the
     // grid edge and precision issues of the fixed numerical grid we use to tune the trial
     // WF.
-    for (i, x) in grid_1d.iter().enumerate() {
-        for (j, y) in grid_1d.iter().enumerate() {
-            for (k, z) in grid_1d.iter().enumerate() {
-                let posit_sample = Vec3::new(*x, *y, *z);
+    // for (i, x) in grid_1d.iter().enumerate() {
+    //     for (j, y) in grid_1d.iter().enumerate() {
+    //         for (k, z) in grid_1d.iter().enumerate() {
+    //             let posit_sample = Vec3::new(*x, *y, *z);
+
+    for i in 0..N {
+        for j in 0..N {
+            for k in 0..N {
+                let posit_sample = sfcs.grid_posits[i][j][k];
 
                 // Calculate psi'' based on a numerical derivative of psi
                 // in 3D.
@@ -297,6 +303,20 @@ pub fn new_data(n: usize) -> Arr3d {
 pub fn new_data_real(n: usize) -> Arr3dReal {
     let mut z = Vec::new();
     z.resize(n, 0.);
+
+    let mut y = Vec::new();
+    y.resize(n, z);
+
+    let mut x = Vec::new();
+    x.resize(n, y);
+
+    x
+}
+
+/// Make a new 3D grid of position vectors, as a nested Vec
+pub fn new_data_vec(n: usize) -> Arr3dVec {
+    let mut z = Vec::new();
+    z.resize(n, Vec3::new_zero());
 
     let mut y = Vec::new();
     y.resize(n, z);
@@ -552,6 +572,8 @@ pub struct Surfaces {
     pub elec_charges: Vec<Arr3dReal>,
     /// todo: Experimental representation as a local analytic eq at each point.
     pub bases: Arr3dBasis,
+    /// Represents points on a grid, for our non-uniform grid.
+    pub grid_posits: Arr3dVec,
 }
 
 impl Default for Surfaces {
@@ -559,6 +581,7 @@ impl Default for Surfaces {
     fn default() -> Self {
         let data = new_data(N);
         let data_real = new_data_real(N);
+        let data_vec = new_data_vec(N);
 
         let mut default_nudges = data_real.clone();
         for i in 0..N {
@@ -568,6 +591,10 @@ impl Default for Surfaces {
                 }
             }
         }
+
+        // Set up a regular grid using this; this will allow us to convert to an irregular grid
+        // later, once we've verified this works.
+        let grid_posits = new_data_vec(N);
 
         Self {
             V: data_real.clone(),
@@ -580,6 +607,21 @@ impl Default for Surfaces {
             // psi_prev: data.clone(),
             elec_charges: vec![data_real.clone()],
             bases: new_data_basis(N),
+            grid_posits,
+        }
+    }
+}
+
+/// Update our grid positions
+/// todo: Regular for now.
+pub fn update_grid_posits(grid_posits: &mut Arr3dVec, grid_min: f64, grid_max: f64, spacing_factor: f64) {
+    let grid_1d = util::linspace((grid_min, grid_max), N);
+
+    for (i, x) in grid_1d.iter().enumerate() {
+        for (j, y) in grid_1d.iter().enumerate() {
+            for (k, z) in grid_1d.iter().enumerate() {
+                grid_posits[i][j][k] = Vec3::new(*x, *y, *z);
+            }
         }
     }
 }

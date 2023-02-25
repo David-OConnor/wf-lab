@@ -13,6 +13,7 @@ pub mod wf_ops;
 
 pub use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic},
+    wf_ops::Surfaces,
     util::{Arr3d, Arr3dReal},
 };
 
@@ -47,7 +48,10 @@ pub fn psi_from_pt_charges(charges: &[(Vec3, f64)], grid_bounds: &mut (f64, f64)
     // saves a pass in our initial WF. Perhaps though, we want to pass V intact.
     // todo: Output is psi, or psi^2?
 
-    let mut sfcs = Default::default();
+    let mut sfcs = Surfaces::default();
+    let spacing_factor = 1.;
+    wf_ops::update_grid_posits(&mut sfcs.grid_posits, grid_bounds.0, grid_bounds.1, spacing_factor);
+
 
     let wfs = create_trial_wfs(charges);
 

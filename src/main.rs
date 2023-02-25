@@ -162,7 +162,9 @@ fn main() {
     let h_grid = (grid_max - grid_min) / (N as f64);
     let h_grid_sq = h_grid.powi(2);
 
-    let mut sfcs = Default::default();
+    let mut sfcs = Surfaces::default();
+    let spacing_factor = 1.;
+    wf_ops::update_grid_posits(&mut sfcs.grid_posits, grid_min, grid_max, spacing_factor);
 
     wf_ops::init_wf(
         &wfs,

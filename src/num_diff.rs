@@ -7,7 +7,7 @@ use crate::{
     complex_nums::Cplx,
     interp,
     rbf::Rbf,
-    util::{self, Arr3d, Arr3dBasis},
+    util::{self, Arr3d, Arr3dBasis, Arr3dVec},
     wf_ops::N,
     Arr3dReal,
 };
@@ -100,7 +100,7 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_reg(
 pub(crate) fn find_ψ_pp_meas_fm_grid_irreg(
     psi: &Arr3d,
     psi_pp_measured: &mut Arr3d,
-    grid_posits: &Arr3dReal,
+    grid_posits: &Arr3dVec,
 ) {
     // Note re these edge-cases: Hopefully it doesn't matter, since the WF is flat around
     // the edges, if the boundaries are chosen appropriately.
@@ -139,14 +139,16 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_irreg(
 
                 // todo: QC how you're mixing the 3 dimensinos. Just add?
 
-                let num = (psi_x_next - psi_this) / (p_x_next - p_this)
-                    - (psi_this - psi_x_prev) / (p_this - p_x_prev)
-                    + (psi_y_next - psi_this) / (p_y_next - p_this)
-                    - (psi_this - psi_y_prev) / (p_this - p_y_prev)
-                    + (psi_z_next - psi_this) / (p_z_next - p_this)
-                    - (psi_this - psi_z_prev) / (p_this - p_z_prev);
+                // todo: Is this how you combine? Just taking the x, y etc value of the posits?
 
-                let denom = 0.5 * (p_x_next - p_x_prev + p_y_next - p_x_next + p_z_next - p_z_prev);
+                let num = (psi_x_next - psi_this) / (p_x_next.x - p_this.x)
+                    - (psi_this - psi_x_prev) / (p_this.x - p_x_prev.x)
+                    + (psi_y_next - psi_this) / (p_y_next.y - p_this.y)
+                    - (psi_this - psi_y_prev) / (p_this.y - p_y_prev.y)
+                    + (psi_z_next - psi_this) / (p_z_next.z - p_this.z)
+                    - (psi_this - psi_z_prev) / (p_this.z - p_z_prev.z);
+
+                let denom = 0.5 * (p_x_next.x - p_x_prev.x + p_y_next.y - p_x_next.y + p_z_next.z - p_z_prev.z);
 
                 let finite_diff = num / denom;
 

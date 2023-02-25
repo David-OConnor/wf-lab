@@ -111,7 +111,6 @@ fn prepare_2d_mesh(surface: &crate::Arr3d, z_i: usize, scaler: f32) -> Vec<Vec<f
 /// Note that this is where we decide which Z to render.
 pub fn update_meshes(
     surfaces: &crate::Surfaces,
-    // surfaces: &[crate::Arr3d; NUM_SURFACES],
     z_displayed: f64,
     scene: &mut Scene,
     grid_min: f64,
@@ -124,7 +123,7 @@ pub fn update_meshes(
     let sfc_mesh_start = grid_min as f32; // todo: Sync graphics and atomic coords?
     let sfc_mesh_step: f32 = -2. * sfc_mesh_start / N as f32;
 
-    // `z_displayed` is a value float. Convert this to an index.
+    // `z_displayed` is a value float. Convert this to an index. Rounds to the nearest index.
     let z_i = map_linear(z_displayed, (grid_min, grid_max), (0., N as f64)) as usize;
 
     let mut meshes = Vec::new();
