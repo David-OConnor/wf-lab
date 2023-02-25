@@ -6,6 +6,7 @@ pub mod basis_wfs;
 pub mod complex_nums;
 pub mod interp;
 pub mod nudge;
+mod num_diff;
 mod rbf;
 pub mod util;
 pub mod wf_ops;

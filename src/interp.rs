@@ -218,10 +218,6 @@ pub fn setup_rbf_interp(charge_posits: &[Vec3], bases: &[Basis]) -> rbf::Rbf {
         for lon_i in 0..N_LONS {
             let phi = lon_i as f64 * ANGLE_BW_LONS; // todo which is which?
 
-            // Don't use a ring @ r=0, hence the offset indices.
-            if lon_i == 0 {
-                println!("dists:");
-            }
             for dist_i in 1..N_DISTS + 1 {
                 // r = exp(DIST_DECAY_EXP * dist_i) * DIST_CONST
                 let r = (dist_i as f64).powi(2) * DIST_CONST;
@@ -273,7 +269,7 @@ pub fn setup_rbf_interp(charge_posits: &[Vec3], bases: &[Basis]) -> rbf::Rbf {
     // println!("\n\nY obs: {:?}", yobs);
 
     // From an intial test: Linear is OK. So is cubic. thin_plate is best
-    let rbf = Rbf::new(xobs, yobs, "thin_plate", None);
+    let rbf = Rbf::new(xobs, yobs, "linear", None);
 
     rbf
 

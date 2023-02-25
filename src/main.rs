@@ -25,8 +25,8 @@ mod basis_wfs;
 mod complex_nums;
 mod interp;
 mod nudge;
+mod num_diff;
 mod rbf;
-
 mod render;
 mod ui;
 mod util;

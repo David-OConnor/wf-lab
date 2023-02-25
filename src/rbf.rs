@@ -96,19 +96,19 @@ fn _norm(pa: &Vec3, pb: &Vec3) -> f64 {
     ((pa.x - pb.x).powi(2) + (pa.y - pb.y).powi(2) + (pa.z - pb.z).powi(2)).sqrt()
 }
 
-fn distance_linear(r: f64, epsilon: f64) -> f64 {
+fn distance_linear(r: f64, _eps: f64) -> f64 {
     r
 }
 
-fn distance_cubic(r: f64, epsilon: f64) -> f64 {
+fn distance_cubic(r: f64, _eps: f64) -> f64 {
     r.powi(3)
 }
 
-fn distance_quintic(r: f64, epsilon: f64) -> f64 {
+fn distance_quintic(r: f64, _eps: f64) -> f64 {
     r.powi(5)
 }
 
-fn distance_thin_plate(r: f64, epsilon: f64) -> f64 {
+fn distance_thin_plate(r: f64, _eps: f64) -> f64 {
     if r == 0. {
         0.
     } else {
@@ -116,16 +116,16 @@ fn distance_thin_plate(r: f64, epsilon: f64) -> f64 {
     }
 }
 
-fn distance_gaussian(r: f64, epsilon: f64) -> f64 {
-    1. / ((r / epsilon).powi(2) + 1.).exp()
+fn distance_gaussian(r: f64, eps: f64) -> f64 {
+    1. / ((r / eps).powi(2) + 1.).exp()
 }
 
 #[inline(always)]
-fn distance_inverse_multiquadratic(r: f64, epsilon: f64) -> f64 {
-    1. / ((r / epsilon).powi(2) + 1.).sqrt()
+fn distance_inverse_multiquadratic(r: f64, eps: f64) -> f64 {
+    1. / ((r / eps).powi(2) + 1.).sqrt()
 }
 
 #[inline(always)]
-fn distance_multiquadratic(r: f64, epsilon: f64) -> f64 {
-    ((r / epsilon).powi(2) + 1.).sqrt()
+fn distance_multiquadratic(r: f64, eps: f64) -> f64 {
+    ((r / eps).powi(2) + 1.).sqrt()
 }

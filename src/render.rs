@@ -23,7 +23,7 @@ const WINDOW_SIZE_X: f32 = 1_600.;
 const WINDOW_SIZE_Y: f32 = 1_000.;
 const RENDER_DIST: f32 = 100.;
 const BACKGROUND_COLOR: Color = (0.5, 0.5, 0.5);
-const SIDE_PANEL_SIZE: f32 = 400.;
+// const SIDE_PANEL_SIZE: f32 = 400.;
 
 const COLOR_POS_CHARGE: Color = (1., 0., 0.);
 const COLOR_NEG_CHARGE: Color = (0., 0., 1.);
