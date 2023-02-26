@@ -12,7 +12,7 @@ use lin_alg2::{
     f64::Vec3 as Vec3F64,
 };
 
-use crate::{wf_ops::N, State};
+use crate::{wf_ops::N, State, util::{Arr3dVec, Arr3dReal, Arr3d}};
 
 const NUM_SURFACES: usize = 6;
 
@@ -78,31 +78,97 @@ pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 
     portion * (range_out.1 - range_out.0) + range_out.0
 }
 
-/// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
-fn prepare_2d_mesh_real(surface: &crate::Arr3dReal, z_i: usize, scaler: f32) -> Vec<Vec<f32>> {
+// /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
+// fn prepare_2d_mesh_real(surface: &crate::Arr3dReal, z_i: usize, scaler: f32) -> Vec<Vec<f32>> {
+//     let mut result = Vec::new();
+//     for i in 0..N {
+//         let mut y_vec = Vec::new();
+//         for j in 0..N {
+//             y_vec.push(surface[i][j][z_i] as f32 * scaler); // Convert from f64.
+//         }
+//         result.push(y_vec);
+//     }
+//
+//     result
+// }
+//
+// /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
+// fn prepare_2d_mesh(surface: &crate::Arr3d, z_i: usize, scaler: f32) -> Vec<Vec<f32>> {
+//     let mut result = Vec::new();
+//     for i in 0..N {
+//         let mut y_vec = Vec::new();
+//         for j in 0..N {
+//             // We are only plotting the real part for now.
+//             y_vec.push(surface[i][j][z_i].real as f32 * scaler); // Convert from f64.
+//         }
+//         result.push(y_vec);
+//     }
+//
+//     result
+// }
+
+/// Generate a f32 mesh from a 3d F64 mesh, using a z slice. Replaces the z value with function value.
+fn prepare_2d_mesh_real(posits: &Arr3dVec, vals: &Arr3dReal, z_i: usize, scaler: f32) -> Vec<Vec<Vec<Vec3>>> {
+    // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64.
+    let mut z = Vec::new();
+    z.resize(crate::N, Vec3::new_zero());
+
+    let mut y = Vec::new();
+    y.resize(crate::N, z);
+
     let mut result = Vec::new();
+    result.resize(crate::N, y);
+
     for i in 0..N {
-        let mut y_vec = Vec::new();
         for j in 0..N {
-            y_vec.push(surface[i][j][z_i] as f32 * scaler); // Convert from f64.
+            for k in 0..N {
+                result[i][j][k] = Vec3::new(
+                    posits[i][j][z_i].x as f32,
+                    posits[i][j][z_i].y as f32,
+                    vals[i][j][k] as f32 * scaler
+                );
+            }
         }
-        result.push(y_vec);
     }
 
     result
 }
 
 /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
-fn prepare_2d_mesh(surface: &crate::Arr3d, z_i: usize, scaler: f32) -> Vec<Vec<f32>> {
+fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32) -> Vec<Vec<Vec<Vec3>>> {
+    // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64.
+    let mut z = Vec::new();
+    z.resize(crate::N, Vec3::new_zero());
+
+    let mut y = Vec::new();
+    y.resize(crate::N, z);
+
     let mut result = Vec::new();
+    result.resize(crate::N, y);
+
     for i in 0..N {
-        let mut y_vec = Vec::new();
         for j in 0..N {
-            // We are only plotting the real part for now.
-            y_vec.push(surface[i][j][z_i].real as f32 * scaler); // Convert from f64.
+            for k in 0..N {
+                result[i][j][k] = Vec3::new(
+                    posits[i][j][z_i].x as f32,
+                    posits[i][j][z_i].y as f32,
+                    vals[i][j][k].real as f32 * scaler
+                );
+            }
         }
-        result.push(y_vec);
     }
+    //
+    //
+    // let mut result = Vec::new();
+    // for i in 0..N {
+    //     let mut y_vec = Vec::new();
+    //     for j in 0..N {
+    //
+    //         let val = vals[i][j][z_i]
+    //         y_vec.push(val as f32 * scaler); // Convert from f64.
+    //     }
+    //     result.push(y_vec);
+    // }
 
     result
 }
@@ -113,18 +179,22 @@ pub fn update_meshes(
     surfaces: &crate::Surfaces,
     z_displayed: f64,
     scene: &mut Scene,
-    grid_min: f64,
-    grid_max: f64,
+    // grid_posits: &Arr3dVec,
+    // grid_min: f64,
+    // grid_max: f64,
 ) {
     // Our meshes are defined in terms of a start point,
     // and a step. Adjust the step to center the grid at
     // the renderer's center.
     // const SFC_MESH_START: f32 = -4.;
-    let sfc_mesh_start = grid_min as f32; // todo: Sync graphics and atomic coords?
-    let sfc_mesh_step: f32 = -2. * sfc_mesh_start / N as f32;
+    // let sfc_mesh_start = grid_min as f32; // todo: Sync graphics and atomic coords?
+    // let sfc_mesh_step: f32 = -2. * sfc_mesh_start / N as f32;
 
     // `z_displayed` is a value float. Convert this to an index. Rounds to the nearest index.
-    let z_i = map_linear(z_displayed, (grid_min, grid_max), (0., N as f64)) as usize;
+    // let z_i = map_linear(z_displayed, (grid_min, grid_max), (0., N as f64)) as usize;
+    // todo: Using your new system, you can't use a linear map here!
+
+    let z_i = N / 2; // todo temp!!
 
     let mut meshes = Vec::new();
 
@@ -132,18 +202,18 @@ pub fn update_meshes(
     // todo the meshes that change.
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh_real(&surfaces.V, z_i, 1.),
+        &prepare_2d_mesh_real(&surfaces.grid_posits, &surfaces.V, z_i, 1.),
         // todo: Center! Maybe offset in entities.
-        sfc_mesh_start,
-        sfc_mesh_step,
+        // sfc_mesh_start,
+        // sfc_mesh_step,
         true,
     ));
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(&surfaces.psi, z_i, PSI_SCALER),
+        &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.psi, z_i, PSI_SCALER),
         // todo: Center! Maybe offset in entities.
-        sfc_mesh_start,
-        sfc_mesh_step,
+        // sfc_mesh_start,
+        // sfc_mesh_step,
         true,
     ));
 
@@ -154,19 +224,19 @@ pub fn update_meshes(
         // &surfaces.aux2,
     ] {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(sfc, z_i, 1.),
+            &prepare_2d_mesh(&surfaces.grid_posits, sfc, z_i,1.),
             // todo: Center! Maybe offset in entities.
-            sfc_mesh_start,
-            sfc_mesh_step,
+            // sfc_mesh_start,
+            // sfc_mesh_step,
             true,
         ));
     }
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh_real(&surfaces.aux2, z_i, ELEC_V_SCALER),
+        &prepare_2d_mesh_real(&surfaces.grid_posits, &surfaces.aux2, z_i,ELEC_V_SCALER),
         // todo: Center! Maybe offset in entities.
-        sfc_mesh_start,
-        sfc_mesh_step,
+        // sfc_mesh_start,
+        // sfc_mesh_step,
         true,
     ));
 
@@ -267,8 +337,8 @@ pub fn render(state: State) {
         &state.surfaces,
         state.z_displayed,
         &mut scene,
-        state.grid_min,
-        state.grid_max,
+        // state.grid_min,
+        // state.grid_max,
     );
     update_entities(&state.charges, &state.show_surfaces, &mut scene);
 

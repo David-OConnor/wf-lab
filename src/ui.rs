@@ -395,8 +395,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         &state.surfaces,
                         state.z_displayed,
                         scene,
-                        state.grid_min,
-                        state.grid_max,
+                        // state.grid_min,
+                        // state.grid_max,
                     );
                     engine_updates.meshes = true;
                 }
@@ -417,8 +417,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         &state.surfaces,
                         state.z_displayed,
                         scene,
-                        state.grid_min,
-                        state.grid_max,
+                        // state.grid_min,
+                        // state.grid_max,
                     );
                 }
 
@@ -496,8 +496,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &state.surfaces,
                     state.z_displayed,
                     scene,
-                    state.grid_min,
-                    state.grid_max,
+                    // state.grid_min,
+                    // state.grid_max,
                 ); // todo!
                 engine_updates.meshes = true;
 
@@ -536,8 +536,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &state.surfaces,
                     state.z_displayed,
                     scene,
-                    state.grid_min,
-                    state.grid_max,
+                    // state.grid_min,
+                    // state.grid_max,
                 );
                 engine_updates.meshes = true;
 
@@ -570,8 +570,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &state.surfaces,
                 state.z_displayed,
                 scene,
-                state.grid_min,
-                state.grid_max,
+                // state.grid_min,
+                // state.grid_max,
             ); // todo!
         }
 
