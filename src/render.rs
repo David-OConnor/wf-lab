@@ -108,26 +108,22 @@ pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 
 // }
 
 /// Generate a f32 mesh from a 3d F64 mesh, using a z slice. Replaces the z value with function value.
-fn prepare_2d_mesh_real(posits: &Arr3dVec, vals: &Arr3dReal, z_i: usize, scaler: f32) -> Vec<Vec<Vec<Vec3>>> {
-    // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64.
-    let mut z = Vec::new();
-    z.resize(crate::N, Vec3::new_zero());
-
+fn prepare_2d_mesh_real(posits: &Arr3dVec, vals: &Arr3dReal, z_i: usize, scaler: f32) -> Vec<Vec<Vec3>> {
+    // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64,
+    // todo and 2d vice 3d.
     let mut y = Vec::new();
-    y.resize(crate::N, z);
+    y.resize(N, Vec3::new_zero());
 
     let mut result = Vec::new();
-    result.resize(crate::N, y);
+    result.resize(N, y);
 
     for i in 0..N {
         for j in 0..N {
-            for k in 0..N {
-                result[i][j][k] = Vec3::new(
-                    posits[i][j][z_i].x as f32,
-                    posits[i][j][z_i].y as f32,
-                    vals[i][j][k] as f32 * scaler
-                );
-            }
+            result[i][j] = Vec3::new(
+                posits[i][j][z_i].x as f32,
+                posits[i][j][z_i].y as f32,
+                vals[i][j][z_i] as f32 * scaler
+            );
         }
     }
 
@@ -135,26 +131,21 @@ fn prepare_2d_mesh_real(posits: &Arr3dVec, vals: &Arr3dReal, z_i: usize, scaler:
 }
 
 /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
-fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32) -> Vec<Vec<Vec<Vec3>>> {
+fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32) -> Vec<Vec<Vec3>> {
     // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64.
-    let mut z = Vec::new();
-    z.resize(crate::N, Vec3::new_zero());
-
     let mut y = Vec::new();
-    y.resize(crate::N, z);
+    y.resize(N, Vec3::new_zero());
 
     let mut result = Vec::new();
-    result.resize(crate::N, y);
+    result.resize(N, y);
 
     for i in 0..N {
         for j in 0..N {
-            for k in 0..N {
-                result[i][j][k] = Vec3::new(
-                    posits[i][j][z_i].x as f32,
-                    posits[i][j][z_i].y as f32,
-                    vals[i][j][k].real as f32 * scaler
-                );
-            }
+            result[i][j] = Vec3::new(
+                posits[i][j][z_i].x as f32,
+                posits[i][j][z_i].y as f32,
+                vals[i][j][z_i].real as f32 * scaler,
+            );
         }
     }
     //

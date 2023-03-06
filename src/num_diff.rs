@@ -58,7 +58,6 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
 pub(crate) fn find_ψ_pp_meas_fm_grid_reg(
     psi: &Arr3d,
     psi_pp_measured: &mut Arr3d,
-    grid_posits: &[f64],
     dx_sq: f64,
 ) {
     // Note re these edge-cases: Hopefully it doesn't matter, since the WF is flat around
@@ -118,14 +117,14 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_irreg(
                     continue;
                 }
 
+                let psi_this = psi[i][j][k];
+
                 let psi_x_prev = psi[i - 1][j][k];
                 let psi_x_next = psi[i + 1][j][k];
                 let psi_y_prev = psi[i][j - 1][k];
                 let psi_y_next = psi[i][j + 1][k];
                 let psi_z_prev = psi[i][j][k - 1];
                 let psi_z_next = psi[i][j][k + 1];
-
-                let psi_this = psi[i][j][k];
 
                 // `p` here is grid position.
                 let p_this = grid_posits[i][j][k];
@@ -148,7 +147,7 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_irreg(
                     + (psi_z_next - psi_this) / (p_z_next.z - p_this.z)
                     - (psi_this - psi_z_prev) / (p_this.z - p_z_prev.z);
 
-                let denom = 0.5 * (p_x_next.x - p_x_prev.x + p_y_next.y - p_x_next.y + p_z_next.z - p_z_prev.z);
+                let denom = 0.5 * (p_x_next.x - p_x_prev.x + p_y_next.y - p_y_prev.y + p_z_next.z - p_z_prev.z);
 
                 let finite_diff = num / denom;
 

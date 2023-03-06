@@ -25,7 +25,7 @@ const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 30;
+pub const N: usize = 60;
 
 /// Initialize a wave function using a charge-centric coordinate system, using RBF
 /// interpolation.
@@ -117,17 +117,8 @@ pub fn init_wf(
     update_charges: bool,
     grid_min: &mut f64,
     grid_max: &mut f64,
+    spacing_factor: f64,
 ) {
-    // output score. todo: Move score to a diff fn?
-    // ) -> (Vec<(Arr3d, String)>, f64) {
-    // Schrod eq for H:
-    // V for hydrogen: K_C * Q_PROT / r
-
-    // psi(r)'' = (E - V(r)) * 2*m/ħ**2 * psi(r)
-    // psi(r) = (E - V(R))^-1 * ħ**2/2m * psi(r)''
-
-    const RANGE_PAD: f64 = 5.;
-
     // Set up the grid so that it smartly encompasses the charges, letting the WF go to 0
     // towards the edges
     // todo: For now, maintain a cubic grid centered on 0.
@@ -145,9 +136,12 @@ pub fn init_wf(
             }
         }
 
+        const RANGE_PAD: f64 = 1.8;
+        // const RANGE_PAD: f64 = 5.8;
+
         *grid_max = max_abs_val + RANGE_PAD;
         *grid_min = -*grid_max;
-        update_grid_posits(&mut sfcs.grid_posits, *grid_min, *grid_max, 1.);
+        update_grid_posits(&mut sfcs.grid_posits, *grid_min, *grid_max, spacing_factor);
     }
 
     // todo: Store these somewhere to save on computation? minor pt.
@@ -185,10 +179,10 @@ pub fn init_wf(
                     // acting on every other grid point.
 
                     // todo: This is going to be a deal breaker most likely.
-                    // for (i2, x2) in vals_1d.iter().enumerate() {
-                    //     for (j2, y2) in vals_1d.iter().enumerate() {
-                    //         for (k2, z2) in vals_1d.iter().enumerate() {
-                    //             let posit_sample_electron = Vec3::new(*x2, *y2, *z2);
+                    //     for i2 in 0..N {
+                    //         for j2 in 0..N {
+                    //             for k2 in 0..N {
+                    //             let posit_sample_electron = sfcs.grid_posits[i2][j2][k2];
                     //             // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
                     //             sfcs.V[i][j][k] += V_coulomb(posit_sample_electron, posit_sample, sfcs.elec_charges[0][i2][j2][k2]);
                     //         }
@@ -206,82 +200,14 @@ pub fn init_wf(
 
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-                sfcs.psi_pp_measured[i][j][k] =
-                    num_diff::find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
+                // todo: Put back; using a grid to test numerical diffs.
+                // sfcs.psi_pp_measured[i][j][k] =
+                //     num_diff::find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
             }
         }
     }
 
-    // todo: Start RBF test
-
-    let charge_posits: Vec<Vec3> = charges.into_iter().map(|c| c.0).collect();
-
-    // let rbf = interp::setup_rbf_interp(&charge_posits, bases);
-    //
-    // init_wf_rbf(&rbf, charges, bases, E);
-    // todo end RBF test
-
-    // todo: Start sinexpbasispt testing
-
-    let grid_dx = (*grid_max - *grid_min) / N as f64;
-
-    // Populate our exp/sin/poly bases, now that psi is populated. (These bases are functions of psi
-    // at a given point, and neighbors)
-    // for (i, x) in grid_1d.iter().enumerate() {
-    //     if i == 0 || i == N - 1 {
-    //         continue;
-    //     }
-    //     for (j, y) in grid_1d.iter().enumerate() {
-    //         if j == 0 || j == N - 1 {
-    //             continue;
-    //         }
-    //         for (k, z) in grid_1d.iter().enumerate() {
-    //             if k == 0 || k == N - 1 {
-    //                 continue;
-    //             }
-    //
-    //             let posit_sample = Vec3::new(*x, *y, *z);
-    //
-    //             // // todo: Consider the API to create these, eg arbitrary points, or fixed dists.
-    //             // sfcs.bases[i][j][k] = SinExpBasisPt::from_neighbors(
-    //             //     // todo: Do you need to incorporate the full 27 points around instead of just the 6
-    //             //     // todo faces? Can you get a better interp from edges and corners?? Would probably
-    //             //     // todo need a more expressive basis for that to work.
-    //             //     (
-    //             //         sfcs.psi[i - 1][j][k].real,
-    //             //         sfcs.psi[i][j][k].real,
-    //             //         sfcs.psi[i + 1][j][k].real,
-    //             //     ),
-    //             //     (
-    //             //         sfcs.psi[i][j - 1][k].real,
-    //             //         sfcs.psi[i][j][k].real,
-    //             //         sfcs.psi[i][j + 1][k].real,
-    //             //     ),
-    //             //     (
-    //             //         sfcs.psi[i][j][k - 1].real,
-    //             //         sfcs.psi[i][j][k].real,
-    //             //         sfcs.psi[i][j][k + 1].real,
-    //             //     ),
-    //             //     posit_sample,
-    //             //     grid_dx,
-    //             // );
-    //             //
-    //             // // todo: testing our new approach.
-    //             // sfcs.psi_pp_measured[i][j][k] = find_ψ_pp_meas_from_interp2(
-    //             //     posit_sample,
-    //             //     &sfcs.psi,
-    //             //     &sfcs.bases,
-    //             //     *grid_min,
-    //             //     *grid_max,
-    //             //     i,
-    //             //     j,
-    //             //     k,
-    //             // );
-    //         }
-    //     }
-    // }
-
-    // todo: end sinexpbasispt testing
+    num_diff::find_ψ_pp_meas_fm_grid_irreg(&sfcs.psi, &mut sfcs.psi_pp_measured, &sfcs.grid_posits); // todo: Testingin; switch back to from bases above
 }
 
 /// Make a new 3D grid, as a nested Vec
@@ -613,9 +539,21 @@ impl Default for Surfaces {
 }
 
 /// Update our grid positions
-/// todo: Regular for now.
 pub fn update_grid_posits(grid_posits: &mut Arr3dVec, grid_min: f64, grid_max: f64, spacing_factor: f64) {
-    let grid_1d = util::linspace((grid_min, grid_max), N);
+    let grid_lin = util::linspace((grid_min, grid_max), N);
+
+    // Set up a grid with values that increase in distance the farther we are from the center.
+    let mut grid_1d = [0.; N];
+
+    for i in 0..N {
+        let mut val = grid_lin[i].abs().powf(spacing_factor);
+        if grid_lin[i] < 0. {
+            val *= -1.; // square the magnitude only.
+        }
+        grid_1d[i] = val;
+
+    }
+    println!("\n\nGRID 1D: {:.2?}", grid_1d);
 
     for (i, x) in grid_1d.iter().enumerate() {
         for (j, y) in grid_1d.iter().enumerate() {

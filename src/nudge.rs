@@ -22,7 +22,7 @@ pub fn nudge_wf(
     grid_min: f64,
     grid_max: f64,
 ) {
-    let num_nudges = 3;
+    let num_nudges = 1; // todo: Put back to 3 etc?
     let smooth_amt = 0.4;
 
     // Consider applying a lowpass after each nudge, and using a high nudge amount.
@@ -111,11 +111,10 @@ pub fn nudge_wf(
 
             // Calculated psi'' measured in a separate loop after updating psi, since it depends on
             // neighboring psi values as well.
-            num_diff::find_ψ_pp_meas_fm_grid_reg(
+            num_diff::find_ψ_pp_meas_fm_grid_irreg(
                 &sfcs.psi,
                 &mut sfcs.psi_pp_measured,
-                &grid_posits,
-                (dx).powi(2),
+                &sfcs.grid_posits,
             );
             // todo: Here lies one of the strange bracket mismatches that is helping our cause
             // todo (Uncomment one to engage the strange behavior)
@@ -125,17 +124,16 @@ pub fn nudge_wf(
         let score = wf_ops::score_wf(sfcs);
 
         // todo: Maybe update temp ones above instead of the main ones?
-        // if score > current_score {
         if (score - current_score) > 0. {
             // We've nudged too much; revert.
 
-            // todo: put back! Experimenting
             *nudge_amount *= 0.6;
             sfcs.psi = psi_backup.clone();
             sfcs.psi_pp_calculated = psi_pp_calc_backup.clone();
             sfcs.psi_pp_measured = psi_pp_meas_backup.clone();
         } else {
             // Our nudge was good; get a bit more aggressive.
+
             *nudge_amount *= 1.2;
             psi_backup = sfcs.psi.clone();
             psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();

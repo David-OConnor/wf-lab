@@ -43,21 +43,21 @@ fn create_trial_wfs(charges: &[(Vec3, f64)]) -> Vec<Basis> {
 
 /// Interface from external programs. Main API for solving the wave function.
 // pub fn psi_from_V(V: &Arr3dReal, grid_bounds: (f64, f64)) -> Arr3d {
-pub fn psi_from_pt_charges(charges: &[(Vec3, f64)], grid_bounds: &mut (f64, f64)) -> Arr3d {
+pub fn psi_from_pt_charges(charges: &[(Vec3, f64)], grid_bounds: &mut (f64, f64), spacing_factor: f64) -> Arr3d {
     // todo: Input is V, or charges? We use charges for now, since it
     // saves a pass in our initial WF. Perhaps though, we want to pass V intact.
     // todo: Output is psi, or psi^2?
 
     let mut sfcs = Surfaces::default();
-    let spacing_factor = 1.;
     wf_ops::update_grid_posits(&mut sfcs.grid_posits, grid_bounds.0, grid_bounds.1, spacing_factor);
-
 
     let wfs = create_trial_wfs(charges);
 
     let mut E = 0.5;
 
     // todo: grids that aren't centered at 0? Non-cube grids?
+
+    let spacing_factor = 1.;
 
     // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
     // and our basis-function based trial wave function.
@@ -69,6 +69,7 @@ pub fn psi_from_pt_charges(charges: &[(Vec3, f64)], grid_bounds: &mut (f64, f64)
         true,
         &mut grid_bounds.0,
         &mut grid_bounds.1,
+        spacing_factor,
     );
 
     // todo: Temp removing nudge to test performance

@@ -71,8 +71,10 @@ pub struct State {
     pub nudge_amount: f64,
     // vals for h_grid and h_grid_sq, need to be updated when grid changes. A cache.
     // For finding psi_pp_meas, using only values on the grid
-    pub h_grid: f64,
-    pub h_grid_sq: f64,
+    // pub h_grid: f64,
+    // pub h_grid_sq: f64,
+    /// 1.0 is an evenly-spaced grid.
+    pub spacing_factor: f64,
 }
 
 // /// Interpolate a value from a discrete wave function, assuming (what about curvature)
@@ -157,13 +159,15 @@ fn main() {
 
     let z_displayed = 0.;
     let E = -0.7;
-    let (mut grid_min, mut grid_max) = (-6., 6.);
+    let (mut grid_min, mut grid_max) = (-2.5, 2.5);
 
-    let h_grid = (grid_max - grid_min) / (N as f64);
-    let h_grid_sq = h_grid.powi(2);
+    // // todo: Deprecate h_grid once your alternative works.
+    // let h_grid = (grid_max - grid_min) / (N as f64);
+    // let h_grid_sq = h_grid.powi(2);
 
     let mut sfcs = Surfaces::default();
-    let spacing_factor = 1.;
+
+    let spacing_factor = 1.5;
     wf_ops::update_grid_posits(&mut sfcs.grid_posits, grid_min, grid_max, spacing_factor);
 
     wf_ops::init_wf(
@@ -174,6 +178,7 @@ fn main() {
         true,
         &mut grid_min,
         &mut grid_max,
+        spacing_factor,
     );
 
     let psi_pp_score = wf_ops::score_wf(&sfcs);
@@ -208,8 +213,9 @@ fn main() {
         grid_min,
         grid_max,
         nudge_amount: wf_ops::NUDGE_DEFAULT,
-        h_grid,
-        h_grid_sq,
+        // h_grid,
+        // h_grid_sq,
+        spacing_factor,
     };
 
     render::render(state);

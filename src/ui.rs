@@ -433,8 +433,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.grid_min = -v_;
                     state.grid_max = v_;
 
-                    state.h_grid = (state.grid_max - state.grid_min) / (N as f64);
-                    state.h_grid_sq = state.h_grid.powi(2);
+                    // state.h_grid = (state.grid_max - state.grid_min) / (N as f64);
+                    // state.h_grid_sq = state.h_grid.powi(2);
 
                     updated_wfs = true;
                     updated_charges = true; // Seems to be required.
@@ -562,6 +562,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 updated_charges,
                 &mut state.grid_min,
                 &mut state.grid_max,
+                state.spacing_factor,
             );
 
             state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
