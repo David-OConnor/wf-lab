@@ -55,11 +55,7 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
 }
 
 /// Find ψ'', numerically from ψ on an evenly-spaced-rectangular grid
-pub(crate) fn find_ψ_pp_meas_fm_grid_reg(
-    psi: &Arr3d,
-    psi_pp_measured: &mut Arr3d,
-    dx_sq: f64,
-) {
+pub(crate) fn find_ψ_pp_meas_fm_grid_reg(psi: &Arr3d, psi_pp_measured: &mut Arr3d, dx_sq: f64) {
     // Note re these edge-cases: Hopefully it doesn't matter, since the WF is flat around
     // the edges, if the boundaries are chosen appropriately.
     for i in 0..N {
@@ -95,7 +91,9 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_reg(
 }
 
 /// Find ψ'', numerically from ψ on an unevenly-spaced-rectangular grid. This is a generalized
-/// version of teh regular-grid version, but is more performance-intensive.
+/// version of teh regular-grid version, but is more performance-intensive. Computes an order-2
+/// (quadratic) polynomial given each point and its 2 neighbors, on each axis. Uses only the
+/// squared term to find the second derivative at each point.
 pub(crate) fn find_ψ_pp_meas_fm_grid_irreg(
     psi: &Arr3d,
     psi_pp_measured: &mut Arr3d,
@@ -136,20 +134,31 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_irreg(
                 let p_z_prev = grid_posits[i][j][k - 1];
                 let p_z_next = grid_posits[i][j][k + 1];
 
-                // todo: QC how you're mixing the 3 dimensinos. Just add?
+                // todo: Take Complex values into account.
 
-                // todo: Is this how you combine? Just taking the x, y etc value of the posits?
+                // Create a local polynomial in each axis.
+                // todo: Should you use more than 3 points for better precision?
+                let a_x = interp::create_quadratic_term(
+                    (p_x_prev.x, psi_x_prev.real),
+                    (p_this.x, psi_this.real),
+                    (p_x_next.x, psi_x_next.real),
+                );
 
-                let num = (psi_x_next - psi_this) / (p_x_next.x - p_this.x)
-                    - (psi_this - psi_x_prev) / (p_this.x - p_x_prev.x)
-                    + (psi_y_next - psi_this) / (p_y_next.y - p_this.y)
-                    - (psi_this - psi_y_prev) / (p_this.y - p_y_prev.y)
-                    + (psi_z_next - psi_this) / (p_z_next.z - p_this.z)
-                    - (psi_this - psi_z_prev) / (p_this.z - p_z_prev.z);
+                let a_y = interp::create_quadratic_term(
+                    (p_y_prev.y, psi_y_prev.real),
+                    (p_this.y, psi_this.real),
+                    (p_y_next.y, psi_y_next.real),
+                );
 
-                let denom = 0.5 * (p_x_next.x - p_x_prev.x + p_y_next.y - p_y_prev.y + p_z_next.z - p_z_prev.z);
+                let a_z = interp::create_quadratic_term(
+                    (p_z_prev.z, psi_z_prev.real),
+                    (p_this.z, psi_this.real),
+                    (p_z_next.z, psi_z_next.real),
+                );
 
-                let finite_diff = num / denom;
+                // Combine the dimensions by adding, as we do for a regular grid. The factor of 2 is
+                // part of the differentiation process.
+                let finite_diff = (2. * (a_x + a_y + a_z)).into();
 
                 psi_pp_measured[i][j][k] = finite_diff;
             }

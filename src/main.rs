@@ -167,7 +167,7 @@ fn main() {
 
     let mut sfcs = Surfaces::default();
 
-    let spacing_factor = 1.5;
+    let spacing_factor = 2.;
     wf_ops::update_grid_posits(&mut sfcs.grid_posits, grid_min, grid_max, spacing_factor);
 
     wf_ops::init_wf(

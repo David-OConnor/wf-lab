@@ -136,33 +136,39 @@ pub fn linear_1d(posit_sample: f64, range: (f64, f64), val_l: f64, val_r: f64) -
     portion * (val_r - val_l) + val_l
 }
 
-/// Compute the result of a Lagrange polynomial of order 3.
-/// Algorithm created from the `P(x)` eq
-/// [here](https://mathworld.wolfram.com/LagrangeInterpolatingPolynomial.html).
-/// todo: Figure out how to just calculate the coefficients for a more
-/// todo flexible approach. More eloquent, but tough to find info on compared
-/// todo to this approach.
-/// todo: For coefficients, maybe try here:
-/// https://math.stackexchange.com/questions/680646/get-polynomial-function-from-3-points
-/// todo: Not too tough to work it out yourself too...
-fn langrange_o3_1d(posit_sample: f64, pt0: (f64, f64), pt1: (f64, f64), pt2: (f64, f64)) -> f64 {
-    let mut result = 0.;
+/// Create an order-2 polynomial based on 3 points. (1D: pts are (input, output).
+/// `a` is the ^2 term, `b` is the linear term, `c` is the constant term.
+/// This is a general mathematical function, and can be derived using a system of equations.
+pub fn create_polynomial_terms(
+    pt0: (f64, f64),
+    pt1: (f64, f64),
+    pt2: (f64, f64),
+) -> (f64, f64, f64) {
+    let a_num = pt0.0 * (pt2.1 - pt1.1) + pt1.0 * (pt0.1 - pt2.1) + pt2.0 * (pt1.1 - pt0.1);
 
-    let x = [pt0.0, pt1.0, pt2.0];
-    let y = [pt0.1, pt1.1, pt2.1];
+    let a_denom = (pt0.0 - pt1.0) * (pt0.0 - pt2.0) * (pt1.0 - pt2.0);
 
-    for j in 0..3 {
-        let mut c = 1.;
-        for i in 0..3 {
-            if j == i {
-                continue;
-            }
-            c *= (posit_sample - x[i]) / (x[j] - x[i]);
-        }
-        result += y[j] * c;
-    }
+    let a = a_num / a_denom;
 
-    result
+    let b = (pt1.1 - pt0.1) / (pt1.0 - pt0.0) - a * (pt0.0 + pt1.0);
+
+    let c = pt0.1 - a * pt0.0.powi(2) - b * pt0.0;
+
+    (a, b, c)
+}
+
+/// Create the quadratic term of an order-2 polynomial from 3 points. Useful for when we're
+/// only looking for the second-derivative at a point; saves computation on linear and constant
+/// terms which are discarded during differentiation.
+/// todo: Complex?
+pub fn create_quadratic_term(pt0: (f64, f64), pt1: (f64, f64), pt2: (f64, f64)) -> f64 {
+    let a_num = pt0.0 * (pt2.1 - pt1.1) + pt1.0 * (pt0.1 - pt2.1) + pt2.0 * (pt1.1 - pt0.1);
+
+    let a_denom = (pt0.0 - pt1.0) * (pt0.0 - pt2.0) * (pt1.0 - pt2.0);
+
+    let a = a_num / a_denom;
+
+    a
 }
 
 // /// Utility function to linearly map an input value to an output

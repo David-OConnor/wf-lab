@@ -13,8 +13,8 @@ pub mod wf_ops;
 
 pub use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic},
-    wf_ops::Surfaces,
     util::{Arr3d, Arr3dReal},
+    wf_ops::Surfaces,
 };
 
 use lin_alg2::f64::Vec3;
@@ -43,13 +43,22 @@ fn create_trial_wfs(charges: &[(Vec3, f64)]) -> Vec<Basis> {
 
 /// Interface from external programs. Main API for solving the wave function.
 // pub fn psi_from_V(V: &Arr3dReal, grid_bounds: (f64, f64)) -> Arr3d {
-pub fn psi_from_pt_charges(charges: &[(Vec3, f64)], grid_bounds: &mut (f64, f64), spacing_factor: f64) -> Arr3d {
+pub fn psi_from_pt_charges(
+    charges: &[(Vec3, f64)],
+    grid_bounds: &mut (f64, f64),
+    spacing_factor: f64,
+) -> Arr3d {
     // todo: Input is V, or charges? We use charges for now, since it
     // saves a pass in our initial WF. Perhaps though, we want to pass V intact.
     // todo: Output is psi, or psi^2?
 
     let mut sfcs = Surfaces::default();
-    wf_ops::update_grid_posits(&mut sfcs.grid_posits, grid_bounds.0, grid_bounds.1, spacing_factor);
+    wf_ops::update_grid_posits(
+        &mut sfcs.grid_posits,
+        grid_bounds.0,
+        grid_bounds.1,
+        spacing_factor,
+    );
 
     let wfs = create_trial_wfs(charges);
 

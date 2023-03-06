@@ -25,7 +25,7 @@ const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 60;
+pub const N: usize = 70;
 
 /// Initialize a wave function using a charge-centric coordinate system, using RBF
 /// interpolation.
@@ -207,7 +207,11 @@ pub fn init_wf(
         }
     }
 
-    num_diff::find_ψ_pp_meas_fm_grid_irreg(&sfcs.psi, &mut sfcs.psi_pp_measured, &sfcs.grid_posits); // todo: Testingin; switch back to from bases above
+    num_diff::find_ψ_pp_meas_fm_grid_irreg(
+        &sfcs.psi,
+        &mut sfcs.psi_pp_measured,
+        &sfcs.grid_posits,
+    ); // todo: Testingin; switch back to from bases above
 }
 
 /// Make a new 3D grid, as a nested Vec
@@ -539,7 +543,12 @@ impl Default for Surfaces {
 }
 
 /// Update our grid positions
-pub fn update_grid_posits(grid_posits: &mut Arr3dVec, grid_min: f64, grid_max: f64, spacing_factor: f64) {
+pub fn update_grid_posits(
+    grid_posits: &mut Arr3dVec,
+    grid_min: f64,
+    grid_max: f64,
+    spacing_factor: f64,
+) {
     let grid_lin = util::linspace((grid_min, grid_max), N);
 
     // Set up a grid with values that increase in distance the farther we are from the center.
@@ -551,7 +560,6 @@ pub fn update_grid_posits(grid_posits: &mut Arr3dVec, grid_min: f64, grid_max: f
             val *= -1.; // square the magnitude only.
         }
         grid_1d[i] = val;
-
     }
     println!("\n\nGRID 1D: {:.2?}", grid_1d);
 

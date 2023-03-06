@@ -12,7 +12,11 @@ use lin_alg2::{
     f64::Vec3 as Vec3F64,
 };
 
-use crate::{wf_ops::N, State, util::{Arr3dVec, Arr3dReal, Arr3d}};
+use crate::{
+    util::{Arr3d, Arr3dReal, Arr3dVec},
+    wf_ops::N,
+    State,
+};
 
 const NUM_SURFACES: usize = 6;
 
@@ -108,7 +112,12 @@ pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 
 // }
 
 /// Generate a f32 mesh from a 3d F64 mesh, using a z slice. Replaces the z value with function value.
-fn prepare_2d_mesh_real(posits: &Arr3dVec, vals: &Arr3dReal, z_i: usize, scaler: f32) -> Vec<Vec<Vec3>> {
+fn prepare_2d_mesh_real(
+    posits: &Arr3dVec,
+    vals: &Arr3dReal,
+    z_i: usize,
+    scaler: f32,
+) -> Vec<Vec<Vec3>> {
     // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64,
     // todo and 2d vice 3d.
     let mut y = Vec::new();
@@ -122,7 +131,7 @@ fn prepare_2d_mesh_real(posits: &Arr3dVec, vals: &Arr3dReal, z_i: usize, scaler:
             result[i][j] = Vec3::new(
                 posits[i][j][z_i].x as f32,
                 posits[i][j][z_i].y as f32,
-                vals[i][j][z_i] as f32 * scaler
+                vals[i][j][z_i] as f32 * scaler,
             );
         }
     }
@@ -215,7 +224,7 @@ pub fn update_meshes(
         // &surfaces.aux2,
     ] {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(&surfaces.grid_posits, sfc, z_i,1.),
+            &prepare_2d_mesh(&surfaces.grid_posits, sfc, z_i, 1.),
             // todo: Center! Maybe offset in entities.
             // sfc_mesh_start,
             // sfc_mesh_step,
@@ -224,7 +233,7 @@ pub fn update_meshes(
     }
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh_real(&surfaces.grid_posits, &surfaces.aux2, z_i,ELEC_V_SCALER),
+        &prepare_2d_mesh_real(&surfaces.grid_posits, &surfaces.aux2, z_i, ELEC_V_SCALER),
         // todo: Center! Maybe offset in entities.
         // sfc_mesh_start,
         // sfc_mesh_step,
