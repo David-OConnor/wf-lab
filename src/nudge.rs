@@ -4,9 +4,11 @@
 use crate::{
     num_diff, util,
     wf_ops::{self, Surfaces, N},
+    basis_wfs::Basis,
 };
 
 use lin_alg2::f64::Vec3;
+use crate::complex_nums::Cplx;
 
 // todo: Nudging is a good candidate for GPU. Try to impl in Vulkan / WGPU.
 
@@ -21,6 +23,7 @@ pub fn nudge_wf(
     E: &mut f64,
     grid_min: f64,
     grid_max: f64,
+    bases: &[Basis],
 ) {
     let num_nudges = 1; // todo: Put back to 3 etc?
     let smooth_amt = 0.4;
@@ -60,6 +63,10 @@ pub fn nudge_wf(
     // We use diff map so we can lowpass the entire map before applying corrections.
     let mut diff_map = wf_ops::new_data(N);
 
+    // `correction_fm_bases` is the difference between our nudged wave function, and what it
+    // was from bases alone, without nudging.;
+    let mut correction_fm_bases = wf_ops::new_data(N);
+
     let dx = (grid_max - grid_min) / N as f64;
     let grid_posits = util::linspace((grid_min, grid_max), N);
 
@@ -90,7 +97,7 @@ pub fn nudge_wf(
                 }
                 // }
             } // todo: COmmenting this out, and adding one towards the bottom makes a dramatic improvement
-              // todo, but why??!
+            // todo, but why??!
 
             // Note: It turns out smoothing makes a big difference, as does the smoothing coefficient.
             // diff_pre_smooth = diff_map.clone();
@@ -140,9 +147,25 @@ pub fn nudge_wf(
             psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
             current_score = score;
             wf_ops::find_E(sfcs, E);
+
+            for i in 0..N {
+                for j in 0..N {
+                    for k in 0..N {
+                        let mut psi_bases = Cplx::new_zero();
+                        let posit_sample = sfcs.grid_posits[i][j][k];
+                        for basis in bases {
+                            psi_bases += basis.value(posit_sample) * basis.weight();
+                        }
+
+                        correction_fm_bases[i][j][k] = (sfcs.psi[i][j][k] - psi_bases) * 1.;
+                    }
+                }
+            }
+            sfcs.aux2 = correction_fm_bases.clone();
+
         }
         // todo: Update state's score here so we don't need to explicitly after.
     }
 
-    sfcs.aux1 = diff_map.clone();
+    sfcs.aux1 = diff_map;
 }

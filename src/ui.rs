@@ -490,6 +490,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &mut state.E,
                     state.grid_min,
                     state.grid_max,
+                    &state.bases,
                 );
 
                 render::update_meshes(

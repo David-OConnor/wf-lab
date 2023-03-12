@@ -233,7 +233,8 @@ pub fn update_meshes(
     }
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh_real(&surfaces.grid_posits, &surfaces.aux2, z_i, ELEC_V_SCALER),
+        // &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.aux2, z_i, ELEC_V_SCALER),
+        &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.aux2, z_i, 10.),
         // todo: Center! Maybe offset in entities.
         // sfc_mesh_start,
         // sfc_mesh_step,

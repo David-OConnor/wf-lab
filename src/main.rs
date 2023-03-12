@@ -167,7 +167,37 @@ fn main() {
 
     let mut sfcs = Surfaces::default();
 
-    let spacing_factor = 2.;
+    // todo: Short-term experiment
+    // Set up an initial charge of a s0 Hydrogen orbital. Computationally intensive to use any of
+    // these charges, but
+    let mut psi_h00 = wf_ops::new_data(N);
+
+    let h00 = Basis::H(HOrbital::new(
+        posit_charge_1,
+        1,
+        SphericalHarmonic::default(),
+        1.,
+        0,
+    ));
+
+    for i in 0..N {
+        for j in 0..N {
+            for k in 0..N {
+                let posit_sample = sfcs.grid_posits[i][j][k];
+
+                psi_h00[i][j][k] = h00.value(posit_sample) * h00.weight() ;
+            }
+        }
+    }
+
+    let mut charge_density = wf_ops::new_data_real(N);
+    wf_ops::charge_density_fm_psi(&psi_h00, &mut charge_density, 1);
+
+    // sfcs.elec_charges = vec![charge_density]; // todo: removed
+    // todo: end short-term experiment
+
+    // let spacing_factor = 2.;
+    let spacing_factor = 1.;
     wf_ops::update_grid_posits(&mut sfcs.grid_posits, grid_min, grid_max, spacing_factor);
 
     wf_ops::init_wf(

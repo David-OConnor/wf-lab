@@ -47,6 +47,7 @@ pub fn psi_from_pt_charges(
     charges: &[(Vec3, f64)],
     grid_bounds: &mut (f64, f64),
     spacing_factor: f64,
+    bases: &[Basis],
 ) -> Arr3d {
     // todo: Input is V, or charges? We use charges for now, since it
     // saves a pass in our initial WF. Perhaps though, we want to pass V intact.
@@ -83,7 +84,7 @@ pub fn psi_from_pt_charges(
 
     // todo: Temp removing nudge to test performance
 
-    nudge::nudge_wf(&mut sfcs, &mut 0.1, &mut E, grid_bounds.0, grid_bounds.1);
+    nudge::nudge_wf(&mut sfcs, &mut 0.1, &mut E, grid_bounds.0, grid_bounds.1, &bases);
 
     // let psi_pp_score = wf_ops::score_wf(&sfcs);
 

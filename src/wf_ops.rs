@@ -25,7 +25,7 @@ const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 70;
+pub const N: usize = 80;
 
 /// Initialize a wave function using a charge-centric coordinate system, using RBF
 /// interpolation.
@@ -136,8 +136,8 @@ pub fn init_wf(
             }
         }
 
-        const RANGE_PAD: f64 = 1.8;
-        // const RANGE_PAD: f64 = 5.8;
+        // const RANGE_PAD: f64 = 1.6;
+        const RANGE_PAD: f64 = 5.8;
 
         *grid_max = max_abs_val + RANGE_PAD;
         *grid_min = -*grid_max;
@@ -179,15 +179,32 @@ pub fn init_wf(
                     // acting on every other grid point.
 
                     // todo: This is going to be a deal breaker most likely.
-                    //     for i2 in 0..N {
-                    //         for j2 in 0..N {
-                    //             for k2 in 0..N {
-                    //             let posit_sample_electron = sfcs.grid_posits[i2][j2][k2];
-                    //             // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
-                    //             sfcs.V[i][j][k] += V_coulomb(posit_sample_electron, posit_sample, sfcs.elec_charges[0][i2][j2][k2]);
-                    //         }
-                    //     }
-                    // }
+
+
+
+                    if sfcs.elec_charges.len() > 0 {
+                        for i2 in 0..N {
+                            for j2 in 0..N {
+                                for k2 in 0..N {
+                                    // Don't compare the same point to itself; will get a divide-by-zero error
+                                    // on the distance.
+                                    if i2 == i && j2 == j && k2 == k {
+                                        continue
+                                    }
+
+                                    let posit_sample_electron = sfcs.grid_posits[i2][j2][k2];
+
+                                    let mut charge_this_grid_pt = 0.;
+                                    for charge in &sfcs.elec_charges {
+                                        charge_this_grid_pt += charge[i2][j2][k2];
+                                    }
+
+                                    // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
+                                    sfcs.V[i][j][k] += V_coulomb(posit_sample_electron, posit_sample, charge_this_grid_pt);
+                                }
+                            }
+                        }
+                    }
                 }
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
@@ -376,11 +393,10 @@ fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
     -K_C * charge / r
 }
 
-/// Calcualte psi'', calculated from psi, and E.
+/// Calcualte psi'', calculated from psi, and E. Note that the V term used must include both
+/// electron-electron interactions, and electron-proton interactions.
 /// At a given i, j, k.
 pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
-    // todo: Do you need to multiply KE_COEFF, or part of it, by the number of electrons
-    // todo: in this WF?
     psi[i][j][k] * (E - V[i][j][k]) * KE_COEFF
 }
 
@@ -398,7 +414,7 @@ pub fn charge_density_fm_psi(psi: &Arr3d, charge_density: &mut Arr3dReal, num_el
     }
 
     // Save computation on this constant factor.
-    let c = -Q_ELEC * num_elecs as f64 / psi_sq_size;
+    let c = Q_ELEC * num_elecs as f64 / psi_sq_size;
 
     for i in 0..N {
         for j in 0..N {
@@ -491,7 +507,7 @@ pub struct Surfaces {
     pub psi_pp_measured: Arr3d,
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3d,
-    pub aux2: Arr3dReal,
+    pub aux2: Arr3d,
     /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
     /// between psi'' measured and calcualted, which is complex.
     pub nudge_amounts: Arr3dReal,
@@ -532,10 +548,10 @@ impl Default for Surfaces {
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
             aux1: data.clone(),
-            aux2: data_real.clone(),
+            aux2: data.clone(),
             nudge_amounts: default_nudges,
             // psi_prev: data.clone(),
-            elec_charges: vec![data_real.clone()],
+            elec_charges: Vec::new(),
             bases: new_data_basis(N),
             grid_posits,
         }
