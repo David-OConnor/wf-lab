@@ -152,7 +152,7 @@ fn main() {
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges = vec![
-        (posit_charge_1, Q_PROT),
+        (posit_charge_1, Q_PROT * 2.), // helium
         // (posit_charge_2, Q_PROT),
         // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];

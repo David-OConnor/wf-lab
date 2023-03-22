@@ -90,6 +90,47 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_reg(psi: &Arr3d, psi_pp_measured: &mut Arr
     }
 }
 
+/// Apply the momentum operator to a wave function.
+/// At the edges and corners, does not mutate the value. Note that this is simpler than finding
+/// psi'' due to being linear. (first deriv vice second)
+///
+/// Note: It makes sense that this is entirely imaginary for the l=0 wave functions,
+/// since those don't have angular momentum. There's only [real?] angular momentum
+/// if the WF has a complex component. Todo: What is the significance of imaginary momentum?
+///
+pub fn find_momentum(psi: &Arr3d, result: &mut Arr3d, grid_posits: &mut Arr3dVec) {
+     // This is `i * ħ`. Const expr limits avail syntax.
+    const COEFF: Cplx = Cplx { real: 0., im: -ħ };
+
+    for i in 0..N {
+        if i == 0 || i == N - 1 {
+            continue
+        }
+        for j in 0..N {
+            if j == 0 || j == N - 1 {
+                continue
+            }
+            for k in 0..N {
+                if k == 0 || k == N - 1 {
+                    continue
+                }
+
+                let dx = (grid_posits[i + 1][j][k].x - grid_posits[i - 1][j][k].x) * 2.;
+                let dy = (grid_posits[i][j + 1][k].y - grid_posits[i][j - 1][k].y) * 2.;
+                let dz = (grid_posits[i][j][k + 1].z - grid_posits[i][j][k - 1].z) * 2.;
+
+                let d_psi_d_x = COEFF * (psi[i + 1][j][k] - psi[i - 1][j][k]) / dx;
+                let d_psi_d_y = COEFF * (psi[i][j + 1][k] - psi[i][j - 1][k]) / dy;
+                let d_psi_d_z = COEFF * (psi[i][j][k + 1] - psi[i - 1][j][k - 1]) / dz;
+
+                result[i][j][k] = d_psi_d_x + d_psi_d_y + d_psi_d_z;
+            }
+        }
+    }
+
+}
+
+
 /// Find ψ'', numerically from ψ on an unevenly-spaced-rectangular grid. This is a generalized
 /// version of teh regular-grid version, but is more performance-intensive. Computes an order-2
 /// (quadratic) polynomial given each point and its 2 neighbors, on each axis. Uses only the

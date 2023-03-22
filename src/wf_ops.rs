@@ -1,8 +1,10 @@
 //! This module contains the bulk of the wave-function evalution and solving logic.
 
+use core::f64::consts::FRAC_1_SQRT_2;
+
 use crate::{
     basis_wfs::{Basis, SinExpBasisPt},
-    complex_nums::Cplx,
+    complex_nums::{Cplx, IM},
     interp, num_diff,
     rbf::Rbf,
     util::{self, Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec},
@@ -25,7 +27,13 @@ const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 80;
+pub const N: usize = 90;
+
+#[derive(Clone, Copy, Debug)]
+pub enum Spin {
+    Up,
+    Dn,
+}
 
 /// Initialize a wave function using a charge-centric coordinate system, using RBF
 /// interpolation.
@@ -137,7 +145,8 @@ pub fn init_wf(
         }
 
         // const RANGE_PAD: f64 = 1.6;
-        const RANGE_PAD: f64 = 5.8;
+        // const RANGE_PAD: f64 = 5.8;
+        const RANGE_PAD: f64 = 15.;
 
         *grid_max = max_abs_val + RANGE_PAD;
         *grid_min = -*grid_max;
@@ -397,6 +406,10 @@ fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
 /// electron-electron interactions, and electron-proton interactions.
 /// At a given i, j, k.
 pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
+    // todo, here or otherwise. For multiple electrons:
+    // ψ(r1, r2) = ψ_a(r1)ψb(r2), wherein we are combining probabilities.
+    // fermions: two identical fermions cannot occupy the same state.
+    // ψ(r1, r2) = A[ψ_a(r1)ψ_b(r2) - ψ_b(r1)ψ_a(r2)]
     psi[i][j][k] * (E - V[i][j][k]) * KE_COEFF
 }
 
@@ -520,6 +533,8 @@ pub struct Surfaces {
     pub bases: Arr3dBasis,
     /// Represents points on a grid, for our non-uniform grid.
     pub grid_posits: Arr3dVec,
+    /// Todo: Plot both real and imaginary momentum components? (or mag + phase?)
+    pub momentum: Arr3d,
 }
 
 impl Default for Surfaces {
@@ -554,6 +569,7 @@ impl Default for Surfaces {
             elec_charges: Vec::new(),
             bases: new_data_basis(N),
             grid_posits,
+            momentum: data,
         }
     }
 }
@@ -583,6 +599,45 @@ pub fn update_grid_posits(
         for (j, y) in grid_1d.iter().enumerate() {
             for (k, z) in grid_1d.iter().enumerate() {
                 grid_posits[i][j][k] = Vec3::new(*x, *y, *z);
+            }
+        }
+    }
+}
+
+/// Calculate the result of exchange interactions between electrons.
+pub fn calc_exchange(psis: &[Arr3d], result: &mut Arr3d) {
+    // for i_a in 0..N {
+    //     for j_a in 0..N {
+    //         for k_a in 0..N {
+    //             for i_b in 0..N {
+    //                 for j_b in 0..N {
+    //                     for k_b in 0..N {
+    //
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+    *result = Arr3d::new();
+
+    for a in 0..N { // todo: i, j, k for 3D
+        for b in 0..N {
+            // This term will always be 0, so skipping  here may save calculation.
+            if a == b {
+                continue
+            }
+            // Enumerate so we don't calculate exchange on a WF with itself.
+            for (i_1, psi_1) in psis.into_iter().enumerate() {
+                for (i_2, psi_2) in psis.into_iter().enumerate() {
+                    // Don't calcualte exchange with self
+                    if i_1 == i_2 {
+                        continue
+                    }
+
+                    // todo: THink this through. What index to update?
+                    // result[a] += FRAC_1_SQRT_2 * (psi_1[a] * psi_2[b] - psi_2[a] * psi_1[b]);
+                }
             }
         }
     }
