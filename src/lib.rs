@@ -84,7 +84,14 @@ pub fn psi_from_pt_charges(
 
     // todo: Temp removing nudge to test performance
 
-    nudge::nudge_wf(&mut sfcs, &mut 0.1, &mut E, grid_bounds.0, grid_bounds.1, &bases);
+    nudge::nudge_wf(
+        &mut sfcs,
+        &mut 0.1,
+        &mut E,
+        grid_bounds.0,
+        grid_bounds.1,
+        &bases,
+    );
 
     // let psi_pp_score = wf_ops::score_wf(&sfcs);
 

@@ -34,7 +34,7 @@ const COLOR_NEG_CHARGE: Color = (0., 0., 1.);
 
 const CHARGE_SPHERE_SIZE: f32 = 0.05;
 
-const SURFACE_COLORS: [Color; 7] = [
+const SURFACE_COLORS: [Color; 8] = [
     (0., 0., 1.),
     (0., 0.5, 0.2),
     (1., 0., 0.),
@@ -42,12 +42,14 @@ const SURFACE_COLORS: [Color; 7] = [
     (0.5, 0.5, 0.),
     (0.33, 0.33, 0.333),
     (0.5, 0., 0.5),
+    (0.5, 0.4, 0.2),
 ];
 
 const SURFACE_SHINYNESS: f32 = 1.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
 const PSI_SCALER: f32 = 4.; // to make WF more visually significant.
+const PSI_P_SCALER: f32 = 4.; // to make WF more visually significant.
 const ELEC_V_SCALER: f32 = 100_000.; // to make WF more visually significant.
 
 fn event_handler(
@@ -175,14 +177,7 @@ fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32) -> 
 
 /// Updates meshes. For example, when updating a plot due to changing parameters.
 /// Note that this is where we decide which Z to render.
-pub fn update_meshes(
-    surfaces: &crate::Surfaces,
-    z_displayed: f64,
-    scene: &mut Scene,
-    // grid_posits: &Arr3dVec,
-    // grid_min: f64,
-    // grid_max: f64,
-) {
+pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut Scene) {
     // Our meshes are defined in terms of a start point,
     // and a step. Adjust the step to center the grid at
     // the renderer's center.
@@ -197,9 +192,6 @@ pub fn update_meshes(
     let z_i = N / 2; // todo temp!!
 
     let mut meshes = Vec::new();
-
-    // todo: You shouldn't update each mesh every time! Only update
-    // todo the meshes that change.
 
     meshes.push(Mesh::new_surface(
         &prepare_2d_mesh_real(&surfaces.grid_posits, &surfaces.V, z_i, 1.),
@@ -217,14 +209,16 @@ pub fn update_meshes(
         true,
     ));
 
-    for sfc in [
-        &surfaces.psi_pp_calculated,
-        &surfaces.psi_pp_measured,
-        &surfaces.aux1,
+    for (scaler, sfc) in [
+        (1., &surfaces.psi_pp_calculated),
+        (1., &surfaces.psi_pp_measured),
+        (PSI_P_SCALER, &surfaces.psi_p_calculated),
+        (PSI_P_SCALER, &surfaces.psi_p_measured),
+        // &surfaces.aux1,
         // &surfaces.aux2,
     ] {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(&surfaces.grid_posits, sfc, z_i, 1.),
+            &prepare_2d_mesh(&surfaces.grid_posits, sfc, z_i, scaler),
             // todo: Center! Maybe offset in entities.
             // sfc_mesh_start,
             // sfc_mesh_step,
@@ -232,14 +226,14 @@ pub fn update_meshes(
         ));
     }
 
-    meshes.push(Mesh::new_surface(
-        // &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.aux2, z_i, ELEC_V_SCALER),
-        &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.aux2, z_i, 10.),
-        // todo: Center! Maybe offset in entities.
-        // sfc_mesh_start,
-        // sfc_mesh_step,
-        true,
-    ));
+    // meshes.push(Mesh::new_surface(
+    //     // &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.aux2, z_i, ELEC_V_SCALER),
+    //     &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.aux2, z_i, 10.),
+    //     // todo: Center! Maybe offset in entities.
+    //     // sfc_mesh_start,
+    //     // sfc_mesh_step,
+    //     true,
+    // ));
 
     meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 8, 8));
 

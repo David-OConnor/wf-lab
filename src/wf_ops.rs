@@ -1,4 +1,17 @@
 //! This module contains the bulk of the wave-function evalution and solving logic.
+//!
+//!
+//! Observables and their eigenfunctions:
+//! Energy. Hψ = Eψ. H = -ħ^2/2m ∇^2 + V
+//!
+//! Momentum (linear). Pψ = pψ. P = -iħ∇
+//!
+//! Momentum (angular). Lψ = lψ(?).
+//! - L_x = y p_z - p_y z = -iħ(y d/dz - d/dy z)
+//! - L_y = z p_x - p_z x = -iħ(z d/dx - d/dz x)
+//! - L_z = x p_y - p_x y = -iħ(z d/dy - d/dx y)
+//!
+//! Position? Xψ = xψ. X = x??
 
 use core::f64::consts::FRAC_1_SQRT_2;
 
@@ -189,8 +202,6 @@ pub fn init_wf(
 
                     // todo: This is going to be a deal breaker most likely.
 
-
-
                     if sfcs.elec_charges.len() > 0 {
                         for i2 in 0..N {
                             for j2 in 0..N {
@@ -198,7 +209,7 @@ pub fn init_wf(
                                     // Don't compare the same point to itself; will get a divide-by-zero error
                                     // on the distance.
                                     if i2 == i && j2 == j && k2 == k {
-                                        continue
+                                        continue;
                                     }
 
                                     let posit_sample_electron = sfcs.grid_posits[i2][j2][k2];
@@ -209,7 +220,11 @@ pub fn init_wf(
                                     }
 
                                     // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
-                                    sfcs.V[i][j][k] += V_coulomb(posit_sample_electron, posit_sample, charge_this_grid_pt);
+                                    sfcs.V[i][j][k] += V_coulomb(
+                                        posit_sample_electron,
+                                        posit_sample,
+                                        charge_this_grid_pt,
+                                    );
                                 }
                             }
                         }
@@ -226,18 +241,14 @@ pub fn init_wf(
 
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-                // todo: Put back; using a grid to test numerical diffs.
-                // sfcs.psi_pp_measured[i][j][k] =
-                //     num_diff::find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
+                sfcs.psi_pp_measured[i][j][k] =
+                    num_diff::find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
             }
         }
     }
 
-    num_diff::find_ψ_pp_meas_fm_grid_irreg(
-        &sfcs.psi,
-        &mut sfcs.psi_pp_measured,
-        &sfcs.grid_posits,
-    ); // todo: Testingin; switch back to from bases above
+    // todo: Initial hack at updating our psi' to see what insight it may have, eg into momentum.
+    num_diff::find_ψ_p_meas_fm_grid_irreg(&sfcs.psi, &mut sfcs.psi_p_measured, &sfcs.grid_posits);
 }
 
 /// Make a new 3D grid, as a nested Vec
@@ -405,12 +416,24 @@ fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
 /// Calcualte psi'', calculated from psi, and E. Note that the V term used must include both
 /// electron-electron interactions, and electron-proton interactions.
 /// At a given i, j, k.
+///
+/// This solves, analytically, the eigenvalue equation for the Hamiltonian operator.
+///
+/// Hψ = Eψ. -ħ^2/2m * ψ'' + Vψ = Eψ. ψ'' = [(E - V) / (-ħ^2/2m)] ψ
 pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
-    // todo, here or otherwise. For multiple electrons:
     // ψ(r1, r2) = ψ_a(r1)ψb(r2), wherein we are combining probabilities.
     // fermions: two identical fermions cannot occupy the same state.
     // ψ(r1, r2) = A[ψ_a(r1)ψ_b(r2) - ψ_b(r1)ψ_a(r2)]
     psi[i][j][k] * (E - V[i][j][k]) * KE_COEFF
+}
+
+/// Calcualte psi', calculated from psi, and L.
+/// todo: Lin vs angular momentum??
+/// Pψ = pψ . -iħ ψ' = Pψ. ψ' = piħ ψ
+pub fn find_ψ_p_calc(psi: &Arr3d, p: f64, i: usize, j: usize, k: usize) -> Cplx {
+    const COEFF: Cplx = Cplx { real: 0., im: ħ };
+
+    psi[i][j][k] * p * COEFF
 }
 
 /// Convert an array of Psi to one of electron charge through space. Modifies in place
@@ -516,6 +539,11 @@ pub fn smooth_array(arr: &mut Arr3d, smoothing_amt: f64) {
 pub struct Surfaces {
     pub V: Arr3dReal,
     pub psi: Arr3d,
+    // todo: You quantize with n already associated with H and energy. Perhaps the next step
+    // todo is to quantize with L and associated angular momentum, as a second check on your
+    // todo WF, and a tool to identify its validity.
+    pub psi_p_calculated: Arr3d,
+    pub psi_p_measured: Arr3d,
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
     /// Aux surfaces are for misc visualizations
@@ -542,7 +570,6 @@ impl Default for Surfaces {
     fn default() -> Self {
         let data = new_data(N);
         let data_real = new_data_real(N);
-        let data_vec = new_data_vec(N);
 
         let mut default_nudges = data_real.clone();
         for i in 0..N {
@@ -562,6 +589,8 @@ impl Default for Surfaces {
             psi: data.clone(),
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
+            psi_p_calculated: data.clone(),
+            psi_p_measured: data.clone(),
             aux1: data.clone(),
             aux2: data.clone(),
             nudge_amounts: default_nudges,
@@ -621,18 +650,19 @@ pub fn calc_exchange(psis: &[Arr3d], result: &mut Arr3d) {
     // }
     *result = Arr3d::new();
 
-    for a in 0..N { // todo: i, j, k for 3D
+    for a in 0..N {
+        // todo: i, j, k for 3D
         for b in 0..N {
             // This term will always be 0, so skipping  here may save calculation.
             if a == b {
-                continue
+                continue;
             }
             // Enumerate so we don't calculate exchange on a WF with itself.
             for (i_1, psi_1) in psis.into_iter().enumerate() {
                 for (i_2, psi_2) in psis.into_iter().enumerate() {
                     // Don't calcualte exchange with self
                     if i_1 == i_2 {
-                        continue
+                        continue;
                     }
 
                     // todo: THink this through. What index to update?

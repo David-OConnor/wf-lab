@@ -8,7 +8,7 @@ use crate::{
     interp,
     rbf::Rbf,
     util::{self, Arr3d, Arr3dBasis, Arr3dVec},
-    wf_ops::N,
+    wf_ops::{ħ, N},
     Arr3dReal,
 };
 
@@ -20,6 +20,8 @@ const H_SQ: f64 = H * H;
 
 /// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.
 /// Calculate ψ'' based on a numerical derivative of psi in 3D.
+///
+/// This solves, numerically, the eigenvalue equation for the Hamiltonian operator.
 pub(crate) fn find_ψ_pp_meas_fm_bases(
     posit_sample: Vec3,
     bases: &[Basis],
@@ -55,6 +57,8 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
 }
 
 /// Find ψ'', numerically from ψ on an evenly-spaced-rectangular grid
+///
+/// This solves, numerically, the eigenvalue equation for the Hamiltonian operator.
 pub(crate) fn find_ψ_pp_meas_fm_grid_reg(psi: &Arr3d, psi_pp_measured: &mut Arr3d, dx_sq: f64) {
     // Note re these edge-cases: Hopefully it doesn't matter, since the WF is flat around
     // the edges, if the boundaries are chosen appropriately.
@@ -98,43 +102,52 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_reg(psi: &Arr3d, psi_pp_measured: &mut Arr
 /// since those don't have angular momentum. There's only [real?] angular momentum
 /// if the WF has a complex component. Todo: What is the significance of imaginary momentum?
 ///
-pub fn find_momentum(psi: &Arr3d, result: &mut Arr3d, grid_posits: &mut Arr3dVec) {
-     // This is `i * ħ`. Const expr limits avail syntax.
+/// todo: Can we use this to estimate which L and M values might be used as basis fns?
+///
+/// This solves, numerically, the eigenvalue equation for the momentum operator.
+/// todo: Calculated version we can compare to? Maybe sum of momentum of basis fns used?
+/// todo: ie find_ψ_p_calc in `wf_ops`.
+/// Pψ = pψ . -iħ ψ' = Pψ. ψ' = piħ ψ
+pub fn find_ψ_p_meas_fm_grid_irreg(psi: &Arr3d, result: &mut Arr3d, grid_posits: &Arr3dVec) {
+    // This is `i * ħ`. Const expr limits avail syntax.
     const COEFF: Cplx = Cplx { real: 0., im: -ħ };
 
     for i in 0..N {
         if i == 0 || i == N - 1 {
-            continue
+            continue;
         }
         for j in 0..N {
             if j == 0 || j == N - 1 {
-                continue
+                continue;
             }
             for k in 0..N {
                 if k == 0 || k == N - 1 {
-                    continue
+                    continue;
                 }
 
-                let dx = (grid_posits[i + 1][j][k].x - grid_posits[i - 1][j][k].x) * 2.;
-                let dy = (grid_posits[i][j + 1][k].y - grid_posits[i][j - 1][k].y) * 2.;
-                let dz = (grid_posits[i][j][k + 1].z - grid_posits[i][j][k - 1].z) * 2.;
+                let dx = (grid_posits[i + 1][j][k].x - grid_posits[i - 1][j][k].x);
+                let dy = (grid_posits[i][j + 1][k].y - grid_posits[i][j - 1][k].y);
+                let dz = (grid_posits[i][j][k + 1].z - grid_posits[i][j][k - 1].z);
 
-                let d_psi_d_x = COEFF * (psi[i + 1][j][k] - psi[i - 1][j][k]) / dx;
-                let d_psi_d_y = COEFF * (psi[i][j + 1][k] - psi[i][j - 1][k]) / dy;
-                let d_psi_d_z = COEFF * (psi[i][j][k + 1] - psi[i - 1][j][k - 1]) / dz;
+                // todo: Are we solving for psi' here, or -i hbar psi' ?
 
+                let d_psi_d_x = (psi[i + 1][j][k] - psi[i - 1][j][k]) / dx;
+                let d_psi_d_y = (psi[i][j + 1][k] - psi[i][j - 1][k]) / dy;
+                let d_psi_d_z = (psi[i][j][k + 1] - psi[i][j][k - 1]) / dz;
+
+                // todo: Multiply by `COEFF` if finding momentum, vice only the derivative.
                 result[i][j][k] = d_psi_d_x + d_psi_d_y + d_psi_d_z;
             }
         }
     }
-
 }
-
 
 /// Find ψ'', numerically from ψ on an unevenly-spaced-rectangular grid. This is a generalized
 /// version of teh regular-grid version, but is more performance-intensive. Computes an order-2
 /// (quadratic) polynomial given each point and its 2 neighbors, on each axis. Uses only the
 /// squared term to find the second derivative at each point.
+///
+/// This solves, numerically, the eigenvalue equation for the Hamiltonian operator.
 pub(crate) fn find_ψ_pp_meas_fm_grid_irreg(
     psi: &Arr3d,
     psi_pp_measured: &mut Arr3d,

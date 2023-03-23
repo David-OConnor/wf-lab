@@ -330,7 +330,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
                 for (i, name) in state.surface_names.iter_mut().enumerate() {
-                    if i > 2 {
+                    if i > 3 {
                         continue;
                     }
                     let show = &mut state.show_surfaces[i];
@@ -342,7 +342,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             // todo DRY
             ui.vertical(|ui| {
                 for (i, name) in state.surface_names.iter_mut().enumerate() {
-                    if i <= 2 {
+                    if i <= 3 {
                         continue;
                     }
                     let show = &mut state.show_surfaces[i];

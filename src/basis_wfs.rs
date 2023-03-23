@@ -6,7 +6,6 @@
 //! UCD_Chem_107B%3A_Physical_Chemistry_for_Life_Scientists/Chapters/4%3A_Quantum_Theory/
 //! 4.10%3A_The_Schr%C3%B6dinger_Wave_Equation_for_the_Hydrogen_Atom
 
-
 // Some thoughts on directions to take (11 Mar 2023)
 // - Determine how to add multiple basis fns (eg STOs or gauassians) to better approximate a WF,
 // eg over a minimal basis set
@@ -14,7 +13,6 @@
 // - multiple electrons, fermions not stacking, spin etc.
 // - second derivative term only in WF -- Is there a tie in to general relatively and gravity?
 // - Metric (or other) tensor per point in space?
-
 
 use std::f64::consts::PI;
 

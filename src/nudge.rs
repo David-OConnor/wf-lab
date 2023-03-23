@@ -2,13 +2,13 @@
 //! Schrodinger equation.
 
 use crate::{
+    basis_wfs::Basis,
     num_diff, util,
     wf_ops::{self, Surfaces, N},
-    basis_wfs::Basis,
 };
 
-use lin_alg2::f64::Vec3;
 use crate::complex_nums::Cplx;
+use lin_alg2::f64::Vec3;
 
 // todo: Nudging is a good candidate for GPU. Try to impl in Vulkan / WGPU.
 
@@ -97,7 +97,7 @@ pub fn nudge_wf(
                 }
                 // }
             } // todo: COmmenting this out, and adding one towards the bottom makes a dramatic improvement
-            // todo, but why??!
+              // todo, but why??!
 
             // Note: It turns out smoothing makes a big difference, as does the smoothing coefficient.
             // diff_pre_smooth = diff_map.clone();
@@ -162,7 +162,6 @@ pub fn nudge_wf(
                 }
             }
             sfcs.aux2 = correction_fm_bases.clone();
-
         }
         // todo: Update state's score here so we don't need to explicitly after.
     }

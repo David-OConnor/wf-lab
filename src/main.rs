@@ -38,7 +38,7 @@ use wf_ops::{ħ, Surfaces, M_ELEC, N, Q_PROT};
 
 use util::{Arr3d, Arr3dReal};
 
-const NUM_SURFACES: usize = 6;
+const NUM_SURFACES: usize = 8;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -48,14 +48,11 @@ pub struct State {
     /// todo: Or a sub struct?
     /// Wave functions, with weights
     pub bases: Vec<Basis>,
-    // pub wfs: Vec<SlaterOrbital>, // todo: Rename, eg `bases`
     // todo use an index for them.
     /// Nuclei. todo: H only for now.
     pub charges: Vec<(Vec3, f64)>,
     /// Computed surfaces, with name.
     pub surfaces: Surfaces,
-    // pub surfaces: [&'static Arr3d; NUM_SURFACES],
-    // pub surfaces: [Arr3d; NUM_SURFACES],
     /// Eg, least-squares over 2 or 3 dimensions between
     /// When visualizing a 2d wave function over X and Y, this is the fixed Z value.
     pub z_displayed: f64,
@@ -153,8 +150,8 @@ fn main() {
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges = vec![
         (posit_charge_1, Q_PROT * 2.), // helium
-        // (posit_charge_2, Q_PROT),
-        // (Vec3::new(0., 1., 0.), Q_ELEC),
+                                       // (posit_charge_2, Q_PROT),
+                                       // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
     let z_displayed = 0.;
@@ -185,7 +182,7 @@ fn main() {
             for k in 0..N {
                 let posit_sample = sfcs.grid_posits[i][j][k];
 
-                psi_h00[i][j][k] = h00.value(posit_sample) * h00.weight() ;
+                psi_h00[i][j][k] = h00.value(posit_sample) * h00.weight();
             }
         }
     }
@@ -213,13 +210,15 @@ fn main() {
 
     let psi_pp_score = wf_ops::score_wf(&sfcs);
 
-    let show_surfaces = [true, true, true, true, false, false];
+    let show_surfaces = [true, true, true, true, false, false, false, false];
 
     let surface_names = [
         "V".to_owned(),
         "ψ".to_owned(),
         "ψ'' calculated".to_owned(),
         "ψ'' measured".to_owned(),
+        "ψ' calculated".to_owned(),
+        "ψ' measured".to_owned(),
         "Aux 1".to_owned(),
         "Aux 2".to_owned(),
     ];
