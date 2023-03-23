@@ -12,6 +12,7 @@ use crate::{
 };
 
 use lin_alg2::f64::{EulerAngle, Quaternion, Vec3};
+use wf_lab::types;
 
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
@@ -524,7 +525,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             if ui.add(egui::Button::new("Empty e- V")).clicked() {
                 // hard-coded as first item for now.
-                state.surfaces.elec_charges[0] = wf_ops::new_data_real(N);
+                state.surfaces.elec_charges[0] = types::new_data_real(N);
 
                 updated_wfs = true;
                 updated_charges = true;

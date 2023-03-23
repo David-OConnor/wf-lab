@@ -3,11 +3,12 @@
 
 use crate::{
     basis_wfs::Basis,
-    num_diff, util,
-    wf_ops::{self, Surfaces, N},
+    num_diff, types, util,
+    wf_ops::{self, N},
 };
 
 use crate::complex_nums::Cplx;
+use crate::types::Surfaces;
 use lin_alg2::f64::Vec3;
 
 // todo: Nudging is a good candidate for GPU. Try to impl in Vulkan / WGPU.
@@ -55,17 +56,17 @@ pub fn nudge_wf(
     // todo react to a change in psi, and try a nudge that sends them on a collision course
 
     // We revert to this if we've nudged too far.
-    let mut psi_backup = sfcs.psi.clone();
+    let mut psi_backup = sfcs.psis_per_elec[0].clone();
     let mut psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
     let mut psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
     let mut current_score = wf_ops::score_wf(sfcs);
 
     // We use diff map so we can lowpass the entire map before applying corrections.
-    let mut diff_map = wf_ops::new_data(N);
+    let mut diff_map = types::new_data(N);
 
     // `correction_fm_bases` is the difference between our nudged wave function, and what it
     // was from bases alone, without nudging.;
-    let mut correction_fm_bases = wf_ops::new_data(N);
+    let mut correction_fm_bases = types::new_data(N);
 
     let dx = (grid_max - grid_min) / N as f64;
     let grid_posits = util::linspace((grid_min, grid_max), N);
@@ -108,10 +109,10 @@ pub fn nudge_wf(
                 for j in 0..N {
                     for k in 0..N {
                         // sfcs.psi[i][j][k] -= diff_map[i][j][k] * sfcs.nudge_amounts[i][j][k];
-                        sfcs.psi[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
+                        sfcs.psis_per_elec[0][i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
                         sfcs.psi_pp_calculated[i][j][k] =
-                            wf_ops::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, *E, i, j, k);
+                            wf_ops::find_ψ_pp_calc(&sfcs.psis_per_elec[0], &sfcs.V, *E, i, j, k);
                     }
                 }
             }
@@ -119,7 +120,7 @@ pub fn nudge_wf(
             // Calculated psi'' measured in a separate loop after updating psi, since it depends on
             // neighboring psi values as well.
             num_diff::find_ψ_pp_meas_fm_grid_irreg(
-                &sfcs.psi,
+                &sfcs.psis_per_elec[0],
                 &mut sfcs.psi_pp_measured,
                 &sfcs.grid_posits,
             );
@@ -135,14 +136,14 @@ pub fn nudge_wf(
             // We've nudged too much; revert.
 
             *nudge_amount *= 0.6;
-            sfcs.psi = psi_backup.clone();
+            sfcs.psis_per_elec[0] = psi_backup.clone();
             sfcs.psi_pp_calculated = psi_pp_calc_backup.clone();
             sfcs.psi_pp_measured = psi_pp_meas_backup.clone();
         } else {
             // Our nudge was good; get a bit more aggressive.
 
             *nudge_amount *= 1.2;
-            psi_backup = sfcs.psi.clone();
+            psi_backup = sfcs.psis_per_elec[0].clone();
             psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
             psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
             current_score = score;
@@ -157,7 +158,8 @@ pub fn nudge_wf(
                             psi_bases += basis.value(posit_sample) * basis.weight();
                         }
 
-                        correction_fm_bases[i][j][k] = (sfcs.psi[i][j][k] - psi_bases) * 1.;
+                        correction_fm_bases[i][j][k] =
+                            (sfcs.psis_per_elec[0][i][j][k] - psi_bases) * 1.;
                     }
                 }
             }

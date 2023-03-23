@@ -2,14 +2,14 @@
 
 use lin_alg2::f64::Vec3;
 
+use crate::types::{Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec};
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
     interp,
     rbf::Rbf,
-    util::{self, Arr3d, Arr3dBasis, Arr3dVec},
+    util::{self},
     wf_ops::{ħ, N},
-    Arr3dReal,
 };
 
 // Used for calculating numerical psi''.

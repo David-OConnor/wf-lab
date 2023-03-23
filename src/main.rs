@@ -28,15 +28,18 @@ mod nudge;
 mod num_diff;
 mod rbf;
 mod render;
+mod types;
 mod ui;
 mod util;
 mod wf_ops;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use complex_nums::Cplx;
-use wf_ops::{ħ, Surfaces, M_ELEC, N, Q_PROT};
+use wf_lab::types;
+use wf_ops::{ħ, M_ELEC, N, Q_PROT};
 
-use util::{Arr3d, Arr3dReal};
+use wf_lab::types::Arr3d;
+use wf_lab::types::{Arr3dReal, Surfaces};
 
 const NUM_SURFACES: usize = 8;
 
@@ -167,7 +170,7 @@ fn main() {
     // todo: Short-term experiment
     // Set up an initial charge of a s0 Hydrogen orbital. Computationally intensive to use any of
     // these charges, but
-    let mut psi_h00 = wf_ops::new_data(N);
+    let mut psi_h00 = types::new_data(N);
 
     let h00 = Basis::H(HOrbital::new(
         posit_charge_1,
@@ -187,7 +190,7 @@ fn main() {
         }
     }
 
-    let mut charge_density = wf_ops::new_data_real(N);
+    let mut charge_density = types::new_data_real(N);
     wf_ops::charge_density_fm_psi(&psi_h00, &mut charge_density, 1);
 
     // sfcs.elec_charges = vec![charge_density]; // todo: removed

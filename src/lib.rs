@@ -8,16 +8,17 @@ pub mod interp;
 pub mod nudge;
 mod num_diff;
 mod rbf;
+pub mod types;
 pub mod util;
 pub mod wf_ops;
 
-pub use crate::{
-    basis_wfs::{Basis, HOrbital, SphericalHarmonic},
-    util::{Arr3d, Arr3dReal},
-    wf_ops::Surfaces,
-};
+use basis_wfs::{Basis, HOrbital, SphericalHarmonic};
 
 use lin_alg2::f64::Vec3;
+
+pub use types::Arr3d;
+pub use types::Arr3dReal;
+pub use types::Surfaces;
 
 /// Create trial wave functions for a given point-charge distibution. Currently
 /// a rough approach using low-energy STOs centered on the charges.
@@ -95,5 +96,5 @@ pub fn psi_from_pt_charges(
 
     // let psi_pp_score = wf_ops::score_wf(&sfcs);
 
-    sfcs.psi
+    sfcs.psis_per_elec[0].clone()
 }

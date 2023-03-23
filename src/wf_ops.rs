@@ -6,12 +6,21 @@
 //!
 //! Momentum (linear). Pψ = pψ. P = -iħ∇
 //!
-//! Momentum (angular). Lψ = lψ(?).
+//! Momentum (angular). L^2 ψ = ħ^2 l(l+1) ψ
+//!
 //! - L_x = y p_z - p_y z = -iħ(y d/dz - d/dy z)
 //! - L_y = z p_x - p_z x = -iħ(z d/dx - d/dz x)
 //! - L_z = x p_y - p_x y = -iħ(z d/dy - d/dx y)
 //!
 //! Position? Xψ = xψ. X = x??
+//!
+
+//! todo: Important question about state and quantum numbers. You can't have more than one elec
+//! etc in the same state (Pauli exclusion / fermion rules), but how does this apply when multiple
+//! todo nuclei are involved?
+
+// todo: If you switch to individual wfs per electon, spherical coords may make more sense, eg
+// todo with RBF or otherwise.
 
 use core::f64::consts::FRAC_1_SQRT_2;
 
@@ -20,9 +29,10 @@ use crate::{
     complex_nums::{Cplx, IM},
     interp, num_diff,
     rbf::Rbf,
-    util::{self, Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec},
+    util::{self},
 };
 
+use crate::types::{Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec, Surfaces};
 use lin_alg2::f64::Vec3;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
@@ -40,7 +50,7 @@ const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 90;
+pub const N: usize = 100;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {
@@ -231,80 +241,32 @@ pub fn init_wf(
                     }
                 }
 
-                sfcs.psi[i][j][k] = Cplx::new_zero();
+                sfcs.psis_per_elec[0][i][j][k] = Cplx::new_zero();
 
                 for basis in bases {
-                    sfcs.psi[i][j][k] += basis.value(posit_sample) * basis.weight();
+                    sfcs.psis_per_elec[0][i][j][k] += basis.value(posit_sample) * basis.weight();
                 }
 
-                sfcs.psi_pp_calculated[i][j][k] = find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
+                sfcs.psi_pp_calculated[i][j][k] =
+                    find_ψ_pp_calc(&sfcs.psis_per_elec[0], &sfcs.V, E, i, j, k);
 
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-                sfcs.psi_pp_measured[i][j][k] =
-                    num_diff::find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
+                sfcs.psi_pp_measured[i][j][k] = num_diff::find_ψ_pp_meas_fm_bases(
+                    posit_sample,
+                    bases,
+                    sfcs.psis_per_elec[0][i][j][k],
+                );
             }
         }
     }
 
     // todo: Initial hack at updating our psi' to see what insight it may have, eg into momentum.
-    num_diff::find_ψ_p_meas_fm_grid_irreg(&sfcs.psi, &mut sfcs.psi_p_measured, &sfcs.grid_posits);
-}
-
-/// Make a new 3D grid, as a nested Vec
-pub fn new_data(n: usize) -> Arr3d {
-    let mut z = Vec::new();
-    z.resize(n, Cplx::new_zero());
-    // z.resize(N, 0.);
-
-    let mut y = Vec::new();
-    y.resize(n, z);
-
-    let mut x = Vec::new();
-    x.resize(n, y);
-
-    x
-}
-
-/// Make a new 3D grid, as a nested Vec
-pub fn new_data_real(n: usize) -> Arr3dReal {
-    let mut z = Vec::new();
-    z.resize(n, 0.);
-
-    let mut y = Vec::new();
-    y.resize(n, z);
-
-    let mut x = Vec::new();
-    x.resize(n, y);
-
-    x
-}
-
-/// Make a new 3D grid of position vectors, as a nested Vec
-pub fn new_data_vec(n: usize) -> Arr3dVec {
-    let mut z = Vec::new();
-    z.resize(n, Vec3::new_zero());
-
-    let mut y = Vec::new();
-    y.resize(n, z);
-
-    let mut x = Vec::new();
-    x.resize(n, y);
-
-    x
-}
-
-pub fn new_data_basis(n: usize) -> Arr3dBasis {
-    let mut z = Vec::new();
-    z.resize(n, SinExpBasisPt::default());
-
-    let mut y = Vec::new();
-    y.resize(n, z);
-
-    let mut x = Vec::new();
-    x.resize(n, y);
-
-    x
+    num_diff::find_ψ_p_meas_fm_grid_irreg(
+        &sfcs.psis_per_elec[0],
+        &mut sfcs.psi_p_measured,
+        &sfcs.grid_posits,
+    );
 }
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
@@ -482,7 +444,7 @@ pub fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
                 for j in 0..N {
                     for k in 0..N {
                         sfcs.psi_pp_calculated[i][j][k] =
-                            find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E_trial, i, j, k);
+                            find_ψ_pp_calc(&sfcs.psis_per_elec[0], &sfcs.V, E_trial, i, j, k);
                     }
                 }
             }
@@ -528,77 +490,6 @@ pub fn smooth_array(arr: &mut Arr3d, smoothing_amt: f64) {
 
                 arr[i][j][k] += diff_from_neighbors * smoothing_amt;
             }
-        }
-    }
-}
-
-/// Represents important data, in describe 3D arrays.
-/// We use Vecs, since these can be large, and we don't want
-/// to put them on the stack. Although, they are fixed-size.
-/// todo: Change name?
-pub struct Surfaces {
-    pub V: Arr3dReal,
-    pub psi: Arr3d,
-    // todo: You quantize with n already associated with H and energy. Perhaps the next step
-    // todo is to quantize with L and associated angular momentum, as a second check on your
-    // todo WF, and a tool to identify its validity.
-    pub psi_p_calculated: Arr3d,
-    pub psi_p_measured: Arr3d,
-    pub psi_pp_calculated: Arr3d,
-    pub psi_pp_measured: Arr3d,
-    /// Aux surfaces are for misc visualizations
-    pub aux1: Arr3d,
-    pub aux2: Arr3d,
-    /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
-    /// between psi'' measured and calcualted, which is complex.
-    pub nudge_amounts: Arr3dReal,
-    // /// Used to revert values back after nudging.
-    // pub psi_prev: Arr3d, // todo: Probably
-    /// Electric charge at each point in space. Probably will be unused
-    /// todo going forward, since this is *very* computationally intensive
-    pub elec_charges: Vec<Arr3dReal>,
-    /// todo: Experimental representation as a local analytic eq at each point.
-    pub bases: Arr3dBasis,
-    /// Represents points on a grid, for our non-uniform grid.
-    pub grid_posits: Arr3dVec,
-    /// Todo: Plot both real and imaginary momentum components? (or mag + phase?)
-    pub momentum: Arr3d,
-}
-
-impl Default for Surfaces {
-    /// Fills with 0.s
-    fn default() -> Self {
-        let data = new_data(N);
-        let data_real = new_data_real(N);
-
-        let mut default_nudges = data_real.clone();
-        for i in 0..N {
-            for j in 0..N {
-                for k in 0..N {
-                    default_nudges[i][j][k] = NUDGE_DEFAULT;
-                }
-            }
-        }
-
-        // Set up a regular grid using this; this will allow us to convert to an irregular grid
-        // later, once we've verified this works.
-        let grid_posits = new_data_vec(N);
-
-        Self {
-            V: data_real.clone(),
-            psi: data.clone(),
-            psi_pp_calculated: data.clone(),
-            psi_pp_measured: data.clone(),
-            psi_p_calculated: data.clone(),
-            psi_p_measured: data.clone(),
-            aux1: data.clone(),
-            aux2: data.clone(),
-            nudge_amounts: default_nudges,
-            // psi_prev: data.clone(),
-            elec_charges: Vec::new(),
-            bases: new_data_basis(N),
-            grid_posits,
-            momentum: data,
         }
     }
 }

@@ -16,11 +16,9 @@
 
 use std::f64::consts::PI;
 
-use crate::{
-    complex_nums::{Cplx, IM},
-    util::Arr3dBasis,
-};
+use crate::complex_nums::{Cplx, IM};
 
+use crate::types::Arr3dBasis;
 use lin_alg2::f64::{Quaternion, Vec3};
 
 // Hartree units.

@@ -11,12 +11,9 @@ use lin_alg2::{
     f32::{Quaternion, Vec3},
     f64::Vec3 as Vec3F64,
 };
+use wf_lab::types::{Arr3d, Arr3dReal, Arr3dVec};
 
-use crate::{
-    util::{Arr3d, Arr3dReal, Arr3dVec},
-    wf_ops::N,
-    State,
-};
+use crate::{wf_ops::N, State};
 
 const NUM_SURFACES: usize = 6;
 
