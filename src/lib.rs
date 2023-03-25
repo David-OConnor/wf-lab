@@ -4,6 +4,7 @@
 /// using this package as a library.
 pub mod basis_wfs;
 pub mod complex_nums;
+mod eigen_fns;
 pub mod interp;
 pub mod nudge;
 mod num_diff;

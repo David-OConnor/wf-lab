@@ -23,6 +23,7 @@ use lin_alg2::f64::{Quaternion, Vec3};
 
 mod basis_wfs;
 mod complex_nums;
+mod eigen_fns;
 mod interp;
 mod nudge;
 mod num_diff;

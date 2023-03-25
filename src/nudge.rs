@@ -3,12 +3,13 @@
 
 use crate::{
     basis_wfs::Basis,
-    num_diff, types, util,
+    complex_nums::Cplx,
+    eigen_fns, num_diff, types,
+    types::Surfaces,
+    util,
     wf_ops::{self, N},
 };
 
-use crate::complex_nums::Cplx;
-use crate::types::Surfaces;
 use lin_alg2::f64::Vec3;
 
 // todo: Nudging is a good candidate for GPU. Try to impl in Vulkan / WGPU.
@@ -111,8 +112,14 @@ pub fn nudge_wf(
                         // sfcs.psi[i][j][k] -= diff_map[i][j][k] * sfcs.nudge_amounts[i][j][k];
                         sfcs.psis_per_elec[0][i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
-                        sfcs.psi_pp_calculated[i][j][k] =
-                            wf_ops::find_ψ_pp_calc(&sfcs.psis_per_elec[0], &sfcs.V, *E, i, j, k);
+                        sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
+                            &sfcs.psis_per_elec[0],
+                            &sfcs.V,
+                            *E,
+                            i,
+                            j,
+                            k,
+                        );
                     }
                 }
             }

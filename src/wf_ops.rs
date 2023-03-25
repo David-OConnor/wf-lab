@@ -1,23 +1,5 @@
 //! This module contains the bulk of the wave-function evalution and solving logic.
 //!
-//!
-//! Observables and their eigenfunctions:
-//! Energy. Hψ = Eψ. H = -ħ^2/2m ∇^2 + V. Eigenvalue: E.
-//!
-//! Momentum (linear). P ψ = p ψ. P = -iħ∇. Eigenvalue: p.
-//! Todo: maybe we divide momentum into its 3 components.
-//! P_x ψ = p_x ψ. P = -iħ d/dx. Eigenvalue: p_x
-//! P_y ψ = p_y ψ. P = -iħ d/dy. Eigenvalue: p_y
-//! P_z ψ = p_z ψ. P = -iħ d/dz. Eigenvalue: p_z
-//!
-//! Momentum (angular). L^2 ψ = ħ^2 l(l+1) ψ (uses l quantum number directly. Not what we want?)
-//!
-//! - L_x = y p_z - p_y z = -iħ(y d/dz - d/dy z). Eigenvalue: p_x?
-//! - L_y = z p_x - p_z x = -iħ(z d/dx - d/dz x)
-//! - L_z = x p_y - p_x y = -iħ(z d/dy - d/dx y)
-//!
-//! Position? Xψ = xψ. X = x??
-//!
 
 //! todo: Important question about state and quantum numbers. You can't have more than one elec
 //! etc in the same state (Pauli exclusion / fermion rules), but how does this apply when multiple
@@ -36,7 +18,7 @@ use core::f64::consts::FRAC_1_SQRT_2;
 use crate::{
     basis_wfs::{Basis, SinExpBasisPt},
     complex_nums::{Cplx, IM},
-    interp, num_diff,
+    eigen_fns, interp, num_diff,
     rbf::Rbf,
     types::{Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec, Surfaces},
     util::{self},
@@ -50,12 +32,10 @@ pub const Q_PROT: f64 = 1.;
 const Q_ELEC: f64 = -1.;
 pub const M_ELEC: f64 = 1.;
 pub const ħ: f64 = 1.;
-const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Compute these statically, to avoid continuous calls during excecution.
-const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
@@ -89,7 +69,7 @@ fn init_wf_rbf(rbf: &Rbf, charges: &[(Vec3, f64)], bases: &[Basis], E: f64) {
             result
         };
 
-        let calc = psi_sample * (E - V_sample) * KE_COEFF;
+        let calc = psi_sample * (E - V_sample) * eigen_fns::KE_COEFF;
 
         psi_pp_calc_rbf.push(calc);
         psi_pp_meas_rbf.push(num_diff::find_ψ_pp_meas_fm_rbf(
@@ -257,7 +237,7 @@ pub fn init_wf(
                 }
 
                 sfcs.psi_pp_calculated[i][j][k] =
-                    find_ψ_pp_calc(&sfcs.psis_per_elec[0], &sfcs.V, E, i, j, k);
+                    eigen_fns::find_ψ_pp_calc(&sfcs.psis_per_elec[0], &sfcs.V, E, i, j, k);
 
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
@@ -404,29 +384,6 @@ fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
     -K_C * charge / r
 }
 
-/// Calcualte psi'', calculated from psi, and E. Note that the V term used must include both
-/// electron-electron interactions, and electron-proton interactions.
-/// At a given i, j, k.
-///
-/// This solves, analytically, the eigenvalue equation for the Hamiltonian operator.
-///
-/// Hψ = Eψ. -ħ^2/2m * ψ'' + Vψ = Eψ. ψ'' = [(E - V) / (-ħ^2/2m)] ψ
-pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
-    // ψ(r1, r2) = ψ_a(r1)ψb(r2), wherein we are combining probabilities.
-    // fermions: two identical fermions cannot occupy the same state.
-    // ψ(r1, r2) = A[ψ_a(r1)ψ_b(r2) - ψ_b(r1)ψ_a(r2)]
-    psi[i][j][k] * (E - V[i][j][k]) * KE_COEFF
-}
-
-/// Calcualte psi', calculated from psi, and L.
-/// todo: Lin vs angular momentum??
-/// Pψ = pψ . -iħ ψ' = Pψ. ψ' = piħ ψ
-pub fn find_ψ_p_calc(psi: &Arr3d, p: f64, i: usize, j: usize, k: usize) -> Cplx {
-    const COEFF: Cplx = Cplx { real: 0., im: ħ };
-
-    psi[i][j][k] * p * COEFF
-}
-
 /// Convert an array of Psi to one of electron charge through space. Modifies in place
 /// to avoid unecessary allocations.
 pub fn charge_density_fm_psi(psi: &Arr3d, charge_density: &mut Arr3dReal, num_elecs: usize) {
@@ -472,8 +429,14 @@ pub fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
             for i in 0..N {
                 for j in 0..N {
                     for k in 0..N {
-                        sfcs.psi_pp_calculated[i][j][k] =
-                            find_ψ_pp_calc(&sfcs.psis_per_elec[0], &sfcs.V, E_trial, i, j, k);
+                        sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
+                            &sfcs.psis_per_elec[0],
+                            &sfcs.V,
+                            E_trial,
+                            i,
+                            j,
+                            k,
+                        );
                     }
                 }
             }
