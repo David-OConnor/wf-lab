@@ -2,13 +2,17 @@
 //!
 //!
 //! Observables and their eigenfunctions:
-//! Energy. Hψ = Eψ. H = -ħ^2/2m ∇^2 + V
+//! Energy. Hψ = Eψ. H = -ħ^2/2m ∇^2 + V. Eigenvalue: E.
 //!
-//! Momentum (linear). Pψ = pψ. P = -iħ∇
+//! Momentum (linear). P ψ = p ψ. P = -iħ∇. Eigenvalue: p.
+//! Todo: maybe we divide momentum into its 3 components.
+//! P_x ψ = p_x ψ. P = -iħ d/dx. Eigenvalue: p_x
+//! P_y ψ = p_y ψ. P = -iħ d/dy. Eigenvalue: p_y
+//! P_z ψ = p_z ψ. P = -iħ d/dz. Eigenvalue: p_z
 //!
-//! Momentum (angular). L^2 ψ = ħ^2 l(l+1) ψ
+//! Momentum (angular). L^2 ψ = ħ^2 l(l+1) ψ (uses l quantum number directly. Not what we want?)
 //!
-//! - L_x = y p_z - p_y z = -iħ(y d/dz - d/dy z)
+//! - L_x = y p_z - p_y z = -iħ(y d/dz - d/dy z). Eigenvalue: p_x?
 //! - L_y = z p_x - p_z x = -iħ(z d/dx - d/dz x)
 //! - L_z = x p_y - p_x y = -iħ(z d/dy - d/dx y)
 //!
@@ -22,6 +26,11 @@
 // todo: If you switch to individual wfs per electon, spherical coords may make more sense, eg
 // todo with RBF or otherwise.
 
+// Project to do, from Eckkert @ discord Physics:
+// "if you wanted to invent something, a Bayesian classical simulator that could tell which of its
+// quantum-derived parameters needed finer calculation and which did them when necessary, is
+// something that doesn't exist afik"
+
 use core::f64::consts::FRAC_1_SQRT_2;
 
 use crate::{
@@ -29,10 +38,10 @@ use crate::{
     complex_nums::{Cplx, IM},
     interp, num_diff,
     rbf::Rbf,
+    types::{Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec, Surfaces},
     util::{self},
 };
 
-use crate::types::{Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec, Surfaces};
 use lin_alg2::f64::Vec3;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
@@ -50,7 +59,7 @@ const KE_COEFF: f64 = -2. * M_ELEC / (ħ * ħ);
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 100;
+pub const N: usize = 90;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {
@@ -262,10 +271,30 @@ pub fn init_wf(
     }
 
     // todo: Initial hack at updating our psi' to see what insight it may have, eg into momentum.
+    // todo: DRY on total vs each compoonent.
     num_diff::find_ψ_p_meas_fm_grid_irreg(
         &sfcs.psis_per_elec[0],
-        &mut sfcs.psi_p_measured,
+        &mut sfcs.psi_p_total_measured,
         &sfcs.grid_posits,
+        num_diff::PsiPVar::Total,
+    );
+    num_diff::find_ψ_p_meas_fm_grid_irreg(
+        &sfcs.psis_per_elec[0],
+        &mut sfcs.psi_px_measured,
+        &sfcs.grid_posits,
+        num_diff::PsiPVar::X,
+    );
+    num_diff::find_ψ_p_meas_fm_grid_irreg(
+        &sfcs.psis_per_elec[0],
+        &mut sfcs.psi_py_measured,
+        &sfcs.grid_posits,
+        num_diff::PsiPVar::Y,
+    );
+    num_diff::find_ψ_p_meas_fm_grid_irreg(
+        &sfcs.psis_per_elec[0],
+        &mut sfcs.psi_pz_measured,
+        &sfcs.grid_posits,
+        num_diff::PsiPVar::Z,
     );
 }
 

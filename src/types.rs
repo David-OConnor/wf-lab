@@ -17,7 +17,10 @@ pub struct Surfaces {
     // todo is to quantize with L and associated angular momentum, as a second check on your
     // todo WF, and a tool to identify its validity.
     pub psi_p_calculated: Arr3d,
-    pub psi_p_measured: Arr3d,
+    pub psi_p_total_measured: Arr3d,
+    pub psi_px_measured: Arr3d,
+    pub psi_py_measured: Arr3d,
+    pub psi_pz_measured: Arr3d,
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
     /// Aux surfaces are for misc visualizations
@@ -67,7 +70,10 @@ impl Default for Surfaces {
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
             psi_p_calculated: data.clone(),
-            psi_p_measured: data.clone(),
+            psi_p_total_measured: data.clone(),
+            psi_px_measured: data.clone(),
+            psi_py_measured: data.clone(),
+            psi_pz_measured: data.clone(),
             aux1: data.clone(),
             aux2: data.clone(),
             nudge_amounts: default_nudges,

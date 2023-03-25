@@ -22,6 +22,9 @@ const SLIDER_WIDTH_ORIENTATION: f32 = 100.;
 const E_MIN: f64 = -1.2;
 const E_MAX: f64 = 0.2;
 
+const L_MIN: f64 = -3.;
+const L_MAX: f64 = 3.;
+
 // Wave fn weights
 const WEIGHT_MIN: f64 = -2.;
 const WEIGHT_MAX: f64 = 2.;
@@ -366,45 +369,130 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 if let Some(v_) = v {
                     state.E = v_;
 
-                    // todo: Don't update all meshes! We only need
-                    // to update psi_pp_calculated.
-                    // todo: YOu should probably have a delegated standalone
-                    // todo fn for this, probably one that accepts i, j, k
-                    // todo: YOu'd call it from nudge, eval, and here.
-
                     for i in 0..N {
                         for j in 0..N {
                             for k in 0..N {
-                                state.surfaces.psi_pp_calculated[i][j][k] =
-                                    crate::wf_ops::find_ψ_pp_calc(
-                                        &state.surfaces.psi,
-                                        &state.surfaces.V,
-                                        state.E,
-                                        i,
-                                        j,
-                                        k,
-                                    )
+                                state.surfaces.psi_pp_calculated[i][j][k] = wf_ops::find_ψ_pp_calc(
+                                    &state.surfaces.psis_per_elec[0],
+                                    &state.surfaces.V,
+                                    state.E,
+                                    i,
+                                    j,
+                                    k,
+                                )
                             }
                         }
                     }
 
-                    // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
-                    // state.psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, state.E);
                     state.psi_pp_score = crate::wf_ops::score_wf(&state.surfaces);
+                    state.psi_p_score = 0.; // todo!
 
-                    render::update_meshes(
-                        &state.surfaces,
-                        state.z_displayed,
-                        scene,
-                        // state.grid_min,
-                        // state.grid_max,
-                    );
+                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
                     engine_updates.meshes = true;
                 }
 
                 state.E
             })
             .text("E"),
+        );
+
+        // todo: DRY!!
+        ui.add(
+            egui::Slider::from_get_set(L_MIN..=L_MAX, |v| {
+                if let Some(v_) = v {
+                    state.L_2 = v_;
+
+                    for i in 0..N {
+                        for j in 0..N {
+                            for k in 0..N {
+                                state.surfaces.psi_pp_calculated[i][j][k] = wf_ops::find_ψ_pp_calc(
+                                    &state.surfaces.psis_per_elec[0],
+                                    &state.surfaces.V,
+                                    state.E,
+                                    i,
+                                    j,
+                                    k,
+                                )
+                            }
+                        }
+                    }
+
+                    state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
+                    state.psi_p_score = 0.; // todo!
+
+                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
+                    engine_updates.meshes = true;
+                }
+
+                state.L_2
+            })
+            .text("L^2"),
+        );
+
+        // todo: DRY!!
+        ui.add(
+            egui::Slider::from_get_set(L_MIN..=L_MAX, |v| {
+                if let Some(v_) = v {
+                    state.L_x = v_;
+
+                    for i in 0..N {
+                        for j in 0..N {
+                            for k in 0..N {
+                                state.surfaces.psi_pp_calculated[i][j][k] = wf_ops::find_ψ_pp_calc(
+                                    &state.surfaces.psis_per_elec[0],
+                                    &state.surfaces.V,
+                                    state.E,
+                                    i,
+                                    j,
+                                    k,
+                                )
+                            }
+                        }
+                    }
+
+                    state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
+                    state.psi_p_score = 0.; // todo!
+
+                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
+                    engine_updates.meshes = true;
+                }
+
+                state.L_x
+            })
+            .text("L_x"),
+        );
+
+        // todo: DRY!!
+        ui.add(
+            egui::Slider::from_get_set(L_MIN..=L_MAX, |v| {
+                if let Some(v_) = v {
+                    state.L_y = v_;
+
+                    for i in 0..N {
+                        for j in 0..N {
+                            for k in 0..N {
+                                state.surfaces.psi_pp_calculated[i][j][k] = wf_ops::find_ψ_pp_calc(
+                                    &state.surfaces.psis_per_elec[0],
+                                    &state.surfaces.V,
+                                    state.E,
+                                    i,
+                                    j,
+                                    k,
+                                )
+                            }
+                        }
+                    }
+
+                    state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
+                    state.psi_p_score = 0.; // todo!
+
+                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
+                    engine_updates.meshes = true;
+                }
+
+                state.L_y
+            })
+            .text("L_y"),
         );
 
         ui.add(
@@ -514,7 +602,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             if ui.add(egui::Button::new("Create e- V")).clicked() {
                 // hard-coded as first item for now.
                 crate::wf_ops::charge_density_fm_psi(
-                    &state.surfaces.psi,
+                    &state.surfaces.psis_per_elec[0],
                     &mut state.surfaces.elec_charges[0],
                     1,
                 );

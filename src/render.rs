@@ -11,9 +11,12 @@ use lin_alg2::{
     f32::{Quaternion, Vec3},
     f64::Vec3 as Vec3F64,
 };
-use wf_lab::types::{Arr3d, Arr3dReal, Arr3dVec};
 
-use crate::{wf_ops::N, State};
+use crate::{
+    types::{Arr3d, Arr3dReal, Arr3dVec},
+    wf_ops::N,
+    State,
+};
 
 const NUM_SURFACES: usize = 6;
 
@@ -80,35 +83,6 @@ pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 
 
     portion * (range_out.1 - range_out.0) + range_out.0
 }
-
-// /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
-// fn prepare_2d_mesh_real(surface: &crate::Arr3dReal, z_i: usize, scaler: f32) -> Vec<Vec<f32>> {
-//     let mut result = Vec::new();
-//     for i in 0..N {
-//         let mut y_vec = Vec::new();
-//         for j in 0..N {
-//             y_vec.push(surface[i][j][z_i] as f32 * scaler); // Convert from f64.
-//         }
-//         result.push(y_vec);
-//     }
-//
-//     result
-// }
-//
-// /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
-// fn prepare_2d_mesh(surface: &crate::Arr3d, z_i: usize, scaler: f32) -> Vec<Vec<f32>> {
-//     let mut result = Vec::new();
-//     for i in 0..N {
-//         let mut y_vec = Vec::new();
-//         for j in 0..N {
-//             // We are only plotting the real part for now.
-//             y_vec.push(surface[i][j][z_i].real as f32 * scaler); // Convert from f64.
-//         }
-//         result.push(y_vec);
-//     }
-//
-//     result
-// }
 
 /// Generate a f32 mesh from a 3d F64 mesh, using a z slice. Replaces the z value with function value.
 fn prepare_2d_mesh_real(
@@ -199,7 +173,12 @@ pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut S
     ));
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.psi, z_i, PSI_SCALER),
+        &prepare_2d_mesh(
+            &surfaces.grid_posits,
+            &surfaces.psis_per_elec[0],
+            z_i,
+            PSI_SCALER,
+        ),
         // todo: Center! Maybe offset in entities.
         // sfc_mesh_start,
         // sfc_mesh_step,
@@ -210,7 +189,7 @@ pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut S
         (1., &surfaces.psi_pp_calculated),
         (1., &surfaces.psi_pp_measured),
         (PSI_P_SCALER, &surfaces.psi_p_calculated),
-        (PSI_P_SCALER, &surfaces.psi_p_measured),
+        (PSI_P_SCALER, &surfaces.psi_p_total_measured),
         // &surfaces.aux1,
         // &surfaces.aux2,
     ] {

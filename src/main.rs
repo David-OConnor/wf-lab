@@ -35,11 +35,9 @@ mod wf_ops;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use complex_nums::Cplx;
-use wf_lab::types;
 use wf_ops::{ħ, M_ELEC, N, Q_PROT};
 
-use wf_lab::types::Arr3d;
-use wf_lab::types::{Arr3dReal, Surfaces};
+use types::{Arr3d, Arr3dReal, Surfaces};
 
 const NUM_SURFACES: usize = 8;
 
@@ -59,8 +57,15 @@ pub struct State {
     /// Eg, least-squares over 2 or 3 dimensions between
     /// When visualizing a 2d wave function over X and Y, this is the fixed Z value.
     pub z_displayed: f64,
-    /// Energy of the system
+    /// Energy of the system (eigenvalue)
+    /// todo: You may need separate eigenvalues per electron-WF if you go that route.
     pub E: f64,
+    /// Angular momentum (L) of the system (eigenvalue)
+    pub L_2: f64,
+    pub L_x: f64,
+    pub L_y: f64,
+    pub L_z: f64,
+    pub psi_p_score: f64,
     pub psi_pp_score: f64,
     /// Surface name
     pub surface_names: [String; NUM_SURFACES],
@@ -158,7 +163,13 @@ fn main() {
     ];
 
     let z_displayed = 0.;
+
     let E = -0.7;
+    let L_2 = 1.;
+    let L_x = 1.;
+    let L_y = 1.;
+    let L_z = 1.;
+
     let (mut grid_min, mut grid_max) = (-2.5, 2.5);
 
     // // todo: Deprecate h_grid once your alternative works.
@@ -211,6 +222,7 @@ fn main() {
         spacing_factor,
     );
 
+    let psi_p_score = 0.; // todo T
     let psi_pp_score = wf_ops::score_wf(&sfcs);
 
     let show_surfaces = [true, true, true, true, false, false, false, false];
@@ -235,7 +247,12 @@ fn main() {
         charges,
         surfaces: sfcs,
         E,
+        L_2,
+        L_x,
+        L_y,
+        L_z,
         z_displayed,
+        psi_p_score,
         psi_pp_score,
         surface_names,
         show_surfaces,

@@ -94,6 +94,14 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_reg(psi: &Arr3d, psi_pp_measured: &mut Arr
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum PsiPVar {
+    Total,
+    X,
+    Y,
+    Z,
+}
+
 /// Apply the momentum operator to a wave function.
 /// At the edges and corners, does not mutate the value. Note that this is simpler than finding
 /// psi'' due to being linear. (first deriv vice second)
@@ -108,9 +116,14 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_reg(psi: &Arr3d, psi_pp_measured: &mut Arr
 /// todo: Calculated version we can compare to? Maybe sum of momentum of basis fns used?
 /// todo: ie find_ψ_p_calc in `wf_ops`.
 /// Pψ = pψ . -iħ ψ' = Pψ. ψ' = piħ ψ
-pub fn find_ψ_p_meas_fm_grid_irreg(psi: &Arr3d, result: &mut Arr3d, grid_posits: &Arr3dVec) {
+pub fn find_ψ_p_meas_fm_grid_irreg(
+    psi: &Arr3d,
+    result: &mut Arr3d,
+    grid_posits: &Arr3dVec,
+    var: PsiPVar,
+) {
     // This is `i * ħ`. Const expr limits avail syntax.
-    const COEFF: Cplx = Cplx { real: 0., im: -ħ };
+    // const COEFF: Cplx = Cplx { real: 0., im: -ħ };
 
     for i in 0..N {
         if i == 0 || i == N - 1 {
@@ -125,18 +138,40 @@ pub fn find_ψ_p_meas_fm_grid_irreg(psi: &Arr3d, result: &mut Arr3d, grid_posits
                     continue;
                 }
 
-                let dx = (grid_posits[i + 1][j][k].x - grid_posits[i - 1][j][k].x);
-                let dy = (grid_posits[i][j + 1][k].y - grid_posits[i][j - 1][k].y);
-                let dz = (grid_posits[i][j][k + 1].z - grid_posits[i][j][k - 1].z);
+                match var {
+                    PsiPVar::Total => {
+                        let dx = grid_posits[i + 1][j][k].x - grid_posits[i - 1][j][k].x;
+                        let dy = grid_posits[i][j + 1][k].y - grid_posits[i][j - 1][k].y;
+                        let dz = grid_posits[i][j][k + 1].z - grid_posits[i][j][k - 1].z;
+
+                        let d_psi_d_x = (psi[i + 1][j][k] - psi[i - 1][j][k]) / dx;
+                        let d_psi_d_y = (psi[i][j + 1][k] - psi[i][j - 1][k]) / dy;
+                        let d_psi_d_z = (psi[i][j][k + 1] - psi[i][j][k - 1]) / dz;
+
+                        result[i][j][k] = d_psi_d_x + d_psi_d_y + d_psi_d_z;
+                    }
+                    PsiPVar::X => {
+                        let dx = grid_posits[i + 1][j][k].x - grid_posits[i - 1][j][k].x;
+                        let d_psi_d_x = (psi[i + 1][j][k] - psi[i - 1][j][k]) / dx;
+
+                        result[i][j][k] = d_psi_d_x;
+                    }
+                    PsiPVar::Y => {
+                        let dy = grid_posits[i][j + 1][k].y - grid_posits[i][j - 1][k].y;
+                        let d_psi_d_y = (psi[i][j + 1][k] - psi[i][j - 1][k]) / dy;
+
+                        result[i][j][k] = d_psi_d_y;
+                    }
+                    PsiPVar::Z => {
+                        let dz = grid_posits[i][j][k + 1].z - grid_posits[i][j][k - 1].z;
+                        let d_psi_d_z = (psi[i][j][k + 1] - psi[i][j][k - 1]) / dz;
+
+                        result[i][j][k] = d_psi_d_z;
+                    }
+                }
 
                 // todo: Are we solving for psi' here, or -i hbar psi' ?
-
-                let d_psi_d_x = (psi[i + 1][j][k] - psi[i - 1][j][k]) / dx;
-                let d_psi_d_y = (psi[i][j + 1][k] - psi[i][j - 1][k]) / dy;
-                let d_psi_d_z = (psi[i][j][k + 1] - psi[i][j][k - 1]) / dz;
-
                 // todo: Multiply by `COEFF` if finding momentum, vice only the derivative.
-                result[i][j][k] = d_psi_d_x + d_psi_d_y + d_psi_d_z;
             }
         }
     }

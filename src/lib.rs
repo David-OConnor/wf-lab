@@ -15,10 +15,7 @@ pub mod wf_ops;
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic};
 
 use lin_alg2::f64::Vec3;
-
-pub use types::Arr3d;
-pub use types::Arr3dReal;
-pub use types::Surfaces;
+use types::{Arr3d, Arr3dReal, Surfaces};
 
 /// Create trial wave functions for a given point-charge distibution. Currently
 /// a rough approach using low-energy STOs centered on the charges.
