@@ -148,7 +148,7 @@ fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32) -> 
 
 /// Updates meshes. For example, when updating a plot due to changing parameters.
 /// Note that this is where we decide which Z to render.
-pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut Scene) {
+pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut Scene, grid_posits: &Arr3dVec) {
     // Our meshes are defined in terms of a start point,
     // and a step. Adjust the step to center the grid at
     // the renderer's center.
@@ -161,8 +161,8 @@ pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut S
     // todo: Using your new system, you can't use a linear map here!
 
     let mut z_i = 0;
-    for i in 0..surfaces.grid_posits.len() {
-        if surfaces.grid_posits[0][0][i].z > z_displayed {
+    for i in 0..grid_posits.len() {
+        if grid_posits[0][0][i].z > z_displayed {
             z_i = i;
             break;
         }
@@ -171,7 +171,7 @@ pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut S
     let mut meshes = Vec::new();
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh_real(&surfaces.grid_posits, &surfaces.V[0], z_i, 1.),
+        &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, 1.),
         // todo: Center! Maybe offset in entities.
         // sfc_mesh_start,
         // sfc_mesh_step,
@@ -179,7 +179,7 @@ pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut S
     ));
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.psi[0], z_i, PSI_SCALER),
+        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER),
         // todo: Center! Maybe offset in entities.
         // sfc_mesh_start,
         // sfc_mesh_step,
@@ -187,15 +187,15 @@ pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut S
     ));
 
     for (scaler, sfc) in [
-        (1., &surfaces.psi_pp_calculated[0]),
-        (1., &surfaces.psi_pp_measured[0]),
+        (1., &surfaces.psi_pp_calculated),
+        (1., &surfaces.psi_pp_measured),
         // (PSI_P_SCALER, &surfaces.psi_p_calculated),
         // (PSI_P_SCALER, &surfaces.psi_p_total_measured),
         // &surfaces.aux1,
         // &surfaces.aux2,
     ] {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(&surfaces.grid_posits, sfc, z_i, scaler),
+            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler),
             // todo: Center! Maybe offset in entities.
             // sfc_mesh_start,
             // sfc_mesh_step,
@@ -306,12 +306,12 @@ pub fn render(state: State) {
     };
 
     update_meshes(
-        &state.surfaces,
+        &state.surfaces[state.ui_active_elec],
         state.ui_z_displayed,
         &mut scene,
-        // state.grid_min,
-        // state.grid_max,
+        &state.grid_posits,
     );
+
     update_entities(&state.charges_fixed, &state.show_surfaces, &mut scene);
 
     let input_settings = InputSettings {

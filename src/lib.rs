@@ -53,8 +53,11 @@ pub fn psi_from_pt_charges(
     // todo: Output is psi, or psi^2?
 
     let mut sfcs = Surfaces::default();
+
+    let mut grid_posits = types::new_data_vec(crate::wf_ops::N);
+
     wf_ops::update_grid_posits(
-        &mut sfcs.grid_posits,
+        &mut grid_posits,
         grid_bounds.0,
         grid_bounds.1,
         spacing_factor,
@@ -79,6 +82,7 @@ pub fn psi_from_pt_charges(
         &mut grid_bounds.0,
         &mut grid_bounds.1,
         spacing_factor,
+        &mut grid_posits,
     );
 
     // todo: Temp removing nudge to test performance
@@ -90,9 +94,10 @@ pub fn psi_from_pt_charges(
         grid_bounds.0,
         grid_bounds.1,
         &bases,
+        &grid_posits,
     );
 
     // let psi_pp_score = wf_ops::score_wf(&sfcs);
 
-    sfcs.psi[0].clone()
+    sfcs.psi.clone()
 }

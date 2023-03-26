@@ -11,21 +11,20 @@ use lin_alg2::f64::Vec3;
 /// to put them on the stack. Although, they are fixed-size.
 ///
 /// `Vec`s here generally mean per-electron.
-/// todo: Change name?
+#[derive(Clone)]
 pub struct Surfaces {
     /// Represents points on a grid, for our non-uniform grid.
-    pub grid_posits: Arr3dVec,
     /// todo: V here is per electron, *explicitly so an electron doesn't interact with itself*.
-    pub V: Vec<Arr3dReal>,
+    pub V: Arr3dReal,
     /// Per electron
-    pub psi: Vec<Arr3d>,
-    pub psi_pp_calculated: Vec<Arr3d>,
-    pub psi_pp_measured: Vec<Arr3d>,
+    pub psi: Arr3d,
+    pub psi_pp_calculated: Arr3d,
+    pub psi_pp_measured: Arr3d,
     /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
     /// between psi'' measured and calcualted, which is complex.
-    pub nudge_amounts: Vec<Arr3dReal>,
-    /// Electric charge at each point in space, from each electron.
-    pub elec_charges: Vec<Arr3dReal>,
+    pub nudge_amounts: Arr3dReal,
+    /// Electric charge at each point in space.
+    pub elec_charges: Arr3dReal,
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3d,
     pub aux2: Arr3d,
@@ -67,18 +66,16 @@ impl Default for Surfaces {
 
         // Set up a regular grid using this; this will allow us to convert to an irregular grid
         // later, once we've verified this works.
-        let grid_posits = new_data_vec(N);
 
         Self {
-            grid_posits,
-            V: vec![data_real.clone()],
-            psi: vec![data.clone(), data.clone()],
+            V: data_real.clone(),
+            psi: data.clone(),
             // psi: data.clone(),
-            psi_pp_calculated: vec![data.clone()],
-            psi_pp_measured: vec![data.clone()],
+            psi_pp_calculated: data.clone(),
+            psi_pp_measured: data.clone(),
             aux1: data.clone(),
             aux2: data.clone(),
-            nudge_amounts: vec![default_nudges],
+            nudge_amounts: default_nudges,
             // psi_prev: data.clone(),
             elec_charges: Vec::new(),
             // bases: new_data_basis(N),

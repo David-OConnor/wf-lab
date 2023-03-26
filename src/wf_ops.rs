@@ -69,6 +69,7 @@ pub fn init_wf(
     grid_min: &mut f64,
     grid_max: &mut f64,
     spacing_factor: f64,
+    grid_posits: &mut Arr3dVec,
 ) {
     // Set up the grid so that it smartly encompasses the charges, letting the WF go to 0
     // towards the edges
@@ -93,7 +94,7 @@ pub fn init_wf(
 
         *grid_max = max_abs_val + RANGE_PAD;
         *grid_min = -*grid_max;
-        update_grid_posits(&mut sfcs.grid_posits, *grid_min, *grid_max, spacing_factor);
+        update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor);
     }
 
     // todo: Store these somewhere to save on computation? minor pt.
@@ -110,15 +111,15 @@ pub fn init_wf(
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                let posit_sample = sfcs.grid_posits[i][j][k];
+                let posit_sample = grid_posits[i][j][k];
 
                 // Calculate psi'' based on a numerical derivative of psi
                 // in 3D.
 
                 if update_charges {
-                    sfcs.V[0][i][j][k] = 0.;
+                    sfcs.V[i][j][k] = 0.;
                     for (posit_charge, charge_amt) in charges.iter() {
-                        sfcs.V[0][i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
+                        sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
                     }
 
                     // Re why the electron interaction, in many cases, appears to be very small compared to protons: After thinking about it, the protons, being point charges (approximately) are pulling from a single direction. While most of the smudged out electron gets cancelled out in the area of interest
@@ -142,15 +143,16 @@ pub fn init_wf(
                                         continue;
                                     }
 
-                                    let posit_sample_electron = sfcs.grid_posits[i2][j2][k2];
+                                    let posit_sample_electron = grid_posits[i2][j2][k2];
 
                                     let mut charge_this_grid_pt = 0.;
-                                    for charge in &sfcs.elec_charges {
-                                        charge_this_grid_pt += charge[i2][j2][k2];
-                                    }
+                                    // for charge in &sfcs.elec_charges {
+                                    //     charge_this_grid_pt += charge[i2][j2][k2];
+                                    // }
+                                    charge_this_grid_pt += sfcs.elec_charges[i2][j2][k2];
 
                                     // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
-                                    sfcs.V[0][i][j][k] += V_coulomb(
+                                    sfcs.V[i][j][k] += V_coulomb(
                                         posit_sample_electron,
                                         posit_sample,
                                         charge_this_grid_pt,
@@ -161,19 +163,19 @@ pub fn init_wf(
                     }
                 }
 
-                sfcs.psi[0][i][j][k] = Cplx::new_zero();
+                sfcs.psi[i][j][k] = Cplx::new_zero();
 
                 for basis in bases {
-                    sfcs.psi[0][i][j][k] += basis.value(posit_sample) * basis.weight();
+                    sfcs.psi[i][j][k] += basis.value(posit_sample) * basis.weight();
                 }
 
-                sfcs.psi_pp_calculated[0][i][j][k] =
-                    eigen_fns::find_ψ_pp_calc(&sfcs.psi[0], &sfcs.V[0], E, i, j, k);
+                sfcs.psi_pp_calculated[i][j][k] =
+                    eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
 
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-                sfcs.psi_pp_measured[0][i][j][k] =
-                    num_diff::find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[0][i][j][k]);
+                sfcs.psi_pp_measured[i][j][k] =
+                    num_diff::find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
             }
         }
     }
@@ -181,25 +183,25 @@ pub fn init_wf(
     // // todo: Initial hack at updating our psi' to see what insight it may have, eg into momentum.
     // // todo: DRY on total vs each compoonent.
     // num_diff::find_ψ_p_meas_fm_grid_irreg(
-    //     &sfcs.psi[0],
+    //     &sfcs.psi,
     //     &mut sfcs.psi_p_total_measured,
     //     &sfcs.grid_posits,
     //     num_diff::PsiPVar::Total,
     // );
     // num_diff::find_ψ_p_meas_fm_grid_irreg(
-    //     &sfcs.psi[0],
+    //     &sfcs.psi,
     //     &mut sfcs.psi_px_measured,
     //     &sfcs.grid_posits,
     //     num_diff::PsiPVar::X,
     // );
     // num_diff::find_ψ_p_meas_fm_grid_irreg(
-    //     &sfcs.psi[0],
+    //     &sfcs.psi,
     //     &mut sfcs.psi_py_measured,
     //     &sfcs.grid_posits,
     //     num_diff::PsiPVar::Y,
     // );
     // num_diff::find_ψ_p_meas_fm_grid_irreg(
-    //     &sfcs.psi[0],
+    //     &sfcs.psi,
     //     &mut sfcs.psi_pz_measured,
     //     &sfcs.grid_posits,
     //     num_diff::PsiPVar::Z,
@@ -234,11 +236,11 @@ fn fidelity(sfcs: &Surfaces) -> f64 {
                 // norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].abs_sq();
                 // norm_sq_meas += sfcs.psi_pp_measured[i][j][k].abs_sq();
                 // todo: .real is temp
-                if sfcs.psi_pp_calculated[0][i][j][k].real.abs() < SCORE_THRESH
-                    && sfcs.psi_pp_measured[0][i][j][k].real.abs() < SCORE_THRESH
+                if sfcs.psi_pp_calculated[i][j][k].real.abs() < SCORE_THRESH
+                    && sfcs.psi_pp_measured[i][j][k].real.abs() < SCORE_THRESH
                 {
-                    norm_calc += sfcs.psi_pp_calculated[0][i][j][k];
-                    norm_meas += sfcs.psi_pp_measured[0][i][j][k];
+                    norm_calc += sfcs.psi_pp_calculated[i][j][k];
+                    norm_meas += sfcs.psi_pp_measured[i][j][k];
                 }
             }
         }
@@ -253,11 +255,11 @@ fn fidelity(sfcs: &Surfaces) -> f64 {
                 // todo: .reals here may be a kludge and not working with complex psi.
 
                 // todo: LHS should be conjugated.
-                if sfcs.psi_pp_calculated[0][i][j][k].real.abs() < SCORE_THRESH
-                    && sfcs.psi_pp_measured[0][i][j][k].real.abs() < SCORE_THRESH
+                if sfcs.psi_pp_calculated[i][j][k].real.abs() < SCORE_THRESH
+                    && sfcs.psi_pp_measured[i][j][k].real.abs() < SCORE_THRESH
                 {
-                    result += sfcs.psi_pp_calculated[0][i][j][k] / norm_calc.real
-                        * sfcs.psi_pp_calculated[0][i][j][k]
+                    result += sfcs.psi_pp_calculated[i][j][k] / norm_calc.real
+                        * sfcs.psi_pp_calculated[i][j][k]
                         / norm_calc.real;
                 }
             }
@@ -282,8 +284,8 @@ pub fn score_wf(sfcs: &Surfaces) -> f64 {
             for k in 0..N {
                 // todo: Check if either individual is outside a thresh?
 
-                let val = (sfcs.psi_pp_calculated[0][i][j][k] - sfcs.psi_pp_measured[0][i][j][k])
-                    .abs_sq();
+                let val =
+                    (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).abs_sq();
                 if val < SCORE_THRESH {
                     result += val;
                 }
@@ -357,8 +359,8 @@ pub fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
             for i in 0..N {
                 for j in 0..N {
                     for k in 0..N {
-                        sfcs.psi_pp_calculated[0][i][j][k] =
-                            eigen_fns::find_ψ_pp_calc(&sfcs.psi[0], &sfcs.V[0], E_trial, i, j, k);
+                        sfcs.psi_pp_calculated[i][j][k] =
+                            eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E_trial, i, j, k);
                     }
                 }
             }
@@ -427,7 +429,7 @@ pub fn update_grid_posits(
         }
         grid_1d[i] = val;
     }
-    println!("\n\nGRID 1D: {:.2?}", grid_1d);
+    // println!("\n\nGRID 1D: {:.2?}", grid_1d);
 
     for (i, x) in grid_1d.iter().enumerate() {
         for (j, y) in grid_1d.iter().enumerate() {

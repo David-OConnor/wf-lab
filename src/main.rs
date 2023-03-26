@@ -39,7 +39,7 @@ use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use complex_nums::Cplx;
 use wf_ops::{ħ, M_ELEC, N, Q_PROT};
 
-use types::{Arr3d, Arr3dReal, Surfaces};
+use types::{Arr3d, Arr3dReal, Arr3dVec, Surfaces};
 
 const NUM_SURFACES: usize = 6;
 
@@ -47,21 +47,24 @@ const NUM_SURFACES: usize = 6;
 // todo less precision further away?
 
 pub struct State {
-    /// Computed surfaces. These span 3D space, are are quite large in memory. Contains various
+    pub grid_posits: Arr3dVec,
+    /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
+    /// due to electrons are stored in `Surfaces`.
+    pub charges_fixed: Vec<(Vec3, f64)>,
+    /// Computed surfaces, per electron. These span 3D space, are are quite large in memory. Contains various
     /// data including the grid spacing, psi, psi'', V etc.
-    pub surfaces: Surfaces,
+    /// Vec iterates over the different electrons.
+    pub surfaces: Vec<Surfaces>,
     /// todo: Combine bases and nuclei in into single tuple etc to enforce index pairing?
     /// todo: Or a sub struct?
     /// Wave functions, with weights. Per-electron. (Outer Vec iterates over electrons; inner over
     /// bases per-electron)
     pub bases: Vec<Vec<Basis>>,
-    // todo use an index for them.
-    /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
-    /// due to electrons are stored in `Surfaces`.
-    pub charges_fixed: Vec<(Vec3, f64)>,
     /// Energy eigenvalue of the Hamiltonian; per electron.
     /// todo: You may need separate eigenvalues per electron-WF if you go that route.
     pub E: Vec<f64>,
+    /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
+    pub nudge_amount: Vec<f64>,
     /// Wave function score, evaluated by comparing psi to psi'' from numerical evaluation, and
     /// from the Schrodinger equation. Per-electron. todo: Consider replacing with the standard
     /// todo evaluation of "wavefunction fidelity".
@@ -72,8 +75,6 @@ pub struct State {
     pub grid_n: usize,
     pub grid_min: f64,
     pub grid_max: f64,
-    /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
-    pub nudge_amount: Vec<f64>,
     /// 1.0 is an evenly-spaced grid. A higher value spreads out the grid; high values
     /// mean increased non-linearity, with higher spacing farther from the center.
     pub spacing_factor: f64,
@@ -193,6 +194,12 @@ fn main() {
 
     let mut sfcs = Surfaces::default();
 
+    // let spacing_factor = 2.;
+    let spacing_factor = 1.;
+
+    let mut grid_posits = types::new_data_vec(N);
+    wf_ops::update_grid_posits(&mut grid_posits, grid_min, grid_max, spacing_factor);
+
     // todo: Short-term experiment
     // Set up an initial charge of a s0 Hydrogen orbital. Computationally intensive to use any of
     // these charges, but
@@ -209,7 +216,7 @@ fn main() {
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                let posit_sample = sfcs.grid_posits[i][j][k];
+                let posit_sample = grid_posits[i][j][k];
 
                 psi_h00[i][j][k] = h00.value(posit_sample) * h00.weight();
             }
@@ -222,10 +229,6 @@ fn main() {
     // sfcs.elec_charges = vec![charge_density]; // todo: removed
     // todo: end short-term experiment
 
-    // let spacing_factor = 2.;
-    let spacing_factor = 1.;
-    wf_ops::update_grid_posits(&mut sfcs.grid_posits, grid_min, grid_max, spacing_factor);
-
     wf_ops::init_wf(
         &wfs,
         &charges,
@@ -235,6 +238,7 @@ fn main() {
         &mut grid_min,
         &mut grid_max,
         spacing_factor,
+        &mut grid_posits,
     );
 
     let psi_p_score = 0.; // todo T
@@ -253,22 +257,19 @@ fn main() {
         "Aux 2".to_owned(),
     ];
 
-    // let z = vec![4; N];
-    // let y = vec![z; N];
-    // let grid_divisions = vec![y; N];
-
     let state = State {
-        bases: vec![wfs],
+        grid_posits,
         charges_fixed: charges,
-        surfaces: sfcs,
-        E: vec![E],
-        psi_pp_score: vec![psi_pp_score],
+        bases: vec![wfs.clone(), wfs.clone()],
+        surfaces: vec![sfcs.clone(), sfcs.clone()],
+        E: vec![E, E],
+        nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],
+        psi_pp_score: vec![psi_pp_score, psi_pp_score],
         surface_names,
         show_surfaces,
         grid_n: N,
         grid_min,
         grid_max,
-        nudge_amount: vec![wf_ops::NUDGE_DEFAULT],
         spacing_factor,
 
         ui_z_displayed: 0.,

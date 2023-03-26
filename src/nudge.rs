@@ -5,7 +5,7 @@ use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
     eigen_fns, num_diff, types,
-    types::Surfaces,
+    types::{Arr3dVec, Surfaces},
     util,
     wf_ops::{self, N},
 };
@@ -26,6 +26,7 @@ pub fn nudge_wf(
     grid_min: f64,
     grid_max: f64,
     bases: &[Basis],
+    grid_posits: &Arr3dVec,
 ) {
     let num_nudges = 1; // todo: Put back to 3 etc?
     let smooth_amt = 0.4;
@@ -57,7 +58,7 @@ pub fn nudge_wf(
     // todo react to a change in psi, and try a nudge that sends them on a collision course
 
     // We revert to this if we've nudged too far.
-    let mut psi_backup = sfcs.psi[0].clone();
+    let mut psi_backup = sfcs.psi.clone();
     let mut psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
     let mut psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
     let mut current_score = wf_ops::score_wf(sfcs);
@@ -69,17 +70,13 @@ pub fn nudge_wf(
     // was from bases alone, without nudging.;
     let mut correction_fm_bases = types::new_data(N);
 
-    let dx = (grid_max - grid_min) / N as f64;
-    let grid_posits = util::linspace((grid_min, grid_max), N);
-
     for _ in 0..num_nudges {
         // let mut diff_pre_smooth = new_data(N); // todo experimenting
 
         for i_a in 0..N {
             for j in 0..N {
                 for k in 0..N {
-                    let diff =
-                        sfcs.psi_pp_calculated[0][i_a][j][k] - sfcs.psi_pp_measured[0][i_a][j][k];
+                    let diff = sfcs.psi_pp_calculated[i_a][j][k] - sfcs.psi_pp_measured[i_a][j][k];
 
                     // let psi_pp_calc_nudged = (sfcs.psi[i][j][k] + h.into())  * (E - sfcs.V[i][j][k]) * KE_COEFF;
                     // let psi_pp_meas_nudged = asdf
@@ -111,10 +108,10 @@ pub fn nudge_wf(
                 for j in 0..N {
                     for k in 0..N {
                         // sfcs.psi[i][j][k] -= diff_map[i][j][k] * sfcs.nudge_amounts[i][j][k];
-                        sfcs.psi[0][i][j][k] -= diff_map[i][j][k] * *nudge_amount;
+                        sfcs.psi[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
-                        sfcs.psi_pp_calculated[0][i][j][k] =
-                            eigen_fns::find_ψ_pp_calc(&sfcs.psi[0], &sfcs.V[0], *E, i, j, k);
+                        sfcs.psi_pp_calculated[i][j][k] =
+                            eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, *E, i, j, k);
                     }
                 }
             }
@@ -122,9 +119,9 @@ pub fn nudge_wf(
             // Calculated psi'' measured in a separate loop after updating psi, since it depends on
             // neighboring psi values as well.
             num_diff::find_ψ_pp_meas_fm_grid_irreg(
-                &sfcs.psi[0],
-                &mut sfcs.psi_pp_measured[0],
-                &sfcs.grid_posits,
+                &sfcs.psi,
+                &mut sfcs.psi_pp_measured,
+                &grid_posits,
             );
             // todo: Here lies one of the strange bracket mismatches that is helping our cause
             // todo (Uncomment one to engage the strange behavior)
@@ -138,14 +135,14 @@ pub fn nudge_wf(
             // We've nudged too much; revert.
 
             *nudge_amount *= 0.6;
-            sfcs.psi[0] = psi_backup.clone();
+            sfcs.psi = psi_backup.clone();
             sfcs.psi_pp_calculated = psi_pp_calc_backup.clone();
             sfcs.psi_pp_measured = psi_pp_meas_backup.clone();
         } else {
             // Our nudge was good; get a bit more aggressive.
 
             *nudge_amount *= 1.2;
-            psi_backup = sfcs.psi[0].clone();
+            psi_backup = sfcs.psi.clone();
             psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
             psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
             current_score = score;
@@ -155,12 +152,12 @@ pub fn nudge_wf(
                 for j in 0..N {
                     for k in 0..N {
                         let mut psi_bases = Cplx::new_zero();
-                        let posit_sample = sfcs.grid_posits[i][j][k];
+                        let posit_sample = grid_posits[i][j][k];
                         for basis in bases {
                             psi_bases += basis.value(posit_sample) * basis.weight();
                         }
 
-                        correction_fm_bases[i][j][k] = (sfcs.psi[0][i][j][k] - psi_bases) * 1.;
+                        correction_fm_bases[i][j][k] = (sfcs.psi[i][j][k] - psi_bases) * 1.;
                     }
                 }
             }
