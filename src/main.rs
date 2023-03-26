@@ -21,6 +21,7 @@
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
+mod basis_fn_finder;
 mod basis_wfs;
 mod complex_nums;
 mod eigen_fns;
@@ -33,7 +34,6 @@ mod types;
 mod ui;
 mod util;
 mod wf_ops;
-mod basis_fn_finder;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use complex_nums::Cplx;
@@ -41,35 +41,30 @@ use wf_ops::{ħ, M_ELEC, N, Q_PROT};
 
 use types::{Arr3d, Arr3dReal, Surfaces};
 
-const NUM_SURFACES: usize = 8;
+const NUM_SURFACES: usize = 6;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
 
 pub struct State {
-    /// todo: Combine wfs and nuclei in into single tuple etc to enforce index pairing?
-    /// todo: Or a sub struct?
-    /// Wave functions, with weights
-    pub bases: Vec<Basis>,
-    // todo use an index for them.
-    /// Nuclei. todo: H only for now.
-    pub charges: Vec<(Vec3, f64)>,
-    /// Computed surfaces, with name.
+    /// Computed surfaces. These span 3D space, are are quite large in memory. Contains various
+    /// data including the grid spacing, psi, psi'', V etc.
     pub surfaces: Surfaces,
-    /// Eg, least-squares over 2 or 3 dimensions between
-    /// When visualizing a 2d wave function over X and Y, this is the fixed Z value.
-    pub z_displayed: f64,
-    /// Energy of the system (eigenvalue); per electron.
+    /// todo: Combine bases and nuclei in into single tuple etc to enforce index pairing?
+    /// todo: Or a sub struct?
+    /// Wave functions, with weights. Per-electron. (Outer Vec iterates over electrons; inner over
+    /// bases per-electron)
+    pub bases: Vec<Vec<Basis>>,
+    // todo use an index for them.
+    /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
+    /// due to electrons are stored in `Surfaces`.
+    pub charges_fixed: Vec<(Vec3, f64)>,
+    /// Energy eigenvalue of the Hamiltonian; per electron.
     /// todo: You may need separate eigenvalues per electron-WF if you go that route.
     pub E: Vec<f64>,
-    /// Angular momentum (L) of the system (eigenvalue)
-    pub L_2: f64,// todo: These l values are currently unused.
-    pub L_x: f64,
-    pub L_y: f64,
-    pub L_z: f64,
-    /// Unused for now
-    pub psi_p_score: f64,
-    /// per electron.
+    /// Wave function score, evaluated by comparing psi to psi'' from numerical evaluation, and
+    /// from the Schrodinger equation. Per-electron. todo: Consider replacing with the standard
+    /// todo evaluation of "wavefunction fidelity".
     pub psi_pp_score: Vec<f64>,
     /// Surface name
     pub surface_names: [String; NUM_SURFACES],
@@ -77,13 +72,29 @@ pub struct State {
     pub grid_n: usize,
     pub grid_min: f64,
     pub grid_max: f64,
-    pub nudge_amount: f64,
-    // vals for h_grid and h_grid_sq, need to be updated when grid changes. A cache.
-    // For finding psi_pp_meas, using only values on the grid
-    // pub h_grid: f64,
-    // pub h_grid_sq: f64,
-    /// 1.0 is an evenly-spaced grid.
+    /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
+    pub nudge_amount: Vec<f64>,
+    /// 1.0 is an evenly-spaced grid. A higher value spreads out the grid; high values
+    /// mean increased non-linearity, with higher spacing farther from the center.
     pub spacing_factor: f64,
+
+    /// When visualizing a 2d wave function over X and Y, this is the fixed Z value rendered.
+    /// We only display a slice, since we are viewing a 4d object as a 3d rendering.
+    pub ui_z_displayed: f64,
+    /// The electron UI controls adjust.
+    pub ui_active_elec: usize,
+    /// if true, render the composite surfaces for all electrons, vice only the active one.
+    pub ui_render_all_elecs: bool,
+    //
+    // Below this are mainly experimental/WIP items
+    //
+    // /// Unused for now
+    // pub psi_p_score: f64,
+    // /// Angular momentum (L) of the system (eigenvalue)
+    // pub L_2: f64,// todo: These l values are currently unused.
+    // pub L_x: f64,
+    // pub L_y: f64,
+    // pub L_z: f64,
 }
 
 // /// Interpolate a value from a discrete wave function, assuming (what about curvature)
@@ -229,15 +240,15 @@ fn main() {
     let psi_p_score = 0.; // todo T
     let psi_pp_score = wf_ops::score_wf(&sfcs);
 
-    let show_surfaces = [true, true, true, true, false, false, false, false];
+    let show_surfaces = [true, true, true, true, false, false];
 
     let surface_names = [
         "V".to_owned(),
         "ψ".to_owned(),
         "ψ'' calculated".to_owned(),
         "ψ'' measured".to_owned(),
-        "ψ' calculated".to_owned(),
-        "ψ' measured".to_owned(),
+        // "ψ' calculated".to_owned(),
+        // "ψ' measured".to_owned(),
         "Aux 1".to_owned(),
         "Aux 2".to_owned(),
     ];
@@ -247,28 +258,29 @@ fn main() {
     // let grid_divisions = vec![y; N];
 
     let state = State {
-        bases: wfs,
-        charges,
+        bases: vec![wfs],
+        charges_fixed: charges,
         surfaces: sfcs,
-        E,
-        L_2,
-        L_x,
-        L_y,
-        L_z,
-        z_displayed,
-        psi_p_score,
-        psi_pp_score,
+        E: vec![E],
+        psi_pp_score: vec![psi_pp_score],
         surface_names,
         show_surfaces,
-        // grid_divisions,
-        // gaussians,
         grid_n: N,
         grid_min,
         grid_max,
-        nudge_amount: wf_ops::NUDGE_DEFAULT,
-        // h_grid,
-        // h_grid_sq,
+        nudge_amount: vec![wf_ops::NUDGE_DEFAULT],
         spacing_factor,
+
+        ui_z_displayed: 0.,
+        ui_active_elec: 0,
+        ui_render_all_elecs: false,
+        // gaussians,
+        // L_2,
+        // L_x,
+        // L_y,
+        // L_z,
+        // z_displayed,
+        // psi_p_score,
     };
 
     render::render(state);

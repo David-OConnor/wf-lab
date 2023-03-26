@@ -156,16 +156,22 @@ pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut S
     // let sfc_mesh_start = grid_min as f32; // todo: Sync graphics and atomic coords?
     // let sfc_mesh_step: f32 = -2. * sfc_mesh_start / N as f32;
 
-    // `z_displayed` is a value float. Convert this to an index. Rounds to the nearest index.
+    // `z_displayed` is a value float. Convert this to an index. Rounds to the nearest integer.
     // let z_i = map_linear(z_displayed, (grid_min, grid_max), (0., N as f64)) as usize;
     // todo: Using your new system, you can't use a linear map here!
 
-    let z_i = N / 2; // todo temp!!
+    let mut z_i = 0;
+    for i in 0..surfaces.grid_posits.len() {
+        if surfaces.grid_posits[0][0][i].z > z_displayed {
+            z_i = i;
+            break;
+        }
+    }
 
     let mut meshes = Vec::new();
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh_real(&surfaces.grid_posits, &surfaces.V, z_i, 1.),
+        &prepare_2d_mesh_real(&surfaces.grid_posits, &surfaces.V[0], z_i, 1.),
         // todo: Center! Maybe offset in entities.
         // sfc_mesh_start,
         // sfc_mesh_step,
@@ -173,12 +179,7 @@ pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut S
     ));
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(
-            &surfaces.grid_posits,
-            &surfaces.psis_per_elec[0],
-            z_i,
-            PSI_SCALER,
-        ),
+        &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.psi[0], z_i, PSI_SCALER),
         // todo: Center! Maybe offset in entities.
         // sfc_mesh_start,
         // sfc_mesh_step,
@@ -186,10 +187,10 @@ pub fn update_meshes(surfaces: &crate::Surfaces, z_displayed: f64, scene: &mut S
     ));
 
     for (scaler, sfc) in [
-        (1., &surfaces.psi_pp_calculated),
-        (1., &surfaces.psi_pp_measured),
-        (PSI_P_SCALER, &surfaces.psi_p_calculated),
-        (PSI_P_SCALER, &surfaces.psi_p_total_measured),
+        (1., &surfaces.psi_pp_calculated[0]),
+        (1., &surfaces.psi_pp_measured[0]),
+        // (PSI_P_SCALER, &surfaces.psi_p_calculated),
+        // (PSI_P_SCALER, &surfaces.psi_p_total_measured),
         // &surfaces.aux1,
         // &surfaces.aux2,
     ] {
@@ -306,12 +307,12 @@ pub fn render(state: State) {
 
     update_meshes(
         &state.surfaces,
-        state.z_displayed,
+        state.ui_z_displayed,
         &mut scene,
         // state.grid_min,
         // state.grid_max,
     );
-    update_entities(&state.charges, &state.show_surfaces, &mut scene);
+    update_entities(&state.charges_fixed, &state.show_surfaces, &mut scene);
 
     let input_settings = InputSettings {
         initial_controls: ControlScheme::FreeCamera,

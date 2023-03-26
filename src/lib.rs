@@ -94,5 +94,5 @@ pub fn psi_from_pt_charges(
 
     // let psi_pp_score = wf_ops::score_wf(&sfcs);
 
-    sfcs.psis_per_elec[0].clone()
+    sfcs.psi[0].clone()
 }

@@ -9,42 +9,43 @@ use lin_alg2::f64::Vec3;
 /// Represents important data, in describe 3D arrays.
 /// We use Vecs, since these can be large, and we don't want
 /// to put them on the stack. Although, they are fixed-size.
+///
+/// `Vec`s here generally mean per-electron.
 /// todo: Change name?
 pub struct Surfaces {
+    /// Represents points on a grid, for our non-uniform grid.
+    pub grid_posits: Arr3dVec,
     /// todo: V here is per electron, *explicitly so an electron doesn't interact with itself*.
     pub V: Vec<Arr3dReal>,
     /// Per electron
     pub psi: Vec<Arr3d>,
-    // todo: You quantize with n already associated with H and energy. Perhaps the next step
-    // todo is to quantize with L and associated angular momentum, as a second check on your
-    // todo WF, and a tool to identify its validity.
-    /// These momentum terms are currently unused.
-    pub psi_p_calculated: Arr3d,
-    pub psi_p_total_measured: Arr3d,
-    pub psi_px_measured: Arr3d,
-    pub psi_py_measured: Arr3d,
-    pub psi_pz_measured: Arr3d,
     pub psi_pp_calculated: Vec<Arr3d>,
     pub psi_pp_measured: Vec<Arr3d>,
-    /// Todo: Plot both real and imaginary momentum components? (or mag + phase?)
-    pub momentum: Arr3d,
+    /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
+    /// between psi'' measured and calcualted, which is complex.
+    pub nudge_amounts: Vec<Arr3dReal>,
+    /// Electric charge at each point in space, from each electron.
+    pub elec_charges: Vec<Arr3dReal>,
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3d,
     pub aux2: Arr3d,
-    /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
-    /// between psi'' measured and calcualted, which is complex.
-    pub nudge_amounts: Arr3dReal,
-    // /// Used to revert values back after nudging.
-    // pub psi_prev: Arr3d, // todo: Probably
-    /// Electric charge at each point in space. Probably will be unused
-    /// todo going forward, since this is *very* computationally intensive
-    pub elec_charges: Vec<Arr3dReal>,
-    /// todo: Experimental representation as a local analytic eq at each point.
-    pub bases: Vec<Arr3dBasis>,
-    /// Represents points on a grid, for our non-uniform grid.
-    pub grid_posits: Arr3dVec,
+    //
+    // Below this, are mostly unused/experimental terms.
+    //
+    // todo: You quantize with n already associated with H and energy. Perhaps the next step
+    // todo is to quantize with L and associated angular momentum, as a second check on your
+    // todo WF, and a tool to identify its validity.
+    // /// These momentum terms are currently unused.
+    // pub psi_p_calculated: Arr3d,
+    // pub psi_p_total_measured: Arr3d,
+    // pub psi_px_measured: Arr3d,
+    // pub psi_py_measured: Arr3d,
+    // pub psi_pz_measured: Arr3d,
+    // /// Todo: Plot both real and imaginary momentum components? (or mag + phase?)
+    // pub momentum: Arr3d,
+    // /// todo: Experimental representation as a local analytic eq at each point.
+    // pub bases: Vec<Arr3dBasis>,
 
-    /// Per-electron wave-functions.
     //todo: Evaluating per-electron wave fns.
     // pub psis_per_elec: Vec<Arr3d>,
 }
@@ -69,24 +70,24 @@ impl Default for Surfaces {
         let grid_posits = new_data_vec(N);
 
         Self {
-            V: data_real.clone(),
+            grid_posits,
+            V: vec![data_real.clone()],
+            psi: vec![data.clone(), data.clone()],
             // psi: data.clone(),
-            psi_pp_calculated: data.clone(),
-            psi_pp_measured: data.clone(),
-            psi_p_calculated: data.clone(),
-            psi_p_total_measured: data.clone(),
-            psi_px_measured: data.clone(),
-            psi_py_measured: data.clone(),
-            psi_pz_measured: data.clone(),
+            psi_pp_calculated: vec![data.clone()],
+            psi_pp_measured: vec![data.clone()],
             aux1: data.clone(),
             aux2: data.clone(),
-            nudge_amounts: default_nudges,
+            nudge_amounts: vec![default_nudges],
             // psi_prev: data.clone(),
             elec_charges: Vec::new(),
-            bases: new_data_basis(N),
-            grid_posits,
-            momentum: data.clone(),
-            psis_per_elec: vec![data.clone(), data.clone()],
+            // bases: new_data_basis(N),
+            // momentum: data.clone(),
+            // psi_p_calculated: data.clone()],
+            // psi_p_total_measured: data.clone(),
+            // psi_px_measured: data.clone(),
+            // psi_py_measured: data.clone(),
+            // psi_pz_measured: data.clone(),
         }
     }
 }

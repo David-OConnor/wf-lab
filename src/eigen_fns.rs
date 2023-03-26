@@ -63,7 +63,6 @@ pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k
 //     psi[i][j][k] * p * COEFF
 // }
 
-
 // todo: $$
 // -i \hbar \int  \psi^* \left( y \frac{\partial \psi}{\partial z} -  \frac{\partial (z \psi)}{\partial y} \right)dx dy dz
 // $$

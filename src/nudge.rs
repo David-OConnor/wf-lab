@@ -57,7 +57,7 @@ pub fn nudge_wf(
     // todo react to a change in psi, and try a nudge that sends them on a collision course
 
     // We revert to this if we've nudged too far.
-    let mut psi_backup = sfcs.psis_per_elec[0].clone();
+    let mut psi_backup = sfcs.psi[0].clone();
     let mut psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
     let mut psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
     let mut current_score = wf_ops::score_wf(sfcs);
@@ -78,7 +78,8 @@ pub fn nudge_wf(
         for i_a in 0..N {
             for j in 0..N {
                 for k in 0..N {
-                    let diff = sfcs.psi_pp_calculated[i_a][j][k] - sfcs.psi_pp_measured[i_a][j][k];
+                    let diff =
+                        sfcs.psi_pp_calculated[0][i_a][j][k] - sfcs.psi_pp_measured[0][i_a][j][k];
 
                     // let psi_pp_calc_nudged = (sfcs.psi[i][j][k] + h.into())  * (E - sfcs.V[i][j][k]) * KE_COEFF;
                     // let psi_pp_meas_nudged = asdf
@@ -110,16 +111,10 @@ pub fn nudge_wf(
                 for j in 0..N {
                     for k in 0..N {
                         // sfcs.psi[i][j][k] -= diff_map[i][j][k] * sfcs.nudge_amounts[i][j][k];
-                        sfcs.psis_per_elec[0][i][j][k] -= diff_map[i][j][k] * *nudge_amount;
+                        sfcs.psi[0][i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
-                        sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
-                            &sfcs.psis_per_elec[0],
-                            &sfcs.V,
-                            *E,
-                            i,
-                            j,
-                            k,
-                        );
+                        sfcs.psi_pp_calculated[0][i][j][k] =
+                            eigen_fns::find_ψ_pp_calc(&sfcs.psi[0], &sfcs.V[0], *E, i, j, k);
                     }
                 }
             }
@@ -127,8 +122,8 @@ pub fn nudge_wf(
             // Calculated psi'' measured in a separate loop after updating psi, since it depends on
             // neighboring psi values as well.
             num_diff::find_ψ_pp_meas_fm_grid_irreg(
-                &sfcs.psis_per_elec[0],
-                &mut sfcs.psi_pp_measured,
+                &sfcs.psi[0],
+                &mut sfcs.psi_pp_measured[0],
                 &sfcs.grid_posits,
             );
             // todo: Here lies one of the strange bracket mismatches that is helping our cause
@@ -143,14 +138,14 @@ pub fn nudge_wf(
             // We've nudged too much; revert.
 
             *nudge_amount *= 0.6;
-            sfcs.psis_per_elec[0] = psi_backup.clone();
+            sfcs.psi[0] = psi_backup.clone();
             sfcs.psi_pp_calculated = psi_pp_calc_backup.clone();
             sfcs.psi_pp_measured = psi_pp_meas_backup.clone();
         } else {
             // Our nudge was good; get a bit more aggressive.
 
             *nudge_amount *= 1.2;
-            psi_backup = sfcs.psis_per_elec[0].clone();
+            psi_backup = sfcs.psi[0].clone();
             psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
             psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
             current_score = score;
@@ -165,8 +160,7 @@ pub fn nudge_wf(
                             psi_bases += basis.value(posit_sample) * basis.weight();
                         }
 
-                        correction_fm_bases[i][j][k] =
-                            (sfcs.psis_per_elec[0][i][j][k] - psi_bases) * 1.;
+                        correction_fm_bases[i][j][k] = (sfcs.psi[0][i][j][k] - psi_bases) * 1.;
                     }
                 }
             }

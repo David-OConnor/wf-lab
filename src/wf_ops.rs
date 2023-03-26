@@ -5,7 +5,6 @@
 //! etc in the same state (Pauli exclusion / fermion rules), but how does this apply when multiple
 //! todo nuclei are involved?
 
-
 // todo: A thought: Maybe analyze psi'' diff, then figure out what combination of
 // todo H basis fns added to psi approximate it, or move towards it?
 
@@ -52,81 +51,6 @@ pub const N: usize = 80;
 pub enum Spin {
     Up,
     Dn,
-}
-
-/// Initialize a wave function using a charge-centric coordinate system, using RBF
-/// interpolation.
-fn init_wf_rbf(rbf: &Rbf, charges: &[(Vec3, f64)], bases: &[Basis], E: f64) {
-    // todo: Start RBF testing using its own grid
-
-    let mut psi_pp_calc_rbf = Vec::new();
-    let mut psi_pp_meas_rbf = Vec::new();
-
-    for (i, sample_pt) in rbf.obs_points.iter().enumerate() {
-        let psi_sample = rbf.fn_vals[i];
-
-        // calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
-
-        let V_sample = {
-            let mut result = 0.;
-            for (posit_charge, charge_amt) in charges.iter() {
-                result += V_coulomb(*posit_charge, *sample_pt, *charge_amt);
-            }
-
-            result
-        };
-
-        let calc = psi_sample * (E - V_sample) * eigen_fns::KE_COEFF;
-
-        psi_pp_calc_rbf.push(calc);
-        psi_pp_meas_rbf.push(num_diff::find_ψ_pp_meas_fm_rbf(
-            *sample_pt,
-            Cplx::from_real(psi_sample),
-            &rbf,
-        ));
-    }
-
-    println!(
-        "Comp1: {:?}, {:?}",
-        psi_pp_calc_rbf[100], psi_pp_meas_rbf[100]
-    );
-    println!(
-        "Comp2: {:?}, {:?}",
-        psi_pp_calc_rbf[10], psi_pp_meas_rbf[10]
-    );
-    println!(
-        "Comp3: {:?}, {:?}",
-        psi_pp_calc_rbf[20], psi_pp_meas_rbf[20]
-    );
-    println!(
-        "Comp4: {:?}, {:?}",
-        psi_pp_calc_rbf[30], psi_pp_meas_rbf[30]
-    );
-    println!(
-        "Comp5: {:?}, {:?}",
-        psi_pp_calc_rbf[40], psi_pp_meas_rbf[40]
-    );
-
-    // Code to test interpolation.
-    let b1 = &bases[0];
-
-    let rbf_compare_pts = vec![
-        Vec3::new(1., 0., 0.),
-        Vec3::new(1., 1., 0.),
-        Vec3::new(0., 0., 1.),
-        Vec3::new(5., 0.5, 0.5),
-        Vec3::new(6., 5., 0.5),
-        Vec3::new(6., 0., 0.5),
-    ];
-
-    println!("\n");
-    for pt in &rbf_compare_pts {
-        println!(
-            "\nBasis: {:.5} \n Rbf: {:.5}",
-            b1.value(*pt).real * b1.weight(),
-            rbf.interp_point(*pt),
-        );
-    }
 }
 
 /// This is our main computation function for sfcs. It:
@@ -192,9 +116,9 @@ pub fn init_wf(
                 // in 3D.
 
                 if update_charges {
-                    sfcs.V[i][j][k] = 0.;
+                    sfcs.V[0][i][j][k] = 0.;
                     for (posit_charge, charge_amt) in charges.iter() {
-                        sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
+                        sfcs.V[0][i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
                     }
 
                     // Re why the electron interaction, in many cases, appears to be very small compared to protons: After thinking about it, the protons, being point charges (approximately) are pulling from a single direction. While most of the smudged out electron gets cancelled out in the area of interest
@@ -226,7 +150,7 @@ pub fn init_wf(
                                     }
 
                                     // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
-                                    sfcs.V[i][j][k] += V_coulomb(
+                                    sfcs.V[0][i][j][k] += V_coulomb(
                                         posit_sample_electron,
                                         posit_sample,
                                         charge_this_grid_pt,
@@ -237,52 +161,49 @@ pub fn init_wf(
                     }
                 }
 
-                sfcs.psis_per_elec[0][i][j][k] = Cplx::new_zero();
+                sfcs.psi[0][i][j][k] = Cplx::new_zero();
 
                 for basis in bases {
-                    sfcs.psis_per_elec[0][i][j][k] += basis.value(posit_sample) * basis.weight();
+                    sfcs.psi[0][i][j][k] += basis.value(posit_sample) * basis.weight();
                 }
 
-                sfcs.psi_pp_calculated[i][j][k] =
-                    eigen_fns::find_ψ_pp_calc(&sfcs.psis_per_elec[0], &sfcs.V, E, i, j, k);
+                sfcs.psi_pp_calculated[0][i][j][k] =
+                    eigen_fns::find_ψ_pp_calc(&sfcs.psi[0], &sfcs.V[0], E, i, j, k);
 
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-                sfcs.psi_pp_measured[i][j][k] = num_diff::find_ψ_pp_meas_fm_bases(
-                    posit_sample,
-                    bases,
-                    sfcs.psis_per_elec[0][i][j][k],
-                );
+                sfcs.psi_pp_measured[0][i][j][k] =
+                    num_diff::find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[0][i][j][k]);
             }
         }
     }
 
-    // todo: Initial hack at updating our psi' to see what insight it may have, eg into momentum.
-    // todo: DRY on total vs each compoonent.
-    num_diff::find_ψ_p_meas_fm_grid_irreg(
-        &sfcs.psis_per_elec[0],
-        &mut sfcs.psi_p_total_measured,
-        &sfcs.grid_posits,
-        num_diff::PsiPVar::Total,
-    );
-    num_diff::find_ψ_p_meas_fm_grid_irreg(
-        &sfcs.psis_per_elec[0],
-        &mut sfcs.psi_px_measured,
-        &sfcs.grid_posits,
-        num_diff::PsiPVar::X,
-    );
-    num_diff::find_ψ_p_meas_fm_grid_irreg(
-        &sfcs.psis_per_elec[0],
-        &mut sfcs.psi_py_measured,
-        &sfcs.grid_posits,
-        num_diff::PsiPVar::Y,
-    );
-    num_diff::find_ψ_p_meas_fm_grid_irreg(
-        &sfcs.psis_per_elec[0],
-        &mut sfcs.psi_pz_measured,
-        &sfcs.grid_posits,
-        num_diff::PsiPVar::Z,
-    );
+    // // todo: Initial hack at updating our psi' to see what insight it may have, eg into momentum.
+    // // todo: DRY on total vs each compoonent.
+    // num_diff::find_ψ_p_meas_fm_grid_irreg(
+    //     &sfcs.psi[0],
+    //     &mut sfcs.psi_p_total_measured,
+    //     &sfcs.grid_posits,
+    //     num_diff::PsiPVar::Total,
+    // );
+    // num_diff::find_ψ_p_meas_fm_grid_irreg(
+    //     &sfcs.psi[0],
+    //     &mut sfcs.psi_px_measured,
+    //     &sfcs.grid_posits,
+    //     num_diff::PsiPVar::X,
+    // );
+    // num_diff::find_ψ_p_meas_fm_grid_irreg(
+    //     &sfcs.psi[0],
+    //     &mut sfcs.psi_py_measured,
+    //     &sfcs.grid_posits,
+    //     num_diff::PsiPVar::Y,
+    // );
+    // num_diff::find_ψ_p_meas_fm_grid_irreg(
+    //     &sfcs.psi[0],
+    //     &mut sfcs.psi_pz_measured,
+    //     &sfcs.grid_posits,
+    //     num_diff::PsiPVar::Z,
+    // );
 }
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
@@ -313,11 +234,11 @@ fn fidelity(sfcs: &Surfaces) -> f64 {
                 // norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].abs_sq();
                 // norm_sq_meas += sfcs.psi_pp_measured[i][j][k].abs_sq();
                 // todo: .real is temp
-                if sfcs.psi_pp_calculated[i][j][k].real.abs() < SCORE_THRESH
-                    && sfcs.psi_pp_measured[i][j][k].real.abs() < SCORE_THRESH
+                if sfcs.psi_pp_calculated[0][i][j][k].real.abs() < SCORE_THRESH
+                    && sfcs.psi_pp_measured[0][i][j][k].real.abs() < SCORE_THRESH
                 {
-                    norm_calc += sfcs.psi_pp_calculated[i][j][k];
-                    norm_meas += sfcs.psi_pp_measured[i][j][k];
+                    norm_calc += sfcs.psi_pp_calculated[0][i][j][k];
+                    norm_meas += sfcs.psi_pp_measured[0][i][j][k];
                 }
             }
         }
@@ -332,11 +253,11 @@ fn fidelity(sfcs: &Surfaces) -> f64 {
                 // todo: .reals here may be a kludge and not working with complex psi.
 
                 // todo: LHS should be conjugated.
-                if sfcs.psi_pp_calculated[i][j][k].real.abs() < SCORE_THRESH
-                    && sfcs.psi_pp_measured[i][j][k].real.abs() < SCORE_THRESH
+                if sfcs.psi_pp_calculated[0][i][j][k].real.abs() < SCORE_THRESH
+                    && sfcs.psi_pp_measured[0][i][j][k].real.abs() < SCORE_THRESH
                 {
-                    result += sfcs.psi_pp_calculated[i][j][k] / norm_calc.real
-                        * sfcs.psi_pp_calculated[i][j][k]
+                    result += sfcs.psi_pp_calculated[0][i][j][k] / norm_calc.real
+                        * sfcs.psi_pp_calculated[0][i][j][k]
                         / norm_calc.real;
                 }
             }
@@ -361,8 +282,8 @@ pub fn score_wf(sfcs: &Surfaces) -> f64 {
             for k in 0..N {
                 // todo: Check if either individual is outside a thresh?
 
-                let val =
-                    (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).abs_sq();
+                let val = (sfcs.psi_pp_calculated[0][i][j][k] - sfcs.psi_pp_measured[0][i][j][k])
+                    .abs_sq();
                 if val < SCORE_THRESH {
                     result += val;
                 }
@@ -436,14 +357,8 @@ pub fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
             for i in 0..N {
                 for j in 0..N {
                     for k in 0..N {
-                        sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
-                            &sfcs.psis_per_elec[0],
-                            &sfcs.V,
-                            E_trial,
-                            i,
-                            j,
-                            k,
-                        );
+                        sfcs.psi_pp_calculated[0][i][j][k] =
+                            eigen_fns::find_ψ_pp_calc(&sfcs.psi[0], &sfcs.V[0], E_trial, i, j, k);
                     }
                 }
             }
