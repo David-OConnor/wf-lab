@@ -15,10 +15,11 @@
 //!
 //! - L_x = y p_z - p_y z = -iħ(y d/dz - d/dy z). Eigenvalue: p_x?
 //! - L_y = z p_x - p_z x = -iħ(z d/dx - d/dz x)
-//! - L_z = x p_y - p_x y = -iħ(z d/dy - d/dx y)
+//! - L_z = x p_y - p_x y = -iħ(x d/dy - d/dx y)
 //!
 //! Position? Xψ = xψ. X = x??
 //!
+//! L^2 = d_psi_d_x^2 + d_psi_d_y^2 + d_psi_d_z^2
 
 use crate::{
     complex_nums::{Cplx, IM},
@@ -43,12 +44,28 @@ pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k
     psi[i][j][k] * (E - V[i][j][k]) * KE_COEFF
 }
 
-/// Calcualte psi', calculated from psi, and L.
-/// todo: Lin vs angular momentum??
-/// Pψ = pψ . -iħ ψ' = Pψ. ψ' = piħ ψ
-/// L_x = y p_z - p_y z = -iħ(y d/dz - d/dy z). Eigenvalue: p_x?
-pub fn find_ψ_p_calc(psi: &Arr3d, p: f64, i: usize, j: usize, k: usize) -> Cplx {
-    const COEFF: Cplx = Cplx { real: 0., im: ħ };
+// /// Calcualte dψ/dx, from ψ and L_x.
+// /// L_y = z p_x - p_z x = -iħ(z d/dx - d/dz x)
+// /// L_z = x p_y - p_x y = -iħ(x d/dy - d/dx y)
+// ///
+// /// dψ/dx = ((L_y / -iħ) + x dψ/dz)) / z
+// ///
+// /// dψ/dx = ((L_z / -iħ) - x dψ/dy)) / y
+// ///
+// /// L^2 = d_psi_d_x^2 + d_psi_d_y^2 + d_psi_d_z^2
+// pub fn find_dψ_dx_calc(psi: &Arr3d, L_y: f64, i: usize, j: usize, k: usize) -> Cplx {
+//     const COEFF: Cplx = Cplx { real: 0., im: -ħ };
+//
+//     // todo: This is tricky due to L being a vector quantity, with inter-dependent components.
+//     // let val_a = ((L_y / COEFF) + x * d_psi_d_z) / z;
+//     // let val_b = ((L_z / COEFF) - x * d_psi_d_y) / y;
+//
+//     psi[i][j][k] * p * COEFF
+// }
 
-    psi[i][j][k] * p * COEFF
-}
+
+// todo: $$
+// -i \hbar \int  \psi^* \left( y \frac{\partial \psi}{\partial z} -  \frac{\partial (z \psi)}{\partial y} \right)dx dy dz
+// $$
+
+// ?

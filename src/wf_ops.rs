@@ -5,6 +5,10 @@
 //! etc in the same state (Pauli exclusion / fermion rules), but how does this apply when multiple
 //! todo nuclei are involved?
 
+
+// todo: A thought: Maybe analyze psi'' diff, then figure out what combination of
+// todo H basis fns added to psi approximate it, or move towards it?
+
 // todo: If you switch to individual wfs per electon, spherical coords may make more sense, eg
 // todo with RBF or otherwise.
 
@@ -12,6 +16,9 @@
 // "if you wanted to invent something, a Bayesian classical simulator that could tell which of its
 // quantum-derived parameters needed finer calculation and which did them when necessary, is
 // something that doesn't exist afik"
+
+// todo: Something that would really help: A recipe for which basis wfs to add for a given
+// todo potential.
 
 use core::f64::consts::FRAC_1_SQRT_2;
 
@@ -39,7 +46,7 @@ pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 90;
+pub const N: usize = 80;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {

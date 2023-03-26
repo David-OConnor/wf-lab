@@ -33,6 +33,7 @@ mod types;
 mod ui;
 mod util;
 mod wf_ops;
+mod basis_fn_finder;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use complex_nums::Cplx;
@@ -58,16 +59,18 @@ pub struct State {
     /// Eg, least-squares over 2 or 3 dimensions between
     /// When visualizing a 2d wave function over X and Y, this is the fixed Z value.
     pub z_displayed: f64,
-    /// Energy of the system (eigenvalue)
+    /// Energy of the system (eigenvalue); per electron.
     /// todo: You may need separate eigenvalues per electron-WF if you go that route.
-    pub E: f64,
+    pub E: Vec<f64>,
     /// Angular momentum (L) of the system (eigenvalue)
-    pub L_2: f64,
+    pub L_2: f64,// todo: These l values are currently unused.
     pub L_x: f64,
     pub L_y: f64,
     pub L_z: f64,
+    /// Unused for now
     pub psi_p_score: f64,
-    pub psi_pp_score: f64,
+    /// per electron.
+    pub psi_pp_score: Vec<f64>,
     /// Surface name
     pub surface_names: [String; NUM_SURFACES],
     pub show_surfaces: [bool; NUM_SURFACES],

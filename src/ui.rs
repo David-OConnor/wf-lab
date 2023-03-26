@@ -396,142 +396,142 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             })
             .text("E"),
         );
-
-        // todo: DRY!!
-        ui.add(
-            egui::Slider::from_get_set(L_MIN..=L_MAX, |v| {
-                if let Some(v_) = v {
-                    state.L_2 = v_;
-
-                    for i in 0..N {
-                        for j in 0..N {
-                            for k in 0..N {
-                                state.surfaces.psi_pp_calculated[i][j][k] =
-                                    eigen_fns::find_ψ_pp_calc(
-                                        &state.surfaces.psis_per_elec[0],
-                                        &state.surfaces.V,
-                                        state.E,
-                                        i,
-                                        j,
-                                        k,
-                                    )
-                            }
-                        }
-                    }
-
-                    state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
-                    state.psi_p_score = 0.; // todo!
-
-                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
-                    engine_updates.meshes = true;
-                }
-
-                state.L_2
-            })
-            .text("L^2"),
-        );
-
-        // todo: DRY!!
-        ui.add(
-            egui::Slider::from_get_set(L_MIN..=L_MAX, |v| {
-                if let Some(v_) = v {
-                    state.L_x = v_;
-
-                    for i in 0..N {
-                        for j in 0..N {
-                            for k in 0..N {
-                                state.surfaces.psi_pp_calculated[i][j][k] =
-                                    eigen_fns::find_ψ_pp_calc(
-                                        &state.surfaces.psis_per_elec[0],
-                                        &state.surfaces.V,
-                                        state.E,
-                                        i,
-                                        j,
-                                        k,
-                                    )
-                            }
-                        }
-                    }
-
-                    state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
-                    state.psi_p_score = 0.; // todo!
-
-                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
-                    engine_updates.meshes = true;
-                }
-
-                state.L_x
-            })
-            .text("L_x"),
-        );
-
-        // todo: DRY!!
-        ui.add(
-            egui::Slider::from_get_set(L_MIN..=L_MAX, |v| {
-                if let Some(v_) = v {
-                    state.L_y = v_;
-
-                    for i in 0..N {
-                        for j in 0..N {
-                            for k in 0..N {
-                                state.surfaces.psi_pp_calculated[i][j][k] =
-                                    eigen_fns::find_ψ_pp_calc(
-                                        &state.surfaces.psis_per_elec[0],
-                                        &state.surfaces.V,
-                                        state.E,
-                                        i,
-                                        j,
-                                        k,
-                                    )
-                            }
-                        }
-                    }
-
-                    state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
-                    state.psi_p_score = 0.; // todo!
-
-                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
-                    engine_updates.meshes = true;
-                }
-
-                state.L_y
-            })
-            .text("L_y"),
-        );
-
-        // todo: DRY!!
-        ui.add(
-            egui::Slider::from_get_set(L_MIN..=L_MAX, |v| {
-                if let Some(v_) = v {
-                    state.L_z = v_;
-
-                    for i in 0..N {
-                        for j in 0..N {
-                            for k in 0..N {
-                                state.surfaces.psi_pp_calculated[i][j][k] =
-                                    eigen_fns::find_ψ_pp_calc(
-                                        &state.surfaces.psis_per_elec[0],
-                                        &state.surfaces.V,
-                                        state.E,
-                                        i,
-                                        j,
-                                        k,
-                                    )
-                            }
-                        }
-                    }
-
-                    state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
-                    state.psi_p_score = 0.; // todo!
-
-                    render::update_meshes(&state.surfaces, state.z_displayed, scene);
-                    engine_updates.meshes = true;
-                }
-
-                state.L_z
-            })
-            .text("L_z"),
-        );
+        //
+        // // todo: DRY!!
+        // ui.add(
+        //     egui::Slider::from_get_set(L_MIN..=L_MAX, |v| {
+        //         if let Some(v_) = v {
+        //             state.L_2 = v_;
+        //
+        //             for i in 0..N {
+        //                 for j in 0..N {
+        //                     for k in 0..N {
+        //                         state.surfaces.psi_pp_calculated[i][j][k] =
+        //                             eigen_fns::find_ψ_pp_calc(
+        //                                 &state.surfaces.psis_per_elec[0],
+        //                                 &state.surfaces.V,
+        //                                 state.E,
+        //                                 i,
+        //                                 j,
+        //                                 k,
+        //                             )
+        //                     }
+        //                 }
+        //             }
+        //
+        //             state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
+        //             state.psi_p_score = 0.; // todo!
+        //
+        //             render::update_meshes(&state.surfaces, state.z_displayed, scene);
+        //             engine_updates.meshes = true;
+        //         }
+        //
+        //         state.L_2
+        //     })
+        //     .text("L^2"),
+        // );
+        //
+        // // todo: DRY!!
+        // ui.add(
+        //     egui::Slider::from_get_set(L_MIN..=L_MAX, |v| {
+        //         if let Some(v_) = v {
+        //             state.L_x = v_;
+        //
+        //             for i in 0..N {
+        //                 for j in 0..N {
+        //                     for k in 0..N {
+        //                         state.surfaces.psi_pp_calculated[i][j][k] =
+        //                             eigen_fns::find_ψ_pp_calc(
+        //                                 &state.surfaces.psis_per_elec[0],
+        //                                 &state.surfaces.V,
+        //                                 state.E,
+        //                                 i,
+        //                                 j,
+        //                                 k,
+        //                             )
+        //                     }
+        //                 }
+        //             }
+        //
+        //             state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
+        //             state.psi_p_score = 0.; // todo!
+        //
+        //             render::update_meshes(&state.surfaces, state.z_displayed, scene);
+        //             engine_updates.meshes = true;
+        //         }
+        //
+        //         state.L_x
+        //     })
+        //     .text("L_x"),
+        // );
+        //
+        // // todo: DRY!!
+        // ui.add(
+        //     egui::Slider::from_get_set(L_MIN..=L_MAX, |v| {
+        //         if let Some(v_) = v {
+        //             state.L_y = v_;
+        //
+        //             for i in 0..N {
+        //                 for j in 0..N {
+        //                     for k in 0..N {
+        //                         state.surfaces.psi_pp_calculated[i][j][k] =
+        //                             eigen_fns::find_ψ_pp_calc(
+        //                                 &state.surfaces.psis_per_elec[0],
+        //                                 &state.surfaces.V,
+        //                                 state.E,
+        //                                 i,
+        //                                 j,
+        //                                 k,
+        //                             )
+        //                     }
+        //                 }
+        //             }
+        //
+        //             state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
+        //             state.psi_p_score = 0.; // todo!
+        //
+        //             render::update_meshes(&state.surfaces, state.z_displayed, scene);
+        //             engine_updates.meshes = true;
+        //         }
+        //
+        //         state.L_y
+        //     })
+        //     .text("L_y"),
+        // );
+        //
+        // // todo: DRY!!
+        // ui.add(
+        //     egui::Slider::from_get_set(L_MIN..=L_MAX, |v| {
+        //         if let Some(v_) = v {
+        //             state.L_z = v_;
+        //
+        //             for i in 0..N {
+        //                 for j in 0..N {
+        //                     for k in 0..N {
+        //                         state.surfaces.psi_pp_calculated[i][j][k] =
+        //                             eigen_fns::find_ψ_pp_calc(
+        //                                 &state.surfaces.psis_per_elec[0],
+        //                                 &state.surfaces.V,
+        //                                 state.E,
+        //                                 i,
+        //                                 j,
+        //                                 k,
+        //                             )
+        //                     }
+        //                 }
+        //             }
+        //
+        //             state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
+        //             state.psi_p_score = 0.; // todo!
+        //
+        //             render::update_meshes(&state.surfaces, state.z_displayed, scene);
+        //             engine_updates.meshes = true;
+        //         }
+        //
+        //         state.L_z
+        //     })
+        //     .text("L_z"),
+        // );
 
         ui.add(
             // -0.1 is a kludge.

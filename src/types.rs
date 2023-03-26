@@ -11,18 +11,23 @@ use lin_alg2::f64::Vec3;
 /// to put them on the stack. Although, they are fixed-size.
 /// todo: Change name?
 pub struct Surfaces {
-    pub V: Arr3dReal,
-    // pub psi: Arr3d,
+    /// todo: V here is per electron, *explicitly so an electron doesn't interact with itself*.
+    pub V: Vec<Arr3dReal>,
+    /// Per electron
+    pub psi: Vec<Arr3d>,
     // todo: You quantize with n already associated with H and energy. Perhaps the next step
     // todo is to quantize with L and associated angular momentum, as a second check on your
     // todo WF, and a tool to identify its validity.
+    /// These momentum terms are currently unused.
     pub psi_p_calculated: Arr3d,
     pub psi_p_total_measured: Arr3d,
     pub psi_px_measured: Arr3d,
     pub psi_py_measured: Arr3d,
     pub psi_pz_measured: Arr3d,
-    pub psi_pp_calculated: Arr3d,
-    pub psi_pp_measured: Arr3d,
+    pub psi_pp_calculated: Vec<Arr3d>,
+    pub psi_pp_measured: Vec<Arr3d>,
+    /// Todo: Plot both real and imaginary momentum components? (or mag + phase?)
+    pub momentum: Arr3d,
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3d,
     pub aux2: Arr3d,
@@ -35,14 +40,13 @@ pub struct Surfaces {
     /// todo going forward, since this is *very* computationally intensive
     pub elec_charges: Vec<Arr3dReal>,
     /// todo: Experimental representation as a local analytic eq at each point.
-    pub bases: Arr3dBasis,
+    pub bases: Vec<Arr3dBasis>,
     /// Represents points on a grid, for our non-uniform grid.
     pub grid_posits: Arr3dVec,
-    /// Todo: Plot both real and imaginary momentum components? (or mag + phase?)
-    pub momentum: Arr3d,
+
     /// Per-electron wave-functions.
     //todo: Evaluating per-electron wave fns.
-    pub psis_per_elec: Vec<Arr3d>,
+    // pub psis_per_elec: Vec<Arr3d>,
 }
 
 impl Default for Surfaces {
