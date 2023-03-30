@@ -45,7 +45,7 @@ pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 80;
+pub const N: usize = 70;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {
@@ -70,6 +70,7 @@ pub fn init_wf(
     grid_max: &mut f64,
     spacing_factor: f64,
     grid_posits: &mut Arr3dVec,
+    bases_visible: &[bool],
 ) {
     // Set up the grid so that it smartly encompasses the charges, letting the WF go to 0
     // towards the edges
@@ -89,8 +90,8 @@ pub fn init_wf(
         }
 
         // const RANGE_PAD: f64 = 1.6;
-        // const RANGE_PAD: f64 = 5.8;
-        const RANGE_PAD: f64 = 15.;
+        const RANGE_PAD: f64 = 5.8;
+        // const RANGE_PAD: f64 = 15.;
 
         *grid_max = max_abs_val + RANGE_PAD;
         *grid_min = -*grid_max;
@@ -165,8 +166,13 @@ pub fn init_wf(
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
 
-                for basis in bases {
-                    sfcs.psi[i][j][k] += basis.value(posit_sample) * basis.weight();
+                for (basis_i, basis) in bases.into_iter().enumerate() {
+                    let weight = if bases_visible[basis_i] {
+                        basis.weight()
+                    } else {
+                        0.
+                    };
+                    sfcs.psi[i][j][k] += basis.value(posit_sample) * weight;
                 }
 
                 sfcs.psi_pp_calculated[i][j][k] =
@@ -175,7 +181,7 @@ pub fn init_wf(
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
                 sfcs.psi_pp_measured[i][j][k] =
-                    num_diff::find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k]);
+                    num_diff::find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k], bases_visible);
             }
         }
     }

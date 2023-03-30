@@ -26,6 +26,7 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
     posit_sample: Vec3,
     bases: &[Basis],
     psi_sample_loc: Cplx,
+    bases_visible: &[bool],
 ) -> Cplx {
     let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
     let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
@@ -41,13 +42,19 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
     let mut psi_z_prev = Cplx::new_zero();
     let mut psi_z_next = Cplx::new_zero();
 
-    for basis in bases {
-        psi_x_prev += basis.value(x_prev) * basis.weight();
-        psi_x_next += basis.value(x_next) * basis.weight();
-        psi_y_prev += basis.value(y_prev) * basis.weight();
-        psi_y_next += basis.value(y_next) * basis.weight();
-        psi_z_prev += basis.value(z_prev) * basis.weight();
-        psi_z_next += basis.value(z_next) * basis.weight();
+    for (basis_i, basis) in bases.into_iter().enumerate() {
+        let weight = if bases_visible[basis_i] {
+            basis.weight()
+        } else {
+            0.
+        };
+
+        psi_x_prev += basis.value(x_prev) * weight;
+        psi_x_next += basis.value(x_next) * weight;
+        psi_y_prev += basis.value(y_prev) * weight;
+        psi_y_next += basis.value(y_next) * weight;
+        psi_z_prev += basis.value(z_prev) * weight;
+        psi_z_next += basis.value(z_next) * weight;
     }
 
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next

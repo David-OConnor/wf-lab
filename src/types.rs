@@ -1,6 +1,7 @@
 use crate::{
     basis_wfs::SinExpBasisPt,
     complex_nums::Cplx,
+    eigen_fns, num_diff,
     wf_ops::{self, N, NUDGE_DEFAULT},
 };
 
@@ -47,6 +48,34 @@ pub struct Surfaces {
 
     //todo: Evaluating per-electron wave fns.
     // pub psis_per_elec: Vec<Arr3d>,
+}
+
+impl Surfaces {
+    /// Updates the total surface from parts.
+    pub fn update_total(&mut self, parts: &[Self], E: &[f64], grid_posits: &Arr3dVec) {
+        // Todo: V. Before you update psi_pp_calc.
+
+        for i in 0..N {
+            for j in 0..N {
+                for k in 0..N {
+                    self.psi[i][j][k] = Cplx::new_zero();
+                    for (part_i, part) in parts.into_iter().enumerate() {
+                        self.psi[i][j][k] += part.psi[i][j][k];
+
+                        self.psi_pp_calculated[i][j][k] =
+                            eigen_fns::find_ψ_pp_calc(&self.psi, &self.V, E[part_i], i, j, k)
+                    }
+                }
+            }
+        }
+
+        num_diff::find_ψ_pp_meas_fm_grid_irreg(&self.psi, &mut self.psi_pp_measured, grid_posits);
+
+        // todo: What to do with score?
+        let score = wf_ops::score_wf(self);
+
+        // todo: You probably need a score_total and e_total in state.
+    }
 }
 
 impl Default for Surfaces {

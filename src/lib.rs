@@ -71,6 +71,8 @@ pub fn psi_from_pt_charges(
 
     let spacing_factor = 1.;
 
+    let bases_visible = vec![true, true, true, true, true, true, true, true];
+
     // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
     // and our basis-function based trial wave function.
     wf_ops::init_wf(
@@ -83,6 +85,7 @@ pub fn psi_from_pt_charges(
         &mut grid_bounds.1,
         spacing_factor,
         &mut grid_posits,
+        &bases_visible,
     );
 
     // todo: Temp removing nudge to test performance

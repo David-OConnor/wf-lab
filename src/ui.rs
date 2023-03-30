@@ -133,6 +133,22 @@ fn basis_fn_mixer(
     egui::containers::ScrollArea::vertical().show(ui, |ui| {
         for (id, basis) in state.bases[state.ui_active_elec].iter_mut().enumerate() {
             ui.horizontal(|ui| {
+                // Checkbox to immediately hide or show the basis.
+
+                if ui
+                    .checkbox(&mut state.bases_visible[state.ui_active_elec][id], "")
+                    .clicked()
+                {
+                    *updated_wfs = true;
+                    // render::update_meshes(
+                    //     &state.surfaces[state.ui_active_elec],
+                    //     state.ui_z_displayed,
+                    //     scene,
+                    //     &state.grid_posits,
+                    // );
+                    // engine_updates.meshes = true;
+                }
+
                 ui.spacing_mut().slider_width = SLIDER_WIDTH_ORIENTATION; // Only affects sliders in this section.
 
                 // `prev...` is to check if it changed below.
@@ -332,14 +348,51 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         // ui.heading("Show surfaces:");
 
         // Selector to choose the active electron
-        egui::ComboBox::from_id_source(0)
-            .width(30.)
-            .selected_text(state.ui_active_elec.to_string())
-            .show_ui(ui, |ui| {
-                for i in 0..state.surfaces[state.ui_active_elec].psi.len() {
-                    ui.selectable_value(&mut state.ui_active_elec, i, i.to_string());
-                }
-            });
+        let prev_active_elec = state.ui_active_elec;
+
+        // todo: Is this where the surfaces combined vs individual should be?
+
+        // todo: Unused.
+        let surfaces = if state.ui_render_all_elecs {
+            &state.surfaces_combined
+        } else {
+            &state.surfaces[state.ui_active_elec]
+        };
+
+        ui.horizontal(|ui| {
+            egui::ComboBox::from_id_source(0)
+                .width(30.)
+                .selected_text(state.ui_active_elec.to_string())
+                .show_ui(ui, |ui| {
+                    for i in 0..state.surfaces.len() {
+                        ui.selectable_value(&mut state.ui_active_elec, i, i.to_string());
+                    }
+                });
+
+            // Show the new active electron's meshes, if it changed.
+            if state.ui_active_elec != prev_active_elec {
+                render::update_meshes(
+                    &state.surfaces[state.ui_active_elec],
+                    state.ui_z_displayed,
+                    scene,
+                    &state.grid_posits,
+                );
+                engine_updates.meshes = true;
+            }
+
+            if ui
+                .checkbox(&mut state.ui_render_all_elecs, "Render all elecs")
+                .clicked()
+            {
+                render::update_meshes(
+                    &state.surfaces[state.ui_active_elec],
+                    state.ui_z_displayed,
+                    scene,
+                    &state.grid_posits,
+                );
+                engine_updates.meshes = true;
+            }
+        });
 
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
@@ -714,6 +767,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.grid_max,
                 state.spacing_factor,
                 &mut state.grid_posits,
+                &state.bases_visible[state.ui_active_elec],
             );
 
             state.psi_pp_score[state.ui_active_elec] =

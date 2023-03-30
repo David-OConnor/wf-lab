@@ -55,11 +55,16 @@ pub struct State {
     /// data including the grid spacing, psi, psi'', V etc.
     /// Vec iterates over the different electrons.
     pub surfaces: Vec<Surfaces>,
+    /// The sum of all surfaces
+    pub surfaces_combined: Surfaces,
     /// todo: Combine bases and nuclei in into single tuple etc to enforce index pairing?
     /// todo: Or a sub struct?
     /// Wave functions, with weights. Per-electron. (Outer Vec iterates over electrons; inner over
     /// bases per-electron)
     pub bases: Vec<Vec<Basis>>,
+    /// Used to toggle precense of a basi, effectively setting its weight ot 0 without losing the stored
+    /// weight value.
+    pub bases_visible: Vec<Vec<bool>>,
     /// Energy eigenvalue of the Hamiltonian; per electron.
     /// todo: You may need separate eigenvalues per electron-WF if you go that route.
     pub E: Vec<f64>,
@@ -170,6 +175,11 @@ fn main() {
         )),
     ];
 
+    let ui_active_elec = 0;
+
+    let visible = vec![true, true, true, true, true, true, true, true];
+    let bases_visible = vec![visible.clone(), visible];
+
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges = vec![
@@ -194,8 +204,8 @@ fn main() {
 
     let mut sfcs = Surfaces::default();
 
-    // let spacing_factor = 2.;
-    let spacing_factor = 1.;
+    let spacing_factor = 1.6;
+    // let spacing_factor = 1.;
 
     let mut grid_posits = types::new_data_vec(N);
     wf_ops::update_grid_posits(&mut grid_posits, grid_min, grid_max, spacing_factor);
@@ -239,6 +249,7 @@ fn main() {
         &mut grid_max,
         spacing_factor,
         &mut grid_posits,
+        &bases_visible[ui_active_elec],
     );
 
     let psi_p_score = 0.; // todo T
@@ -261,7 +272,9 @@ fn main() {
         grid_posits,
         charges_fixed: charges,
         bases: vec![wfs.clone(), wfs.clone()],
+        bases_visible,
         surfaces: vec![sfcs.clone(), sfcs.clone()],
+        surfaces_combined: sfcs.clone(),
         E: vec![E, E],
         nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],
         psi_pp_score: vec![psi_pp_score, psi_pp_score],
@@ -273,7 +286,7 @@ fn main() {
         spacing_factor,
 
         ui_z_displayed: 0.,
-        ui_active_elec: 0,
+        ui_active_elec,
         ui_render_all_elecs: false,
         // gaussians,
         // L_2,
