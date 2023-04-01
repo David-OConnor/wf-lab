@@ -38,7 +38,8 @@ use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use complex_nums::Cplx;
 use wf_ops::{ħ, M_ELEC, N, Q_PROT};
 
-use types::{Arr3d, Arr3dReal, Arr3dVec, Surfaces};
+use crate::types::SurfacesShared;
+use types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec};
 
 const NUM_SURFACES: usize = 6;
 
@@ -46,16 +47,18 @@ const NUM_SURFACES: usize = 6;
 // todo less precision further away?
 
 pub struct State {
-    pub grid_posits: Arr3dVec,
     /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
     /// due to electrons are stored in `Surfaces`.
     pub charges_fixed: Vec<(Vec3, f64)>,
+    /// Charges from electrons, over 3d space. Computed from <ψ|ψ> // todo: Alternatively, we could just
+    /// todo use the sfcs.psi and compute from that.
+    pub charges_electron: Vec<Arr3dReal>,
+    /// Surfaces that are not electron-specific.
+    pub surfaces_shared: SurfacesShared,
     /// Computed surfaces, per electron. These span 3D space, are are quite large in memory. Contains various
     /// data including the grid spacing, psi, psi'', V etc.
     /// Vec iterates over the different electrons.
-    pub surfaces: Vec<Surfaces>,
-    /// The sum of all surfaces
-    pub surfaces_combined: Surfaces,
+    pub surfaces_per_elec: Vec<SurfacesPerElec>,
     /// todo: Combine bases and nuclei in into single tuple etc to enforce index pairing?
     /// todo: Or a sub struct?
     /// Wave functions, with weights. Per-electron. (Outer Vec iterates over electrons; inner over
@@ -177,6 +180,8 @@ fn main() {
         )),
     ];
 
+    let bases = vec![wfs.clone(), wfs.clone()];
+
     let ui_active_elec = 0;
 
     let visible = vec![true, true, true, true, true, true, true, true];
@@ -184,13 +189,16 @@ fn main() {
 
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
-    let charges = vec![
+    let charges_fixed = vec![
         (posit_charge_1, Q_PROT * 2.), // helium
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
-    let z_displayed = 0.;
+    let arr_real = types::new_data_real(N);
+
+    // These must be initialized from wave functions later.
+    let charges_electron = vec![arr_real.clone(), arr_real];
 
     let E = -0.7;
     let L_2 = 1.;
@@ -198,19 +206,22 @@ fn main() {
     let L_y = 1.;
     let L_z = 1.;
 
-    let (mut grid_min, mut grid_max) = (-2.5, 2.5);
+    let Es = vec![E, E];
 
     // // todo: Deprecate h_grid once your alternative works.
     // let h_grid = (grid_max - grid_min) / (N as f64);
     // let h_grid_sq = h_grid.powi(2);
 
-    let mut sfcs = Surfaces::default();
+    let sfcs_one_elec = SurfacesPerElec::default();
 
+    let mut surfaces_per_elec = vec![sfcs_one_elec.clone(), sfcs_one_elec];
+
+    let mut grid_min = -2.;
+    let mut grid_max = 2.; // todo: Is this used, or overridden?
     let spacing_factor = 1.6;
-    // let spacing_factor = 1.;
 
-    let mut grid_posits = types::new_data_vec(N);
-    wf_ops::update_grid_posits(&mut grid_posits, grid_min, grid_max, spacing_factor);
+    let mut surfaces_shared = SurfacesShared::new(grid_min, grid_max, spacing_factor);
+    surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es);
 
     // todo: Short-term experiment
     // Set up an initial charge of a s0 Hydrogen orbital. Computationally intensive to use any of
@@ -228,7 +239,7 @@ fn main() {
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
-                let posit_sample = grid_posits[i][j][k];
+                let posit_sample = surfaces_shared.grid_posits[i][j][k];
 
                 psi_h00[i][j][k] = h00.value(posit_sample) * h00.weight();
             }
@@ -243,19 +254,23 @@ fn main() {
 
     wf_ops::init_wf(
         &wfs,
-        &charges,
-        &mut sfcs,
+        &charges_fixed,
+        &mut surfaces_per_elec[ui_active_elec],
         E,
         true,
         &mut grid_min,
         &mut grid_max,
         spacing_factor,
-        &mut grid_posits,
+        &mut surfaces_shared.grid_posits,
         &bases_visible[ui_active_elec],
+        &charges_electron,
+        ui_active_elec,
     );
 
     let psi_p_score = 0.; // todo T
-    let psi_pp_score = wf_ops::score_wf(&sfcs);
+    let psi_pp_score_one = wf_ops::score_wf(&surfaces_per_elec[ui_active_elec]);
+
+    let psi_pp_score = vec![psi_pp_score_one, psi_pp_score_one];
 
     let show_surfaces = [true, true, true, true, false, false];
 
@@ -271,15 +286,15 @@ fn main() {
     ];
 
     let state = State {
-        grid_posits,
-        charges_fixed: charges,
-        bases: vec![wfs.clone(), wfs.clone()],
+        charges_fixed,
+        charges_electron,
+        bases,
         bases_visible,
-        surfaces: vec![sfcs.clone(), sfcs.clone()],
-        surfaces_combined: sfcs.clone(),
-        E: vec![E, E],
+        surfaces_shared,
+        surfaces_per_elec,
+        E: Es,
         nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],
-        psi_pp_score: vec![psi_pp_score, psi_pp_score],
+        psi_pp_score,
         surface_names,
         show_surfaces,
         grid_n: N,

@@ -7,13 +7,71 @@ use crate::{
 
 use lin_alg2::f64::Vec3;
 
+pub struct SurfacesShared {
+    pub grid_posits: Arr3dVec,
+    /// `psi` etc here are combined from all individual electron wave functions.
+    pub psi: Arr3d,
+    // pub psi_pp_calculated: Arr3d, // todo??
+    // todo: Do you want this?
+    pub psi_pp_measured: Arr3d,
+}
+
+impl SurfacesShared {
+    pub fn new(grid_min: f64, grid_max: f64, spacing_factor: f64) -> Self {
+        let data = new_data(N);
+
+        let mut grid_posits = new_data_vec(N);
+        wf_ops::update_grid_posits(&mut grid_posits, grid_min, grid_max, spacing_factor);
+
+        Self {
+            grid_posits,
+            psi: data.clone(),
+            // psi_pp_calculated: data.clone(),
+            psi_pp_measured: data.clone(),
+        }
+    }
+
+    /// Update `psi` etc from that of individual electrons
+    pub fn combine_psi_parts(&mut self, per_elec: &[SurfacesPerElec], E: &[f64]) {
+        // Todo: V. Before you update psi_pp_calc.
+
+        for i in 0..N {
+            for j in 0..N {
+                for k in 0..N {
+                    self.psi[i][j][k] = Cplx::new_zero();
+
+                    for (part_i, part) in per_elec.into_iter().enumerate() {
+                        self.psi[i][j][k] += part.psi[i][j][k];
+
+                        // todo: Come back to this once you figure out how to handle V here.
+                        // todo: Maybe you don't have psi_pp_calc here.
+                        // self.psi_pp_calculated[i][j][k] =
+                        //     eigen_fns::find_ψ_pp_calc(&self.psi, &self.V, E[part_i], i, j, k)
+                    }
+                }
+            }
+        }
+
+        num_diff::find_ψ_pp_meas_fm_grid_irreg(
+            &self.psi,
+            &mut self.psi_pp_measured,
+            &self.grid_posits,
+        );
+
+        // todo: What to do with score?
+        // let score = wf_ops::score_wf(self); // todo
+
+        // todo: You probably need a score_total and e_total in state.
+    }
+}
+
 /// Represents important data, in describe 3D arrays.
 /// We use Vecs, since these can be large, and we don't want
 /// to put them on the stack. Although, they are fixed-size.
 ///
 /// `Vec`s here generally mean per-electron.
 #[derive(Clone)]
-pub struct Surfaces {
+pub struct SurfacesPerElec {
     /// Represents points on a grid, for our non-uniform grid.
     /// todo: V here is per electron, *explicitly so an electron doesn't interact with itself*.
     pub V: Arr3dReal,
@@ -24,8 +82,7 @@ pub struct Surfaces {
     /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
     /// between psi'' measured and calcualted, which is complex.
     pub nudge_amounts: Arr3dReal,
-    /// Electric charge at each point in space.
-    pub elec_charges: Arr3dReal,
+
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3d,
     pub aux2: Arr3d,
@@ -50,35 +107,7 @@ pub struct Surfaces {
     // pub psis_per_elec: Vec<Arr3d>,
 }
 
-impl Surfaces {
-    /// Updates the total surface from parts.
-    pub fn update_total(&mut self, parts: &[Self], E: &[f64], grid_posits: &Arr3dVec) {
-        // Todo: V. Before you update psi_pp_calc.
-
-        for i in 0..N {
-            for j in 0..N {
-                for k in 0..N {
-                    self.psi[i][j][k] = Cplx::new_zero();
-                    for (part_i, part) in parts.into_iter().enumerate() {
-                        self.psi[i][j][k] += part.psi[i][j][k];
-
-                        self.psi_pp_calculated[i][j][k] =
-                            eigen_fns::find_ψ_pp_calc(&self.psi, &self.V, E[part_i], i, j, k)
-                    }
-                }
-            }
-        }
-
-        num_diff::find_ψ_pp_meas_fm_grid_irreg(&self.psi, &mut self.psi_pp_measured, grid_posits);
-
-        // todo: What to do with score?
-        let score = wf_ops::score_wf(self);
-
-        // todo: You probably need a score_total and e_total in state.
-    }
-}
-
-impl Default for Surfaces {
+impl Default for SurfacesPerElec {
     /// Fills with 0.s
     fn default() -> Self {
         let data = new_data(N);
@@ -99,14 +128,13 @@ impl Default for Surfaces {
         Self {
             V: data_real.clone(),
             psi: data.clone(),
-            // psi: data.clone(),
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
+            nudge_amounts: default_nudges,
+
             aux1: data.clone(),
             aux2: data.clone(),
-            nudge_amounts: default_nudges,
             // psi_prev: data.clone(),
-            elec_charges: Vec::new(),
             // bases: new_data_basis(N),
             // momentum: data.clone(),
             // psi_p_calculated: data.clone()],

@@ -149,7 +149,7 @@ fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32) -> 
 /// Updates meshes. For example, when updating a plot due to changing parameters.
 /// Note that this is where we decide which Z to render.
 pub fn update_meshes(
-    surfaces: &crate::Surfaces,
+    surfaces: &crate::SurfacesPerElec,
     z_displayed: f64,
     scene: &mut Scene,
     grid_posits: &Arr3dVec,
@@ -312,17 +312,20 @@ pub fn render(state: State) {
 
     // todo: Is this where we want to do the sum? Probably not!!!
 
-    let surfaces = if state.ui_render_all_elecs {
-        &state.surfaces_combined
-    } else {
-        &state.surfaces[state.ui_active_elec]
-    };
+    // todo!
+    // let surfaces = if state.ui_render_all_elecs {
+    //     &state.surfaces_shared
+    // } else {
+    //     &state.surfaces_per_elec[state.ui_active_elec]
+    // };
+
+    let surfaces = &state.surfaces_per_elec[state.ui_active_elec];
 
     update_meshes(
         surfaces,
         state.ui_z_displayed,
         &mut scene,
-        &state.grid_posits,
+        &state.surfaces_shared.grid_posits,
     );
 
     update_entities(&state.charges_fixed, &state.show_surfaces, &mut scene);

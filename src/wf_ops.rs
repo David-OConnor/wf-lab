@@ -28,7 +28,7 @@ use crate::{
     interp,
     num_diff,
     // rbf::Rbf,
-    types::{Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec, Surfaces},
+    types::{Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec, SurfacesPerElec},
     util::{self},
 };
 
@@ -65,7 +65,7 @@ pub enum Spin {
 pub fn init_wf(
     bases: &[Basis],
     charges: &[(Vec3, f64)],
-    sfcs: &mut Surfaces,
+    sfcs: &mut SurfacesPerElec,
     E: f64,
     update_charges: bool,
     grid_min: &mut f64,
@@ -73,6 +73,9 @@ pub fn init_wf(
     spacing_factor: f64,
     grid_posits: &mut Arr3dVec,
     bases_visible: &[bool],
+    // Wave functions from other electrons, for calculating the Hartree potential.
+    charges_electron: &[Arr3dReal],
+    i_this_elec: usize,
 ) {
     // Set up the grid so that it smartly encompasses the charges, letting the WF go to 0
     // towards the edges
@@ -126,8 +129,15 @@ pub fn init_wf(
                         sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
                     }
 
-                    sfcs.V[i][j][k] +=
-                        find_hartree_V(&sfcs.elec_charges, grid_posits, posit_sample, i, j, k);
+                    sfcs.V[i][j][k] += find_hartree_V(
+                        charges_electron,
+                        i_this_elec,
+                        posit_sample,
+                        grid_posits,
+                        i,
+                        j,
+                        k,
+                    );
                 }
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
@@ -185,10 +195,14 @@ pub fn init_wf(
 }
 
 /// Find the repulsion from electron wave functions.
+/// The API uses a given index to represent a point in space, since we may combine this calculation in a loop
+/// to find the potential from (Born-Oppenheimer) nuclei.
 fn find_hartree_V(
-    elec_charges: &Arr3dReal,
-    grid_posits: &Arr3dVec,
+    charges_electron: &[Arr3dReal],
+    // The position in the array of this electron, so we don't have it repel itself.
+    i_this_elec: usize,
     posit_sample: Vec3,
+    grid_posits: &Arr3dVec,
     i: usize,
     j: usize,
     k: usize,
@@ -204,7 +218,11 @@ fn find_hartree_V(
 
     let mut result = 0.;
 
-    if elec_charges.len() > 0 {
+    for (i_other_elec, charge_other_elec) in charges_electron.into_iter().enumerate() {
+        if i_other_elec == i_this_elec {
+            continue;
+        }
+
         for i2 in 0..N {
             for j2 in 0..N {
                 for k2 in 0..N {
@@ -220,7 +238,7 @@ fn find_hartree_V(
                     // for charge in &sfcs.elec_charges {
                     //     charge_this_grid_pt += charge[i2][j2][k2];
                     // }
-                    charge_this_grid_pt += elec_charges[i2][j2][k2];
+                    charge_this_grid_pt += charge_other_elec[i2][j2][k2];
 
                     // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
                     result += V_coulomb(posit_sample_electron, posit_sample, charge_this_grid_pt);
@@ -238,7 +256,7 @@ fn find_hartree_V(
 /// todo: I don't think you can use this approach comparing psi''s with fidelity, since they're
 /// todo not normalizsble.
 // fn wf_fidelity(sfcs: &Surfaces) -> f64 {
-fn fidelity(sfcs: &Surfaces) -> f64 {
+fn fidelity(sfcs: &SurfacesPerElec) -> f64 {
     // "The accuracy should be scored by the fidelity of the wavefunction compared
     // to the true wavefunction. Fidelity is defined as |<psi_trial | psi_true >|^2.
     // For normalized states, this will always be bounded from above by 1.0. So it's
@@ -295,7 +313,7 @@ fn fidelity(sfcs: &Surfaces) -> f64 {
 
 /// Score a wave function by comparing the least-squares sum of its measured and
 /// calculated second derivaties.
-pub fn score_wf(sfcs: &Surfaces) -> f64 {
+pub fn score_wf(sfcs: &SurfacesPerElec) -> f64 {
     let mut result = 0.;
 
     // Avoids numerical precision issues. Without this, certain values of N will lead
@@ -365,7 +383,7 @@ pub fn charge_density_fm_psi(psi: &Arr3d, charge_density: &mut Arr3dReal, num_el
 
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
 /// between E and psi'' score isn't straightforward, this will converge on a local minimum.
-pub fn find_E(sfcs: &mut Surfaces, E: &mut f64) {
+pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64) {
     // todo: WHere to configure these mins and maxes
     let mut E_min = -2.;
     let mut E_max = 2.;

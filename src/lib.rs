@@ -15,7 +15,7 @@ pub mod wf_ops;
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic};
 
 use lin_alg2::f64::Vec3;
-use types::{Arr3d, Arr3dReal, Surfaces};
+use types::{Arr3d, Arr3dReal, SurfacesPerElec};
 
 /// Create trial wave functions for a given point-charge distibution. Currently
 /// a rough approach using low-energy STOs centered on the charges.
@@ -42,7 +42,7 @@ fn create_trial_wfs(charges: &[(Vec3, f64)]) -> Vec<Basis> {
 /// Interface from external programs. Main API for solving the wave function.
 // pub fn psi_from_V(V: &Arr3dReal, grid_bounds: (f64, f64)) -> Arr3d {
 pub fn psi_from_pt_charges(
-    charges: &[(Vec3, f64)],
+    charges_fixed: &[(Vec3, f64)],
     grid_bounds: &mut (f64, f64),
     spacing_factor: f64,
     bases: &[Basis],
@@ -51,7 +51,7 @@ pub fn psi_from_pt_charges(
     // saves a pass in our initial WF. Perhaps though, we want to pass V intact.
     // todo: Output is psi, or psi^2?
 
-    let mut sfcs = Surfaces::default();
+    let mut sfcs = SurfacesPerElec::default();
 
     let mut grid_posits = types::new_data_vec(crate::wf_ops::N);
 
@@ -62,7 +62,7 @@ pub fn psi_from_pt_charges(
         spacing_factor,
     );
 
-    let wfs = create_trial_wfs(charges);
+    let wfs = create_trial_wfs(charges_fixed);
 
     let mut E = 0.5;
 
@@ -72,11 +72,18 @@ pub fn psi_from_pt_charges(
 
     let bases_visible = vec![true, true, true, true, true, true, true, true];
 
+    let arr_real = types::new_data_real(wf_ops::N);
+
+    // These must be initialized from wave functions later.
+    let charges_electron = vec![arr_real.clone(), arr_real];
+
+    let ui_active_elec = 0;
+
     // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
     // and our basis-function based trial wave function.
     wf_ops::init_wf(
         &wfs,
-        &charges,
+        &charges_fixed,
         &mut sfcs,
         E,
         true,
@@ -85,6 +92,8 @@ pub fn psi_from_pt_charges(
         spacing_factor,
         &mut grid_posits,
         &bases_visible,
+        &charges_electron,
+        ui_active_elec,
     );
 
     // todo: Temp removing nudge to test performance

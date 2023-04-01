@@ -5,7 +5,7 @@ use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
     eigen_fns, num_diff, types,
-    types::{Arr3dVec, Surfaces},
+    types::{Arr3dVec, SurfacesPerElec},
     util,
     wf_ops::{self, N},
 };
@@ -17,7 +17,7 @@ use lin_alg2::f64::Vec3;
 /// Apply a correction to the WF, in attempt to make our two psi''s closer.
 /// Uses our numerically-calculated WF. Updates psi, and both psi''s.
 pub fn nudge_wf(
-    sfcs: &mut Surfaces,
+    sfcs: &mut SurfacesPerElec,
     // wfs: &[Basis],
     // wfs: &[SlaterOrbital],
     // charges: &[(Vec3, f64)],
