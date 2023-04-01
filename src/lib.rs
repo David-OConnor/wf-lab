@@ -8,7 +8,6 @@ mod eigen_fns;
 pub mod interp;
 pub mod nudge;
 mod num_diff;
-mod rbf;
 pub mod types;
 pub mod util;
 pub mod wf_ops;

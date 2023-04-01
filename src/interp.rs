@@ -6,7 +6,7 @@
 
 use std::f64::consts::TAU;
 
-use crate::{basis_wfs::Basis, complex_nums::Cplx, rbf, rbf::Rbf, util};
+use crate::{basis_wfs::Basis, complex_nums::Cplx, util};
 
 use lin_alg2::f64::Vec3;
 
@@ -186,107 +186,107 @@ pub fn create_quadratic_term(pt0: (f64, f64), pt1: (f64, f64), pt2: (f64, f64)) 
 fn psi_at_pt(charges: Vec3, grid_vals: &[(Vec3, Cplx)]) -> Cplx {
     Cplx::new_zero()
 }
-
-/// Set up Radial Basis Function (RBF) interpolation, with spherical grids centered around
-/// nuclei, and a higher concentration of shells closer to nuclei.
-pub fn setup_rbf_interp(charge_posits: &[Vec3], bases: &[Basis]) -> rbf::Rbf {
-    // Determine how to set up our sample points
-    // Should use roughly half the number of lats as lons.
-    const N_LATS: usize = 10;
-    const N_LONS: usize = N_LATS * 2;
-
-    const N_DISTS: usize = 14;
-
-    const ANGLE_BW_LATS: f64 = (TAU / 2.) / N_LATS as f64;
-    const ANGLE_BW_LONS: f64 = TAU / N_LONS as f64;
-
-    // A smaller value here will allow for more shells close to the nucleii.
-    const DIST_CONST: f64 = 0.03; // c^n_dists = max_dist
-
-    let n_samples = N_LATS * N_LONS * N_DISTS * charge_posits.len();
-
-    // todo: Dist falloff, since we use more dists closer to the nuclei?
-
-    // `xobs` is a an array of X, Y pts. Rust equiv type might be
-    // &[Vec3]
-    let mut xobs = Vec::new();
-    // for _ in 0..n_samples {
-    //     xobs.push(Vec3::new_zero());
-    // }
-
-    let mut i = 0;
-
-    // For latitudes, don't include the poles, since they create degenerate points.
-    for lat_i in 1..N_LATS {
-        // thata is latitudes; phi longitudes.
-        let theta = lat_i as f64 * ANGLE_BW_LATS;
-        // We don't use dist = 0.
-        for lon_i in 0..N_LONS {
-            let phi = lon_i as f64 * ANGLE_BW_LONS; // todo which is which?
-
-            for dist_i in 1..N_DISTS + 1 {
-                // r = exp(DIST_DECAY_EXP * dist_i) * DIST_CONST
-                let r = (dist_i as f64).powi(2) * DIST_CONST;
-
-                if lat_i == 1 && lon_i == 0 {
-                    println!("R: {:?}", r);
-                }
-
-                for (_charge_i, charge_posit) in charge_posits.into_iter().enumerate() {
-                    // xobs[i + charge_i] = util::spherical_to_cart(*charge_posit, theta, phi, r);
-                    xobs.push(util::spherical_to_cart(*charge_posit, theta, phi, r));
-
-                    // Just once per distance, add a pole at the top and bottom (lat = 0 and TAU/2
-                    if lat_i == 1 && lon_i == 0 {
-                        xobs.push(util::spherical_to_cart(*charge_posit, 0., 0., r)); // bottom
-                        xobs.push(util::spherical_to_cart(*charge_posit, TAU / 2., 0., r));
-                        // top
-                    }
-                }
-
-                i += charge_posits.len();
-            }
-        }
-    }
-
-    // z_slice = ctr[2]
-
-    // `yobs` is the function values at each of the sample points.
-
-    // todo: Cplx?
-    let mut yobs = Vec::new();
-    for _ in 0..n_samples {
-        yobs.push(0.);
-    }
-
-    // Iterate over our random sample of points
-    for (i, grid_pt) in xobs.iter().enumerate() {
-        for basis in bases {
-            // todo: discarding Im part for now
-            yobs[i] += (basis.value(*grid_pt) * basis.weight()).real;
-        }
-    }
-    //
-    // println!("Xobs: ");
-    // for obs in &xobs {
-    //     println!("x:{:.2} y:{:.2} z:{:.2}", obs.x, obs.y, obs.z);
-    // }
-
-    // println!("\n\nY obs: {:?}", yobs);
-
-    // From an intial test: Linear is OK. So is cubic. thin_plate is best
-    let rbf = Rbf::new(xobs, yobs, "linear", None);
-
-    rbf
-
-    //
-    //
-    // xgrid = np.mgrid[grid_min:grid_max:50j, grid_min:grid_max:50j]
-    //
-    // xflat = xgrid.reshape(2, -1).T
-    //
-    //
-    // yflat = RBFInterpolator(xobs, yobs, kernel='cubic')(xflat)
-    //
-    // ygrid = yflat.reshape(50, 50)
-}
+//
+// /// Set up Radial Basis Function (RBF) interpolation, with spherical grids centered around
+// /// nuclei, and a higher concentration of shells closer to nuclei.
+// pub fn setup_rbf_interp(charge_posits: &[Vec3], bases: &[Basis]) -> rbf::Rbf {
+//     // Determine how to set up our sample points
+//     // Should use roughly half the number of lats as lons.
+//     const N_LATS: usize = 10;
+//     const N_LONS: usize = N_LATS * 2;
+//
+//     const N_DISTS: usize = 14;
+//
+//     const ANGLE_BW_LATS: f64 = (TAU / 2.) / N_LATS as f64;
+//     const ANGLE_BW_LONS: f64 = TAU / N_LONS as f64;
+//
+//     // A smaller value here will allow for more shells close to the nucleii.
+//     const DIST_CONST: f64 = 0.03; // c^n_dists = max_dist
+//
+//     let n_samples = N_LATS * N_LONS * N_DISTS * charge_posits.len();
+//
+//     // todo: Dist falloff, since we use more dists closer to the nuclei?
+//
+//     // `xobs` is a an array of X, Y pts. Rust equiv type might be
+//     // &[Vec3]
+//     let mut xobs = Vec::new();
+//     // for _ in 0..n_samples {
+//     //     xobs.push(Vec3::new_zero());
+//     // }
+//
+//     let mut i = 0;
+//
+//     // For latitudes, don't include the poles, since they create degenerate points.
+//     for lat_i in 1..N_LATS {
+//         // thata is latitudes; phi longitudes.
+//         let theta = lat_i as f64 * ANGLE_BW_LATS;
+//         // We don't use dist = 0.
+//         for lon_i in 0..N_LONS {
+//             let phi = lon_i as f64 * ANGLE_BW_LONS; // todo which is which?
+//
+//             for dist_i in 1..N_DISTS + 1 {
+//                 // r = exp(DIST_DECAY_EXP * dist_i) * DIST_CONST
+//                 let r = (dist_i as f64).powi(2) * DIST_CONST;
+//
+//                 if lat_i == 1 && lon_i == 0 {
+//                     println!("R: {:?}", r);
+//                 }
+//
+//                 for (_charge_i, charge_posit) in charge_posits.into_iter().enumerate() {
+//                     // xobs[i + charge_i] = util::spherical_to_cart(*charge_posit, theta, phi, r);
+//                     xobs.push(util::spherical_to_cart(*charge_posit, theta, phi, r));
+//
+//                     // Just once per distance, add a pole at the top and bottom (lat = 0 and TAU/2
+//                     if lat_i == 1 && lon_i == 0 {
+//                         xobs.push(util::spherical_to_cart(*charge_posit, 0., 0., r)); // bottom
+//                         xobs.push(util::spherical_to_cart(*charge_posit, TAU / 2., 0., r));
+//                         // top
+//                     }
+//                 }
+//
+//                 i += charge_posits.len();
+//             }
+//         }
+//     }
+//
+//     // z_slice = ctr[2]
+//
+//     // `yobs` is the function values at each of the sample points.
+//
+//     // todo: Cplx?
+//     let mut yobs = Vec::new();
+//     for _ in 0..n_samples {
+//         yobs.push(0.);
+//     }
+//
+//     // Iterate over our random sample of points
+//     for (i, grid_pt) in xobs.iter().enumerate() {
+//         for basis in bases {
+//             // todo: discarding Im part for now
+//             yobs[i] += (basis.value(*grid_pt) * basis.weight()).real;
+//         }
+//     }
+//     //
+//     // println!("Xobs: ");
+//     // for obs in &xobs {
+//     //     println!("x:{:.2} y:{:.2} z:{:.2}", obs.x, obs.y, obs.z);
+//     // }
+//
+//     // println!("\n\nY obs: {:?}", yobs);
+//
+//     // From an intial test: Linear is OK. So is cubic. thin_plate is best
+//     let rbf = Rbf::new(xobs, yobs, "linear", None);
+//
+//     rbf
+//
+//     //
+//     //
+//     // xgrid = np.mgrid[grid_min:grid_max:50j, grid_min:grid_max:50j]
+//     //
+//     // xflat = xgrid.reshape(2, -1).T
+//     //
+//     //
+//     // yflat = RBFInterpolator(xobs, yobs, kernel='cubic')(xflat)
+//     //
+//     // ygrid = yflat.reshape(50, 50)
+// }

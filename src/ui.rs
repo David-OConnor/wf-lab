@@ -626,6 +626,25 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         );
 
         ui.add(
+            egui::Slider::from_get_set(-TAU / 2.0..=TAU / 2.0, |v| {
+                if let Some(v_) = v {
+                    state.visual_rotation = v_;
+                    engine_updates.meshes = true;
+
+                    render::update_meshes(
+                        &state.surfaces[state.ui_active_elec],
+                        state.ui_z_displayed,
+                        scene,
+                        &state.grid_posits,
+                    );
+                }
+
+                state.visual_rotation
+            })
+            .text("Visual rotation"),
+        );
+
+        ui.add(
             egui::Slider::from_get_set(GRID_SIZE_MIN..=GRID_SIZE_MAX, |v| {
                 if let Some(v_) = v {
                     state.grid_min = -v_;

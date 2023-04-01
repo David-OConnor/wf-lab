@@ -24,8 +24,10 @@ use core::f64::consts::FRAC_1_SQRT_2;
 use crate::{
     basis_wfs::{Basis, SinExpBasisPt},
     complex_nums::{Cplx, IM},
-    eigen_fns, interp, num_diff,
-    rbf::Rbf,
+    eigen_fns,
+    interp,
+    num_diff,
+    // rbf::Rbf,
     types::{Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec, Surfaces},
     util::{self},
 };
@@ -45,7 +47,7 @@ pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 70;
+pub const N: usize = 60;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {
@@ -119,49 +121,13 @@ pub fn init_wf(
 
                 if update_charges {
                     sfcs.V[i][j][k] = 0.;
+
                     for (posit_charge, charge_amt) in charges.iter() {
                         sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
                     }
 
-                    // Re why the electron interaction, in many cases, appears to be very small compared to protons: After thinking about it, the protons, being point charges (approximately) are pulling from a single direction. While most of the smudged out electron gets cancelled out in the area of interest
-                    // But, it should follow that at a distance, the electsron force and potential is as strong as the proton's
-                    // (Yet, at a distance, the electron and proton charges cancel each other out largely, unless it's an ion...)
-                    // So I guess it follows that the interesting bits are in the intermediate distances...
-                    // todo: Hard coded ito index 0.
-
-                    // Oh boy... this will slow things down... Simulating a charge at every grid point.,
-                    // acting on every other grid point.
-
-                    // todo: This is going to be a deal breaker most likely.
-
-                    if sfcs.elec_charges.len() > 0 {
-                        for i2 in 0..N {
-                            for j2 in 0..N {
-                                for k2 in 0..N {
-                                    // Don't compare the same point to itself; will get a divide-by-zero error
-                                    // on the distance.
-                                    if i2 == i && j2 == j && k2 == k {
-                                        continue;
-                                    }
-
-                                    let posit_sample_electron = grid_posits[i2][j2][k2];
-
-                                    let mut charge_this_grid_pt = 0.;
-                                    // for charge in &sfcs.elec_charges {
-                                    //     charge_this_grid_pt += charge[i2][j2][k2];
-                                    // }
-                                    charge_this_grid_pt += sfcs.elec_charges[i2][j2][k2];
-
-                                    // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
-                                    sfcs.V[i][j][k] += V_coulomb(
-                                        posit_sample_electron,
-                                        posit_sample,
-                                        charge_this_grid_pt,
-                                    );
-                                }
-                            }
-                        }
-                    }
+                    sfcs.V[i][j][k] +=
+                        find_hartree_V(&sfcs.elec_charges, grid_posits, posit_sample, i, j, k);
                 }
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
@@ -180,8 +146,12 @@ pub fn init_wf(
 
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-                sfcs.psi_pp_measured[i][j][k] =
-                    num_diff::find_ψ_pp_meas_fm_bases(posit_sample, bases, sfcs.psi[i][j][k], bases_visible);
+                sfcs.psi_pp_measured[i][j][k] = num_diff::find_ψ_pp_meas_fm_bases(
+                    posit_sample,
+                    bases,
+                    sfcs.psi[i][j][k],
+                    bases_visible,
+                );
             }
         }
     }
@@ -212,6 +182,54 @@ pub fn init_wf(
     //     &sfcs.grid_posits,
     //     num_diff::PsiPVar::Z,
     // );
+}
+
+/// Find the repulsion from electron wave functions.
+fn find_hartree_V(
+    elec_charges: &Arr3dReal,
+    grid_posits: &Arr3dVec,
+    posit_sample: Vec3,
+    i: usize,
+    j: usize,
+    k: usize,
+) -> f64 {
+    // Re why the electron interaction, in many cases, appears to be very small compared to protons: After thinking about it, the protons, being point charges (approximately) are pulling from a single direction. While most of the smudged out electron gets cancelled out in the area of interest
+    // But, it should follow that at a distance, the electsron force and potential is as strong as the proton's
+    // (Yet, at a distance, the electron and proton charges cancel each other out largely, unless it's an ion...)
+    // So I guess it follows that the interesting bits are in the intermediate distances...
+    // todo: Hard coded ito index 0.
+
+    // Oh boy... this will slow things down... Simulating a charge at every grid point.,
+    // acting on every other grid point.
+
+    let mut result = 0.;
+
+    if elec_charges.len() > 0 {
+        for i2 in 0..N {
+            for j2 in 0..N {
+                for k2 in 0..N {
+                    // Don't compare the same point to itself; will get a divide-by-zero error
+                    // on the distance.
+                    if i2 == i && j2 == j && k2 == k {
+                        continue;
+                    }
+
+                    let posit_sample_electron = grid_posits[i2][j2][k2];
+
+                    let mut charge_this_grid_pt = 0.;
+                    // for charge in &sfcs.elec_charges {
+                    //     charge_this_grid_pt += charge[i2][j2][k2];
+                    // }
+                    charge_this_grid_pt += elec_charges[i2][j2][k2];
+
+                    // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
+                    result += V_coulomb(posit_sample_electron, posit_sample, charge_this_grid_pt);
+                }
+            }
+        }
+    }
+
+    result
 }
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.

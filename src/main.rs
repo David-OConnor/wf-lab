@@ -28,7 +28,6 @@ mod eigen_fns;
 mod interp;
 mod nudge;
 mod num_diff;
-mod rbf;
 mod render;
 mod types;
 mod ui;
@@ -91,6 +90,9 @@ pub struct State {
     pub ui_active_elec: usize,
     /// if true, render the composite surfaces for all electrons, vice only the active one.
     pub ui_render_all_elecs: bool,
+    /// Rotation of the visual, around either the X or Y axis; used to better visualize
+    /// cases that would normally need to be panned through using hte Z-slic slider.
+    pub visual_rotation: f64,
     //
     // Below this are mainly experimental/WIP items
     //
@@ -288,6 +290,7 @@ fn main() {
         ui_z_displayed: 0.,
         ui_active_elec,
         ui_render_all_elecs: false,
+        visual_rotation: 0.,
         // gaussians,
         // L_2,
         // L_x,

@@ -7,7 +7,7 @@ use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
     interp,
-    rbf::Rbf,
+    // rbf::Rbf,
     util::{self},
     wf_ops::{ħ, N},
 };
@@ -434,34 +434,34 @@ pub(crate) fn find_ψ_pp_meas_from_interp(
     result / (h2 * h2)
 }
 
-/// Calcualte ψ'' measured, using a discrete function, interpolated.
-/// Calculate ψ'' based on a numerical derivative of psi
-/// in 3D.
-pub(crate) fn find_ψ_pp_meas_fm_rbf(posit_sample: Vec3, psi_sample: Cplx, rbf: &Rbf) -> Cplx {
-    let h2 = 0.01;
-
-    let x_prev = Vec3::new(posit_sample.x - h2, posit_sample.y, posit_sample.z);
-    let x_next = Vec3::new(posit_sample.x + h2, posit_sample.y, posit_sample.z);
-    let y_prev = Vec3::new(posit_sample.x, posit_sample.y - h2, posit_sample.z);
-    let y_next = Vec3::new(posit_sample.x, posit_sample.y + h2, posit_sample.z);
-    let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - h2);
-    let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + h2);
-
-    let psi_x_prev = rbf.interp_point(x_prev);
-    let psi_x_next = rbf.interp_point(x_next);
-    let psi_y_prev = rbf.interp_point(y_prev);
-    let psi_y_next = rbf.interp_point(y_next);
-    let psi_z_prev = rbf.interp_point(z_prev);
-    let psi_z_next = rbf.interp_point(z_next);
-
-    // todo: real only for now.
-
-    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-        - psi_sample.real * 6.;
-
-    // result / H_SQ
-    Cplx::from_real(result / (h2 * h2)) // todo real temp
-}
+// /// Calcualte ψ'' measured, using a discrete function, interpolated.
+// /// Calculate ψ'' based on a numerical derivative of psi
+// /// in 3D.
+// pub(crate) fn find_ψ_pp_meas_fm_rbf(posit_sample: Vec3, psi_sample: Cplx, rbf: &Rbf) -> Cplx {
+//     let h2 = 0.01;
+//
+//     let x_prev = Vec3::new(posit_sample.x - h2, posit_sample.y, posit_sample.z);
+//     let x_next = Vec3::new(posit_sample.x + h2, posit_sample.y, posit_sample.z);
+//     let y_prev = Vec3::new(posit_sample.x, posit_sample.y - h2, posit_sample.z);
+//     let y_next = Vec3::new(posit_sample.x, posit_sample.y + h2, posit_sample.z);
+//     let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - h2);
+//     let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + h2);
+//
+//     let psi_x_prev = rbf.interp_point(x_prev);
+//     let psi_x_next = rbf.interp_point(x_next);
+//     let psi_y_prev = rbf.interp_point(y_prev);
+//     let psi_y_next = rbf.interp_point(y_next);
+//     let psi_z_prev = rbf.interp_point(z_prev);
+//     let psi_z_next = rbf.interp_point(z_next);
+//
+//     // todo: real only for now.
+//
+//     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+//         - psi_sample.real * 6.;
+//
+//     // result / H_SQ
+//     Cplx::from_real(result / (h2 * h2)) // todo real temp
+// }
 
 /// Calcualte ψ'' measured, using our polynomial/sin/exp bases
 pub(crate) fn find_ψ_pp_meas_from_interp2(
