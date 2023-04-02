@@ -6,13 +6,12 @@ use graphics::{EngineUpdates, Scene};
 
 use crate::{
     basis_wfs::Basis,
-    eigen_fns, render,
+    eigen_fns, elec_elec, render, types,
     wf_ops::{self, N},
     State,
 };
 
 use lin_alg2::f64::{Quaternion, Vec3};
-use wf_lab::{elec_elec, types};
 
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
@@ -790,6 +789,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // &state.gaussians,
                 &state.charges_fixed,
                 &mut state.surfaces_per_elec[state.ui_active_elec],
+                &mut state.surfaces_shared.V_fixed_charges,
                 state.E[state.ui_active_elec],
                 updated_charges,
                 &mut state.grid_min,

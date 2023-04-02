@@ -19,7 +19,7 @@ pub fn linspace(range: (f64, f64), num_vals: usize) -> Vec<f64> {
 
 /// theta and r are anchored to the centern point. The center point and returned value
 /// are in global, cartesian coords.
-pub fn polar_to_cart(ctr: (f64, f64), theta: f64, r: f64) -> (f64, f64) {
+pub fn _polar_to_cart(ctr: (f64, f64), theta: f64, r: f64) -> (f64, f64) {
     let x = ctr.0 + theta.cos() * r;
     let y = ctr.1 + theta.cos() * r;
 
@@ -28,7 +28,7 @@ pub fn polar_to_cart(ctr: (f64, f64), theta: f64, r: f64) -> (f64, f64) {
 
 /// Converts spherical coordinates to cartesian. θ is inclination (lat). φ is azimuth (lon).
 /// θ is on a scale of 0 to τ/2. φ is on a scale of 0 to τ.
-pub fn spherical_to_cart(ctr: Vec3, θ: f64, φ: f64, r: f64) -> Vec3 {
+pub fn _spherical_to_cart(ctr: Vec3, θ: f64, φ: f64, r: f64) -> Vec3 {
     let x = ctr.x + r * θ.sin() * φ.cos();
     let y = ctr.y + r * θ.sin() * φ.sin();
     let z = ctr.z + r * θ.cos();

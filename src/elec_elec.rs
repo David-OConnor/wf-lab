@@ -12,7 +12,7 @@ use lin_alg2::f64::Vec3;
 
 /// Convert an array of ψ to one of electron charge, through space. Modifies in place
 /// to avoid unecessary allocations.
-pub fn update_charge_density_fm_psi(psi: &Arr3d, charge_density: &mut Arr3dReal) {
+pub(crate) fn update_charge_density_fm_psi(psi: &Arr3d, charge_density: &mut Arr3dReal) {
     // Normalize <ψ|ψ>
     let mut psi_sq_size = 0.;
     for i in 0..N {
@@ -38,7 +38,7 @@ pub fn update_charge_density_fm_psi(psi: &Arr3d, charge_density: &mut Arr3dReal)
 
 // todo: Currently unused.
 /// Update electron charge densities ψ, for every electron.
-pub fn update_charge_densities_fm_psi(
+pub(crate) fn update_charge_densities_fm_psi(
     charges_fm_elecs: &mut [Arr3dReal],
     psi_per_electron: &[Arr3d],
 ) {
@@ -52,7 +52,7 @@ pub fn update_charge_densities_fm_psi(
 /// to find the potential from (Born-Oppenheimer) nuclei.
 ///
 /// This should be run after charge densities are updated from psis.
-pub fn find_hartree_V(
+pub(crate) fn find_hartree_V(
     charges_electron: &[Arr3dReal],
     // The position in the array of this electron, so we don't have it repel itself.
     i_this_elec: usize,
@@ -102,10 +102,10 @@ pub fn find_hartree_V(
     result
 }
 
-/// Update potential for a single electron. This resets it to the V from nuclei, plus V
-/// from the wavefunction -> charge density of other electrons. Does not include charge density
+/// Update the (nuclear and other-electron) potential for a single electron. This resets it to the V from nuclei,
+/// plus V from the wavefunction -> charge density of other electrons. Does not include charge density
 /// from own Psi.
-pub fn update_V_individual(
+pub(crate) fn update_V_individual(
     V_this_elec: &mut Arr3dReal,
     V_nuclei: &Arr3dReal,
     charges_electron: &[Arr3dReal],
@@ -135,7 +135,7 @@ pub fn update_V_individual(
 }
 
 /// Calculate the result of exchange interactions between electrons.
-pub fn calc_exchange(psis: &[Arr3d], result: &mut Arr3d) {
+pub(crate) fn calc_exchange(psis: &[Arr3d], result: &mut Arr3d) {
     // for i_a in 0..N {
     //     for j_a in 0..N {
     //         for k_a in 0..N {

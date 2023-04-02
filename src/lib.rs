@@ -80,6 +80,8 @@ pub fn psi_from_pt_charges(
 
     let arr_real = types::new_data_real(wf_ops::N);
 
+    let mut V_shared = arr_real.clone();
+
     // These must be initialized from wave functions later.
     let charges_electron = vec![arr_real.clone(), arr_real];
 
@@ -91,6 +93,7 @@ pub fn psi_from_pt_charges(
         &wfs,
         &charges_fixed,
         &mut sfcs,
+        &mut V_shared,
         E,
         true,
         &mut grid_bounds.0,

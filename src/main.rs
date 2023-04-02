@@ -257,6 +257,7 @@ fn main() {
         &wfs,
         &charges_fixed,
         &mut surfaces_per_elec[ui_active_elec],
+        &mut surfaces_shared.V_fixed_charges,
         E,
         true,
         &mut grid_min,

@@ -44,7 +44,7 @@ pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 30;
+pub const N: usize = 32;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {
@@ -63,6 +63,7 @@ pub fn init_wf(
     bases: &[Basis],
     charges_fixed: &[(Vec3, f64)],
     sfcs: &mut SurfacesPerElec,
+    V_nuc_shared: &mut Arr3dReal,
     E: f64,
     update_charges: bool,
     grid_min: &mut f64,
@@ -76,7 +77,6 @@ pub fn init_wf(
 ) {
     // Set up the grid so that it smartly encompasses the charges, letting the WF go to 0
     // towards the edges
-    // todo: For now, maintain a cubic grid centered on 0.
     if update_charges {
         let mut max_abs_val = 0.;
         for (posit, _) in charges_fixed {
@@ -120,21 +120,15 @@ pub fn init_wf(
                 // in 3D.
 
                 if update_charges {
-                    sfcs.V[i][j][k] = 0.;
+                    V_nuc_shared[i][j][k] = 0.;
 
                     for (posit_charge, charge_amt) in charges_fixed.iter() {
-                        sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
+                        V_nuc_shared[i][j][k] +=
+                            V_coulomb(*posit_charge, posit_sample, *charge_amt);
                     }
 
-                    // sfcs.V[i][j][k] += find_hartree_V(
-                    //     charges_electron,
-                    //     i_this_elec,
-                    //     posit_sample,
-                    //     grid_posits,
-                    //     i,
-                    //     j,
-                    //     k,
-                    // );
+                    // // todo: Is this how we want to manage the per-surface vice shared Vs?
+                    // sfcs.V[i][j][k] = sfcs.V[i][j][k]
                 }
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
@@ -162,33 +156,6 @@ pub fn init_wf(
             }
         }
     }
-
-    // // todo: Initial hack at updating our psi' to see what insight it may have, eg into momentum.
-    // // todo: DRY on total vs each compoonent.
-    // num_diff::find_ψ_p_meas_fm_grid_irreg(
-    //     &sfcs.psi,
-    //     &mut sfcs.psi_p_total_measured,
-    //     &sfcs.grid_posits,
-    //     num_diff::PsiPVar::Total,
-    // );
-    // num_diff::find_ψ_p_meas_fm_grid_irreg(
-    //     &sfcs.psi,
-    //     &mut sfcs.psi_px_measured,
-    //     &sfcs.grid_posits,
-    //     num_diff::PsiPVar::X,
-    // );
-    // num_diff::find_ψ_p_meas_fm_grid_irreg(
-    //     &sfcs.psi,
-    //     &mut sfcs.psi_py_measured,
-    //     &sfcs.grid_posits,
-    //     num_diff::PsiPVar::Y,
-    // );
-    // num_diff::find_ψ_p_meas_fm_grid_irreg(
-    //     &sfcs.psi,
-    //     &mut sfcs.psi_pz_measured,
-    //     &sfcs.grid_posits,
-    //     num_diff::PsiPVar::Z,
-    // );
 }
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.

@@ -8,6 +8,7 @@ use crate::{
 use lin_alg2::f64::Vec3;
 
 pub struct SurfacesShared {
+    /// Represents points on a grid, for our non-uniform grid.
     pub grid_posits: Arr3dVec,
     /// Potential from nuclei, and all electrons
     pub V_combined: Arr3dReal,
@@ -80,10 +81,8 @@ impl SurfacesShared {
 /// `Vec`s here generally mean per-electron.
 #[derive(Clone)]
 pub struct SurfacesPerElec {
-    /// Represents points on a grid, for our non-uniform grid.
-    /// todo: V here is per electron, *explicitly so an electron doesn't interact with itself*.
+    /// V from the nucleus, and all *other* electrons
     pub V: Arr3dReal,
-    /// Per electron
     pub psi: Arr3d,
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
