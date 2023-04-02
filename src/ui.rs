@@ -11,8 +11,8 @@ use crate::{
     State,
 };
 
-use lin_alg2::f64::{EulerAngle, Quaternion, Vec3};
-use wf_lab::types;
+use lin_alg2::f64::{Quaternion, Vec3};
+use wf_lab::{elec_elec, types};
 
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
@@ -728,20 +728,31 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // *updated_wfs = true;
             }
 
-            if ui.add(egui::Button::new("Create e- V")).clicked() {
-                // hard-coded as first item for now.
-                wf_ops::charge_density_fm_psi(
+            if ui.add(egui::Button::new("Create e- charge")).clicked() {
+                elec_elec::update_charge_density_fm_psi(
                     &state.surfaces_per_elec[state.ui_active_elec].psi,
                     &mut state.charges_electron[state.ui_active_elec],
-                    1,
                 );
 
                 updated_wfs = true;
                 updated_charges = true;
             }
 
-            if ui.add(egui::Button::new("Empty e- V")).clicked() {
+            if ui.add(egui::Button::new("Empty e- charge")).clicked() {
                 state.charges_electron[state.ui_active_elec] = types::new_data_real(N);
+
+                updated_wfs = true;
+                updated_charges = true;
+            }
+
+            if ui.add(egui::Button::new("Create e- V")).clicked() {
+                elec_elec::update_V_individual(
+                    &mut state.surfaces_per_elec[state.ui_active_elec].V,
+                    &state.surfaces_shared.V_fixed_charges,
+                    &state.charges_electron,
+                    state.ui_active_elec,
+                    &state.surfaces_shared.grid_posits,
+                );
 
                 updated_wfs = true;
                 updated_charges = true;

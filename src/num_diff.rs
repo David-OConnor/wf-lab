@@ -2,11 +2,11 @@
 
 use lin_alg2::f64::Vec3;
 
-use crate::types::{Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec};
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
     interp,
+    types::{Arr3d, Arr3dBasis, Arr3dVec},
     // rbf::Rbf,
     util::{self},
     wf_ops::{ħ, N},
@@ -42,7 +42,7 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
     let mut psi_z_prev = Cplx::new_zero();
     let mut psi_z_next = Cplx::new_zero();
 
-    for (basis_i, basis) in bases.into_iter().enumerate() {
+    for (basis_i, basis) in bases.iter().enumerate() {
         let weight = if bases_visible[basis_i] {
             basis.weight()
         } else {
@@ -66,7 +66,7 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
 /// Find ψ'', numerically from ψ on an evenly-spaced-rectangular grid
 ///
 /// This solves, numerically, the eigenvalue equation for the Hamiltonian operator.
-pub(crate) fn find_ψ_pp_meas_fm_grid_reg(psi: &Arr3d, psi_pp_measured: &mut Arr3d, dx_sq: f64) {
+pub(crate) fn _find_ψ_pp_meas_fm_grid_reg(psi: &Arr3d, psi_pp_measured: &mut Arr3d, dx_sq: f64) {
     // Note re these edge-cases: Hopefully it doesn't matter, since the WF is flat around
     // the edges, if the boundaries are chosen appropriately.
     for i in 0..N {

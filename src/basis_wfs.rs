@@ -589,7 +589,7 @@ impl SinExpBasisPt {
 
 /// todo: Cplx?
 /// todo: Input args include indices, or not?
-fn interp_from_sin_exp_basis(
+fn _interp_from_sin_exp_basis(
     basis: &Arr3dBasis,
     pt: Vec3,
     i_tla: (usize, usize, usize), // todo: If you keep this apch, bundle
@@ -623,12 +623,12 @@ fn interp_from_sin_exp_basis(
     let brf_weight = 1.;
     let blf_weight = 1.;
 
-    (tla * tla_weight
+    tla * tla_weight
         + tra * tra_weight
         + bla * bla_weight
         + bra * bra_weight
         + tlf * tlf_weight
         + trf * trf_weight
         + blf * blf_weight
-        + brf * brf_weight)
+        + brf * brf_weight
 }

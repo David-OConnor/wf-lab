@@ -1,6 +1,9 @@
 #![allow(non_snake_case)]
 #![allow(mixed_script_confusables)]
 #![allow(uncommon_codepoints)]
+#![allow(confusable_idents)]
+#![allow(non_upper_case_globals)]
+#![allow(clippy::needless_range_loop)]
 
 //! This program explores solving the wave equation for
 //! arbitrary potentials. It visualizes the wave function in 3d, with user interaction.
@@ -25,6 +28,7 @@ mod basis_fn_finder;
 mod basis_wfs;
 mod complex_nums;
 mod eigen_fns;
+mod elec_elec;
 mod interp;
 mod nudge;
 mod num_diff;
@@ -35,11 +39,8 @@ mod util;
 mod wf_ops;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
-use complex_nums::Cplx;
-use wf_ops::{ħ, M_ELEC, N, Q_PROT};
-
-use crate::types::SurfacesShared;
-use types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec};
+use types::{Arr3dReal, SurfacesPerElec, SurfacesShared};
+use wf_ops::{N, Q_PROT};
 
 const NUM_SURFACES: usize = 6;
 
@@ -247,7 +248,7 @@ fn main() {
     }
 
     let mut charge_density = types::new_data_real(N);
-    wf_ops::charge_density_fm_psi(&psi_h00, &mut charge_density, 1);
+    elec_elec::update_charge_density_fm_psi(&psi_h00, &mut charge_density);
 
     // sfcs.elec_charges = vec![charge_density]; // todo: removed
     // todo: end short-term experiment

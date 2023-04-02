@@ -19,16 +19,13 @@
 // todo: Something that would really help: A recipe for which basis wfs to add for a given
 // todo potential.
 
-use core::f64::consts::FRAC_1_SQRT_2;
-
 use crate::{
-    basis_wfs::{Basis, SinExpBasisPt},
-    complex_nums::{Cplx, IM},
+    basis_wfs::Basis,
+    complex_nums::Cplx,
     eigen_fns,
-    interp,
     num_diff,
     // rbf::Rbf,
-    types::{Arr3d, Arr3dBasis, Arr3dReal, Arr3dVec, SurfacesPerElec},
+    types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec},
     util::{self},
 };
 
@@ -37,7 +34,7 @@ use lin_alg2::f64::Vec3;
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 const K_C: f64 = 1.;
 pub const Q_PROT: f64 = 1.;
-const Q_ELEC: f64 = -1.;
+pub const Q_ELEC: f64 = -1.;
 pub const M_ELEC: f64 = 1.;
 pub const ħ: f64 = 1.;
 
@@ -47,7 +44,7 @@ pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 60;
+pub const N: usize = 30;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {
@@ -64,7 +61,7 @@ pub enum Spin {
 /// through all grid points.
 pub fn init_wf(
     bases: &[Basis],
-    charges: &[(Vec3, f64)],
+    charges_fixed: &[(Vec3, f64)],
     sfcs: &mut SurfacesPerElec,
     E: f64,
     update_charges: bool,
@@ -74,15 +71,15 @@ pub fn init_wf(
     grid_posits: &mut Arr3dVec,
     bases_visible: &[bool],
     // Wave functions from other electrons, for calculating the Hartree potential.
-    charges_electron: &[Arr3dReal],
-    i_this_elec: usize,
+    _charges_electron: &[Arr3dReal],
+    _i_this_elec: usize,
 ) {
     // Set up the grid so that it smartly encompasses the charges, letting the WF go to 0
     // towards the edges
     // todo: For now, maintain a cubic grid centered on 0.
     if update_charges {
         let mut max_abs_val = 0.;
-        for (posit, _) in charges {
+        for (posit, _) in charges_fixed {
             if posit.x.abs() > max_abs_val {
                 max_abs_val = posit.x.abs();
             }
@@ -125,24 +122,24 @@ pub fn init_wf(
                 if update_charges {
                     sfcs.V[i][j][k] = 0.;
 
-                    for (posit_charge, charge_amt) in charges.iter() {
+                    for (posit_charge, charge_amt) in charges_fixed.iter() {
                         sfcs.V[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
                     }
 
-                    sfcs.V[i][j][k] += find_hartree_V(
-                        charges_electron,
-                        i_this_elec,
-                        posit_sample,
-                        grid_posits,
-                        i,
-                        j,
-                        k,
-                    );
+                    // sfcs.V[i][j][k] += find_hartree_V(
+                    //     charges_electron,
+                    //     i_this_elec,
+                    //     posit_sample,
+                    //     grid_posits,
+                    //     i,
+                    //     j,
+                    //     k,
+                    // );
                 }
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
 
-                for (basis_i, basis) in bases.into_iter().enumerate() {
+                for (basis_i, basis) in bases.iter().enumerate() {
                     let weight = if bases_visible[basis_i] {
                         basis.weight()
                     } else {
@@ -192,62 +189,6 @@ pub fn init_wf(
     //     &sfcs.grid_posits,
     //     num_diff::PsiPVar::Z,
     // );
-}
-
-/// Find the repulsion from electron wave functions.
-/// The API uses a given index to represent a point in space, since we may combine this calculation in a loop
-/// to find the potential from (Born-Oppenheimer) nuclei.
-fn find_hartree_V(
-    charges_electron: &[Arr3dReal],
-    // The position in the array of this electron, so we don't have it repel itself.
-    i_this_elec: usize,
-    posit_sample: Vec3,
-    grid_posits: &Arr3dVec,
-    i: usize,
-    j: usize,
-    k: usize,
-) -> f64 {
-    // Re why the electron interaction, in many cases, appears to be very small compared to protons: After thinking about it, the protons, being point charges (approximately) are pulling from a single direction. While most of the smudged out electron gets cancelled out in the area of interest
-    // But, it should follow that at a distance, the electsron force and potential is as strong as the proton's
-    // (Yet, at a distance, the electron and proton charges cancel each other out largely, unless it's an ion...)
-    // So I guess it follows that the interesting bits are in the intermediate distances...
-    // todo: Hard coded ito index 0.
-
-    // Oh boy... this will slow things down... Simulating a charge at every grid point.,
-    // acting on every other grid point.
-
-    let mut result = 0.;
-
-    for (i_other_elec, charge_other_elec) in charges_electron.into_iter().enumerate() {
-        if i_other_elec == i_this_elec {
-            continue;
-        }
-
-        for i2 in 0..N {
-            for j2 in 0..N {
-                for k2 in 0..N {
-                    // Don't compare the same point to itself; will get a divide-by-zero error
-                    // on the distance.
-                    if i2 == i && j2 == j && k2 == k {
-                        continue;
-                    }
-
-                    let posit_sample_electron = grid_posits[i2][j2][k2];
-
-                    let mut charge_this_grid_pt = 0.;
-                    // for charge in &sfcs.elec_charges {
-                    //     charge_this_grid_pt += charge[i2][j2][k2];
-                    // }
-                    charge_this_grid_pt += charge_other_elec[i2][j2][k2];
-
-                    // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
-                    result += V_coulomb(posit_sample_electron, posit_sample, charge_this_grid_pt);
-                }
-            }
-        }
-    }
-
-    result
 }
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
@@ -338,47 +279,12 @@ pub fn score_wf(sfcs: &SurfacesPerElec) -> f64 {
     result
 }
 
-/// Convert an array of Psi to one of electron potential. Modifies in place
-/// to avoid unecessary allocations. Not-normalized.
-fn charge_density_fm_psi_one(psi: &Arr3d, num_elecs: usize, i: usize, j: usize, k: usize) -> f64 {
-    // Save computation on this constant factor.
-    let psi_sq_size = 1.; // todo: Wrong! This should be a normalization constant.
-    let c = -Q_ELEC * num_elecs as f64 / psi_sq_size;
-    let mag = psi[i][j][k].abs_sq();
-    mag * c
-}
-
 /// Single-point Coulomb potential, eg a hydrogen nuclei.
-fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
+pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
     let diff = posit_sample - posit_charge;
     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
     -K_C * charge / r
-}
-
-/// Convert an array of Psi to one of electron charge through space. Modifies in place
-/// to avoid unecessary allocations.
-pub fn charge_density_fm_psi(psi: &Arr3d, charge_density: &mut Arr3dReal, num_elecs: usize) {
-    // Normalize <ψ|ψ>
-    let mut psi_sq_size = 0.;
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
-                psi_sq_size += psi[i][j][k].abs_sq();
-            }
-        }
-    }
-
-    // Save computation on this constant factor.
-    let c = Q_ELEC * num_elecs as f64 / psi_sq_size;
-
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
-                charge_density[i][j][k] = psi[i][j][k].abs_sq() * c;
-            }
-        }
-    }
 }
 
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
@@ -477,46 +383,6 @@ pub fn update_grid_posits(
         for (j, y) in grid_1d.iter().enumerate() {
             for (k, z) in grid_1d.iter().enumerate() {
                 grid_posits[i][j][k] = Vec3::new(*x, *y, *z);
-            }
-        }
-    }
-}
-
-/// Calculate the result of exchange interactions between electrons.
-pub fn calc_exchange(psis: &[Arr3d], result: &mut Arr3d) {
-    // for i_a in 0..N {
-    //     for j_a in 0..N {
-    //         for k_a in 0..N {
-    //             for i_b in 0..N {
-    //                 for j_b in 0..N {
-    //                     for k_b in 0..N {
-    //
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    *result = Arr3d::new();
-
-    for a in 0..N {
-        // todo: i, j, k for 3D
-        for b in 0..N {
-            // This term will always be 0, so skipping  here may save calculation.
-            if a == b {
-                continue;
-            }
-            // Enumerate so we don't calculate exchange on a WF with itself.
-            for (i_1, psi_1) in psis.into_iter().enumerate() {
-                for (i_2, psi_2) in psis.into_iter().enumerate() {
-                    // Don't calcualte exchange with self
-                    if i_1 == i_2 {
-                        continue;
-                    }
-
-                    // todo: THink this through. What index to update?
-                    // result[a] += FRAC_1_SQRT_2 * (psi_1[a] * psi_2[b] - psi_2[a] * psi_1[b]);
-                }
             }
         }
     }

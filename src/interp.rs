@@ -4,9 +4,7 @@
 // todo: This possibly needs complex support. Perhaps as a wrapper since you can treat the real and
 // todo complex parts separately.
 
-use std::f64::consts::TAU;
-
-use crate::{basis_wfs::Basis, complex_nums::Cplx, util};
+use crate::{basis_wfs::Basis, complex_nums::Cplx};
 
 use lin_alg2::f64::Vec3;
 
@@ -166,9 +164,7 @@ pub fn create_quadratic_term(pt0: (f64, f64), pt1: (f64, f64), pt2: (f64, f64)) 
 
     let a_denom = (pt0.0 - pt1.0) * (pt0.0 - pt2.0) * (pt1.0 - pt2.0);
 
-    let a = a_num / a_denom;
-
-    a
+    a_num / a_denom
 }
 
 // /// Utility function to linearly map an input value to an output
@@ -183,9 +179,10 @@ pub fn create_quadratic_term(pt0: (f64, f64), pt1: (f64, f64), pt2: (f64, f64)) 
 /// todo: Experimental
 /// Estimate the value of psi at a given point, given its value defined
 /// at other points of arbitrary spacing and alignment.
-fn psi_at_pt(charges: Vec3, grid_vals: &[(Vec3, Cplx)]) -> Cplx {
+fn _psi_at_pt(charges: Vec3, grid_vals: &[(Vec3, Cplx)]) -> Cplx {
     Cplx::new_zero()
 }
+
 //
 // /// Set up Radial Basis Function (RBF) interpolation, with spherical grids centered around
 // /// nuclei, and a higher concentration of shells closer to nuclei.

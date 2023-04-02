@@ -22,13 +22,13 @@
 //! L^2 = d_psi_d_x^2 + d_psi_d_y^2 + d_psi_d_z^2
 
 use crate::{
-    complex_nums::{Cplx, IM},
+    complex_nums::Cplx,
     types::{Arr3d, Arr3dReal},
     wf_ops::{self, ħ},
 };
 
 pub const KE_COEFF: f64 = -2. * wf_ops::M_ELEC / (ħ * ħ);
-pub const KE_COEFF_INV: f64 = 1. / KE_COEFF;
+pub const _KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 /// Calcualte psi'', calculated from psi, and E. Note that the V term used must include both
 /// electron-electron interactions, and electron-proton interactions.

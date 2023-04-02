@@ -1,10 +1,16 @@
 #![allow(non_snake_case)]
+#![allow(mixed_script_confusables)]
+#![allow(uncommon_codepoints)]
+#![allow(confusable_idents)]
+#![allow(non_upper_case_globals)]
+#![allow(clippy::needless_range_loop)]
 
 //! We use this module to define exports for when
 /// using this package as a library.
 pub mod basis_wfs;
 pub mod complex_nums;
 mod eigen_fns;
+pub mod elec_elec;
 pub mod interp;
 pub mod nudge;
 mod num_diff;
@@ -13,9 +19,9 @@ pub mod util;
 pub mod wf_ops;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic};
+use types::{Arr3d, SurfacesPerElec};
 
 use lin_alg2::f64::Vec3;
-use types::{Arr3d, Arr3dReal, SurfacesPerElec};
 
 /// Create trial wave functions for a given point-charge distibution. Currently
 /// a rough approach using low-energy STOs centered on the charges.
@@ -25,7 +31,7 @@ fn create_trial_wfs(charges: &[(Vec3, f64)]) -> Vec<Basis> {
     // todo: For now, we are hard-coding weights of +1. A next-step approximation may be
     // todo try various combinations of weights (either +1 and -1, or by tweaking the sliders)
     // todo then starting with the one that gives the best initial score.
-    for (id, (charge_posit, charge_amt)) in charges.into_iter().enumerate() {
+    for (id, (charge_posit, charge_amt)) in charges.iter().enumerate() {
         result.push(Basis::H(HOrbital::new(
             *charge_posit,
             1,
@@ -104,7 +110,7 @@ pub fn psi_from_pt_charges(
         &mut E,
         grid_bounds.0,
         grid_bounds.1,
-        &bases,
+        bases,
         &grid_posits,
     );
 

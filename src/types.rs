@@ -1,7 +1,7 @@
 use crate::{
     basis_wfs::SinExpBasisPt,
     complex_nums::Cplx,
-    eigen_fns, num_diff,
+    num_diff,
     wf_ops::{self, N, NUDGE_DEFAULT},
 };
 
@@ -9,6 +9,11 @@ use lin_alg2::f64::Vec3;
 
 pub struct SurfacesShared {
     pub grid_posits: Arr3dVec,
+    /// Potential from nuclei, and all electrons
+    pub V_combined: Arr3dReal,
+    /// Potential from nuclei only. We use this as a baseline for individual electron
+    /// potentials, prior to summing over V from other electrons.
+    pub V_fixed_charges: Arr3dReal,
     /// `psi` etc here are combined from all individual electron wave functions.
     pub psi: Arr3d,
     // pub psi_pp_calculated: Arr3d, // todo??
@@ -19,15 +24,18 @@ pub struct SurfacesShared {
 impl SurfacesShared {
     pub fn new(grid_min: f64, grid_max: f64, spacing_factor: f64) -> Self {
         let data = new_data(N);
+        let data_real = new_data_real(N);
 
         let mut grid_posits = new_data_vec(N);
         wf_ops::update_grid_posits(&mut grid_posits, grid_min, grid_max, spacing_factor);
 
         Self {
             grid_posits,
+            V_combined: data_real.clone(),
+            V_fixed_charges: data_real,
             psi: data.clone(),
             // psi_pp_calculated: data.clone(),
-            psi_pp_measured: data.clone(),
+            psi_pp_measured: data,
         }
     }
 
@@ -40,7 +48,7 @@ impl SurfacesShared {
                 for k in 0..N {
                     self.psi[i][j][k] = Cplx::new_zero();
 
-                    for (part_i, part) in per_elec.into_iter().enumerate() {
+                    for (part_i, part) in per_elec.iter().enumerate() {
                         self.psi[i][j][k] += part.psi[i][j][k];
 
                         // todo: Come back to this once you figure out how to handle V here.
@@ -133,7 +141,7 @@ impl Default for SurfacesPerElec {
             nudge_amounts: default_nudges,
 
             aux1: data.clone(),
-            aux2: data.clone(),
+            aux2: data,
             // psi_prev: data.clone(),
             // bases: new_data_basis(N),
             // momentum: data.clone(),

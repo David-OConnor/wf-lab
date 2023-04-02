@@ -6,11 +6,8 @@ use crate::{
     complex_nums::Cplx,
     eigen_fns, num_diff, types,
     types::{Arr3dVec, SurfacesPerElec},
-    util,
     wf_ops::{self, N},
 };
-
-use lin_alg2::f64::Vec3;
 
 // todo: Nudging is a good candidate for GPU. Try to impl in Vulkan / WGPU.
 
@@ -121,7 +118,7 @@ pub fn nudge_wf(
             num_diff::find_ψ_pp_meas_fm_grid_irreg(
                 &sfcs.psi,
                 &mut sfcs.psi_pp_measured,
-                &grid_posits,
+                grid_posits,
             );
             // todo: Here lies one of the strange bracket mismatches that is helping our cause
             // todo (Uncomment one to engage the strange behavior)

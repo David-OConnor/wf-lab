@@ -1,5 +1,3 @@
-use crate::{basis_wfs::SinExpBasisPt, complex_nums::Cplx, wf_ops::N};
-
 use lin_alg2::f64::Vec3;
 
 /// Create a set of values in a given range, with a given number of values.
