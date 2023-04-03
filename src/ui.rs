@@ -781,24 +781,27 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             }
         });
 
-        if updated_wfs {
-            engine_updates.meshes = true;
-
-            wf_ops::init_wf(
-                &state.bases[state.ui_active_elec],
-                // &state.gaussians,
+        if updated_charges {
+            wf_ops::update_V_fm_fixed_charges(
                 &state.charges_fixed,
-                &mut state.surfaces_per_elec[state.ui_active_elec],
                 &mut state.surfaces_shared.V_fixed_charges,
-                state.E[state.ui_active_elec],
-                updated_charges,
                 &mut state.grid_min,
                 &mut state.grid_max,
                 state.spacing_factor,
                 &mut state.surfaces_shared.grid_posits,
+            );
+        }
+
+        if updated_wfs {
+            engine_updates.meshes = true;
+
+            // Set up our basis-function based trial wave function.
+            wf_ops::update_wf_fm_bases(
+                &state.bases[state.ui_active_elec],
+                &mut state.surfaces_per_elec[state.ui_active_elec],
+                state.E[state.ui_active_elec],
+                &mut state.surfaces_shared.grid_posits,
                 &state.bases_visible[state.ui_active_elec],
-                &state.charges_electron,
-                state.ui_active_elec,
             );
 
             state.psi_pp_score[state.ui_active_elec] =

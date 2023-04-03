@@ -22,6 +22,8 @@
 // You may need to interpolate to avoid quantized (not in the way we need!) positions
 // at the grid you chose. Linear is fine.
 
+// Consider an adjustable N, so you can use a coarse initial estimate, then refine.
+
 use lin_alg2::f64::{Quaternion, Vec3};
 
 mod basis_fn_finder;
@@ -253,20 +255,22 @@ fn main() {
     // sfcs.elec_charges = vec![charge_density]; // todo: removed
     // todo: end short-term experiment
 
-    wf_ops::init_wf(
-        &wfs,
+    wf_ops::update_V_fm_fixed_charges(
         &charges_fixed,
-        &mut surfaces_per_elec[ui_active_elec],
         &mut surfaces_shared.V_fixed_charges,
-        E,
-        true,
         &mut grid_min,
         &mut grid_max,
         spacing_factor,
         &mut surfaces_shared.grid_posits,
+    );
+
+    // Set up our basis-function based trial wave function.
+    wf_ops::update_wf_fm_bases(
+        &wfs,
+        &mut surfaces_per_elec[ui_active_elec],
+        E,
+        &mut surfaces_shared.grid_posits,
         &bases_visible[ui_active_elec],
-        &charges_electron,
-        ui_active_elec,
     );
 
     let psi_p_score = 0.; // todo T

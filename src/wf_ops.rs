@@ -52,84 +52,77 @@ pub enum Spin {
     Dn,
 }
 
-/// This is our main computation function for sfcs. It:
-/// - Computes V from charges
-/// - Computes a trial ψ from basis functions
-/// - Computes ψ'' calculated, and measured from the trial ψ
-/// Modifies in place to conserve memory. These operations are combined in the same function to
-/// save computation, since they're often run at once, and can be iterated through using a single loop
-/// through all grid points.
-pub fn init_wf(
-    bases: &[Basis],
+/// - Computes V from "fixed" charges, ie nuclei. Run this after changing these charges.
+/// Does not modify per-electron charges; those are updated elsewhere, incorporating the
+/// potential here, as well as from other electrons.
+pub fn update_V_fm_fixed_charges(
     charges_fixed: &[(Vec3, f64)],
-    sfcs: &mut SurfacesPerElec,
     V_nuc_shared: &mut Arr3dReal,
-    E: f64,
-    update_charges: bool,
     grid_min: &mut f64,
     grid_max: &mut f64,
     spacing_factor: f64,
     grid_posits: &mut Arr3dVec,
-    bases_visible: &[bool],
     // Wave functions from other electrons, for calculating the Hartree potential.
-    _charges_electron: &[Arr3dReal],
-    _i_this_elec: usize,
+    // charges_electron: &[Arr3dReal],
+    // i_this_elec: usize,
 ) {
     // Set up the grid so that it smartly encompasses the charges, letting the WF go to 0
     // towards the edges
-    if update_charges {
-        let mut max_abs_val = 0.;
-        for (posit, _) in charges_fixed {
-            if posit.x.abs() > max_abs_val {
-                max_abs_val = posit.x.abs();
-            }
-            if posit.y.abs() > max_abs_val {
-                max_abs_val = posit.y.abs();
-            }
-            if posit.z.abs() > max_abs_val {
-                max_abs_val = posit.z.abs();
-            }
+    let mut max_abs_val = 0.;
+    for (posit, _) in charges_fixed {
+        if posit.x.abs() > max_abs_val {
+            max_abs_val = posit.x.abs();
         }
-
-        // const RANGE_PAD: f64 = 1.6;
-        const RANGE_PAD: f64 = 5.8;
-        // const RANGE_PAD: f64 = 15.;
-
-        *grid_max = max_abs_val + RANGE_PAD;
-        *grid_min = -*grid_max;
-        update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor);
+        if posit.y.abs() > max_abs_val {
+            max_abs_val = posit.y.abs();
+        }
+        if posit.z.abs() > max_abs_val {
+            max_abs_val = posit.z.abs();
+        }
     }
 
-    // todo: Store these somewhere to save on computation? minor pt.
-    // let grid_1d = util::linspace((*grid_min, *grid_max), N);
+    // const RANGE_PAD: f64 = 1.6;
+    const RANGE_PAD: f64 = 5.8;
+    // const RANGE_PAD: f64 = 15.;
 
-    // Our initial psi'' measured uses our analytic LCAO system, which doesn't have the
-    // grid edge and precision issues of the fixed numerical grid we use to tune the trial
-    // WF.
-    // for (i, x) in grid_1d.iter().enumerate() {
-    //     for (j, y) in grid_1d.iter().enumerate() {
-    //         for (k, z) in grid_1d.iter().enumerate() {
-    //             let posit_sample = Vec3::new(*x, *y, *z);
+    *grid_max = max_abs_val + RANGE_PAD;
+    *grid_min = -*grid_max;
+    update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor);
 
     for i in 0..N {
         for j in 0..N {
             for k in 0..N {
                 let posit_sample = grid_posits[i][j][k];
 
-                // Calculate psi'' based on a numerical derivative of psi
-                // in 3D.
+                V_nuc_shared[i][j][k] = 0.;
 
-                if update_charges {
-                    V_nuc_shared[i][j][k] = 0.;
-
-                    for (posit_charge, charge_amt) in charges_fixed.iter() {
-                        V_nuc_shared[i][j][k] +=
-                            V_coulomb(*posit_charge, posit_sample, *charge_amt);
-                    }
-
-                    // // todo: Is this how we want to manage the per-surface vice shared Vs?
-                    // sfcs.V[i][j][k] = sfcs.V[i][j][k]
+                for (posit_charge, charge_amt) in charges_fixed.iter() {
+                    V_nuc_shared[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
                 }
+                // Note: We update individual electron Vs (eg with fixed + all *other* elec Vs
+                // in `elec_elec::update_V_individual()`.
+                // sfcs.V[i][j][k] = sfcs.V[i][j][k]
+            }
+        }
+    }
+}
+
+/// - Computes a trial ψ from basis functions
+/// - Computes ψ'' calculated, and measured from the trial ψ
+/// Modifies in place to conserve memory. These operations are combined in the same function to
+/// save computation, since they're often run at once, and can be iterated through using a single loop
+/// through all grid points.
+pub fn update_wf_fm_bases(
+    bases: &[Basis],
+    sfcs: &mut SurfacesPerElec,
+    E: f64,
+    grid_posits: &mut Arr3dVec,
+    bases_visible: &[bool],
+) {
+    for i in 0..N {
+        for j in 0..N {
+            for k in 0..N {
+                let posit_sample = grid_posits[i][j][k];
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
 
@@ -145,6 +138,8 @@ pub fn init_wf(
                 sfcs.psi_pp_calculated[i][j][k] =
                     eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
 
+                // Calculate psi'' based on a numerical derivative of psi
+                // in 3D.
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
                 sfcs.psi_pp_measured[i][j][k] = num_diff::find_ψ_pp_meas_fm_bases(
