@@ -421,7 +421,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         // ui.add_space(ITEM_SPACING);
 
-        let mut updated_wfs = false;
+        let mut updated_basis_wfs = false;
         let mut updated_charges = false;
 
         ui.heading(format!(
@@ -652,7 +652,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // state.h_grid = (state.grid_max - state.grid_min) / (N as f64);
                     // state.h_grid_sq = state.h_grid.powi(2);
 
-                    updated_wfs = true;
+                    updated_basis_wfs = true;
                     updated_charges = true; // Seems to be required.
                 }
 
@@ -681,7 +681,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         charge_editor(
             &mut state.charges_fixed,
             &mut state.bases[state.ui_active_elec],
-            &mut updated_wfs,
+            &mut updated_basis_wfs,
             &mut updated_charges,
             &mut engine_updates.entities,
             ui,
@@ -692,7 +692,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.heading("Wave functions and weights:");
 
         // basis_fn_mixer(state, &mut updated_wfs, ui, &mut engine_updates, scene);
-        basis_fn_mixer(state, &mut updated_wfs, ui);
+        basis_fn_mixer(state, &mut updated_basis_wfs, ui);
 
         ui.add_space(ITEM_SPACING);
 
@@ -733,14 +733,14 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &mut state.charges_electron[state.ui_active_elec],
                 );
 
-                updated_wfs = true;
+                updated_basis_wfs = true;
                 updated_charges = true;
             }
 
             if ui.add(egui::Button::new("Empty e- charge")).clicked() {
                 state.charges_electron[state.ui_active_elec] = types::new_data_real(N);
 
-                updated_wfs = true;
+                updated_basis_wfs = true;
                 updated_charges = true;
             }
 
@@ -753,7 +753,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &state.surfaces_shared.grid_posits,
                 );
 
-                updated_wfs = true;
+                updated_basis_wfs = true;
                 updated_charges = true;
             }
 
@@ -792,7 +792,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             );
         }
 
-        if updated_wfs {
+        if updated_basis_wfs {
             engine_updates.meshes = true;
 
             // Set up our basis-function based trial wave function.

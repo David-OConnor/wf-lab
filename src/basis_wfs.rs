@@ -14,6 +14,7 @@
 // - second derivative term only in WF -- Is there a tie in to general relatively and gravity?
 // - Metric (or other) tensor per point in space?
 
+use std::f32::consts::TAU;
 use std::f64::consts::PI;
 
 use crate::complex_nums::{Cplx, IM};
@@ -188,6 +189,27 @@ pub struct SphericalHarmonic {
 // todo instead of an enum that contains discrete values. This is your
 // todo likely approach.
 
+// todo: Move to util
+
+/// Compute factorial using a LUT.
+fn factorial(val: u16) -> u64 {
+    match val {
+        1 => 1,
+        2 => 2,
+        3 => 6,
+        4 => 24,
+        5 => 120,
+        6 => 720,
+        7 => 5040,
+        8 => 40_320,
+        9 => 362_880,
+        10 => 3_628_800,
+        11 => 39_916_800,
+        12 => 479_001_600,
+        _ => unimplemented!(),
+    }
+}
+
 impl SphericalHarmonic {
     pub fn new(l: u16, m: i16, orientation: Quaternion) -> Self {
         assert!(m.abs() as u16 <= l);
@@ -201,7 +223,16 @@ impl SphericalHarmonic {
     /// since we handle that at the basis fn level.
     ///
     /// https://en.wikipedia.org/wiki/Table_of_spherical_harmonics
+    ///
+    /// https://docs.rs/scilib/latest/scilib/quantum/index.html: Has an example general equation
     pub fn value(&self, θ: f64, ϕ: f64) -> Cplx {
+
+        // todo: You could hard-code some of the more common ones like l = 0.
+
+        // todo: QC this.
+        let part1 = (2 * self.l + 1) / (4. * PI) * factorial(l - m) / factorial(l + m);
+        return -1.0.powi(self.m) * part1.sqrt() * P(m_l) * θ.cos() * (IM * ϕ).exp();
+
         // todo: Hard-coded match arms for now.
 
         // todo: Shortcut  vars or consts for repeated patterns A/R
@@ -368,12 +399,23 @@ impl HOrbital {
     /// 02%3A_Atomic_Structure/2.02%3A_The_Schrodinger_equation_particle_in_a_box_and_atomic_wavefunctions/2.2.02%3A_Quantum_Numbers_and_Atomic_Wave_Functions
     ///
     /// todo: That link above has errors! Ref this:
-    /// https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Map%3A_Physical_Chemistry_for_the_Biosciences_(Chang)/11%3A_Quantum_Mechanics_and_Atomic_Structure/11.10%3A_The_Schrodinger_Wave_Equation_for_the_Hydrogen_Atom
+    /// https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Map%3A_Physical_Chemistry_for_the_Biosciences_(Chang)
+    /// /11%3A_Quantum_Mechanics_and_Atomic_Structure/11.10%3A_The_Schrodinger_Wave_Equation_for_the_Hydrogen_Atom
+    /// [This ref](http://staff.ustc.edu.cn/~zqj/posts/Hydrogen-Wavefunction/) has a general equation
+    /// at its top, separated into radial and angular parts.
     fn radial(&self, r: f64, l: u16) -> f64 {
+
+        // todo: YOu can calculate this analytically using Laguerre polynomials.
+
+        let L = ?;
+        let part1 = (2./(self.n * A_0)).powi(3) * factorial(self.n - l - 1.) / (2. * self.n * factorial(self.n + l));
+        // Todo: Sources differ on if the (2r/nA0) term is exponenated to l.
+        return (part1).sqrt() * (-r / (self.n * A_0)).exp() * (2. * r / (self.n * A_0)).powi(l) * L;
+
         // N is the normalization constant for the radial part
         let ρ = Z_H * r / A_0;
 
-        let c = (Z_H * A_0).powf(3. / 2.);
+        const C: f64 = (Z_H * A_0).powf(3. / 2.);
 
         // Z is the charge of the nucleus.
 
@@ -402,7 +444,7 @@ impl HOrbital {
 
         let part2 = (-ρ / self.n as f64).exp();
 
-        part1 * part2 * c
+        part1 * part2 * C
     }
 
     /// Calculate this basis function's value at a given point.
