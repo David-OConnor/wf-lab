@@ -26,6 +26,7 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
     posit_sample: Vec3,
     bases: &[Basis],
     psi_sample_loc: Cplx,
+    psi_norm: f64,
     bases_visible: &[bool],
 ) -> Cplx {
     let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
@@ -56,6 +57,14 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
         psi_z_prev += basis.value(z_prev) * weight;
         psi_z_next += basis.value(z_next) * weight;
     }
+
+    // todo: Your cplx div fn is wrong fyi.
+    psi_x_prev = psi_x_prev / psi_norm;
+    psi_x_next = psi_x_next / psi_norm;
+    psi_y_prev = psi_y_prev / psi_norm;
+    psi_y_next = psi_y_next / psi_norm;
+    psi_z_prev = psi_z_prev / psi_norm;
+    psi_z_next = psi_z_next / psi_norm;
 
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - psi_sample_loc * 6.;

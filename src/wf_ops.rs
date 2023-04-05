@@ -109,7 +109,8 @@ pub fn update_V_fm_fixed_charges(
 }
 
 /// Normalize a wave function so that <ψ|ψ> = 1.
-fn normalize_wf(arr: &mut Arr3d, n: usize) {
+/// Returns the norm value for use in normalizing basis fns in psi''_measured calculation.
+fn normalize_wf(arr: &mut Arr3d, n: usize) -> f64 {
     // let mut norm = Cplx::new_zero();
     let mut norm = 0.;
 
@@ -120,14 +121,18 @@ fn normalize_wf(arr: &mut Arr3d, n: usize) {
             }
         }
     }
+    norm = norm.sqrt();
+
     for i in 0..n {
         for j in 0..n {
             for k in 0..n {
                 // todo: check your div impl! Likely wrong; doesn't normalize imag part!
-                arr[i][j][k] = arr[i][j][k] / norm.sqrt();
+                arr[i][j][k] = arr[i][j][k] / norm;
             }
         }
     }
+
+    norm
 }
 
 /// - Computes a trial ψ from basis functions
@@ -159,6 +164,31 @@ pub fn update_wf_fm_bases(
                     sfcs.psi[i][j][k] += basis.value(posit_sample) * weight;
                 }
 
+                // sfcs.psi_pp_calculated[i][j][k] =
+                //     eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
+                //
+                // // Calculate psi'' based on a numerical derivative of psi
+                // // in 3D.
+                // // We can compute ψ'' measured this in the same loop here, since we're using an analytic
+                // // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
+                // sfcs.psi_pp_measured[i][j][k] = num_diff::find_ψ_pp_meas_fm_bases(
+                //     posit_sample,
+                //     bases,
+                //     sfcs.psi[i][j][k],
+                //     bases_visible,
+                // );
+            }
+        }
+    }
+
+    let psi_norm = normalize_wf(&mut sfcs.psi, N);
+
+    // Update psi_pps after normalization.
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
+                let posit_sample = grid_posits[i][j][k];
+
                 sfcs.psi_pp_calculated[i][j][k] =
                     eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
 
@@ -170,13 +200,12 @@ pub fn update_wf_fm_bases(
                     posit_sample,
                     bases,
                     sfcs.psi[i][j][k],
+                    psi_norm,
                     bases_visible,
                 );
             }
         }
     }
-
-    normalize_wf(&mut sfcs.psi, N);
 }
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.

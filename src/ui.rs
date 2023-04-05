@@ -408,9 +408,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 if let Some(v_) = v {
                     state.E[state.ui_active_elec] = v_;
 
-                    for i in 0..N {
-                        for j in 0..N {
-                            for k in 0..N {
+                    for i in 0..state.grid_n {
+                        for j in 0..state.grid_n {
+                            for k in 0..state.grid_n {
                                 state.surfaces_per_elec[state.ui_active_elec].psi_pp_calculated[i]
                                     [j][k] = eigen_fns::find_ψ_pp_calc(
                                     &state.surfaces_per_elec[state.ui_active_elec].psi,
@@ -424,7 +424,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         }
                     }
 
-                    state.psi_pp_score[state.ui_active_elec] = crate::wf_ops::score_wf(
+                    state.psi_pp_score[state.ui_active_elec] = wf_ops::score_wf(
                         &state.surfaces_per_elec[state.ui_active_elec],
                         state.grid_n,
                     );

@@ -194,8 +194,8 @@ fn main() {
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges_fixed = vec![
         (posit_charge_1, Q_PROT * 1.), // helium
-        // (posit_charge_2, Q_PROT),
-        // (Vec3::new(0., 1., 0.), Q_ELEC),
+                                       // (posit_charge_2, Q_PROT),
+                                       // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
     let arr_real = types::new_data_real(N);
@@ -231,28 +231,28 @@ fn main() {
     // todo: Short-term experiment
     // Set up an initial charge of a s0 Hydrogen orbital. Computationally intensive to use any of
     // these charges, but
-    let mut psi_h00 = types::new_data(N);
-
-    let h00 = Basis::H(HOrbital::new(
-        posit_charge_1,
-        1,
-        SphericalHarmonic::default(),
-        1.,
-        0,
-    ));
-
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
-                let posit_sample = surfaces_shared.grid_posits[i][j][k];
-
-                psi_h00[i][j][k] = h00.value(posit_sample) * h00.weight();
-            }
-        }
-    }
-
-    let mut charge_density = types::new_data_real(N);
-    elec_elec::update_charge_density_fm_psi(&psi_h00, &mut charge_density);
+    // let mut psi_h00 = types::new_data(N);
+    //
+    // let h00 = Basis::H(HOrbital::new(
+    //     posit_charge_1,
+    //     1,
+    //     SphericalHarmonic::default(),
+    //     1.,
+    //     0,
+    // ));
+    //
+    // for i in 0..N {
+    //     for j in 0..N {
+    //         for k in 0..N {
+    //             let posit_sample = surfaces_shared.grid_posits[i][j][k];
+    //
+    //             psi_h00[i][j][k] = h00.value(posit_sample) * h00.weight();
+    //         }
+    //     }
+    // }
+    //
+    // let mut charge_density = types::new_data_real(N);
+    // elec_elec::update_charge_density_fm_psi(&psi_h00, &mut charge_density);
 
     // sfcs.elec_charges = vec![charge_density]; // todo: removed
     // todo: end short-term experiment
@@ -282,7 +282,7 @@ fn main() {
     wf_ops::update_wf_fm_bases(
         &wfs,
         &mut surfaces_per_elec[ui_active_elec],
-        E,
+        Es[ui_active_elec],
         &mut surfaces_shared.grid_posits,
         &bases_visible[ui_active_elec],
         grid_n,
