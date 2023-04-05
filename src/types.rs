@@ -215,3 +215,13 @@ pub fn new_data_vec(n: usize) -> Arr3dVec {
 
     x
 }
+
+pub fn copy_array_real(dest: &mut Arr3dReal, source: &Arr3dReal, grid_n: usize) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                dest[i][j][k] = source[i][j][k];
+            }
+        }
+    }
+}

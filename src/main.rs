@@ -267,15 +267,10 @@ fn main() {
         grid_n,
     );
 
+
     // todo: For now and for here at least, make all individual V = to fixed V at init.
     for sfc in &mut surfaces_per_elec {
-        for i in 0..grid_n {
-            for j in 0..grid_n {
-                for k in 0..grid_n {
-                    sfc.V[i][j][k] = surfaces_shared.V_fixed_charges[i][j][k];
-                }
-            }
-        }
+        types::copy_array_real(&mut sfc.V, &surfaces_shared.V_fixed_charges, grid_n);
     }
 
     // Set up our basis-function based trial wave function.
