@@ -1169,6 +1169,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-complex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02e0d21255c828d6f128a1e41534206671e8c3ea0c62f32291e808dc82cff17d"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1483,6 +1492,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1ff3d6d9696af502cc3110dacce942840fb06ff4514cad92236ecc455f2ce05"
 dependencies = [
  "bytemuck",
+]
+
+[[package]]
+name = "scilib"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64a781e1b83a26e1d514da89155fdc4976f395ffb44437a83a8e19c8323d3748"
+dependencies = [
+ "num-complex",
 ]
 
 [[package]]
@@ -1927,6 +1945,7 @@ dependencies = [
  "graphics",
  "lin-alg2",
  "rulinalg",
+ "scilib",
 ]
 
 [[package]]

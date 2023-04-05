@@ -62,32 +62,70 @@ pub fn _spherical_to_cart(ctr: Vec3, θ: f64, φ: f64, r: f64) -> Vec3 {
 
 // 2: https://www.wolframalpha.com/input?i=InterpolatingPolynomial%5B%7B%7Bx1%2C+y1%7D%2C+%7Bx2%2C+y2%7D%7D%2C+x%5D
 // 3: https://www.wolframalpha.com/input?i=InterpolatingPolynomial%5B%7B%7Bx1%2C+y1%7D%2C+%7Bx2%2C+y2%7D%2C+%7Bx3%2C+y3%7D%7D%2C+x%5D
-
-/// Generate a laguerre polynomial for a given value.
-/// https://www.cfm.brown.edu/people/dobrush/am34/Mathematica/ch7/laguerre.html
-pub(crate) fn laguerre(n: u16, x: f64) -> f64 {
-    // todo: For now, we've just hard-coded some values for low n.
-    match n {
-        0 => 1.,
-        1 => 1. - x,
-        2 => 1. / 2. * (x.powi(2) - 4. * x + 2),
-        3 => 1. / 6. * (-x.powi(3) + 9. * x.powi(2) - 18. * x + 6.),
-        4 => 1. / factorial(4) * (x.powi(4) - 16. * x.powi(3) + 72. * x.powi(2) - 96. * x + 24.),
-        5 => {
-            1. / factorial(5)
-                * (-x.powi(5) * 25. * x.powi(4) - 200. * x.powi(3) + 600. * x.powi(2) - 600. * x
-                    + 120.)
-        }
-        6 => {
-            1. / factorial(6)
-                * (x.powi(6) - 36. * x.powi(5) + 450. * x.powi(4) - 2_400. * x.powi(3)
-                    + 5_400. * x.powi(2)
-                    - 4_320 * x
-                    + 720.)
-        }
-        _ => unimplemented!(),
-    }
-}
+//
+// /// Generate a laguerre polynomial for a given value. Used in the radial component of Hydrogen basis functions.
+// /// https://www.cfm.brown.edu/people/dobrush/am34/Mathematica/ch7/laguerre.html
+// ///
+// /// This has info on General form: https://planetmath.org/laguerrepolynomial
+// ///
+// /// Wikipedia has info on generating arbitrary ones:
+// /// https://en.wikipedia.org/wiki/Laguerre_polynomials
+// pub(crate) fn laguerre(n: u16, x: f64) -> f64 {
+//     // todo: For now, we've just hard-coded some values for low n.
+//
+//     // todo: You may need the generalized Laguerre polynomial; QC this.
+//
+//     // todo: It may actually be a generalized Lagureer run on 2r/(n A_0)
+//
+//     match n {
+//         0 => 1.,
+//         1 => 1. - x,
+//         2 => 1. / 2. * (x.powi(2) - 4. * x + 2),
+//         3 => 1. / 6. * (-x.powi(3) + 9. * x.powi(2) - 18. * x + 6.),
+//         4 => 1. / factorial(4) * (x.powi(4) - 16. * x.powi(3) + 72. * x.powi(2) - 96. * x + 24.),
+//         5 => {
+//             1. / factorial(5)
+//                 * (-x.powi(5) * 25. * x.powi(4) - 200. * x.powi(3) + 600. * x.powi(2) - 600. * x
+//                     + 120.)
+//         }
+//         6 => {
+//             1. / factorial(6)
+//                 * (x.powi(6) - 36. * x.powi(5) + 450. * x.powi(4) - 2_400. * x.powi(3)
+//                     + 5_400. * x.powi(2)
+//                     - 4_320 * x
+//                     + 720.)
+//         }
+//         _ => unimplemented!(),
+//     }
+// }
+//
+// /// Generate a Legendre polynomial for a given value. Used in the angular component of Hydrogen basis functions.
+// pub(crate) fn legendre(n: u16, x: f64) -> f64 {
+//     // todo: For now, we've just hard-coded some values for low n.
+//
+//     // todo: You may need the generalized Laguerre polynomial; QC this.
+//
+//     match n {
+//         0 => 1.,
+//         1 => 1. - x,
+//         2 => 1. / 2. * (x.powi(2) - 4. * x + 2),
+//         3 => 1. / 6. * (-x.powi(3) + 9. * x.powi(2) - 18. * x + 6.),
+//         4 => 1. / factorial(4) * (x.powi(4) - 16. * x.powi(3) + 72. * x.powi(2) - 96. * x + 24.),
+//         5 => {
+//             1. / factorial(5)
+//                 * (-x.powi(5) * 25. * x.powi(4) - 200. * x.powi(3) + 600. * x.powi(2) - 600. * x
+//                     + 120.)
+//         }
+//         6 => {
+//             1. / factorial(6)
+//                 * (x.powi(6) - 36. * x.powi(5) + 450. * x.powi(4) - 2_400. * x.powi(3)
+//                     + 5_400. * x.powi(2)
+//                     - 4_320 * x
+//                     + 720.)
+//         }
+//         _ => unimplemented!(),
+//     }
+// }
 
 // todo: If you use a continuous range, use a struct with parameter fields
 // todo instead of an enum that contains discrete values. This is your

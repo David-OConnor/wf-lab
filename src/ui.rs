@@ -183,21 +183,21 @@ fn basis_fn_mixer(
                 let mut entry = basis.n().to_string(); // angle
                 let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
                 if response.changed() {
-                    basis.n_mut() = entry.parse().unwrap_or(&mut 0);
+                    *basis.n_mut() = entry.parse().unwrap_or(0);
                 }
 
                 ui.heading("l:");
                 let mut entry = basis.l().to_string(); // angle
                 let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
                 if response.changed() {
-                    basis.l_mut() = entry.parse().unwrap_or(&mut 0);
+                    *basis.l_mut() = entry.parse().unwrap_or(0);
                 }
 
                 ui.heading("m:");
                 let mut entry = basis.m().to_string(); // angle
                 let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
                 if response.changed() {
-                    basis.m_mut() = entry.parse().unwrap_or(&mut 0);
+                    *basis.m_mut() = entry.parse().unwrap_or(0);
                 }
 
                 // egui::ComboBox::from_id_source(id + 2_000)

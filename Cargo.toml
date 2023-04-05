@@ -9,4 +9,8 @@ graphics = { path = "../graphics_wgpu" }
 lin-alg2 = { path = "../lin_alg" }
 egui = "^0.19"
 
+# We use Scilib for computing H basis fns, eg with Laguerre and Legendre polynomials.
+scilib = "^0.7.0"
+
+
 rulinalg = "^0.4" # Tempish: For adapting the RBF lib

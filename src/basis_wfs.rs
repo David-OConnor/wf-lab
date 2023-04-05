@@ -18,9 +18,13 @@ use std::f64::consts::PI;
 
 use crate::{
     complex_nums::{Cplx, IM},
-    types::Arr3dBasis,
-    util::{factorial, laguerre},
+    // types::Arr3dBasis,
+    util::factorial,
 };
+
+use scilib::{self, math::polynomial::Poly};
+// todo: There's also a WIP scilib Quantum lib that can do these H orbital calculations
+// todo directly.
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
@@ -206,25 +210,37 @@ impl SphericalHarmonic {
     pub fn value(&self, θ: f64, ϕ: f64) -> Cplx {
         // todo: You could hard-code some of the more common ones like l = 0.
 
+        let l = self.l;
+        let m = self.m;
+
+        // https://docs.rs/scilib/latest/scilib/quantum/fn.spherical_harmonics.html
+        let result = scilib::quantum::spherical_harmonics(l.into(), m.into(), θ, ϕ);
+        return Cplx {
+            real: result.re,
+            im: result.im,
+        };
+
         // todo: QC this.
-        let part1 = (2 * self.l + 1) / (4. * PI) * factorial(l - m) / factorial(l + m);
-        return -1.0.powi(self.m) * part1.sqrt() * P(m_l) * θ.cos() * (IM * ϕ).exp();
+        // let P = Poly::gen_legendre(l, m);
+        //
+        // let part1 = (2 * l + 1) / (4. * PI) * factorial(l - m) / factorial(l + m);
+        // return -1.0.powi(m) * part1.sqrt() * P(m_l) * θ.cos() * (IM * ϕ).exp();
 
         // todo: Hard-coded match arms for now.
 
         // todo: Shortcut  vars or consts for repeated patterns A/R
 
-        // println!("θ: {} ϕ: {}, l: {}, m: {}", θ, ϕ, self.l, self.m);
-        match self.l {
+        // println!("θ: {} ϕ: {}, l: {}, m: {}", θ, ϕ, l, m);
+        match l {
             0 => (0.5 * (1. / PI).sqrt()).into(),
-            1 => match self.m {
+            1 => match m {
                 -1 => (-IM * ϕ).exp() * θ.sin() * 0.5 * (3. / (2. * PI)).sqrt(),
                 0 => Cplx::from_real(θ.cos()) * 0.5 * (3. / PI).sqrt(),
                 1 => (IM * ϕ).exp() * θ.sin() * -0.5 * (3. / (2. * PI)).sqrt(),
                 _ => panic!("Invalid m quantum number"),
             },
             // todo: Norm consts.
-            2 => match self.m {
+            2 => match m {
                 -2 => (-IM * -2. * ϕ).exp() * θ.sin().powi(2) * 0.25 * (15. / (2. * PI)).sqrt(),
                 -1 => (-IM * ϕ).exp() * θ.sin() * θ.cos() * 0.5 * (15. / (2. * PI)).sqrt(),
                 0 => (3. * (θ.cos().powi(2) - 1.) * 0.25 * (5. / PI).sqrt()).into(),
@@ -232,7 +248,7 @@ impl SphericalHarmonic {
                 2 => (IM * 2. * ϕ).exp() * θ.sin().sin().powi(2) * 0.25 * (15. / (2. * PI)).sqrt(),
                 _ => panic!("Invalid m quantum number"),
             },
-            3 => match self.m {
+            3 => match m {
                 -3 => (-IM * -3. * ϕ).exp() * θ.sin().powi(3) * 0.125 * (35. / PI).sqrt(),
                 -2 => {
                     (-IM * -2. * ϕ).exp()
@@ -376,7 +392,7 @@ impl HOrbital {
     /// 02%3A_Atomic_Structure/2.02%3A_The_Schrodinger_equation_particle_in_a_box_and_atomic_wavefunctions/2.2.02%3A_Quantum_Numbers_and_Atomic_Wave_Functions
     ///
     /// todo: That link above has errors! Ref this:
-    /// https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Map%3A_Physical_Chemistry_for_the_Biosciences_(Chang)
+    /// https://chem.libretexts.org/Boo1kshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Map%3A_Physical_Chemistry_for_the_Biosciences_(Chang)
     /// /11%3A_Quantum_Mechanics_and_Atomic_Structure/11.10%3A_The_Schrodinger_Wave_Equation_for_the_Hydrogen_Atom
     /// [This ref](http://staff.ustc.edu.cn/~zqj/posts/Hydrogen-Wavefunction/) has a general equation
     /// at its top, separated into radial and angular parts.
@@ -384,19 +400,31 @@ impl HOrbital {
         // todo: Once you've verified the general approach works, hard-code the first few values,
         // todo, and use the general approach for others.
 
-        let L = laguerre(self.n - l - 1, 2. * l as f64 + 1.);
-        let part1 = (2. / (self.n * A_0)).powi(3) * factorial(self.n - l - 1.)
-            / (2. * self.n * factorial(self.n + l));
-        // Todo: Sources differ on if the (2r/nA0) term is exponenated to l.
-        return (part1).sqrt()
-            * (-r / (self.n * A_0)).exp()
-            * (2. * r / (self.n * A_0)).powi(l)
-            * L;
+        // todo temp
+        // todo: If you use various abstractions, make sure you're still using the hard-computed
+        // todo ones for low n.
+
+        let n = self.n;
+
+        // https://docs.rs/scilib/latest/scilib/quantum/fn.radial_wavefunction.html
+        return scilib::quantum::radial_wavefunction(self.n.into(), l.into(), r);
+
+        // note: scilib::quantum::radial_vec will get the job done!
+
+        // let L = Poly::laguerre(n - l - 1, 2 * l + 1.);
+
+        // let part1 = (2. / (n as f64 * A_0)).powi(3) * factorial(n - l - 1) as f64
+        //     / ((2 * n * factorial(n + l)) as f64);
+        // // Todo: Sources differ on if the (2r/nA0) term is exponenated to l.
+        // return (part1).sqrt()
+        //     * (-r / (n as f64 * A_0)).exp()
+        //     * (2. * r / (n as f64 * A_0)).powi(l.into())
+        //     * L;
 
         // N is the normalization constant for the radial part
         let ρ = Z_H * r / A_0;
 
-        const C: f64 = (Z_H * A_0).powf(3. / 2.);
+        let c = (Z_H * A_0).powf(3. / 2.);
 
         // Z is the charge of the nucleus.
 
@@ -406,7 +434,7 @@ impl HOrbital {
         // todo: If this is correct, you can factor out (ZH/AO)^3/2 into its own part
 
         // todo: More abstractions based on rules?
-        let part1 = match self.n {
+        let part1 = match n {
             1 => 2.,
             2 => match l {
                 0 => 2. * (2. - ρ),           // todo: z/a0 vice / 2a0?
@@ -423,9 +451,9 @@ impl HOrbital {
             _ => unimplemented!(), // todo: More
         };
 
-        let part2 = (-ρ / self.n as f64).exp();
+        let part2 = (-ρ / n as f64).exp();
 
-        part1 * part2 * C
+        part1 * part2 * c
     }
 
     /// Calculate this basis function's value at a given point.

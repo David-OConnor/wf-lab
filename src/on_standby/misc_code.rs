@@ -256,3 +256,48 @@ fn _interp_from_sin_exp_basis(
         + blf * blf_weight
         + brf * brf_weight
 }
+
+
+/// Calcualte ψ'' measured, using our polynomial/sin/exp bases
+pub(crate) fn find_ψ_pp_meas_from_interp2(
+    posit_sample: Vec3,
+    psi: &Arr3d,
+    bases: &Arr3dBasis,
+    grid_min: f64,
+    grid_max: f64,
+    i: usize,
+    j: usize,
+    k: usize,
+) -> Cplx {
+    let grid_dx = (grid_max - grid_min) / N as f64;
+
+    // todo: For now, use only the basis function at the point, since we're using
+    // todo small diffs from it. In the future, consider if you'd like to interpolate
+    // todo from the basis-functions at neighboring points weighted by dist to each.
+
+    let h2 = grid_dx / 10.; // todo temp!!! Not working for values other than dx...
+
+    let h2 = 0.001;
+
+    let x_prev = Vec3::new(posit_sample.x - h2, posit_sample.y, posit_sample.z);
+    let x_next = Vec3::new(posit_sample.x + h2, posit_sample.y, posit_sample.z);
+    let y_prev = Vec3::new(posit_sample.x, posit_sample.y - h2, posit_sample.z);
+    let y_next = Vec3::new(posit_sample.x, posit_sample.y + h2, posit_sample.z);
+    let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - h2);
+    let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + h2);
+
+    // todo, since our bases for now produce real vals
+
+    let psi_x_prev = Cplx::from_real(bases[i][j][k].value(x_prev));
+    let psi_x_next = Cplx::from_real(bases[i][j][k].value(x_next));
+    let psi_y_prev = Cplx::from_real(bases[i][j][k].value(y_prev));
+    let psi_y_next = Cplx::from_real(bases[i][j][k].value(y_next));
+    let psi_z_prev = Cplx::from_real(bases[i][j][k].value(z_prev));
+    let psi_z_next = Cplx::from_real(bases[i][j][k].value(z_next));
+
+    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+        - psi[i][j][k] * 6.;
+
+    // result / H_SQ
+    result / (h2 * h2)
+}

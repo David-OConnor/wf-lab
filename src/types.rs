@@ -1,5 +1,4 @@
 use crate::{
-    basis_wfs::SinExpBasisPt,
     complex_nums::Cplx,
     num_diff,
     wf_ops::{self, N, NUDGE_DEFAULT},
@@ -157,7 +156,7 @@ impl Default for SurfacesPerElec {
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
 
 pub type Arr3d = Vec<Vec<Vec<Cplx>>>;
-pub type Arr3dBasis = Vec<Vec<Vec<SinExpBasisPt>>>;
+// pub type Arr3dBasis = Vec<Vec<Vec<SinExpBasisPt>>>;
 
 pub type Arr3dVec = Vec<Vec<Vec<Vec3>>>;
 
@@ -190,18 +189,18 @@ pub fn new_data_real(n: usize) -> Arr3dReal {
     x
 }
 
-pub fn new_data_basis(n: usize) -> Arr3dBasis {
-    let mut z = Vec::new();
-    z.resize(n, SinExpBasisPt::default());
-
-    let mut y = Vec::new();
-    y.resize(n, z);
-
-    let mut x = Vec::new();
-    x.resize(n, y);
-
-    x
-}
+// pub fn new_data_basis(n: usize) -> Arr3dBasis {
+//     let mut z = Vec::new();
+//     z.resize(n, SinExpBasisPt::default());
+//
+//     let mut y = Vec::new();
+//     y.resize(n, z);
+//
+//     let mut x = Vec::new();
+//     x.resize(n, y);
+//
+//     x
+// }
 
 /// Make a new 3D grid of position vectors, as a nested Vec
 pub fn new_data_vec(n: usize) -> Arr3dVec {

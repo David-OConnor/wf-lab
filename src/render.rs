@@ -24,7 +24,7 @@ type Color = (f32, f32, f32);
 
 const WINDOW_TITLE: &str = "ψ lab";
 const WINDOW_SIZE_X: f32 = 1_600.;
-const WINDOW_SIZE_Y: f32 = 1_000.;
+const WINDOW_SIZE_Y: f32 = 1_200.;
 const RENDER_DIST: f32 = 100.;
 const BACKGROUND_COLOR: Color = (0.5, 0.5, 0.5);
 // const SIDE_PANEL_SIZE: f32 = 400.;
