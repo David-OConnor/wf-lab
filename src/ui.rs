@@ -174,43 +174,62 @@ fn basis_fn_mixer(
                     *updated_wfs = true;
                 }
 
-                ui.heading("n:");
-
                 let n_prev = basis.n();
                 let l_prev = basis.l();
                 let m_prev = basis.m();
 
                 // todo: Helper fn to reduce DRY here.
-                egui::ComboBox::from_id_source(id + 2_000)
-                    .width(30.)
-                    .selected_text(basis.n().to_string())
-                    .show_ui(ui, |ui| {
-                        for i in 1..4 {
-                            ui.selectable_value(basis.n_mut(), i, i.to_string());
-                        }
-                    });
+                ui.heading("n:");
+                let mut entry = basis.n().to_string(); // angle
+                let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                if response.changed() {
+                    basis.n_mut() = entry.parse().unwrap_or(&mut 0);
+                }
 
                 ui.heading("l:");
-
-                egui::ComboBox::from_id_source(id + 3_000)
-                    .width(30.)
-                    .selected_text(basis.l().to_string())
-                    .show_ui(ui, |ui| {
-                        for i in 0..basis.n() {
-                            ui.selectable_value(basis.l_mut(), i, i.to_string());
-                        }
-                    });
+                let mut entry = basis.l().to_string(); // angle
+                let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                if response.changed() {
+                    basis.l_mut() = entry.parse().unwrap_or(&mut 0);
+                }
 
                 ui.heading("m:");
+                let mut entry = basis.m().to_string(); // angle
+                let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                if response.changed() {
+                    basis.m_mut() = entry.parse().unwrap_or(&mut 0);
+                }
 
-                egui::ComboBox::from_id_source(id + 4_000)
-                    .width(30.)
-                    .selected_text(basis.m().to_string())
-                    .show_ui(ui, |ui| {
-                        for i in -1 * basis.l() as i16..basis.l() as i16 + 1 {
-                            ui.selectable_value(basis.m_mut(), i, i.to_string());
-                        }
-                    });
+                // egui::ComboBox::from_id_source(id + 2_000)
+                //     .width(30.)
+                //     .selected_text(basis.n().to_string())
+                //     .show_ui(ui, |ui| {
+                //         for i in 1..4 {
+                //             ui.selectable_value(basis.n_mut(), i, i.to_string());
+                //         }
+                //     });
+                //
+                // ui.heading("l:");
+                //
+                // egui::ComboBox::from_id_source(id + 3_000)
+                //     .width(30.)
+                //     .selected_text(basis.l().to_string())
+                //     .show_ui(ui, |ui| {
+                //         for i in 0..basis.n() {
+                //             ui.selectable_value(basis.l_mut(), i, i.to_string());
+                //         }
+                //     });
+                //
+                // ui.heading("m:");
+                //
+                // egui::ComboBox::from_id_source(id + 4_000)
+                //     .width(30.)
+                //     .selected_text(basis.m().to_string())
+                //     .show_ui(ui, |ui| {
+                //         for i in -1 * basis.l() as i16..basis.l() as i16 + 1 {
+                //             ui.selectable_value(basis.m_mut(), i, i.to_string());
+                //         }
+                //     });
 
                 if basis.n() != n_prev || basis.l() != l_prev || basis.m() != m_prev {
                     // Enforce quantum number constraints.
@@ -227,7 +246,6 @@ fn basis_fn_mixer(
                 }
 
                 // For now, we use an azimuth, elevation API for orientation.
-                // todo: Not working
                 if basis.l() >= 1 && basis.weight().abs() > 0.00001 {
                     let mut euler = basis.harmonic().orientation.to_euler();
 
@@ -285,41 +303,6 @@ fn basis_fn_mixer(
                 })
                 .text("Wt"),
             );
-
-            // todo: Text edits etc for all the fields.
-
-            // match basis.f {
-            //     BasisFn::Sto(mut slater_exp) => {
-            //         let mut entry = slater_exp.to_string();
-            //
-            //         let response =
-            //             ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-            //         if response.changed() {
-            //             let exp = entry.parse::<f64>().unwrap_or(1.);
-            //             basis.f = BasisFn::Sto(exp);
-            //             *updated_wfs = true;
-            //         }
-            //     }
-            //     BasisFn::H210(mut axis) => {
-            //         // todo: DRY
-            //         let mut entry = "0.".to_owned(); // angle
-            //
-            //         let response =
-            //             ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-            //         if response.changed() {
-            //             let angle = entry.parse::<f64>().unwrap_or(0.);
-            //
-            //             // todo: locked to Z rotation axis for now.
-            //             let rotation_axis = Vec3::new(0., 0., 1.);
-            //             let rotation = Quaternion::from_axis_angle(rotation_axis, angle);
-            //             let new_axis = rotation.rotate_vec(Vec3::new(1., 0., 0.));
-            //             basis.f = BasisFn::H210(new_axis);
-            //
-            //             *updated_wfs = true;
-            //         }
-            //     }
-            //     _ => (),
-            // }
         }
     });
 }

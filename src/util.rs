@@ -62,3 +62,54 @@ pub fn _spherical_to_cart(ctr: Vec3, θ: f64, φ: f64, r: f64) -> Vec3 {
 
 // 2: https://www.wolframalpha.com/input?i=InterpolatingPolynomial%5B%7B%7Bx1%2C+y1%7D%2C+%7Bx2%2C+y2%7D%7D%2C+x%5D
 // 3: https://www.wolframalpha.com/input?i=InterpolatingPolynomial%5B%7B%7Bx1%2C+y1%7D%2C+%7Bx2%2C+y2%7D%2C+%7Bx3%2C+y3%7D%7D%2C+x%5D
+
+/// Generate a laguerre polynomial for a given value.
+/// https://www.cfm.brown.edu/people/dobrush/am34/Mathematica/ch7/laguerre.html
+pub(crate) fn laguerre(n: u16, x: f64) -> f64 {
+    // todo: For now, we've just hard-coded some values for low n.
+    match n {
+        0 => 1.,
+        1 => 1. - x,
+        2 => 1. / 2. * (x.powi(2) - 4. * x + 2),
+        3 => 1. / 6. * (-x.powi(3) + 9. * x.powi(2) - 18. * x + 6.),
+        4 => 1. / factorial(4) * (x.powi(4) - 16. * x.powi(3) + 72. * x.powi(2) - 96. * x + 24.),
+        5 => {
+            1. / factorial(5)
+                * (-x.powi(5) * 25. * x.powi(4) - 200. * x.powi(3) + 600. * x.powi(2) - 600. * x
+                    + 120.)
+        }
+        6 => {
+            1. / factorial(6)
+                * (x.powi(6) - 36. * x.powi(5) + 450. * x.powi(4) - 2_400. * x.powi(3)
+                    + 5_400. * x.powi(2)
+                    - 4_320 * x
+                    + 720.)
+        }
+        _ => unimplemented!(),
+    }
+}
+
+// todo: If you use a continuous range, use a struct with parameter fields
+// todo instead of an enum that contains discrete values. This is your
+// todo likely approach.
+
+// todo: Move to util
+
+/// Compute factorial using a LUT.
+pub(crate) fn factorial(val: u16) -> u64 {
+    match val {
+        1 => 1,
+        2 => 2,
+        3 => 6,
+        4 => 24,
+        5 => 120,
+        6 => 720,
+        7 => 5040,
+        8 => 40_320,
+        9 => 362_880,
+        10 => 3_628_800,
+        11 => 39_916_800,
+        12 => 479_001_600,
+        _ => unimplemented!(),
+    }
+}
