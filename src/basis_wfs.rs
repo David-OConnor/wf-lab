@@ -18,8 +18,7 @@ use std::f64::consts::PI;
 
 use crate::{
     complex_nums::{Cplx, IM},
-    // types::Arr3dBasis,
-    util::factorial,
+    util::{factorial, make_laguerre},
 };
 
 use scilib::{self, math::polynomial::Poly};
@@ -221,10 +220,14 @@ impl SphericalHarmonic {
         };
 
         // todo: QC this.
-        // let P = Poly::gen_legendre(l, m);
-        //
-        // let part1 = (2 * l + 1) / (4. * PI) * factorial(l - m) / factorial(l + m);
-        // return -1.0.powi(m) * part1.sqrt() * P(m_l) * θ.cos() * (IM * ϕ).exp();
+        let P = Poly::gen_legendre(l.into(), m.into());
+
+        let part1 = (2 * l + 1) as f64 / (4. * PI) * factorial(l - m as u16) as f64
+            / factorial(l + m as u16) as f64;
+
+        let part2 = -1.0_f64.powi(m.into()) * part1.sqrt() * P.compute(θ.cos());
+
+        return Cplx::from_real(part2) * (IM * ϕ).exp();
 
         // todo: Hard-coded match arms for now.
 
@@ -400,26 +403,22 @@ impl HOrbital {
         // todo: Once you've verified the general approach works, hard-code the first few values,
         // todo, and use the general approach for others.
 
-        // todo temp
-        // todo: If you use various abstractions, make sure you're still using the hard-computed
-        // todo ones for low n.
-
         let n = self.n;
 
         // https://docs.rs/scilib/latest/scilib/quantum/fn.radial_wavefunction.html
-        return scilib::quantum::radial_wavefunction(self.n.into(), l.into(), r);
+        // return scilib::quantum::radial_wavefunction(n.into(), l.into(), r);
 
-        // note: scilib::quantum::radial_vec will get the job done!
+        let L = Poly::laguerre((n - l - 1).into(), 2 * l + 1);
+        // let L = util::make_laguerre(n - l - 1, 2 * l + 1.);
 
-        // let L = Poly::laguerre(n - l - 1, 2 * l + 1.);
+        let part1 = (2. / (n as f64 * A_0)).powi(3) * factorial(n - l - 1) as f64
+            / ((2 * n as u64 * factorial(n + l)) as f64);
 
-        // let part1 = (2. / (n as f64 * A_0)).powi(3) * factorial(n - l - 1) as f64
-        //     / ((2 * n * factorial(n + l)) as f64);
-        // // Todo: Sources differ on if the (2r/nA0) term is exponenated to l.
-        // return (part1).sqrt()
-        //     * (-r / (n as f64 * A_0)).exp()
-        //     * (2. * r / (n as f64 * A_0)).powi(l.into())
-        //     * L;
+        // Todo: Sources differ on if the (2r/nA0) term is exponenated to l.
+        return (part1).sqrt()
+            * (-r / (n as f64 * A_0)).exp()
+            * (2. * r / (n as f64 * A_0)).powi(l.into())
+            * L.compute((2. * r / (n as f64 * A_0)).powi(l.into()));
 
         // N is the normalization constant for the radial part
         let ρ = Z_H * r / A_0;
