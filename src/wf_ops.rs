@@ -108,6 +108,17 @@ pub fn update_V_fm_fixed_charges(
     }
 }
 
+/// Calculate ψ* ψ
+pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, n: usize) {
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
+                dest[i][j][k] = source[i][j][k].abs_sq();
+            }
+        }
+    }
+}
+
 /// Normalize a wave function so that <ψ|ψ> = 1.
 /// Returns the norm value for use in normalizing basis fns in psi''_measured calculation.
 ///

@@ -496,7 +496,7 @@ impl HOrbital {
         let ϕ = diff_r.y.atan2(diff_r.x);
         let θ = (diff_r.x.powi(2) + diff_r.y.powi(2)).sqrt().atan2(diff_r.z);
 
-        // The rub: θ = NaN!!!
+        // todo: Is this why you're unable to get m = -1 to be orthogonal to m = 1?
 
         let angular = self.harmonic.value(θ, ϕ);
 

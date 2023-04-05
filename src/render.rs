@@ -14,9 +14,10 @@ use lin_alg2::{
 
 use crate::{
     types::{Arr3d, Arr3dReal, Arr3dVec},
-    wf_ops::N,
+    wf_ops::{self, N},
     State,
 };
+use crate::types::new_data_real;
 
 const NUM_SURFACES: usize = 6;
 
@@ -48,7 +49,8 @@ const SURFACE_COLORS: [Color; 8] = [
 const SURFACE_SHINYNESS: f32 = 10.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
-const PSI_SCALER: f32 = 100.; // to make WF more visually significant.
+const PSI_SCALER: f32 = 50.; // to make WF more visually significant.
+const PSI_SQ_SCALER: f32 = 3_000.; // to make WF more visually significant.
 const PSI_P_SCALER: f32 = 15.; // to make WF more visually significant.
 const PSI_PP_SCALER: f32 = 20.; // to make WF more visually significant.
 const ELEC_V_SCALER: f32 = 100_000.; // to make WF more visually significant.
@@ -187,8 +189,20 @@ pub fn update_meshes(
         true,
     ));
 
+    // todo: We are currently plotting real part only of psi. (Unless looking at psi^2)
     meshes.push(Mesh::new_surface(
         &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER),
+        // todo: Center! Maybe offset in entities.
+        // sfc_mesh_start,
+        // sfc_mesh_step,
+        true,
+    ));
+
+    let mut psi_sq = new_data_real(N);
+    wf_ops::norm_sq(&mut psi_sq, &surfaces.psi, N);
+
+    meshes.push(Mesh::new_surface(
+        &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER),
         // todo: Center! Maybe offset in entities.
         // sfc_mesh_start,
         // sfc_mesh_step,

@@ -44,7 +44,7 @@ use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use types::{Arr3dReal, SurfacesPerElec, SurfacesShared};
 use wf_ops::{N, Q_PROT};
 
-const NUM_SURFACES: usize = 6;
+const NUM_SURFACES: usize = 7;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -288,11 +288,12 @@ fn main() {
 
     let psi_pp_score = vec![psi_pp_score_one, psi_pp_score_one];
 
-    let show_surfaces = [true, true, true, true, false, false];
+    let show_surfaces = [true, true, false, true, true, false, false];
 
     let surface_names = [
         "V".to_owned(),
         "ψ".to_owned(),
+        "ψ²".to_owned(),
         "ψ'' calculated".to_owned(),
         "ψ'' measured".to_owned(),
         // "ψ' calculated".to_owned(),
