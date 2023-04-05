@@ -211,6 +211,8 @@ fn main() {
 
     let Es = vec![E, E];
 
+    let grid_n = N;
+
     // // todo: Deprecate h_grid once your alternative works.
     // let h_grid = (grid_max - grid_min) / (N as f64);
     // let h_grid_sq = h_grid.powi(2);
@@ -271,10 +273,11 @@ fn main() {
         E,
         &mut surfaces_shared.grid_posits,
         &bases_visible[ui_active_elec],
+        grid_n,
     );
 
     let psi_p_score = 0.; // todo T
-    let psi_pp_score_one = wf_ops::score_wf(&surfaces_per_elec[ui_active_elec]);
+    let psi_pp_score_one = wf_ops::score_wf(&surfaces_per_elec[ui_active_elec], grid_n);
 
     let psi_pp_score = vec![psi_pp_score_one, psi_pp_score_one];
 
@@ -303,7 +306,7 @@ fn main() {
         psi_pp_score,
         surface_names,
         show_surfaces,
-        grid_n: N,
+        grid_n,
         grid_min,
         grid_max,
         spacing_factor,

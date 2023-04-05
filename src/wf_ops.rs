@@ -44,7 +44,7 @@ pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 32;
+pub const N: usize = 70;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {
@@ -107,6 +107,28 @@ pub fn update_V_fm_fixed_charges(
     }
 }
 
+/// Normalize a wave function so that <ψ|ψ> = 1.
+fn normalize_wf(arr: &mut Arr3d, n: usize) {
+    // let mut norm = Cplx::new_zero();
+    let mut norm = 0.;
+
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
+                norm += arr[i][j][k].abs_sq();
+            }
+        }
+    }
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
+                // todo: check your div impl! Likely wrong; doesn't normalize imag part!
+                arr[i][j][k] = arr[i][j][k] / norm.sqrt();
+            }
+        }
+    }
+}
+
 /// - Computes a trial ψ from basis functions
 /// - Computes ψ'' calculated, and measured from the trial ψ
 /// Modifies in place to conserve memory. These operations are combined in the same function to
@@ -118,10 +140,11 @@ pub fn update_wf_fm_bases(
     E: f64,
     grid_posits: &mut Arr3dVec,
     bases_visible: &[bool],
+    n: usize,
 ) {
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
                 let posit_sample = grid_posits[i][j][k];
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
@@ -151,6 +174,8 @@ pub fn update_wf_fm_bases(
             }
         }
     }
+
+    normalize_wf(&mut sfcs.psi, N);
 }
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
@@ -159,7 +184,7 @@ pub fn update_wf_fm_bases(
 /// todo: I don't think you can use this approach comparing psi''s with fidelity, since they're
 /// todo not normalizsble.
 // fn wf_fidelity(sfcs: &Surfaces) -> f64 {
-fn fidelity(sfcs: &SurfacesPerElec) -> f64 {
+fn fidelity(sfcs: &SurfacesPerElec, n: usize) -> f64 {
     // "The accuracy should be scored by the fidelity of the wavefunction compared
     // to the true wavefunction. Fidelity is defined as |<psi_trial | psi_true >|^2.
     // For normalized states, this will always be bounded from above by 1.0. So it's
@@ -175,9 +200,9 @@ fn fidelity(sfcs: &SurfacesPerElec) -> f64 {
     const SCORE_THRESH: f64 = 100.;
 
     // Create normalization const.
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
                 // norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].abs_sq();
                 // norm_sq_meas += sfcs.psi_pp_measured[i][j][k].abs_sq();
                 // todo: .real is temp
@@ -194,9 +219,9 @@ fn fidelity(sfcs: &SurfacesPerElec) -> f64 {
     // Now that we have both wave functions and normalized them, calculate fidelity.
     let mut result = Cplx::new_zero();
 
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
                 // todo: .reals here may be a kludge and not working with complex psi.
 
                 // todo: LHS should be conjugated.
@@ -216,7 +241,7 @@ fn fidelity(sfcs: &SurfacesPerElec) -> f64 {
 
 /// Score a wave function by comparing the least-squares sum of its measured and
 /// calculated second derivaties.
-pub fn score_wf(sfcs: &SurfacesPerElec) -> f64 {
+pub fn score_wf(sfcs: &SurfacesPerElec, n: usize) -> f64 {
     let mut result = 0.;
 
     // Avoids numerical precision issues. Without this, certain values of N will lead
@@ -224,9 +249,9 @@ pub fn score_wf(sfcs: &SurfacesPerElec) -> f64 {
     // if a grid value is too close to a charge source, the value baloons.
     const SCORE_THRESH: f64 = 10.;
 
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
                 // todo: Check if either individual is outside a thresh?
 
                 let val =
@@ -251,7 +276,7 @@ pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> 
 
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
 /// between E and psi'' score isn't straightforward, this will converge on a local minimum.
-pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64) {
+pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, n: usize) {
     // todo: WHere to configure these mins and maxes
     let mut E_min = -2.;
     let mut E_max = 2.;
@@ -275,7 +300,7 @@ pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64) {
                 }
             }
 
-            let score = score_wf(sfcs);
+            let score = score_wf(sfcs, n);
             if score < best_score {
                 best_score = score;
                 best_E = E_trial;

@@ -24,6 +24,7 @@ pub fn nudge_wf(
     grid_max: f64,
     bases: &[Basis],
     grid_posits: &Arr3dVec,
+    n: usize,
 ) {
     let num_nudges = 1; // todo: Put back to 3 etc?
     let smooth_amt = 0.4;
@@ -42,7 +43,7 @@ pub fn nudge_wf(
     // todo: Cheap lowpass for now on diff: Average it with its neighbors?
 
     // Find E before and after the nudge.
-    wf_ops::find_E(sfcs, E);
+    wf_ops::find_E(sfcs, E, n);
 
     // Really, the outliers are generally spiked very very high. (much higher than this)
     // This probably occurs near the nucleus.
@@ -58,21 +59,21 @@ pub fn nudge_wf(
     let mut psi_backup = sfcs.psi.clone();
     let mut psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
     let mut psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
-    let mut current_score = wf_ops::score_wf(sfcs);
+    let mut current_score = wf_ops::score_wf(sfcs, n);
 
     // We use diff map so we can lowpass the entire map before applying corrections.
-    let mut diff_map = types::new_data(N);
+    let mut diff_map = types::new_data(n);
 
     // `correction_fm_bases` is the difference between our nudged wave function, and what it
     // was from bases alone, without nudging.;
-    let mut correction_fm_bases = types::new_data(N);
+    let mut correction_fm_bases = types::new_data(n);
 
     for _ in 0..num_nudges {
         // let mut diff_pre_smooth = new_data(N); // todo experimenting
 
-        for i_a in 0..N {
-            for j in 0..N {
-                for k in 0..N {
+        for i_a in 0..n {
+            for j in 0..n {
+                for k in 0..n {
                     let diff = sfcs.psi_pp_calculated[i_a][j][k] - sfcs.psi_pp_measured[i_a][j][k];
 
                     // let psi_pp_calc_nudged = (sfcs.psi[i][j][k] + h.into())  * (E - sfcs.V[i][j][k]) * KE_COEFF;
@@ -101,9 +102,9 @@ pub fn nudge_wf(
 
             wf_ops::smooth_array(&mut diff_map, smooth_amt);
 
-            for i in 0..N {
-                for j in 0..N {
-                    for k in 0..N {
+            for i in 0..n {
+                for j in 0..n {
+                    for k in 0..n {
                         // sfcs.psi[i][j][k] -= diff_map[i][j][k] * sfcs.nudge_amounts[i][j][k];
                         sfcs.psi[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
@@ -125,7 +126,7 @@ pub fn nudge_wf(
         }
 
         // If you use individual nudges, evaluate how you want to handle this.
-        let score = wf_ops::score_wf(sfcs);
+        let score = wf_ops::score_wf(sfcs, n);
 
         // todo: Maybe update temp ones above instead of the main ones?
         if (score - current_score) > 0. {
@@ -143,11 +144,11 @@ pub fn nudge_wf(
             psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
             psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
             current_score = score;
-            wf_ops::find_E(sfcs, E);
+            wf_ops::find_E(sfcs, E, n);
 
-            for i in 0..N {
-                for j in 0..N {
-                    for k in 0..N {
+            for i in 0..n {
+                for j in 0..n {
+                    for k in 0..n {
                         let mut psi_bases = Cplx::new_zero();
                         let posit_sample = grid_posits[i][j][k];
                         for basis in bases {

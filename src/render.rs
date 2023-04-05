@@ -45,11 +45,11 @@ const SURFACE_COLORS: [Color; 8] = [
     (0.5, 0.4, 0.2),
 ];
 
-const SURFACE_SHINYNESS: f32 = 1.5;
+const SURFACE_SHINYNESS: f32 = 10.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
-const PSI_SCALER: f32 = 4.; // to make WF more visually significant.
-const PSI_P_SCALER: f32 = 4.; // to make WF more visually significant.
+const PSI_SCALER: f32 = 40.; // to make WF more visually significant.
+const PSI_P_SCALER: f32 = 15.; // to make WF more visually significant.
 const ELEC_V_SCALER: f32 = 100_000.; // to make WF more visually significant.
 
 fn event_handler(
@@ -286,22 +286,33 @@ pub fn render(state: State) {
             ambient_color: [-1., 1., 1., 0.5],
             ambient_intensity: 0.03,
             point_lights: vec![
-                // Light from above. The sun?
+                // // Light from above. The sun?
+                // PointLight {
+                //     type_: LightType::Omnidirectional,
+                //     position: Vec3::new(0., 100., 0.),
+                //     diffuse_color: [0.6, 0.4, 0.3, 1.],
+                //     specular_color: [0.6, 0.4, 0.3, 1.],
+                //     diffuse_intensity: 4_000.,
+                //     specular_intensity: 10_000.,
+                // },
+
+                // Light from above and to a side.
                 PointLight {
                     type_: LightType::Omnidirectional,
-                    position: Vec3::new(0., 100., 0.),
-                    diffuse_color: [0.6, 0.4, 0.3, 1.],
-                    specular_color: [0.6, 0.4, 0.3, 1.],
-                    diffuse_intensity: 10_000.,
-                    specular_intensity: 10_000.,
-                },
-                PointLight {
-                    type_: LightType::Omnidirectional,
-                    position: Vec3::new(30., 100., 30.),
+                    position: Vec3::new(30., 50., 30.),
                     diffuse_color: [0.3, 0.4, 0.5, 1.],
                     specular_color: [0.3, 0.4, 0.5, 1.],
-                    diffuse_intensity: 10_000.,
-                    specular_intensity: 10_000.,
+                    diffuse_intensity: 8_000.,
+                    specular_intensity: 30_000.,
+                },
+                // Light from below
+                PointLight {
+                    type_: LightType::Omnidirectional,
+                    position: Vec3::new(20., -50., 0.),
+                    diffuse_color: [0.3, 0.4, 0.5, 1.],
+                    specular_color: [0.3, 0.4, 0.5, 1.],
+                    diffuse_intensity: 5_000.,
+                    specular_intensity: 20_000.,
                 },
             ],
         },

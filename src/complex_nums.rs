@@ -147,10 +147,23 @@ impl Mul<f64> for Cplx {
     }
 }
 
+// impl Div<Self> for Cplx {
+//     type Output = Self;
+//
+//     fn div(self, other: Self) -> Self {
+//         Self {
+//             // todo
+//             real: self.real * other.real - self.im * other.im,
+//             im: self.real * other.im + self.im * other.real,
+//         }
+//     }
+// }
+
 impl Div<f64> for Cplx {
     type Output = Self;
 
     fn div(self, other: f64) -> Self {
+        // todo: Is this right??? I don't think so.
         Self {
             real: self.real / other,
             im: self.im,
@@ -174,5 +187,3 @@ impl fmt::Display for Cplx {
         write!(f, "{} + {}i", self.real, self.im)
     }
 }
-
-// todo impl Div for Cplx.

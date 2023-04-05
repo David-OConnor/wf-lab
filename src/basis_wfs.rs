@@ -399,6 +399,9 @@ impl HOrbital {
     /// /11%3A_Quantum_Mechanics_and_Atomic_Structure/11.10%3A_The_Schrodinger_Wave_Equation_for_the_Hydrogen_Atom
     /// [This ref](http://staff.ustc.edu.cn/~zqj/posts/Hydrogen-Wavefunction/) has a general equation
     /// at its top, separated into radial and angular parts.
+    ///
+    /// This reference seems accurate maybe?
+    /// https://www.reed.edu/physics/courses/P342.S10/Physics342/page1/files/Lecture.24.pdf
     fn radial(&self, r: f64, l: u16) -> f64 {
         // todo: Once you've verified the general approach works, hard-code the first few values,
         // todo, and use the general approach for others.
@@ -408,17 +411,22 @@ impl HOrbital {
         // https://docs.rs/scilib/latest/scilib/quantum/fn.radial_wavefunction.html
         // return scilib::quantum::radial_wavefunction(n.into(), l.into(), r);
 
-        let L = Poly::laguerre((n - l - 1).into(), 2 * l + 1);
         // let L = util::make_laguerre(n - l - 1, 2 * l + 1.);
+        //
+        // let norm_term_num = (2. / (n as f64 * A_0)).powi(3) * factorial(n - l - 1) as f64;
+        // let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
+        // let norm_term = norm_term_num / norm_term_denom;
 
-        let part1 = (2. / (n as f64 * A_0)).powi(3) * factorial(n - l - 1) as f64
-            / ((2 * n as u64 * factorial(n + l)) as f64);
+        // Note: We are skipping the normalization code, and normalizing after constructing
+        // the WF from bases.
+        let norm_term = 1.0_f64;
 
-        // Todo: Sources differ on if the (2r/nA0) term is exponenated to l.
-        return (part1).sqrt()
+        let L = Poly::laguerre((n - l - 1).into(), 2 * l + 1);
+
+        return (norm_term).sqrt()
             * (-r / (n as f64 * A_0)).exp()
             * (2. * r / (n as f64 * A_0)).powi(l.into())
-            * L.compute((2. * r / (n as f64 * A_0)).powi(l.into()));
+            * L.compute(2. * r / (n as f64 * A_0));
 
         // N is the normalization constant for the radial part
         let ρ = Z_H * r / A_0;

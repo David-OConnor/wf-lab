@@ -87,6 +87,8 @@ pub fn psi_from_pt_charges(
 
     let ui_active_elec = 0;
 
+    let grid_n = wf_ops::N;
+
     // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
     wf_ops::update_V_fm_fixed_charges(
         &charges_fixed,
@@ -98,7 +100,7 @@ pub fn psi_from_pt_charges(
     );
 
     // Set up our basis-function based trial wave function.
-    wf_ops::update_wf_fm_bases(&wfs, &mut sfcs, E, &mut grid_posits, &bases_visible);
+    wf_ops::update_wf_fm_bases(&wfs, &mut sfcs, E, &mut grid_posits, &bases_visible, grid_n);
 
     nudge::nudge_wf(
         &mut sfcs,
@@ -108,6 +110,7 @@ pub fn psi_from_pt_charges(
         grid_bounds.1,
         bases,
         &grid_posits,
+        grid_n,
     );
 
     // let psi_pp_score = wf_ops::score_wf(&sfcs);
