@@ -62,6 +62,7 @@ pub fn update_V_fm_fixed_charges(
     grid_max: &mut f64,
     spacing_factor: f64,
     grid_posits: &mut Arr3dVec,
+    n: usize,
     // Wave functions from other electrons, for calculating the Hartree potential.
     // charges_electron: &[Arr3dReal],
     // i_this_elec: usize,
@@ -89,9 +90,9 @@ pub fn update_V_fm_fixed_charges(
     *grid_min = -*grid_max;
     update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor);
 
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
                 let posit_sample = grid_posits[i][j][k];
 
                 V_nuc_shared[i][j][k] = 0.;

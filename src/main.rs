@@ -193,9 +193,9 @@ fn main() {
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges_fixed = vec![
-        (posit_charge_1, Q_PROT * 2.), // helium
-                                       // (posit_charge_2, Q_PROT),
-                                       // (Vec3::new(0., 1., 0.), Q_ELEC),
+        (posit_charge_1, Q_PROT * 1.), // helium
+        // (posit_charge_2, Q_PROT),
+        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
     let arr_real = types::new_data_real(N);
@@ -264,7 +264,19 @@ fn main() {
         &mut grid_max,
         spacing_factor,
         &mut surfaces_shared.grid_posits,
+        grid_n,
     );
+
+    // todo: For now and for here at least, make all individual V = to fixed V at init.
+    for sfc in &mut surfaces_per_elec {
+        for i in 0..grid_n {
+            for j in 0..grid_n {
+                for k in 0..grid_n {
+                    sfc.V[i][j][k] = surfaces_shared.V_fixed_charges[i][j][k];
+                }
+            }
+        }
+    }
 
     // Set up our basis-function based trial wave function.
     wf_ops::update_wf_fm_bases(

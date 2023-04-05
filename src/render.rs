@@ -48,8 +48,9 @@ const SURFACE_COLORS: [Color; 8] = [
 const SURFACE_SHINYNESS: f32 = 10.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
-const PSI_SCALER: f32 = 40.; // to make WF more visually significant.
+const PSI_SCALER: f32 = 100.; // to make WF more visually significant.
 const PSI_P_SCALER: f32 = 15.; // to make WF more visually significant.
+const PSI_PP_SCALER: f32 = 20.; // to make WF more visually significant.
 const ELEC_V_SCALER: f32 = 100_000.; // to make WF more visually significant.
 
 fn event_handler(
@@ -149,6 +150,7 @@ fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32) -> 
 /// Updates meshes. For example, when updating a plot due to changing parameters.
 /// Note that this is where we decide which Z to render.
 pub fn update_meshes(
+    surfaces_shared: &crate::SurfacesShared,
     surfaces: &crate::SurfacesPerElec,
     z_displayed: f64,
     scene: &mut Scene,
@@ -176,7 +178,9 @@ pub fn update_meshes(
     let mut meshes = Vec::new();
 
     meshes.push(Mesh::new_surface(
+        // todo: Be able to show shared V and per-elec. Currently hard-coded.
         &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, 1.),
+        // &prepare_2d_mesh_real(grid_posits, &surfaces_shared.V_fixed_charges, z_i, 1.),
         // todo: Center! Maybe offset in entities.
         // sfc_mesh_start,
         // sfc_mesh_step,
@@ -192,8 +196,8 @@ pub fn update_meshes(
     ));
 
     for (scaler, sfc) in [
-        (1., &surfaces.psi_pp_calculated),
-        (1., &surfaces.psi_pp_measured),
+        (PSI_PP_SCALER, &surfaces.psi_pp_calculated),
+        (PSI_PP_SCALER, &surfaces.psi_pp_measured),
         // (PSI_P_SCALER, &surfaces.psi_p_calculated),
         // (PSI_P_SCALER, &surfaces.psi_p_total_measured),
         // &surfaces.aux1,
@@ -274,10 +278,10 @@ pub fn update_entities(charges: &[(Vec3F64, f64)], show_surfaces: &[bool], scene
 pub fn render(state: State) {
     let mut scene = Scene {
         meshes: Vec::new(),   // updated below.
-        entities: Vec::new(), // updated below.
+        entities: Vec::new(), // updated beloCw.
         camera: Camera {
             fov_y: TAU / 8.,
-            position: Vec3::new(0., 6., -15.),
+            position: Vec3::new(0., 10., -35.),
             far: RENDER_DIST,
             orientation: Quaternion::from_axis_angle(Vec3::new(1., 0., 0.), TAU / 16.),
             ..Default::default()
@@ -333,6 +337,7 @@ pub fn render(state: State) {
     let surfaces = &state.surfaces_per_elec[state.ui_active_elec];
 
     update_meshes(
+        &state.surfaces_shared,
         surfaces,
         state.ui_z_displayed,
         &mut scene,

@@ -97,6 +97,7 @@ pub fn psi_from_pt_charges(
         &mut grid_bounds.1,
         spacing_factor,
         &mut grid_posits,
+        grid_n,
     );
 
     // Set up our basis-function based trial wave function.
