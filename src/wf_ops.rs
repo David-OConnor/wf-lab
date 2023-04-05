@@ -44,7 +44,7 @@ pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 70;
+pub const N: usize = 50;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {
@@ -110,6 +110,10 @@ pub fn update_V_fm_fixed_charges(
 
 /// Normalize a wave function so that <ψ|ψ> = 1.
 /// Returns the norm value for use in normalizing basis fns in psi''_measured calculation.
+///
+/// Note that due to phase symmetry, there are many ways to balance the normalization of the real
+/// vice imaginary parts. Our implmentation (dividing both real and imag parts by norm square)
+/// is one way.
 fn normalize_wf(arr: &mut Arr3d, n: usize) -> f64 {
     // let mut norm = Cplx::new_zero();
     let mut norm = 0.;
@@ -121,18 +125,19 @@ fn normalize_wf(arr: &mut Arr3d, n: usize) -> f64 {
             }
         }
     }
-    norm = norm.sqrt();
+
+    let norm_sqrt = norm.sqrt();
 
     for i in 0..n {
         for j in 0..n {
             for k in 0..n {
-                // todo: check your div impl! Likely wrong; doesn't normalize imag part!
-                arr[i][j][k] = arr[i][j][k] / norm;
+                // Note: Check the div impl for details.
+                arr[i][j][k] = arr[i][j][k] / norm_sqrt;
             }
         }
     }
 
-    norm
+    norm_sqrt
 }
 
 /// - Computes a trial ψ from basis functions
@@ -181,7 +186,7 @@ pub fn update_wf_fm_bases(
         }
     }
 
-    let psi_norm = normalize_wf(&mut sfcs.psi, N);
+    let psi_norm_sqrt = normalize_wf(&mut sfcs.psi, N);
 
     // Update psi_pps after normalization.
     for i in 0..n {
@@ -200,7 +205,7 @@ pub fn update_wf_fm_bases(
                     posit_sample,
                     bases,
                     sfcs.psi[i][j][k],
-                    psi_norm,
+                    psi_norm_sqrt,
                     bases_visible,
                 );
             }

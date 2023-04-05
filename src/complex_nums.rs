@@ -163,10 +163,10 @@ impl Div<f64> for Cplx {
     type Output = Self;
 
     fn div(self, other: f64) -> Self {
-        // todo: Is this right??? I don't think so.
+        // todo: Is this right?
         Self {
             real: self.real / other,
-            im: self.im,
+            im: self.im / other,
         }
     }
 }

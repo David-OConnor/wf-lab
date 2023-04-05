@@ -411,19 +411,16 @@ impl HOrbital {
         // https://docs.rs/scilib/latest/scilib/quantum/fn.radial_wavefunction.html
         // return scilib::quantum::radial_wavefunction(n.into(), l.into(), r);
 
-        // let L = util::make_laguerre(n - l - 1, 2 * l + 1.);
-        //
-        // let norm_term_num = (2. / (n as f64 * A_0)).powi(3) * factorial(n - l - 1) as f64;
-        // let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
-        // let norm_term = norm_term_num / norm_term_denom;
-
-        // Note: We are skipping the normalization code, and normalizing after constructing
-        // the WF from bases.
-        let norm_term = 1.0_f64;
+        // Even though we normalize teh combined wave function, we still need a norm term on individual
+        // components here so the bases come out balanced relative to each other.
+        let norm_term_num = (2. / (n as f64 * A_0)).powi(3) * factorial(n - l - 1) as f64;
+        let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
+        let norm_term = (norm_term_num / norm_term_denom).sqrt();
 
         let L = Poly::laguerre((n - l - 1).into(), 2 * l + 1);
+        // let L = util::make_laguerre(n - l - 1, 2 * l + 1.);
 
-        return (norm_term).sqrt()
+        return norm_term
             * (-r / (n as f64 * A_0)).exp()
             * (2. * r / (n as f64 * A_0)).powi(l.into())
             * L.compute(2. * r / (n as f64 * A_0));
