@@ -206,13 +206,14 @@ impl SphericalHarmonic {
     /// https://en.wikipedia.org/wiki/Table_of_spherical_harmonics
     ///
     /// https://docs.rs/scilib/latest/scilib/quantum/index.html: Has an example general equation
+    /// http://scipp.ucsc.edu/~haber/ph116C/SphericalHarmonics_12.pdf
     pub fn value(&self, θ: f64, ϕ: f64) -> Cplx {
         // todo: You could hard-code some of the more common ones like l = 0.
 
         let l = self.l;
         let m = self.m;
-
-        // https://docs.rs/scilib/latest/scilib/quantum/fn.spherical_harmonics.html
+        //
+        // // https://docs.rs/scilib/latest/scilib/quantum/fn.spherical_harmonics.html
         let result = scilib::quantum::spherical_harmonics(l.into(), m.into(), θ, ϕ);
         return Cplx {
             real: result.re,
@@ -225,9 +226,10 @@ impl SphericalHarmonic {
         let part1 = (2 * l + 1) as f64 / (4. * PI) * factorial(l - m as u16) as f64
             / factorial(l + m as u16) as f64;
 
-        let part2 = -1.0_f64.powi(m.into()) * part1.sqrt() * P.compute(θ.cos());
+        let part2 = (-1.0_f64).powi(m.into()) * part1.sqrt() * P.compute(θ.cos());
 
-        return Cplx::from_real(part2) * (IM * ϕ).exp();
+        // todo: is "im theta" i theta, or i * m theta?? Damn notation.
+        return Cplx::from_real(part2) * (IM * m as f64 * ϕ).exp();
 
         // todo: Hard-coded match arms for now.
 
@@ -464,37 +466,46 @@ impl HOrbital {
     /// Does not include weight.
     /// https://quantummechanics.ucsd.edu/ph130a/130_notes/node233.html
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
-        const EPS: f64 = 0.0001;
+        const EPS: f64 = 0.0000001;
         if self.weight.abs() < EPS {
             return Cplx::new_zero(); // saves some computation.
         }
 
-        let diff = posit_sample - self.posit;
+        let mut diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
         let radial = self.radial(r, self.harmonic.l);
 
-        // let cos_theta = diff.to_normalized().dot(axis_through_lobes);
+        let diff = self.harmonic.orientation.inverse().rotate_vec(diff);
 
-        let diff_r = self.harmonic.orientation.inverse().rotate_vec(diff);
-
-        // todo: QC these.
         // https://en.wikipedia.org/wiki/Spherical_coordinate_system
-        // let θ = (diff_r.z / r).acos();
-        // let a = diff_r.x / (diff_r.x.powi(2) + diff_r.y.powi(2)).sqrt(); // For legibility.
-        // let ϕ = diff_r.y.signum() * a.acos();
+        // let θ = if diff.z > EPS {
+        //     (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z)
+        // } else if diff.z < -EPS {
+        //     PI + (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z)
+        // } else if diff.z.abs() < EPS && diff.x.abs() < EPS && diff.y.abs() < EPS {
+        //     PI / 2.
+        // } else {
+        //     0. // todo: Actually undfined.
+        // };
+        //
+        let θ = (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z);
 
-        // todo: Looks like the diff between above and below is which coord is which.
-        // todo: They're also in different forms.
-
-        // Alternative formulations using acos etc can result in NaNs.
-
-        // alt take from https://keisan.casio.com/exec/system/1359533867:
-        // let θ = diff_r.y.atan2(diff_r.x);
-        // let ϕ = (diff_r.x.powi(2) + diff_r.y.powi(2)).sqrt().atan2(diff_r.z);
-
-        let ϕ = diff_r.y.atan2(diff_r.x);
-        let θ = (diff_r.x.powi(2) + diff_r.y.powi(2)).sqrt().atan2(diff_r.z);
+        let ϕ = diff.y.atan2(diff.x);
+        //
+        // let ϕ = if diff.x > EPS {
+        //     diff.y.atan2(diff.x)
+        // } else if diff.x < -EPS && diff.y >= 0. {
+        //    diff.y.atan2(diff.x) + PI
+        // } else if  diff.x < -EPS && diff.y < -EPS {
+        //     diff.y.atan2(diff.x) - PI
+        // } else if diff.x.abs() < EPS && diff.y > EPS {
+        //     PI / 2.
+        // } else if diff.x.abs() < EPS && diff.y < -EPS {
+        //     -PI / 2.
+        // } else {
+        //     0. // todo: Actually undefined.
+        // };
 
         // todo: Is this why you're unable to get m = -1 to be orthogonal to m = 1?
 

@@ -217,7 +217,7 @@ fn main() {
     // let h_grid = (grid_max - grid_min) / (N as f64);
     // let h_grid_sq = h_grid.powi(2);
 
-    let sfcs_one_elec = SurfacesPerElec::default();
+    let sfcs_one_elec = SurfacesPerElec::new(grid_n);
 
     let mut surfaces_per_elec = vec![sfcs_one_elec.clone(), sfcs_one_elec];
 
@@ -225,7 +225,7 @@ fn main() {
     let mut grid_max = 2.; // todo: Is this used, or overridden?
     let spacing_factor = 1.6;
 
-    let mut surfaces_shared = SurfacesShared::new(grid_min, grid_max, spacing_factor);
+    let mut surfaces_shared = SurfacesShared::new(grid_min, grid_max, spacing_factor, grid_n);
     surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es);
 
     // todo: Short-term experiment
@@ -266,7 +266,6 @@ fn main() {
         &mut surfaces_shared.grid_posits,
         grid_n,
     );
-
 
     // todo: For now and for here at least, make all individual V = to fixed V at init.
     for sfc in &mut surfaces_per_elec {

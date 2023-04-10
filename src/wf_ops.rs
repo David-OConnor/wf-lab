@@ -44,7 +44,7 @@ pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 50;
+pub const N: usize = 10;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {
@@ -88,7 +88,7 @@ pub fn update_V_fm_fixed_charges(
 
     *grid_max = max_abs_val + RANGE_PAD;
     *grid_min = -*grid_max;
-    update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor);
+    update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor, n);
 
     for i in 0..n {
         for j in 0..n {
@@ -197,7 +197,7 @@ pub fn update_wf_fm_bases(
         }
     }
 
-    let psi_norm_sqrt = normalize_wf(&mut sfcs.psi, N);
+    let psi_norm_sqrt = normalize_wf(&mut sfcs.psi, n);
 
     // Update psi_pps after normalization.
     for i in 0..n {
@@ -337,9 +337,9 @@ pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, n: usize) {
         let mut best_E = 0.;
 
         for E_trial in E_vals {
-            for i in 0..N {
-                for j in 0..N {
-                    for k in 0..N {
+            for i in 0..n {
+                for j in 0..n {
+                    for k in 0..n {
                         sfcs.psi_pp_calculated[i][j][k] =
                             eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E_trial, i, j, k);
                     }
@@ -360,19 +360,19 @@ pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, n: usize) {
 }
 
 /// A crude low pass
-pub fn smooth_array(arr: &mut Arr3d, smoothing_amt: f64) {
+pub fn smooth_array(arr: &mut Arr3d, smoothing_amt: f64, n: usize) {
     let orig = arr.clone();
 
-    for i in 0..N {
-        if i == 0 || i == N - 1 {
+    for i in 0..n {
+        if i == 0 || i == n - 1 {
             continue;
         }
-        for j in 0..N {
-            if j == 0 || j == N - 1 {
+        for j in 0..n {
+            if j == 0 || j == n - 1 {
                 continue;
             }
-            for k in 0..N {
-                if k == 0 || k == N - 1 {
+            for k in 0..n {
+                if k == 0 || k == n - 1 {
                     continue;
                 }
                 let neighbor_avg = (orig[i - 1][j][k]
@@ -397,13 +397,14 @@ pub fn update_grid_posits(
     grid_min: f64,
     grid_max: f64,
     spacing_factor: f64,
+    n: usize,
 ) {
-    let grid_lin = util::linspace((grid_min, grid_max), N);
+    let grid_lin = util::linspace((grid_min, grid_max), n);
 
     // Set up a grid with values that increase in distance the farther we are from the center.
-    let mut grid_1d = [0.; N];
+    let mut grid_1d = vec![0.; n];
 
-    for i in 0..N {
+    for i in 0..n {
         let mut val = grid_lin[i].abs().powf(spacing_factor);
         if grid_lin[i] < 0. {
             val *= -1.; // square the magnitude only.

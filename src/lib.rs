@@ -57,7 +57,9 @@ pub fn psi_from_pt_charges(
     // saves a pass in our initial WF. Perhaps though, we want to pass V intact.
     // todo: Output is psi, or psi^2?
 
-    let mut sfcs = SurfacesPerElec::default();
+    let grid_n = wf_ops::N;
+
+    let mut sfcs = SurfacesPerElec::new(grid_n);
 
     let mut grid_posits = types::new_data_vec(crate::wf_ops::N);
 
@@ -66,6 +68,7 @@ pub fn psi_from_pt_charges(
         grid_bounds.0,
         grid_bounds.1,
         spacing_factor,
+        grid_n,
     );
 
     let wfs = create_trial_wfs(charges_fixed);
@@ -86,8 +89,6 @@ pub fn psi_from_pt_charges(
     let charges_electron = vec![arr_real.clone(), arr_real];
 
     let ui_active_elec = 0;
-
-    let grid_n = wf_ops::N;
 
     // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
     wf_ops::update_V_fm_fixed_charges(

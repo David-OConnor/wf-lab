@@ -100,7 +100,7 @@ pub fn nudge_wf(
             // Note: It turns out smoothing makes a big difference, as does the smoothing coefficient.
             // diff_pre_smooth = diff_map.clone();
 
-            wf_ops::smooth_array(&mut diff_map, smooth_amt);
+            wf_ops::smooth_array(&mut diff_map, smooth_amt, n);
 
             for i in 0..n {
                 for j in 0..n {

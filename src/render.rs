@@ -12,12 +12,12 @@ use lin_alg2::{
     f64::Vec3 as Vec3F64,
 };
 
+use crate::types::new_data_real;
 use crate::{
     types::{Arr3d, Arr3dReal, Arr3dVec},
     wf_ops::{self, N},
     State,
 };
-use crate::types::new_data_real;
 
 const NUM_SURFACES: usize = 6;
 
@@ -49,7 +49,7 @@ const SURFACE_COLORS: [Color; 8] = [
 const SURFACE_SHINYNESS: f32 = 10.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
-const PSI_SCALER: f32 = 50.; // to make WF more visually significant.
+const PSI_SCALER: f32 = 120.; // to make WF more visually significant.
 const PSI_SQ_SCALER: f32 = 3_000.; // to make WF more visually significant.
 const PSI_P_SCALER: f32 = 15.; // to make WF more visually significant.
 const PSI_PP_SCALER: f32 = 20.; // to make WF more visually significant.

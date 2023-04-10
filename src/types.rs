@@ -22,12 +22,12 @@ pub struct SurfacesShared {
 }
 
 impl SurfacesShared {
-    pub fn new(grid_min: f64, grid_max: f64, spacing_factor: f64) -> Self {
-        let data = new_data(N);
-        let data_real = new_data_real(N);
+    pub fn new(grid_min: f64, grid_max: f64, spacing_factor: f64, n: usize) -> Self {
+        let data = new_data(n);
+        let data_real = new_data_real(n);
 
-        let mut grid_posits = new_data_vec(N);
-        wf_ops::update_grid_posits(&mut grid_posits, grid_min, grid_max, spacing_factor);
+        let mut grid_posits = new_data_vec(n);
+        wf_ops::update_grid_posits(&mut grid_posits, grid_min, grid_max, spacing_factor, n);
 
         Self {
             grid_posits,
@@ -113,16 +113,16 @@ pub struct SurfacesPerElec {
     // pub psis_per_elec: Vec<Arr3d>,
 }
 
-impl Default for SurfacesPerElec {
+impl SurfacesPerElec {
     /// Fills with 0.s
-    fn default() -> Self {
-        let data = new_data(N);
-        let data_real = new_data_real(N);
+    pub fn new(n: usize) -> Self {
+        let data = new_data(n);
+        let data_real = new_data_real(n);
 
         let mut default_nudges = data_real.clone();
-        for i in 0..N {
-            for j in 0..N {
-                for k in 0..N {
+        for i in 0..n {
+            for j in 0..n {
+                for k in 0..n {
                     default_nudges[i][j][k] = NUDGE_DEFAULT;
                 }
             }

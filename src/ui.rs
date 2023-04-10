@@ -159,7 +159,7 @@ fn basis_fn_mixer(
                     .selected_text(basis.charge_id().to_string())
                     .show_ui(ui, |ui| {
                         for (mut charge_i, (_charge_posit, _amt)) in
-                        state.charges_fixed.iter().enumerate()
+                            state.charges_fixed.iter().enumerate()
                         {
                             ui.selectable_value(
                                 basis.charge_id_mut(),
@@ -261,7 +261,7 @@ fn basis_fn_mixer(
 
                             euler.pitch
                         })
-                            .text("P"),
+                        .text("P"),
                     );
                     ui.add(
                         egui::Slider::from_get_set(-TAU / 2.0..=TAU / 2.0, |v| {
@@ -273,7 +273,7 @@ fn basis_fn_mixer(
 
                             euler.roll
                         })
-                            .text("R"),
+                        .text("R"),
                     );
                     ui.add(
                         egui::Slider::from_get_set(0.0..=TAU, |v| {
@@ -285,7 +285,7 @@ fn basis_fn_mixer(
 
                             euler.yaw
                         })
-                            .text("Y"),
+                        .text("Y"),
                     );
                 }
             });
@@ -301,7 +301,7 @@ fn basis_fn_mixer(
 
                     basis.weight()
                 })
-                    .text("Wt"),
+                .text("Wt"),
             );
         }
     });
@@ -436,7 +436,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.E[state.ui_active_elec]
             })
-                .text("E"),
+            .text("E"),
         );
         //
         // // todo: DRY!!
@@ -587,7 +587,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui_z_displayed
             })
-                .text("Z slice"),
+            .text("Z slice"),
         );
 
         ui.add(
@@ -601,7 +601,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-                .text("Visual rotation"),
+            .text("Visual rotation"),
         );
 
         ui.add(
@@ -619,7 +619,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_max
             })
-                .text("Grid range"),
+            .text("Grid range"),
         );
 
         ui.add(
@@ -631,8 +631,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.nudge_amount[state.ui_active_elec]
             })
-                .text("Nudge amount")
-                .logarithmic(true),
+            .text("Nudge amount")
+            .logarithmic(true),
         );
 
         ui.add_space(ITEM_SPACING);
@@ -759,7 +759,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             // Replace indiv sfc charges with this. A bit of a kludge, perhaps
             for sfc in &mut state.surfaces_per_elec {
-                types::copy_array_real(&mut sfc.V, &state.surfaces_shared.V_fixed_charges, state.grid_n);
+                types::copy_array_real(
+                    &mut sfc.V,
+                    &state.surfaces_shared.V_fixed_charges,
+                    state.grid_n,
+                );
             }
         }
 
