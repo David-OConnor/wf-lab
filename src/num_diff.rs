@@ -58,7 +58,6 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
         psi_z_next += basis.value(z_next) * weight;
     }
 
-    // todo: Your cplx div fn is wrong fyi.
     psi_x_prev = psi_x_prev / psi_norm_sqrt;
     psi_x_next = psi_x_next / psi_norm_sqrt;
     psi_y_prev = psi_y_prev / psi_norm_sqrt;

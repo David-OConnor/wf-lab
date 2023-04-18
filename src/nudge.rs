@@ -95,7 +95,7 @@ pub fn nudge_wf(
                 }
                 // }
             } // todo: COmmenting this out, and adding one towards the bottom makes a dramatic improvement
-              // todo, but why??!
+            // todo, but why??!
 
             // Note: It turns out smoothing makes a big difference, as does the smoothing coefficient.
             // diff_pre_smooth = diff_map.clone();
@@ -114,16 +114,17 @@ pub fn nudge_wf(
                 }
             }
 
-            // Calculated psi'' measured in a separate loop after updating psi, since it depends on
-            // neighboring psi values as well.
-            num_diff::find_ψ_pp_meas_fm_grid_irreg(
-                &sfcs.psi,
-                &mut sfcs.psi_pp_measured,
-                grid_posits,
-            );
             // todo: Here lies one of the strange bracket mismatches that is helping our cause
             // todo (Uncomment one to engage the strange behavior)
         }
+
+        // Calculated psi'' measured in a separate loop after updating psi, since it depends on
+        // neighboring psi values as well.
+        num_diff::find_ψ_pp_meas_fm_grid_irreg(
+            &sfcs.psi,
+            &mut sfcs.psi_pp_measured,
+            grid_posits,
+        );
 
         // If you use individual nudges, evaluate how you want to handle this.
         let score = wf_ops::score_wf(sfcs, n);
