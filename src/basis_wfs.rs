@@ -489,7 +489,6 @@ impl HOrbital {
         let θ = (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z);
         let ϕ = diff.y.atan2(diff.x);
 
-        
         // let θ = if diff.z > EPS {
         //     (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z)
         // } else if diff.z < -EPS {

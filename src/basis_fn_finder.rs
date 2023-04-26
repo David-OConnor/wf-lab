@@ -10,12 +10,12 @@ use lin_alg2::f64::{Quaternion, Vec3};
 //
 // }
 
-use wf_lab::complex_nums::Cplx;
 use crate::{
     basis_wfs::HOrbital,
     types::{Arr3dReal, Arr3dVec},
-    wf_ops::{ħ},
+    wf_ops::ħ,
 };
+use wf_lab::complex_nums::Cplx;
 
 // todo: Put back
 

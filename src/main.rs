@@ -290,7 +290,9 @@ fn main() {
 
     let psi_pp_score = vec![psi_pp_score_one, psi_pp_score_one];
 
-    let show_surfaces = [true, true, false, false, true, false, true, false, false, false];
+    let show_surfaces = [
+        true, true, false, false, true, false, true, false, false, false,
+    ];
 
     let surface_names = [
         "V".to_owned(),

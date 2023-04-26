@@ -299,9 +299,9 @@ pub fn score_wf(sfcs: &SurfacesPerElec, n: usize) -> f64 {
         for j in 0..n {
             for k in 0..n {
                 // todo: Check if either individual is outside a thresh?
-
-                let val =
-                    (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]).abs_sq();
+                let diff = (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]);
+                // let val = diff.real + diff.im; // todo: Do you want this, mag_sq, or something else?
+                let val = diff.abs_sq();
                 if val < SCORE_THRESH {
                     result += val;
                 }

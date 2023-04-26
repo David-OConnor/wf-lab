@@ -245,51 +245,51 @@ fn basis_fn_mixer(
                     *updated_wfs = true;
                 }
 
-            // Note: We've replaced the below rotation-slider code with just using combinations of
-            // different m
+                // Note: We've replaced the below rotation-slider code with just using combinations of
+                // different m
                 // For now, we use an azimuth, elevation API for orientation.
-            //     if basis.l() >= 1 && basis.weight().abs() > 0.00001 {
-            //         let mut euler = basis.harmonic().orientation.to_euler();
+                //     if basis.l() >= 1 && basis.weight().abs() > 0.00001 {
+                //         let mut euler = basis.harmonic().orientation.to_euler();
 
-            //         // todo: DRY between the 3.
-            //         ui.add(
-            //             // Offsets are to avoid gimball lock.
-            //             egui::Slider::from_get_set(-TAU / 4.0 + 0.001..=TAU / 4.0 - 0.001, |v| {
-            //                 if let Some(v_) = v {
-            //                     euler.pitch = v_;
-            //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
-            //                     *updated_wfs = true;
-            //                 }
+                //         // todo: DRY between the 3.
+                //         ui.add(
+                //             // Offsets are to avoid gimball lock.
+                //             egui::Slider::from_get_set(-TAU / 4.0 + 0.001..=TAU / 4.0 - 0.001, |v| {
+                //                 if let Some(v_) = v {
+                //                     euler.pitch = v_;
+                //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
+                //                     *updated_wfs = true;
+                //                 }
 
-            //                 euler.pitch
-            //             })
-            //             .text("P"),
-            //         );
-            //         ui.add(
-            //             egui::Slider::from_get_set(-TAU / 2.0..=TAU / 2.0, |v| {
-            //                 if let Some(v_) = v {
-            //                     euler.roll = v_;
-            //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
-            //                     *updated_wfs = true;
-            //                 }
+                //                 euler.pitch
+                //             })
+                //             .text("P"),
+                //         );
+                //         ui.add(
+                //             egui::Slider::from_get_set(-TAU / 2.0..=TAU / 2.0, |v| {
+                //                 if let Some(v_) = v {
+                //                     euler.roll = v_;
+                //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
+                //                     *updated_wfs = true;
+                //                 }
 
-            //                 euler.roll
-            //             })
-            //             .text("R"),
-            //         );
-            //         ui.add(
-            //             egui::Slider::from_get_set(0.0..=TAU, |v| {
-            //                 if let Some(v_) = v {
-            //                     euler.yaw = v_;
-            //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
-            //                     *updated_wfs = true;
-            //                 }
+                //                 euler.roll
+                //             })
+                //             .text("R"),
+                //         );
+                //         ui.add(
+                //             egui::Slider::from_get_set(0.0..=TAU, |v| {
+                //                 if let Some(v_) = v {
+                //                     euler.yaw = v_;
+                //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
+                //                     *updated_wfs = true;
+                //                 }
 
-            //                 euler.yaw
-            //             })
-            //             .text("Y"),
-            //         );
-            //     }
+                //                 euler.yaw
+                //             })
+                //             .text("Y"),
+                //         );
+                //     }
             });
 
             // todo: Text edit or dropdown for n.
@@ -360,7 +360,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             // Show the new active electron's meshes, if it changed.
             if state.ui_active_elec != prev_active_elec {
                 updated_meshes = true;
-                engine_updates.meshes = true;
             }
 
             if ui
@@ -368,14 +367,20 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 .clicked()
             {
                 updated_meshes = true;
-                engine_updates.meshes = true;
+            }
+
+            if ui
+                .checkbox(&mut state.mag_phase, "Show mag, phase")
+                .clicked()
+            {
+                updated_meshes = true;
             }
         });
 
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
                 for (i, name) in state.surface_names.iter_mut().enumerate() {
-                    if i > 4 {
+                    if i > 3 {
                         continue;
                     }
                     let show = &mut state.show_surfaces[i];
@@ -387,7 +392,19 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             // todo DRY
             ui.vertical(|ui| {
                 for (i, name) in state.surface_names.iter_mut().enumerate() {
-                    if i <= 4 {
+                    if i <= 3 || i > 6 {
+                        continue;
+                    }
+                    let show = &mut state.show_surfaces[i];
+                    if ui.checkbox(show, &*name).clicked() {
+                        engine_updates.entities = true;
+                    }
+                }
+            });
+
+            ui.vertical(|ui| {
+                for (i, name) in state.surface_names.iter_mut().enumerate() {
+                    if i <= 6 {
                         continue;
                     }
                     let show = &mut state.show_surfaces[i];
@@ -397,11 +414,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 }
             });
         });
-
-        if ui.checkbox(&mut state.mag_phase, "Show mag, phase").clicked() {
-            engine_updates.entities = true;
-            engine_updates.meshes = true;
-        }
 
         // ui.add_space(ITEM_SPACING);
 
@@ -438,7 +450,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // state.psi_p_score[state.ui_active_elec] = 0.; // todo!
 
                     updated_meshes = true;
-                    engine_updates.meshes = true;
                 }
 
                 state.E[state.ui_active_elec]
@@ -587,8 +598,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             egui::Slider::from_get_set(state.grid_min..=state.grid_max - 0.1, |v| {
                 if let Some(v_) = v {
                     state.ui_z_displayed = v_;
-                    engine_updates.meshes = true;
-
                     updated_meshes = true;
                 }
 
@@ -601,8 +610,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             egui::Slider::from_get_set(-TAU / 2.0..=TAU / 2.0, |v| {
                 if let Some(v_) = v {
                     state.visual_rotation = v_;
-                    engine_updates.meshes = true;
-
                     updated_meshes = true;
                 }
 
@@ -680,7 +687,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 );
 
                 updated_meshes = true;
-                engine_updates.meshes = true;
 
                 state.psi_pp_score[state.ui_active_elec] = crate::wf_ops::score_wf(
                     &state.surfaces_per_elec[state.ui_active_elec],
@@ -731,7 +737,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 );
 
                 updated_meshes = true;
-                engine_updates.meshes = true;
 
                 state.psi_pp_score[state.ui_active_elec] =
                     wf_ops::score_wf(&state.surfaces_per_elec[state.ui_active_elec], state.grid_n);
@@ -744,6 +749,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         });
 
         if updated_meshes {
+            engine_updates.meshes = true;
+
             render::update_meshes(
                 &state.surfaces_shared,
                 &state.surfaces_per_elec[state.ui_active_elec],

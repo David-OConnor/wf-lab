@@ -19,8 +19,6 @@ use crate::{
     State,
 };
 
-const NUM_SURFACES: usize = 6;
-
 type Color = (f32, f32, f32);
 
 const WINDOW_TITLE: &str = "ψ lab";
@@ -118,7 +116,14 @@ fn prepare_2d_mesh_real(
 }
 
 /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
-fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32, mag_phase: bool, imag: bool) -> Vec<Vec<Vec3>> {
+fn prepare_2d_mesh(
+    posits: &Arr3dVec,
+    vals: &Arr3d,
+    z_i: usize,
+    scaler: f32,
+    mag_phase: bool,
+    imag: bool,
+) -> Vec<Vec<Vec3>> {
     // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64.
     let mut y = Vec::new();
     y.resize(N, Vec3::new_zero());
@@ -187,12 +192,19 @@ pub fn update_meshes(
 
     meshes.push(Mesh::new_surface(
         // todo: Be able to show shared V and per-elec. Currently hard-coded.
-        &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i,  1.),
+        &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, 1.),
         true,
     ));
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER, mag_phase, false),
+        &prepare_2d_mesh(
+            grid_posits,
+            &surfaces.psi,
+            z_i,
+            PSI_SCALER,
+            mag_phase,
+            false,
+        ),
         true,
     ));
 
@@ -244,7 +256,7 @@ pub fn update_meshes(
 /// with surfaces.
 pub fn update_entities(charges: &[(Vec3F64, f64)], show_surfaces: &[bool], scene: &mut Scene) {
     let mut entities = Vec::new();
-    for i in 0..NUM_SURFACES {
+    for i in 0..crate::NUM_SURFACES {
         if !show_surfaces[i] {
             continue;
         }
@@ -261,7 +273,7 @@ pub fn update_entities(charges: &[(Vec3F64, f64)], show_surfaces: &[bool], scene
 
     for (posit, val) in charges {
         entities.push(Entity::new(
-            NUM_SURFACES, // Index 1 after surfaces.
+            crate::NUM_SURFACES, // Index 1 after surfaces.
             // Todo: You may need to scale posit's Z.
             // todo: Heper for this?
             Vec3::new(
