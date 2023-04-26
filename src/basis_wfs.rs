@@ -210,31 +210,33 @@ impl SphericalHarmonic {
     pub fn value(&self, θ: f64, ϕ: f64) -> Cplx {
         // todo: You could hard-code some of the more common ones like l = 0.
 
+        // Approach 1: `scilib` module.
         let l = self.l;
         let m = self.m;
-        //
-        // // https://docs.rs/scilib/latest/scilib/quantum/fn.spherical_harmonics.html
+
+        // https://docs.rs/scilib/latest/scilib/quantum/fn.spherical_harmonics.html
         let result = scilib::quantum::spherical_harmonics(l.into(), m.into(), θ, ϕ);
         return Cplx {
             real: result.re,
             im: result.im,
         };
 
+        // Approach 2: Poly module.
+
         // todo: QC this.
-        let P = Poly::gen_legendre(l.into(), m.into());
+        // let P = Poly::gen_legendre(l.into(), m.into());
 
-        let part1 = (2 * l + 1) as f64 / (4. * PI) * factorial(l - m as u16) as f64
-            / factorial(l + m as u16) as f64;
+        // let part1 = (2 * l + 1) as f64 / (4. * PI) * factorial(l - m as u16) as f64
+        //     / factorial(l + m as u16) as f64;
 
-        let part2 = (-1.0_f64).powi(m.into()) * part1.sqrt() * P.compute(θ.cos());
+        // let part2 = (-1.0_f64).powi(m.into()) * part1.sqrt() * P.compute(θ.cos());
 
         // todo: is "im theta" i theta, or i * m theta?? Damn notation.
-        return Cplx::from_real(part2) * (IM * m as f64 * ϕ).exp();
+        // return Cplx::from_real(part2) * (IM * ϕ).exp();
 
-        // todo: Hard-coded match arms for now.
-
-        // todo: Shortcut  vars or consts for repeated patterns A/R
-
+        // Approach 3: Hard-coded. Can still use this for low values; may be more
+        // performant.
+        //
         // println!("θ: {} ϕ: {}, l: {}, m: {}", θ, ϕ, l, m);
         match l {
             0 => (0.5 * (1. / PI).sqrt()).into(),
@@ -427,6 +429,8 @@ impl HOrbital {
             * (2. * r / (n as f64 * A_0)).powi(l.into())
             * L.compute(2. * r / (n as f64 * A_0));
 
+        // Approach 2: Hard-coded for low n.
+
         // N is the normalization constant for the radial part
         let ρ = Z_H * r / A_0;
 
@@ -476,26 +480,30 @@ impl HOrbital {
 
         let radial = self.radial(r, self.harmonic.l);
 
-        let diff = self.harmonic.orientation.inverse().rotate_vec(diff);
+        // todo: Skipping rotation for now.
+        // let diff = self.harmonic.orientation.inverse().rotate_vec(diff);
 
-        // https://en.wikipedia.org/wiki/Spherical_coordinate_system
+        // We use the "physics" (ISO) convention described here, where phi
+        // covers the full way around, and theta goes half a turn from
+        // the top.
+
+        let θ = (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z);
+        let ϕ = diff.y.atan2(diff.x);
+
+        
         // let θ = if diff.z > EPS {
         //     (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z)
         // } else if diff.z < -EPS {
-        //     PI + (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z)
-        // } else if diff.z.abs() < EPS && diff.x.abs() < EPS && diff.y.abs() < EPS {
-        //     PI / 2.
+        //     (PI + diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z)
+        // } else if diff.z.abs() < EPS && (diff.x * diff.y).abs() > 0. {
+        // PI / 2.
         // } else {
-        //     0. // todo: Actually undfined.
+        //     0. // todo: actually undefined.
         // };
-        //
-        let θ = (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z);
 
-        let ϕ = diff.y.atan2(diff.x);
-        //
         // let ϕ = if diff.x > EPS {
         //     diff.y.atan2(diff.x)
-        // } else if diff.x < -EPS && diff.y >= 0. {
+        // } else if diff.x < -EPS && diff.y >= EPS {
         //    diff.y.atan2(diff.x) + PI
         // } else if  diff.x < -EPS && diff.y < -EPS {
         //     diff.y.atan2(diff.x) - PI
@@ -512,7 +520,7 @@ impl HOrbital {
         let angular = self.harmonic.value(θ, ϕ);
 
         if angular.real.is_nan() {
-            println!("θ: {}, ϕ: {}", θ, ϕ);
+            println!("Angular NAN: θ: {}, ϕ: {}", θ, ϕ);
         }
 
         // Normalization consts are applied to radial and angular parts separately.

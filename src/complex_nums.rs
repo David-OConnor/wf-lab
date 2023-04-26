@@ -69,6 +69,8 @@ impl Cplx {
     /// Multiply this value's complex conjugate by it. Is a real number.
     pub fn abs_sq(&self) -> f64 {
         (self.conj() * *self).real
+        // Another approach:
+        // self.real.powi(2) + self.im.powi(2)
     }
 }
 

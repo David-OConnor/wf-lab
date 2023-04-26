@@ -229,6 +229,8 @@ pub fn update_wf_fm_bases(
 /// todo: Curretly not working.
 /// todo: I don't think you can use this approach comparing psi''s with fidelity, since they're
 /// todo not normalizsble.
+/// todo: Perhaps this isn't working because these aren't wave functions! psi is a WF;
+/// psi'' is not
 // fn wf_fidelity(sfcs: &Surfaces) -> f64 {
 fn fidelity(sfcs: &SurfacesPerElec, n: usize) -> f64 {
     // "The accuracy should be scored by the fidelity of the wavefunction compared
@@ -238,8 +240,6 @@ fn fidelity(sfcs: &SurfacesPerElec, n: usize) -> f64 {
     // able to exactly express it.""
 
     // For normalization.
-    // let mut norm_sq_calc = 0.;
-    // let mut norm_sq_meas = 0.;
     let mut norm_calc = Cplx::new_zero();
     let mut norm_meas = Cplx::new_zero();
 

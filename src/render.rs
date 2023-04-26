@@ -35,11 +35,12 @@ const COLOR_NEG_CHARGE: Color = (0., 0., 1.);
 
 const CHARGE_SPHERE_SIZE: f32 = 0.05;
 
-const SURFACE_COLORS: [Color; 8] = [
+const SURFACE_COLORS: [Color; 9] = [
     (0., 0., 1.),
     (0., 0.5, 0.2),
     (1., 0., 0.),
     (0., 0.5, 0.5),
+    (0., 0.3, 0.8),
     (0.5, 0.5, 0.),
     (0.33, 0.33, 0.333),
     (0.5, 0., 0.5),
@@ -116,7 +117,7 @@ fn prepare_2d_mesh_real(
 }
 
 /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
-fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32) -> Vec<Vec<Vec3>> {
+fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32, imag: bool) -> Vec<Vec<Vec3>> {
     // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64.
     let mut y = Vec::new();
     y.resize(N, Vec3::new_zero());
@@ -126,10 +127,19 @@ fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32) -> 
 
     for i in 0..N {
         for j in 0..N {
+            //todo: Instead of real and imag, split by mag and phase??
+            let val = if imag {
+                // vals[i][j][z_i].phase() / (scaler as f64)
+                vals[i][j][z_i].im
+            } else {
+                // vals[i][j][z_i].mag()
+                vals[i][j][z_i].real
+            };
+
             result[i][j] = Vec3::new(
                 posits[i][j][z_i].x as f32,
                 posits[i][j][z_i].y as f32,
-                vals[i][j][z_i].real as f32 * scaler,
+                val as f32 * scaler,
             );
         }
     }
@@ -182,19 +192,16 @@ pub fn update_meshes(
     meshes.push(Mesh::new_surface(
         // todo: Be able to show shared V and per-elec. Currently hard-coded.
         &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, 1.),
-        // &prepare_2d_mesh_real(grid_posits, &surfaces_shared.V_fixed_charges, z_i, 1.),
-        // todo: Center! Maybe offset in entities.
-        // sfc_mesh_start,
-        // sfc_mesh_step,
         true,
     ));
 
-    // todo: We are currently plotting real part only of psi. (Unless looking at psi^2)
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER),
-        // todo: Center! Maybe offset in entities.
-        // sfc_mesh_start,
-        // sfc_mesh_step,
+        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER, false),
+        true,
+    ));
+
+    meshes.push(Mesh::new_surface(
+        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER, true),
         true,
     ));
 
@@ -203,25 +210,16 @@ pub fn update_meshes(
 
     meshes.push(Mesh::new_surface(
         &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER),
-        // todo: Center! Maybe offset in entities.
-        // sfc_mesh_start,
-        // sfc_mesh_step,
         true,
     ));
 
     for (scaler, sfc) in [
         (PSI_PP_SCALER, &surfaces.psi_pp_calculated),
         (PSI_PP_SCALER, &surfaces.psi_pp_measured),
-        // (PSI_P_SCALER, &surfaces.psi_p_calculated),
-        // (PSI_P_SCALER, &surfaces.psi_p_total_measured),
-        // &surfaces.aux1,
-        // &surfaces.aux2,
     ] {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler),
-            // todo: Center! Maybe offset in entities.
-            // sfc_mesh_start,
-            // sfc_mesh_step,
+            // todo: Im portions for this?
+            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, false),
             true,
         ));
     }

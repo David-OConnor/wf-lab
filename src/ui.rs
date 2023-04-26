@@ -245,49 +245,51 @@ fn basis_fn_mixer(
                     *updated_wfs = true;
                 }
 
+            // Note: We've replaced the below rotation-slider code with just using combinations of
+            // different m
                 // For now, we use an azimuth, elevation API for orientation.
-                if basis.l() >= 1 && basis.weight().abs() > 0.00001 {
-                    let mut euler = basis.harmonic().orientation.to_euler();
+            //     if basis.l() >= 1 && basis.weight().abs() > 0.00001 {
+            //         let mut euler = basis.harmonic().orientation.to_euler();
 
-                    // todo: DRY between the 3.
-                    ui.add(
-                        // Offsets are to avoid gimball lock.
-                        egui::Slider::from_get_set(-TAU / 4.0 + 0.001..=TAU / 4.0 - 0.001, |v| {
-                            if let Some(v_) = v {
-                                euler.pitch = v_;
-                                basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
-                                *updated_wfs = true;
-                            }
+            //         // todo: DRY between the 3.
+            //         ui.add(
+            //             // Offsets are to avoid gimball lock.
+            //             egui::Slider::from_get_set(-TAU / 4.0 + 0.001..=TAU / 4.0 - 0.001, |v| {
+            //                 if let Some(v_) = v {
+            //                     euler.pitch = v_;
+            //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
+            //                     *updated_wfs = true;
+            //                 }
 
-                            euler.pitch
-                        })
-                        .text("P"),
-                    );
-                    ui.add(
-                        egui::Slider::from_get_set(-TAU / 2.0..=TAU / 2.0, |v| {
-                            if let Some(v_) = v {
-                                euler.roll = v_;
-                                basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
-                                *updated_wfs = true;
-                            }
+            //                 euler.pitch
+            //             })
+            //             .text("P"),
+            //         );
+            //         ui.add(
+            //             egui::Slider::from_get_set(-TAU / 2.0..=TAU / 2.0, |v| {
+            //                 if let Some(v_) = v {
+            //                     euler.roll = v_;
+            //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
+            //                     *updated_wfs = true;
+            //                 }
 
-                            euler.roll
-                        })
-                        .text("R"),
-                    );
-                    ui.add(
-                        egui::Slider::from_get_set(0.0..=TAU, |v| {
-                            if let Some(v_) = v {
-                                euler.yaw = v_;
-                                basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
-                                *updated_wfs = true;
-                            }
+            //                 euler.roll
+            //             })
+            //             .text("R"),
+            //         );
+            //         ui.add(
+            //             egui::Slider::from_get_set(0.0..=TAU, |v| {
+            //                 if let Some(v_) = v {
+            //                     euler.yaw = v_;
+            //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
+            //                     *updated_wfs = true;
+            //                 }
 
-                            euler.yaw
-                        })
-                        .text("Y"),
-                    );
-                }
+            //                 euler.yaw
+            //             })
+            //             .text("Y"),
+            //         );
+            //     }
             });
 
             // todo: Text edit or dropdown for n.
