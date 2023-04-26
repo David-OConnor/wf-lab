@@ -44,7 +44,7 @@ pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 20;
+pub const N: usize = 40;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {
