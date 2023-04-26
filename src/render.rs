@@ -35,7 +35,7 @@ const COLOR_NEG_CHARGE: Color = (0., 0., 1.);
 
 const CHARGE_SPHERE_SIZE: f32 = 0.05;
 
-const SURFACE_COLORS: [Color; 9] = [
+const SURFACE_COLORS: [Color; 10] = [
     (0., 0., 1.),
     (0., 0.5, 0.2),
     (1., 0., 0.),
@@ -45,6 +45,7 @@ const SURFACE_COLORS: [Color; 9] = [
     (0.33, 0.33, 0.333),
     (0.5, 0., 0.5),
     (0.5, 0.4, 0.2),
+    (0.5, 0.4, 0.3),
 ];
 
 const SURFACE_SHINYNESS: f32 = 10.5;
@@ -117,7 +118,7 @@ fn prepare_2d_mesh_real(
 }
 
 /// Generate a 2d f32 mesh from a 3d F64 mesh, using a z slice.
-fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32, imag: bool) -> Vec<Vec<Vec3>> {
+fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32, mag_phase: bool, imag: bool) -> Vec<Vec<Vec3>> {
     // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64.
     let mut y = Vec::new();
     y.resize(N, Vec3::new_zero());
@@ -129,11 +130,17 @@ fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32, ima
         for j in 0..N {
             //todo: Instead of real and imag, split by mag and phase??
             let val = if imag {
-                // vals[i][j][z_i].phase() / (scaler as f64)
-                vals[i][j][z_i].im
+                if mag_phase {
+                    vals[i][j][z_i].phase() / (scaler as f64)
+                } else {
+                    vals[i][j][z_i].im
+                }
             } else {
-                // vals[i][j][z_i].mag()
-                vals[i][j][z_i].real
+                if mag_phase {
+                    vals[i][j][z_i].mag()
+                } else {
+                    vals[i][j][z_i].real
+                }
             };
 
             result[i][j] = Vec3::new(
@@ -143,18 +150,6 @@ fn prepare_2d_mesh(posits: &Arr3dVec, vals: &Arr3d, z_i: usize, scaler: f32, ima
             );
         }
     }
-    //
-    //
-    // let mut result = Vec::new();
-    // for i in 0..N {
-    //     let mut y_vec = Vec::new();
-    //     for j in 0..N {
-    //
-    //         let val = vals[i][j][z_i]
-    //         y_vec.push(val as f32 * scaler); // Convert from f64.
-    //     }
-    //     result.push(y_vec);
-    // }
 
     result
 }
@@ -167,6 +162,7 @@ pub fn update_meshes(
     z_displayed: f64,
     scene: &mut Scene,
     grid_posits: &Arr3dVec,
+    mag_phase: bool,
 ) {
     // Our meshes are defined in terms of a start point,
     // and a step. Adjust the step to center the grid at
@@ -191,17 +187,17 @@ pub fn update_meshes(
 
     meshes.push(Mesh::new_surface(
         // todo: Be able to show shared V and per-elec. Currently hard-coded.
-        &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, 1.),
+        &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i,  1.),
         true,
     ));
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER, false),
+        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER, mag_phase, false),
         true,
     ));
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER, true),
+        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER, mag_phase, true),
         true,
     ));
 
@@ -218,8 +214,12 @@ pub fn update_meshes(
         (PSI_PP_SCALER, &surfaces.psi_pp_measured),
     ] {
         meshes.push(Mesh::new_surface(
-            // todo: Im portions for this?
-            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, false),
+            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, true),
             true,
         ));
     }
@@ -354,6 +354,7 @@ pub fn render(state: State) {
         state.ui_z_displayed,
         &mut scene,
         &state.surfaces_shared.grid_posits,
+        state.mag_phase,
     );
 
     update_entities(&state.charges_fixed, &state.show_surfaces, &mut scene);

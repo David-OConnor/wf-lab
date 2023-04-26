@@ -44,7 +44,7 @@ use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use types::{Arr3dReal, SurfacesPerElec, SurfacesShared};
 use wf_ops::{N, Q_PROT};
 
-const NUM_SURFACES: usize = 8;
+const NUM_SURFACES: usize = 10;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -99,6 +99,9 @@ pub struct State {
     /// Rotation of the visual, around either the X or Y axis; used to better visualize
     /// cases that would normally need to be panned through using hte Z-slic slider.
     pub visual_rotation: f64,
+    /// Visuals for complex fields default to real/imaginary. Enabling this
+    /// switches this to magnitude and phase.
+    pub mag_phase: bool,
     //
     // Below this are mainly experimental/WIP items
     //
@@ -287,15 +290,17 @@ fn main() {
 
     let psi_pp_score = vec![psi_pp_score_one, psi_pp_score_one];
 
-    let show_surfaces = [true, true, false, false, true, true, false, false];
+    let show_surfaces = [true, true, false, false, true, false, true, false, false, false];
 
     let surface_names = [
         "V".to_owned(),
         "ψ".to_owned(),
         "ψ im".to_owned(),
         "ψ²".to_owned(),
-        "ψ'' calculated".to_owned(),
-        "ψ'' measured".to_owned(),
+        "ψ'' calc".to_owned(),
+        "ψ'' calc im".to_owned(),
+        "ψ'' meas".to_owned(),
+        "ψ'' meas im".to_owned(),
         // "ψ' calculated".to_owned(),
         // "ψ' measured".to_owned(),
         "Aux 1".to_owned(),
@@ -330,6 +335,7 @@ fn main() {
         // L_z,
         // z_displayed,
         // psi_p_score,
+        mag_phase: false,
     };
 
     render::render(state);

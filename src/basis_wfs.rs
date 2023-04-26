@@ -480,8 +480,7 @@ impl HOrbital {
 
         let radial = self.radial(r, self.harmonic.l);
 
-        // todo: Skipping rotation for now.
-        // let diff = self.harmonic.orientation.inverse().rotate_vec(diff);
+        let diff = self.harmonic.orientation.inverse().rotate_vec(diff);
 
         // We use the "physics" (ISO) convention described here, where phi
         // covers the full way around, and theta goes half a turn from
