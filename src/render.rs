@@ -15,7 +15,7 @@ use lin_alg2::{
 use crate::types::new_data_real;
 use crate::{
     types::{Arr3d, Arr3dReal, Arr3dVec},
-    wf_ops::{self, N},
+    wf_ops,
     State,
 };
 
@@ -93,17 +93,20 @@ fn prepare_2d_mesh_real(
     vals: &Arr3dReal,
     z_i: usize,
     scaler: f32,
+    grid_n: usize,
 ) -> Vec<Vec<Vec3>> {
     // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64,
     // todo and 2d vice 3d.
     let mut y = Vec::new();
-    y.resize(N, Vec3::new_zero());
+    y.resize(grid_n, Vec3::new_zero());
+
+    let scaler = scaler / 30. * grid_n as f32; // todo why, without this, does higher grid n mean smaller?
 
     let mut result = Vec::new();
-    result.resize(N, y);
+    result.resize(grid_n, y);
 
-    for i in 0..N {
-        for j in 0..N {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
             result[i][j] = Vec3::new(
                 posits[i][j][z_i].x as f32,
                 posits[i][j][z_i].y as f32,
@@ -123,16 +126,19 @@ fn prepare_2d_mesh(
     scaler: f32,
     mag_phase: bool,
     imag: bool,
+    grid_n: usize,
 ) -> Vec<Vec<Vec3>> {
     // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64.
     let mut y = Vec::new();
-    y.resize(N, Vec3::new_zero());
+    y.resize(grid_n, Vec3::new_zero());
+
+    let scaler = scaler / 30. * grid_n as f32; // todo why, without this, does higher grid n mean smaller?
 
     let mut result = Vec::new();
-    result.resize(N, y);
+    result.resize(grid_n, y);
 
-    for i in 0..N {
-        for j in 0..N {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
             //todo: Instead of real and imag, split by mag and phase??
             let val = if imag {
                 if mag_phase {
@@ -168,6 +174,7 @@ pub fn update_meshes(
     scene: &mut Scene,
     grid_posits: &Arr3dVec,
     mag_phase: bool,
+    grid_n: usize,
 ) {
     // Our meshes are defined in terms of a start point,
     // and a step. Adjust the step to center the grid at
@@ -192,7 +199,7 @@ pub fn update_meshes(
 
     meshes.push(Mesh::new_surface(
         // todo: Be able to show shared V and per-elec. Currently hard-coded.
-        &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, 1.),
+        &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, 1., grid_n),
         true,
     ));
 
@@ -204,20 +211,21 @@ pub fn update_meshes(
             PSI_SCALER,
             mag_phase,
             false,
+            grid_n
         ),
         true,
     ));
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER, mag_phase, true),
+        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER, mag_phase, true, grid_n),
         true,
     ));
 
-    let mut psi_sq = new_data_real(N);
-    wf_ops::norm_sq(&mut psi_sq, &surfaces.psi, N);
+    let mut psi_sq = new_data_real(grid_n);
+    wf_ops::norm_sq(&mut psi_sq, &surfaces.psi, grid_n);
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER),
+        &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER, grid_n),
         true,
     ));
 
@@ -226,12 +234,12 @@ pub fn update_meshes(
         (PSI_PP_SCALER, &surfaces.psi_pp_measured),
     ] {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false),
+            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false, grid_n),
             true,
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, true),
+            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, true, grid_n),
             true,
         ));
     }
@@ -367,6 +375,7 @@ pub fn render(state: State) {
         &mut scene,
         &state.surfaces_shared.grid_posits,
         state.mag_phase,
+        state.grid_n,
     );
 
     update_entities(&state.charges_fixed, &state.show_surfaces, &mut scene);

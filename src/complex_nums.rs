@@ -141,10 +141,11 @@ impl MulAssign<Cplx> for Cplx {
 impl Mul<f64> for Cplx {
     type Output = Self;
 
+    /// To verify, compare to `Mul<Cplx>`, where `other.im` is 0.
     fn mul(self, other: f64) -> Self {
         Self {
             real: self.real * other,
-            im: self.im,
+            im: self.im * other,
         }
     }
 }
@@ -165,7 +166,6 @@ impl Div<f64> for Cplx {
     type Output = Self;
 
     fn div(self, other: f64) -> Self {
-        // todo: Is this right?
         Self {
             real: self.real / other,
             im: self.im / other,

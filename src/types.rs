@@ -1,7 +1,7 @@
 use crate::{
     complex_nums::Cplx,
     num_diff,
-    wf_ops::{self, N, NUDGE_DEFAULT},
+    wf_ops::{self, NUDGE_DEFAULT},
 };
 
 use lin_alg2::f64::Vec3;
@@ -40,12 +40,12 @@ impl SurfacesShared {
     }
 
     /// Update `psi` etc from that of individual electrons
-    pub fn combine_psi_parts(&mut self, per_elec: &[SurfacesPerElec], E: &[f64]) {
+    pub fn combine_psi_parts(&mut self, per_elec: &[SurfacesPerElec], E: &[f64], grid_n: usize) {
         // Todo: V. Before you update psi_pp_calc.
 
-        for i in 0..N {
-            for j in 0..N {
-                for k in 0..N {
+        for i in 0..grid_n {
+            for j in 0..grid_n {
+                for k in 0..grid_n {
                     self.psi[i][j][k] = Cplx::new_zero();
 
                     for (part_i, part) in per_elec.iter().enumerate() {
@@ -64,6 +64,7 @@ impl SurfacesShared {
             &self.psi,
             &mut self.psi_pp_measured,
             &self.grid_posits,
+            grid_n,
         );
 
         // todo: What to do with score?

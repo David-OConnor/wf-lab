@@ -5,19 +5,23 @@ use core::f64::consts::FRAC_1_SQRT_2;
 
 use crate::{
     types::{Arr3d, Arr3dReal, Arr3dVec},
-    wf_ops::{self, N, Q_ELEC},
+    wf_ops::{self, Q_ELEC},
 };
 
 use lin_alg2::f64::Vec3;
 
 /// Convert an array of ψ to one of electron charge, through space. Modifies in place
 /// to avoid unecessary allocations.
-pub(crate) fn update_charge_density_fm_psi(psi: &Arr3d, charge_density: &mut Arr3dReal) {
+pub(crate) fn update_charge_density_fm_psi(
+    psi: &Arr3d,
+    charge_density: &mut Arr3dReal,
+    grid_n: usize,
+) {
     // Normalize <ψ|ψ>
     let mut psi_sq_size = 0.;
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
                 psi_sq_size += psi[i][j][k].abs_sq();
             }
         }
@@ -27,9 +31,9 @@ pub(crate) fn update_charge_density_fm_psi(psi: &Arr3d, charge_density: &mut Arr
     // Save computation on this constant factor.
     let c = Q_ELEC * num_elecs as f64 / psi_sq_size;
 
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
                 charge_density[i][j][k] = psi[i][j][k].abs_sq() * c;
             }
         }
@@ -41,9 +45,10 @@ pub(crate) fn update_charge_density_fm_psi(psi: &Arr3d, charge_density: &mut Arr
 pub(crate) fn update_charge_densities_fm_psi(
     charges_fm_elecs: &mut [Arr3dReal],
     psi_per_electron: &[Arr3d],
+    grid_n: usize,
 ) {
     for (i, psi) in psi_per_electron.iter().enumerate() {
-        update_charge_density_fm_psi(psi, &mut charges_fm_elecs[i])
+        update_charge_density_fm_psi(psi, &mut charges_fm_elecs[i], grid_n)
     }
 }
 
@@ -61,6 +66,7 @@ pub(crate) fn find_hartree_V(
     i: usize,
     j: usize,
     k: usize,
+    grid_n: usize,
 ) -> f64 {
     // Re why the electron interaction, in many cases, appears to be very small compared to protons: After thinking about it, the protons, being point charges (approximately) are pulling from a single direction. While most of the smudged out electron gets cancelled out in the area of interest
     // But, it should follow that at a distance, the electsron force and potential is as strong as the proton's
@@ -78,9 +84,9 @@ pub(crate) fn find_hartree_V(
             continue;
         }
 
-        for i2 in 0..N {
-            for j2 in 0..N {
-                for k2 in 0..N {
+        for i2 in 0..grid_n {
+            for j2 in 0..grid_n {
+                for k2 in 0..grid_n {
                     // Don't compare the same point to itself; will get a divide-by-zero error
                     // on the distance.
                     if i2 == i && j2 == j && k2 == k {
@@ -112,10 +118,11 @@ pub(crate) fn update_V_individual(
     // The position in the array of this electron, so we don't have it repel itself.
     i_this_elec: usize,
     grid_posits: &Arr3dVec,
+    grid_n: usize,
 ) {
-    for i in 0..N {
-        for j in 0..N {
-            for k in 0..N {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
                 let posit_sample = grid_posits[i][j][k];
 
                 V_this_elec[i][j][k] = V_nuclei[i][j][k];
@@ -128,6 +135,7 @@ pub(crate) fn update_V_individual(
                     i,
                     j,
                     k,
+                    grid_n,
                 );
             }
         }
@@ -135,7 +143,7 @@ pub(crate) fn update_V_individual(
 }
 
 /// Calculate the result of exchange interactions between electrons.
-pub(crate) fn calc_exchange(psis: &[Arr3d], result: &mut Arr3d) {
+pub(crate) fn calc_exchange(psis: &[Arr3d], result: &mut Arr3d, grid_n: usize) {
     // for i_a in 0..N {
     //     for j_a in 0..N {
     //         for k_a in 0..N {
@@ -151,9 +159,9 @@ pub(crate) fn calc_exchange(psis: &[Arr3d], result: &mut Arr3d) {
     // }
     *result = Arr3d::new();
 
-    for a in 0..N {
+    for a in 0..grid_n {
         // todo: i, j, k for 3D
-        for b in 0..N {
+        for b in 0..grid_n {
             // This term will always be 0, so skipping  here may save calculation.
             if a == b {
                 continue;

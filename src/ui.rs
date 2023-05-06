@@ -7,7 +7,7 @@ use graphics::{EngineUpdates, Scene};
 use crate::{
     basis_wfs::Basis,
     eigen_fns, elec_elec, render, types,
-    wf_ops::{self, N},
+    wf_ops,
     State,
 };
 
@@ -159,7 +159,7 @@ fn basis_fn_mixer(
                     .selected_text(basis.charge_id().to_string())
                     .show_ui(ui, |ui| {
                         for (mut charge_i, (_charge_posit, _amt)) in
-                            state.charges_fixed.iter().enumerate()
+                        state.charges_fixed.iter().enumerate()
                         {
                             ui.selectable_value(
                                 basis.charge_id_mut(),
@@ -303,7 +303,7 @@ fn basis_fn_mixer(
 
                     basis.weight()
                 })
-                .text("Wt"),
+                    .text("Wt"),
             );
         }
     });
@@ -348,6 +348,45 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         let mut updated_meshes = false;
 
         ui.horizontal(|ui| {
+            let mut entry = state.grid_n.to_string();
+
+            let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
+            if response.changed() {
+                let result = entry.parse::<usize>().unwrap_or(20);
+                // if result >= 15 { // todo?
+                state.grid_n = result;
+
+                // todo: Start sloppy C+P from main. Put this into a fn etc.
+                let arr_real = types::new_data_real(state.grid_n);
+
+                // These must be initialized from wave functions later.
+                let charges_electron = vec![arr_real.clone(), arr_real];
+
+                let sfcs_one_elec = crate::SurfacesPerElec::new(state.grid_n);
+
+                let mut surfaces_per_elec = vec![sfcs_one_elec.clone(), sfcs_one_elec];
+
+                let mut grid_min = -2.;
+                let mut grid_max = 2.; // todo: Is this used, or overridden?
+                let spacing_factor = 1.6;
+
+                let Es = [-0.7, -0.7]; // todo?
+
+                let mut surfaces_shared = crate::SurfacesShared::new(grid_min, grid_max, spacing_factor, state.grid_n);
+                surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es, state.grid_n);
+
+                state.surfaces_shared = surfaces_shared;
+                state.surfaces_per_elec = surfaces_per_elec;
+
+                // todo end sloppy C+P
+
+                updated_basis_wfs = true; // todo?
+                updated_charges = true; // todo?
+                updated_meshes = true;
+            }
+
+            ui.add_space(20.);
+
             egui::ComboBox::from_id_source(0)
                 .width(30.)
                 .selected_text(state.ui_active_elec.to_string())
@@ -454,7 +493,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.E[state.ui_active_elec]
             })
-            .text("E"),
+                .text("E"),
         );
         //
         // // todo: DRY!!
@@ -603,7 +642,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui_z_displayed
             })
-            .text("Z slice"),
+                .text("Z slice"),
         );
 
         ui.add(
@@ -615,7 +654,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-            .text("Visual rotation"),
+                .text("Visual rotation"),
         );
 
         ui.add(
@@ -633,7 +672,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_max
             })
-            .text("Grid range"),
+                .text("Grid range"),
         );
 
         ui.add(
@@ -645,8 +684,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.nudge_amount[state.ui_active_elec]
             })
-            .text("Nudge amount")
-            .logarithmic(true),
+                .text("Nudge amount")
+                .logarithmic(true),
         );
 
         ui.add_space(ITEM_SPACING);
@@ -703,6 +742,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 elec_elec::update_charge_density_fm_psi(
                     &state.surfaces_per_elec[state.ui_active_elec].psi,
                     &mut state.charges_electron[state.ui_active_elec],
+                    state.grid_n,
                 );
 
                 updated_basis_wfs = true;
@@ -710,7 +750,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             }
 
             if ui.add(egui::Button::new("Empty e- charge")).clicked() {
-                state.charges_electron[state.ui_active_elec] = types::new_data_real(N);
+                state.charges_electron[state.ui_active_elec] = types::new_data_real(state.grid_n);
 
                 updated_basis_wfs = true;
                 updated_charges = true;
@@ -723,6 +763,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &state.charges_electron,
                     state.ui_active_elec,
                     &state.surfaces_shared.grid_posits,
+                    state.grid_n,
                 );
 
                 updated_basis_wfs = true;
@@ -758,6 +799,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 scene,
                 &state.surfaces_shared.grid_posits,
                 state.mag_phase,
+                state.grid_n,
             );
         }
 
@@ -805,6 +847,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 scene,
                 &state.surfaces_shared.grid_posits,
                 state.mag_phase,
+                state.grid_n,
             );
         }
 

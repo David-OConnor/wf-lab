@@ -57,11 +57,11 @@ pub fn psi_from_pt_charges(
     // saves a pass in our initial WF. Perhaps though, we want to pass V intact.
     // todo: Output is psi, or psi^2?
 
-    let grid_n = wf_ops::N;
+    let grid_n = 30;
 
     let mut sfcs = SurfacesPerElec::new(grid_n);
 
-    let mut grid_posits = types::new_data_vec(crate::wf_ops::N);
+    let mut grid_posits = types::new_data_vec(grid_n);
 
     wf_ops::update_grid_posits(
         &mut grid_posits,
@@ -81,7 +81,7 @@ pub fn psi_from_pt_charges(
 
     let bases_visible = vec![true, true, true, true, true, true, true, true];
 
-    let arr_real = types::new_data_real(wf_ops::N);
+    let arr_real = types::new_data_real(grid_n);
 
     let mut V_shared = arr_real.clone();
 

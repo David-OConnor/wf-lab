@@ -9,7 +9,7 @@ use crate::{
     types::{Arr3d, Arr3dVec},
     // rbf::Rbf,
     util::{self},
-    wf_ops::{ħ, N},
+    wf_ops::ħ,
 };
 
 // Used for calculating numerical psi''.
@@ -65,8 +65,22 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
     psi_z_prev = psi_z_prev / psi_norm_sqrt;
     psi_z_next = psi_z_next / psi_norm_sqrt;
 
+    // println!("x p: {:?}", psi_x_prev);
+    // println!("y p: {:?}", psi_x_next);
+    // println!("z p : {:?}", psi_y_prev);
+    // println!("x p: {:?}", psi_y_next);
+    // println!("y p: {:?}", psi_z_prev);
+    // println!("z p: {:?}", psi_z_next);
+    //
+    // println!("Psi: {:?}", psi_sample_loc);
+
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - psi_sample_loc * 6.;
+
+    // println!("Sum: {:?}", psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next);
+    // println!("6 factor: {:?}", psi_sample_loc * 6.);
+    //
+    // println!("Result: {:?}. DivH^2: {:?}", result, result / H_SQ);
 
     result / H_SQ
 }
@@ -74,19 +88,24 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
 /// Find ψ'', numerically from ψ on an evenly-spaced-rectangular grid
 ///
 /// This solves, numerically, the eigenvalue equation for the Hamiltonian operator.
-pub(crate) fn _find_ψ_pp_meas_fm_grid_reg(psi: &Arr3d, psi_pp_measured: &mut Arr3d, dx_sq: f64) {
+pub(crate) fn _find_ψ_pp_meas_fm_grid_reg(
+    psi: &Arr3d,
+    psi_pp_measured: &mut Arr3d,
+    dx_sq: f64,
+    grid_n: usize,
+) {
     // Note re these edge-cases: Hopefully it doesn't matter, since the WF is flat around
     // the edges, if the boundaries are chosen appropriately.
-    for i in 0..N {
-        if i == 0 || i == N - 1 {
+    for i in 0..grid_n {
+        if i == 0 || i == grid_n - 1 {
             continue;
         }
-        for j in 0..N {
-            if j == 0 || j == N - 1 {
+        for j in 0..grid_n {
+            if j == 0 || j == grid_n - 1 {
                 continue;
             }
-            for k in 0..N {
-                if k == 0 || k == N - 1 {
+            for k in 0..grid_n {
+                if k == 0 || k == grid_n - 1 {
                     continue;
                 }
 
@@ -136,20 +155,21 @@ pub fn find_ψ_p_meas_fm_grid_irreg(
     result: &mut Arr3d,
     grid_posits: &Arr3dVec,
     var: PsiPVar,
+    grid_n: usize,
 ) {
     // This is `i * ħ`. Const expr limits avail syntax.
     // const COEFF: Cplx = Cplx { real: 0., im: -ħ };
 
-    for i in 0..N {
-        if i == 0 || i == N - 1 {
+    for i in 0..grid_n {
+        if i == 0 || i == grid_n - 1 {
             continue;
         }
-        for j in 0..N {
-            if j == 0 || j == N - 1 {
+        for j in 0..grid_n {
+            if j == 0 || j == grid_n - 1 {
                 continue;
             }
-            for k in 0..N {
-                if k == 0 || k == N - 1 {
+            for k in 0..grid_n {
+                if k == 0 || k == grid_n - 1 {
                     continue;
                 }
 
@@ -202,20 +222,21 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_irreg(
     psi: &Arr3d,
     psi_pp_measured: &mut Arr3d,
     grid_posits: &Arr3dVec,
+    grid_n: usize,
 ) {
     // Note re these edge-cases: Hopefully it doesn't matter, since the WF is flat around
     // the edges, if the boundaries are chosen appropriately.
-    // for i in 0..N {
-    for i in 0..N {
-        if i == 0 || i == N - 1 {
+    // for i in 0..grid_n {
+    for i in 0..grid_n {
+        if i == 0 || i == grid_n - 1 {
             continue;
         }
-        for j in 0..N {
-            if j == 0 || j == N - 1 {
+        for j in 0..grid_n {
+            if j == 0 || j == grid_n - 1 {
                 continue;
             }
-            for k in 0..N {
-                if k == 0 || k == N - 1 {
+            for k in 0..grid_n {
+                if k == 0 || k == grid_n - 1 {
                     continue;
                 }
 
@@ -238,31 +259,51 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_irreg(
                 let p_z_prev = grid_posits[i][j][k - 1];
                 let p_z_next = grid_posits[i][j][k + 1];
 
-                // todo: Take Complex values into account.
-
                 // Create a local polynomial in each axis.
                 // todo: Should you use more than 3 points for better precision?
-                let a_x = interp::create_quadratic_term(
+                let a_x_real = interp::create_quadratic_term(
                     (p_x_prev.x, psi_x_prev.real),
                     (p_this.x, psi_this.real),
                     (p_x_next.x, psi_x_next.real),
                 );
 
-                let a_y = interp::create_quadratic_term(
+                let a_y_real = interp::create_quadratic_term(
                     (p_y_prev.y, psi_y_prev.real),
                     (p_this.y, psi_this.real),
                     (p_y_next.y, psi_y_next.real),
                 );
 
-                let a_z = interp::create_quadratic_term(
+                let a_z_real = interp::create_quadratic_term(
                     (p_z_prev.z, psi_z_prev.real),
                     (p_this.z, psi_this.real),
                     (p_z_next.z, psi_z_next.real),
                 );
 
+                let a_x_im = interp::create_quadratic_term(
+                    (p_x_prev.x, psi_x_prev.im),
+                    (p_this.x, psi_this.im),
+                    (p_x_next.x, psi_x_next.im),
+                );
+
+                let a_y_im = interp::create_quadratic_term(
+                    (p_y_prev.y, psi_y_prev.im),
+                    (p_this.y, psi_this.im),
+                    (p_y_next.y, psi_y_next.im),
+                );
+
+                let a_z_im = interp::create_quadratic_term(
+                    (p_z_prev.z, psi_z_prev.im),
+                    (p_this.z, psi_this.im),
+                    (p_z_next.z, psi_z_next.im),
+                );
+
+                let a_x = Cplx::new(a_x_real, a_x_im);
+                let a_y = Cplx::new(a_y_real, a_y_im);
+                let a_z = Cplx::new(a_z_real, a_z_im);
+
                 // Combine the dimensions by adding, as we do for a regular grid. The factor of 2 is
                 // part of the differentiation process.
-                let finite_diff = (2. * (a_x + a_y + a_z)).into();
+                let finite_diff = Cplx::from_real(2.) * (a_x + a_y + a_z);
 
                 psi_pp_measured[i][j][k] = finite_diff;
             }
@@ -281,8 +322,9 @@ pub(crate) fn find_ψ_pp_meas_from_interp(
     i: usize,
     j: usize,
     k: usize,
+    grid_n: usize,
 ) -> Cplx {
-    let grid_dx = (grid_max - grid_min) / N as f64;
+    let grid_dx = (grid_max - grid_min) / grid_n as f64;
 
     // todo: This function is producing sub-optimal results when interpolating at other
     // todo than teh grid fn. You need a better algo, or don't use this.

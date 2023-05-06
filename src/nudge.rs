@@ -6,7 +6,7 @@ use crate::{
     complex_nums::Cplx,
     eigen_fns, num_diff, types,
     types::{Arr3dVec, SurfacesPerElec},
-    wf_ops::{self, N},
+    wf_ops,
 };
 
 // todo: Nudging is a good candidate for GPU. Try to impl in Vulkan / WGPU.
@@ -24,7 +24,7 @@ pub fn nudge_wf(
     grid_max: f64,
     bases: &[Basis],
     grid_posits: &Arr3dVec,
-    n: usize,
+    grid_n: usize,
 ) {
     let num_nudges = 1; // todo: Put back to 3 etc?
     let smooth_amt = 0.4;
@@ -43,7 +43,7 @@ pub fn nudge_wf(
     // todo: Cheap lowpass for now on diff: Average it with its neighbors?
 
     // Find E before and after the nudge.
-    wf_ops::find_E(sfcs, E, n);
+    wf_ops::find_E(sfcs, E, grid_n);
 
     // Really, the outliers are generally spiked very very high. (much higher than this)
     // This probably occurs near the nucleus.
@@ -59,21 +59,21 @@ pub fn nudge_wf(
     let mut psi_backup = sfcs.psi.clone();
     let mut psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
     let mut psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
-    let mut current_score = wf_ops::score_wf(sfcs, n);
+    let mut current_score = wf_ops::score_wf(sfcs, grid_n);
 
     // We use diff map so we can lowpass the entire map before applying corrections.
-    let mut diff_map = types::new_data(n);
+    let mut diff_map = types::new_data(grid_n);
 
     // `correction_fm_bases` is the difference between our nudged wave function, and what it
     // was from bases alone, without nudging.;
-    let mut correction_fm_bases = types::new_data(n);
+    let mut correction_fm_bases = types::new_data(grid_n);
 
     for _ in 0..num_nudges {
         // let mut diff_pre_smooth = new_data(N); // todo experimenting
 
-        for i_a in 0..n {
-            for j in 0..n {
-                for k in 0..n {
+        for i_a in 0..grid_n {
+            for j in 0..grid_n {
+                for k in 0..grid_n {
                     let diff = sfcs.psi_pp_calculated[i_a][j][k] - sfcs.psi_pp_measured[i_a][j][k];
 
                     // let psi_pp_calc_nudged = (sfcs.psi[i][j][k] + h.into())  * (E - sfcs.V[i][j][k]) * KE_COEFF;
@@ -100,11 +100,11 @@ pub fn nudge_wf(
             // Note: It turns out smoothing makes a big difference, as does the smoothing coefficient.
             // diff_pre_smooth = diff_map.clone();
 
-            wf_ops::smooth_array(&mut diff_map, smooth_amt, n);
+            wf_ops::smooth_array(&mut diff_map, smooth_amt, grid_n);
 
-            for i in 0..n {
-                for j in 0..n {
-                    for k in 0..n {
+            for i in 0..grid_n {
+                for j in 0..grid_n {
+                    for k in 0..grid_n {
                         // sfcs.psi[i][j][k] -= diff_map[i][j][k] * sfcs.nudge_amounts[i][j][k];
                         sfcs.psi[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
@@ -120,10 +120,15 @@ pub fn nudge_wf(
 
         // Calculated psi'' measured in a separate loop after updating psi, since it depends on
         // neighboring psi values as well.
-        num_diff::find_ψ_pp_meas_fm_grid_irreg(&sfcs.psi, &mut sfcs.psi_pp_measured, grid_posits);
+        num_diff::find_ψ_pp_meas_fm_grid_irreg(
+            &sfcs.psi,
+            &mut sfcs.psi_pp_measured,
+            grid_posits,
+            grid_n,
+        );
 
         // If you use individual nudges, evaluate how you want to handle this.
-        let score = wf_ops::score_wf(sfcs, n);
+        let score = wf_ops::score_wf(sfcs, grid_n);
 
         // todo: Maybe update temp ones above instead of the main ones?
         if (score - current_score) > 0. {
@@ -141,11 +146,11 @@ pub fn nudge_wf(
             psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
             psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
             current_score = score;
-            wf_ops::find_E(sfcs, E, n);
+            wf_ops::find_E(sfcs, E, grid_n);
 
-            for i in 0..n {
-                for j in 0..n {
-                    for k in 0..n {
+            for i in 0..grid_n {
+                for j in 0..grid_n {
+                    for k in 0..grid_n {
                         let mut psi_bases = Cplx::new_zero();
                         let posit_sample = grid_posits[i][j][k];
                         for basis in bases {

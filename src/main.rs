@@ -42,9 +42,10 @@ mod wf_ops;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use types::{Arr3dReal, SurfacesPerElec, SurfacesShared};
-use wf_ops::{N, Q_PROT};
+use wf_ops::Q_PROT;
 
 const NUM_SURFACES: usize = 10;
+const GRID_N_DEFAULT: usize = 20;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -201,7 +202,9 @@ fn main() {
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
-    let arr_real = types::new_data_real(N);
+    let grid_n = GRID_N_DEFAULT;
+
+    let arr_real = types::new_data_real(grid_n);
 
     // These must be initialized from wave functions later.
     let charges_electron = vec![arr_real.clone(), arr_real];
@@ -214,12 +217,6 @@ fn main() {
 
     let Es = vec![E, E];
 
-    let grid_n = N;
-
-    // // todo: Deprecate h_grid once your alternative works.
-    // let h_grid = (grid_max - grid_min) / (N as f64);
-    // let h_grid_sq = h_grid.powi(2);
-
     let sfcs_one_elec = SurfacesPerElec::new(grid_n);
 
     let mut surfaces_per_elec = vec![sfcs_one_elec.clone(), sfcs_one_elec];
@@ -229,36 +226,7 @@ fn main() {
     let spacing_factor = 1.6;
 
     let mut surfaces_shared = SurfacesShared::new(grid_min, grid_max, spacing_factor, grid_n);
-    surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es);
-
-    // todo: Short-term experiment
-    // Set up an initial charge of a s0 Hydrogen orbital. Computationally intensive to use any of
-    // these charges, but
-    // let mut psi_h00 = types::new_data(N);
-    //
-    // let h00 = Basis::H(HOrbital::new(
-    //     posit_charge_1,
-    //     1,
-    //     SphericalHarmonic::default(),
-    //     1.,
-    //     0,
-    // ));
-    //
-    // for i in 0..N {
-    //     for j in 0..N {
-    //         for k in 0..N {
-    //             let posit_sample = surfaces_shared.grid_posits[i][j][k];
-    //
-    //             psi_h00[i][j][k] = h00.value(posit_sample) * h00.weight();
-    //         }
-    //     }
-    // }
-    //
-    // let mut charge_density = types::new_data_real(N);
-    // elec_elec::update_charge_density_fm_psi(&psi_h00, &mut charge_density);
-
-    // sfcs.elec_charges = vec![charge_density]; // todo: removed
-    // todo: end short-term experiment
+    surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es, grid_n);
 
     wf_ops::update_V_fm_fixed_charges(
         &charges_fixed,

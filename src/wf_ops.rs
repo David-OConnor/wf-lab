@@ -5,6 +5,10 @@
 //! etc in the same state (Pauli exclusion / fermion rules), but how does this apply when multiple
 //! todo nuclei are involved?
 
+// todo: For your grid: Perhaps an optimal grid is one where the lines between grid
+// todo points are as constant as you can? Ie are like contour lines? Ie pick points
+// todo along lines of equal psi? (or psi^2?)
+
 // todo: A thought: Maybe analyze psi'' diff, then figure out what combination of
 // todo H basis fns added to psi approximate it, or move towards it?
 
@@ -44,7 +48,7 @@ pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Wave function number of values per edge.
 // Memory use and some parts of computation scale with the cube of this.
-pub const N: usize = 40;
+// pub const N: usize = 20;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Spin {
@@ -299,7 +303,7 @@ pub fn score_wf(sfcs: &SurfacesPerElec, n: usize) -> f64 {
         for j in 0..n {
             for k in 0..n {
                 // todo: Check if either individual is outside a thresh?
-                let diff = (sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k]);
+                let diff = sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k];
                 // let val = diff.real + diff.im; // todo: Do you want this, mag_sq, or something else?
                 let val = diff.abs_sq();
                 if val < SCORE_THRESH {
