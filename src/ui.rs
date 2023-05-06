@@ -711,6 +711,21 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.add_space(ITEM_SPACING);
 
         ui.horizontal(|ui| {
+            if ui.add(egui::Button::new("Find weights")).clicked() {
+                wf_ops::find_weights(
+                    &state.charges_fixed,
+                    &mut state.bases,
+                    &mut state.E,
+                    &mut state.surfaces_shared,
+                    &mut state.surfaces_per_elec,
+                    5,
+                    state.grid_n,
+                );
+
+                updated_basis_wfs = true;
+                updated_meshes = true;
+            }
+
             if ui.add(egui::Button::new("Nudge WF")).clicked() {
                 crate::nudge::nudge_wf(
                     &mut state.surfaces_per_elec[state.ui_active_elec],

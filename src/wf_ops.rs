@@ -24,16 +24,16 @@
 // todo potential.
 
 use crate::{
-    basis_wfs::Basis,
+    basis_wfs::{Basis, HOrbital, SphericalHarmonic},
     complex_nums::Cplx,
     eigen_fns,
     num_diff,
     // rbf::Rbf,
-    types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec},
+    types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec, SurfacesShared},
     util::{self},
 };
 
-use lin_alg2::f64::Vec3;
+use lin_alg2::f64::{Quaternion, Vec3};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 const K_C: f64 = 1.;
@@ -424,4 +424,42 @@ pub fn update_grid_posits(
             }
         }
     }
+}
+
+/// Adjust weights of coefficiants until score is minimized.
+pub fn find_weights(
+    charges_fixed: &Vec<(Vec3, f64)>,
+    bases: &mut Vec<Vec<Basis>>,
+    E: &mut f64,
+    surfaces_shared: &mut SurfacesShared,
+    surfaces_per_elec: &mut SurfacesPerElec,
+    max_n: u16, // quantum number n
+    grid_n: usize,
+) {
+    let mut best_score = 9_999_999.;
+    let mut bases = Vec::new();
+
+    for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
+        for n in 1..max_n + 1 {
+            for l in 0..n {
+                for m in -l as i16..l as i16 + 1 {
+                    bases.push(Basis::H(
+                        HOrbital {
+                            posit: *nuc_posit,
+                            n,
+                            harmonic: SphericalHarmonic {
+                                l,
+                                m,
+                                orientation: Quaternion::new_identity(),
+                            },
+                            weight: 0.,
+                            charge_id,
+                        }
+                    ));
+                }
+            }
+        }
+    }
+
+
 }

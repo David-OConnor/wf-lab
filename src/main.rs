@@ -127,7 +127,7 @@ fn main() {
     let neutral = Quaternion::new_identity();
 
     // todo: Clean up constructor sequene for these basis fns A/R.
-    let wfs = vec![
+    let h_bases = vec![
         Basis::H(HOrbital::new(
             posit_charge_1,
             1,
@@ -187,7 +187,7 @@ fn main() {
         )),
     ];
 
-    let bases = vec![wfs.clone(), wfs.clone()];
+    let bases = vec![h_bases.clone(), h_bases.clone()];
 
     let ui_active_elec = 0;
 
@@ -245,7 +245,7 @@ fn main() {
 
     // Set up our basis-function based trial wave function.
     wf_ops::update_wf_fm_bases(
-        &wfs,
+        &h_bases,
         &mut surfaces_per_elec[ui_active_elec],
         Es[ui_active_elec],
         &mut surfaces_shared.grid_posits,
