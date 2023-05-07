@@ -796,7 +796,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.E,
                 &mut state.surfaces_shared,
                 &mut state.surfaces_per_elec,
-                5,
+                3,
                 state.grid_n,
                 &mut state.bases_visible,
             );

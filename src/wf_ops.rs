@@ -474,62 +474,66 @@ pub fn find_weights(
 
     // todo: DRY from find_e
     // todo: Dry from
-    for (i, elec_bases) in bases.iter().enumerate() {
-        for basis in elec_bases {
-            let weight_vals = util::linspace((BASIS_MIN, BASIS_MAX), vals_per_iter);
-            let mut best_score = 100_000_000.;
+    // for (i, elec_bases) in bases.iter().enumerate() {
+    //     for basis in elec_bases {
+    //         let weight_vals = util::linspace((BASIS_MIN, BASIS_MAX), vals_per_iter);
+    //         let mut best_score = 100_000_000.;
+    //
+    //         for weight_trial in weight_vals {}
+    //     }
+    //
+    //
+    // }
 
-            for weight_trial in weight_vals {}
-        }
-
-        update_wf_fm_bases(
-            &elec_bases,
-            &mut surfaces_per_elec[i],
-            E[i],
-            &surfaces_shared.grid_posits,
-            &bases_visible[i],
-            n_grid: usize,
-        );
-    }
-
+    // todo: DRY from `find_E`.
     let mut weight_min = -2.;
     let mut weight_max = 2.;
     let mut weight_range_div2 = 2.;
     let vals_per_iter = 8;
 
-    let num_iters = 10;
+    let num_iters = 4;
 
-    for _ in 0..num_iters {
-        let weight_vals = util::linspace((BASIS_MIN, BASIS_MAX), vals_per_iter);
-        let mut best_score = 100_000_000.;
+    // We iterate first over nuclei, then over quantum numbers, then over basis values.
+    for (i, bases_this_elec) in bases.iter_mut().enumerate() {
 
-        for weight_trial in weight_vals {
-            for i in 0..grid_n {
-                for j in 0..grid_n {
-                    for k in 0..grid_n {}
+        // We use this to avoid mutable double-borrow errors.
+        let mut bases_temp = bases_this_elec.clone();
+
+        for (j, basis) in bases_this_elec.iter_mut().enumerate() {
+            for _ in 0..num_iters {
+                let weight_vals = util::linspace((weight_min, weight_max), vals_per_iter);
+                let mut best_score = 100_000_000.;
+                let mut best_weight = 0.;
+
+                for weight_trial in weight_vals {
+                    let weight_prev = basis.weight();
+                    // *basis.weight_mut() = weight_trial;
+                    *bases_temp[j].weight_mut() = weight_trial;
+
+                    update_wf_fm_bases(
+                        &bases_temp,
+                        &mut surfaces_per_elec[i],
+                        E[i],
+                        &surfaces_shared.grid_posits,
+                        &bases_visible[i],
+                        grid_n,
+                    );
+                    find_E(&mut surfaces_per_elec[i], &mut E[i], grid_n);
+
+                    let score = score_wf(&surfaces_per_elec[i], grid_n);
+                    if score < best_score {
+                        best_score = score;
+                        best_weight = weight_trial;
+                        // weight = weight_trial;
+                        *basis.weight_mut() = weight_trial;
+                    } else {
+                        *bases_temp[j].weight_mut() = weight_prev;
+                        // *basis.weight_mut() = weight_prev;
+                    }
                 }
-
-                let score = score_wf(sfcs, grid_n);
-                if score < best_score {
-                    best_score = score;
-                    best_E = weight_trial;
-                    *E = weight_trial;
-                }
+                weight_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
+                weight_min = best_weight - weight_range_div2;
             }
-            weight_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
-            weight_min = best_weight - weight_range_div2;
-            weight_max = best_weight + weight_range_div2;
         }
-
-        // for i in 0..grid_n {
-        //     for j in 0..grid_n {
-        //         for k in 0..grid_n {
-        //             sfcs.psi_pp_calculated[i][j][k] =
-        //                 eigen_fns::find_ψ_pp_calc(&surfaces_shared.psi, &surfaces_shared.V, E[i], i, j, k);
-        //         }
-        //     }
-        // }
     }
-
-    find_E(&mut surfaces_per_elec[i], &mut E[i], n_grid);
 }
