@@ -44,6 +44,10 @@ pub const ħ: f64 = 1.;
 
 pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
+// Wave fn weights
+pub const WEIGHT_MIN: f64 = -4.;
+pub const WEIGHT_MAX: f64 = 4.;
+
 // Compute these statically, to avoid continuous calls during excecution.
 
 // Wave function number of values per edge.
@@ -532,5 +536,31 @@ pub fn find_weights(
             weight_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
             weight_min = best_weight - weight_range_div2;
         }
+    }
+
+    // Normalize weights.
+    // I think this doesn't matter since the WF is normalized, but this may help keep the sliders
+    // in range, or make the results easier to interpret.
+    // let mut total_weight = 0.;
+    // for basis in bases.iter() {
+    //     // total_weight += basis.weight();
+    //     total_weight += basis.weight().abs(); // todo??
+    // }
+    //
+    // for basis in bases {
+    //     *basis.weight_mut() /= total_weight / 10.; // Helps adjust range
+    // }
+
+    // Scale weights to keep them in our UI-adjustable range.
+    let mut max_weight = 0.;
+    for basis in bases.iter() {
+        if basis.weight().abs() > max_weight {
+            max_weight = basis.weight().abs();
+        }
+    }
+
+    for basis in bases {
+        // This scales so the highest weight is just inside our UI-set limits.
+        *basis.weight_mut() /= max_weight / (WEIGHT_MAX * 0.9);
     }
 }

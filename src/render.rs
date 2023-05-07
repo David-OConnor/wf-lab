@@ -49,7 +49,7 @@ const SURFACE_SHINYNESS: f32 = 10.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
 const PSI_SCALER: f32 = 120.; // to make WF more visually significant.
-const PSI_SQ_SCALER: f32 = 3_000.; // to make WF more visually significant.
+const PSI_SQ_SCALER: f32 = 12_000.; // to make WF more visually significant.
 const PSI_P_SCALER: f32 = 15.; // to make WF more visually significant.
 const PSI_PP_SCALER: f32 = 20.; // to make WF more visually significant.
 const ELEC_V_SCALER: f32 = 100_000.; // to make WF more visually significant.

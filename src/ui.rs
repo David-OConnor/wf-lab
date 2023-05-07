@@ -19,10 +19,6 @@ const E_MAX: f64 = 0.2;
 const L_MIN: f64 = -3.;
 const L_MAX: f64 = 3.;
 
-// Wave fn weights
-pub const WEIGHT_MIN: f64 = -4.;
-pub const WEIGHT_MAX: f64 = 4.;
-
 // sets range of -size to +size
 const GRID_SIZE_MIN: f64 = 0.;
 const GRID_SIZE_MAX: f64 = 40.;
@@ -293,7 +289,7 @@ fn basis_fn_mixer(
                 // todo: Text edit or dropdown for n.
 
                 ui.add(
-                    egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
+                    egui::Slider::from_get_set(wf_ops::WEIGHT_MIN..=wf_ops::WEIGHT_MAX, |v| {
                         if let Some(v_) = v {
                             *basis.weight_mut() = v_;
                             *updated_wfs = true;
