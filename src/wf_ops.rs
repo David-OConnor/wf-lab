@@ -484,12 +484,15 @@ pub fn find_weights(
     // }
 
     // todo: DRY from `find_E`.
-    let vals_per_iter = 8;
-    let num_iters = 7;
+    let weight_vals_per_iter = 8;
+    let narrow_down_iters = 7;
+    // let num_passes = 1;
 
     // We use this to avoid mutable double-borrow errors.
     let mut bases_temp = bases.clone();
 
+    // todo: These passes are currently not doing anything for you!
+    // for _ in 0..num_passes {
     for (i, basis) in bases.iter_mut().enumerate() {
         // if i == 0 {
         //     // A stake in the ground. // todo: QC.
@@ -502,8 +505,9 @@ pub fn find_weights(
 
         let mut weight_range_div2 = 2.;
 
-        for _ in 0..num_iters {
-            let weight_vals = util::linspace((weight_min, weight_max), vals_per_iter);
+
+        for _ in 0..narrow_down_iters {
+            let weight_vals = util::linspace((weight_min, weight_max), weight_vals_per_iter);
             let mut best_score = 100_000_000.;
             let mut best_weight = 0.;
 
@@ -533,24 +537,12 @@ pub fn find_weights(
                     *bases_temp[i].weight_mut() = weight_prev;
                 }
             }
-            weight_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
+            weight_range_div2 /= weight_vals_per_iter as f64; // todo: May need a wider range than this.
             weight_min = best_weight - weight_range_div2;
         }
     }
-
-    // Normalize weights.
-    // I think this doesn't matter since the WF is normalized, but this may help keep the sliders
-    // in range, or make the results easier to interpret.
-    // let mut total_weight = 0.;
-    // for basis in bases.iter() {
-    //     // total_weight += basis.weight();
-    //     total_weight += basis.weight().abs(); // todo??
     // }
-    //
-    // for basis in bases {
-    //     *basis.weight_mut() /= total_weight / 10.; // Helps adjust range
-    // }
-
+    
     // Scale weights to keep them in our UI-adjustable range.
     let mut max_weight = 0.;
     for basis in bases.iter() {
