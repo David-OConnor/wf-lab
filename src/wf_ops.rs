@@ -489,6 +489,12 @@ pub fn find_weights(
     let mut bases_temp = bases.clone();
 
     for (i, basis) in bases.iter_mut().enumerate() {
+        // if i == 0 {
+        //     // A stake in the ground. // todo: QC.
+        //     *basis.weight_mut() = 1.;
+        //     continue;
+        // }
+
         for _ in 0..num_iters {
             let weight_vals = util::linspace((weight_min, weight_max), vals_per_iter);
             let mut best_score = 100_000_000.;
