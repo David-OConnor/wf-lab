@@ -164,7 +164,7 @@ pub fn update_wf_fm_bases(
     bases: &[Basis],
     sfcs: &mut SurfacesPerElec,
     E: f64,
-    grid_posits: &mut Arr3dVec,
+    grid_posits: &Arr3dVec,
     bases_visible: &[bool],
     n: usize,
 ) {
@@ -326,7 +326,7 @@ pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> 
 
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
 /// between E and psi'' score isn't straightforward, this will converge on a local minimum.
-pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, n: usize) {
+pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, grid_n: usize) {
     // todo: WHere to configure these mins and maxes
     let mut E_min = -2.;
     let mut E_max = 2.;
@@ -341,16 +341,16 @@ pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, n: usize) {
         let mut best_E = 0.;
 
         for E_trial in E_vals {
-            for i in 0..n {
-                for j in 0..n {
-                    for k in 0..n {
+            for i in 0..grid_n {
+                for j in 0..grid_n {
+                    for k in 0..grid_n {
                         sfcs.psi_pp_calculated[i][j][k] =
                             eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E_trial, i, j, k);
                     }
                 }
             }
 
-            let score = score_wf(sfcs, n);
+            let score = score_wf(sfcs, grid_n);
             if score < best_score {
                 best_score = score;
                 best_E = E_trial;
@@ -430,36 +430,106 @@ pub fn update_grid_posits(
 pub fn find_weights(
     charges_fixed: &Vec<(Vec3, f64)>,
     bases: &mut Vec<Vec<Basis>>,
-    E: &mut f64,
+    E: &mut Vec<f64>,
     surfaces_shared: &mut SurfacesShared,
-    surfaces_per_elec: &mut SurfacesPerElec,
+    surfaces_per_elec: &mut Vec<SurfacesPerElec>,
     max_n: u16, // quantum number n
     grid_n: usize,
+    bases_visible: &mut Vec<Vec<bool>>,
 ) {
-    let mut best_score = 9_999_999.;
-    let mut bases = Vec::new();
+    // let mut best_score = 9_999_999.;
+
+    *bases = Vec::new();
+    *bases_visible = Vec::new();
 
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
+        let mut bases_this_elec = Vec::new();
+        let mut visible_this_elec = Vec::new();
+
         for n in 1..max_n + 1 {
             for l in 0..n {
-                for m in -l as i16..l as i16 + 1 {
-                    bases.push(Basis::H(
-                        HOrbital {
-                            posit: *nuc_posit,
-                            n,
-                            harmonic: SphericalHarmonic {
-                                l,
-                                m,
-                                orientation: Quaternion::new_identity(),
-                            },
-                            weight: 0.,
-                            charge_id,
-                        }
-                    ));
+                for m in -(l as i16)..l as i16 + 1 {
+                    bases_this_elec.push(Basis::H(HOrbital {
+                        posit: *nuc_posit,
+                        n,
+                        harmonic: SphericalHarmonic {
+                            l,
+                            m,
+                            orientation: Quaternion::new_identity(),
+                        },
+                        weight: 0.,
+                        charge_id,
+                    }));
+
+                    visible_this_elec.push(true);
                 }
             }
         }
+
+        bases.push(bases_this_elec);
+        bases_visible.push(visible_this_elec);
     }
 
+    // todo: Outer loop where we go reshuffle them all a few times, possibly in random order?
 
+    // todo: DRY from find_e
+    // todo: Dry from
+    for (i, elec_bases) in bases.iter().enumerate() {
+        for basis in elec_bases {
+            let weight_vals = util::linspace((BASIS_MIN, BASIS_MAX), vals_per_iter);
+            let mut best_score = 100_000_000.;
+
+            for weight_trial in weight_vals {}
+        }
+
+        update_wf_fm_bases(
+            &elec_bases,
+            &mut surfaces_per_elec[i],
+            E[i],
+            &surfaces_shared.grid_posits,
+            &bases_visible[i],
+            n_grid: usize,
+        );
+    }
+
+    let mut weight_min = -2.;
+    let mut weight_max = 2.;
+    let mut weight_range_div2 = 2.;
+    let vals_per_iter = 8;
+
+    let num_iters = 10;
+
+    for _ in 0..num_iters {
+        let weight_vals = util::linspace((BASIS_MIN, BASIS_MAX), vals_per_iter);
+        let mut best_score = 100_000_000.;
+
+        for weight_trial in weight_vals {
+            for i in 0..grid_n {
+                for j in 0..grid_n {
+                    for k in 0..grid_n {}
+                }
+
+                let score = score_wf(sfcs, grid_n);
+                if score < best_score {
+                    best_score = score;
+                    best_E = weight_trial;
+                    *E = weight_trial;
+                }
+            }
+            weight_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
+            weight_min = best_weight - weight_range_div2;
+            weight_max = best_weight + weight_range_div2;
+        }
+
+        // for i in 0..grid_n {
+        //     for j in 0..grid_n {
+        //         for k in 0..grid_n {
+        //             sfcs.psi_pp_calculated[i][j][k] =
+        //                 eigen_fns::find_ψ_pp_calc(&surfaces_shared.psi, &surfaces_shared.V, E[i], i, j, k);
+        //         }
+        //     }
+        // }
+    }
+
+    find_E(&mut surfaces_per_elec[i], &mut E[i], n_grid);
 }

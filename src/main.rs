@@ -190,10 +190,6 @@ fn main() {
     let bases = vec![h_bases.clone(), h_bases.clone()];
 
     let ui_active_elec = 0;
-
-    let visible = vec![true, true, true, true, true, true, true, true];
-    let bases_visible = vec![visible.clone(), visible];
-
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges_fixed = vec![
@@ -201,6 +197,17 @@ fn main() {
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
+
+    let mut bases_visible = Vec::new();
+
+    for i in 0..charges_fixed.len() {
+        let mut visible_this_charge = Vec::new();
+
+        for _ in 0..bases[i].len() {
+            visible_this_charge.push(true);
+        }
+        bases_visible.push(visible_this_charge);
+    }
 
     let grid_n = GRID_N_DEFAULT;
 

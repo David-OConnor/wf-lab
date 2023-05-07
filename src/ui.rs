@@ -4,12 +4,7 @@ use egui::{self, Color32, RichText};
 
 use graphics::{EngineUpdates, Scene};
 
-use crate::{
-    basis_wfs::Basis,
-    eigen_fns, elec_elec, render, types,
-    wf_ops,
-    State,
-};
+use crate::{basis_wfs::Basis, eigen_fns, elec_elec, render, types, wf_ops, State};
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
@@ -57,8 +52,6 @@ fn charge_editor(
     updated_entities: &mut bool,
     ui: &mut egui::Ui,
 ) {
-    // todo: Scroll area?
-
     let mut charge_removed = None;
 
     for (i, (posit, val)) in charges.iter_mut().enumerate() {
@@ -129,184 +122,189 @@ fn basis_fn_mixer(
     // scene: &mut Scene,
 ) {
     // Select with charge (and its position) this basis fn is associated with.
-    egui::containers::ScrollArea::vertical().show(ui, |ui| {
-        for (id, basis) in state.bases[state.ui_active_elec].iter_mut().enumerate() {
-            ui.horizontal(|ui| {
-                // Checkbox to immediately hide or show the basis.
+    egui::containers::ScrollArea::vertical()
+        .max_height(400.)
+        .show(ui, |ui| {
+            for (id, basis) in state.bases[state.ui_active_elec].iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    // Checkbox to immediately hide or show the basis.
 
-                if ui
-                    .checkbox(&mut state.bases_visible[state.ui_active_elec][id], "")
-                    .clicked()
-                {
-                    *updated_wfs = true;
-                    // render::update_meshes(
-                    //     &state.surfaces[state.ui_active_elec],
-                    //     state.ui_z_displayed,
-                    //     scene,
-                    //     &state.surfaces_shared.grid_posits,
-                    // );
-                    // engine_updates.meshes = true;
-                }
-
-                ui.spacing_mut().slider_width = SLIDER_WIDTH_ORIENTATION; // Only affects sliders in this section.
-
-                // `prev...` is to check if it changed below.
-                let prev_charge_id = basis.charge_id();
-
-                // Pair WFs with charge positions.
-                egui::ComboBox::from_id_source(id + 1_000)
-                    .width(30.)
-                    .selected_text(basis.charge_id().to_string())
-                    .show_ui(ui, |ui| {
-                        for (mut charge_i, (_charge_posit, _amt)) in
-                        state.charges_fixed.iter().enumerate()
-                        {
-                            ui.selectable_value(
-                                basis.charge_id_mut(),
-                                charge_i,
-                                charge_i.to_string(),
-                            );
-                        }
-                    });
-
-                if basis.charge_id() != prev_charge_id {
-                    *basis.posit_mut() = state.charges_fixed[basis.charge_id()].0;
-                    *updated_wfs = true;
-                }
-
-                let n_prev = basis.n();
-                let l_prev = basis.l();
-                let m_prev = basis.m();
-
-                // todo: Helper fn to reduce DRY here.
-                ui.heading("n:");
-                let mut entry = basis.n().to_string(); // angle
-                let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-                if response.changed() {
-                    *basis.n_mut() = entry.parse().unwrap_or(0);
-                }
-
-                ui.heading("l:");
-                let mut entry = basis.l().to_string(); // angle
-                let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-                if response.changed() {
-                    *basis.l_mut() = entry.parse().unwrap_or(0);
-                }
-
-                ui.heading("m:");
-                let mut entry = basis.m().to_string(); // angle
-                let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-                if response.changed() {
-                    *basis.m_mut() = entry.parse().unwrap_or(0);
-                }
-
-                // egui::ComboBox::from_id_source(id + 2_000)
-                //     .width(30.)
-                //     .selected_text(basis.n().to_string())
-                //     .show_ui(ui, |ui| {
-                //         for i in 1..4 {
-                //             ui.selectable_value(basis.n_mut(), i, i.to_string());
-                //         }
-                //     });
-                //
-                // ui.heading("l:");
-                //
-                // egui::ComboBox::from_id_source(id + 3_000)
-                //     .width(30.)
-                //     .selected_text(basis.l().to_string())
-                //     .show_ui(ui, |ui| {
-                //         for i in 0..basis.n() {
-                //             ui.selectable_value(basis.l_mut(), i, i.to_string());
-                //         }
-                //     });
-                //
-                // ui.heading("m:");
-                //
-                // egui::ComboBox::from_id_source(id + 4_000)
-                //     .width(30.)
-                //     .selected_text(basis.m().to_string())
-                //     .show_ui(ui, |ui| {
-                //         for i in -1 * basis.l() as i16..basis.l() as i16 + 1 {
-                //             ui.selectable_value(basis.m_mut(), i, i.to_string());
-                //         }
-                //     });
-
-                if basis.n() != n_prev || basis.l() != l_prev || basis.m() != m_prev {
-                    // Enforce quantum number constraints.
-                    if basis.l() >= basis.n() {
-                        *basis.l_mut() = basis.n() - 1;
-                    }
-                    if basis.m() < -1 * basis.l() as i16 {
-                        *basis.m_mut() = -1 * basis.l() as i16
-                    } else if basis.m() > basis.l() as i16 {
-                        *basis.m_mut() = basis.l() as i16
+                    if ui
+                        .checkbox(&mut state.bases_visible[state.ui_active_elec][id], "")
+                        .clicked()
+                    {
+                        *updated_wfs = true;
+                        // render::update_meshes(
+                        //     &state.surfaces[state.ui_active_elec],
+                        //     state.ui_z_displayed,
+                        //     scene,
+                        //     &state.surfaces_shared.grid_posits,
+                        // );
+                        // engine_updates.meshes = true;
                     }
 
-                    *updated_wfs = true;
-                }
+                    ui.spacing_mut().slider_width = SLIDER_WIDTH_ORIENTATION; // Only affects sliders in this section.
 
-                // Note: We've replaced the below rotation-slider code with just using combinations of
-                // different m
-                // For now, we use an azimuth, elevation API for orientation.
-                //     if basis.l() >= 1 && basis.weight().abs() > 0.00001 {
-                //         let mut euler = basis.harmonic().orientation.to_euler();
+                    // `prev...` is to check if it changed below.
+                    let prev_charge_id = basis.charge_id();
 
-                //         // todo: DRY between the 3.
-                //         ui.add(
-                //             // Offsets are to avoid gimball lock.
-                //             egui::Slider::from_get_set(-TAU / 4.0 + 0.001..=TAU / 4.0 - 0.001, |v| {
-                //                 if let Some(v_) = v {
-                //                     euler.pitch = v_;
-                //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
-                //                     *updated_wfs = true;
-                //                 }
+                    // Pair WFs with charge positions.
+                    egui::ComboBox::from_id_source(id + 1_000)
+                        .width(30.)
+                        .selected_text(basis.charge_id().to_string())
+                        .show_ui(ui, |ui| {
+                            for (mut charge_i, (_charge_posit, _amt)) in
+                                state.charges_fixed.iter().enumerate()
+                            {
+                                ui.selectable_value(
+                                    basis.charge_id_mut(),
+                                    charge_i,
+                                    charge_i.to_string(),
+                                );
+                            }
+                        });
 
-                //                 euler.pitch
-                //             })
-                //             .text("P"),
-                //         );
-                //         ui.add(
-                //             egui::Slider::from_get_set(-TAU / 2.0..=TAU / 2.0, |v| {
-                //                 if let Some(v_) = v {
-                //                     euler.roll = v_;
-                //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
-                //                     *updated_wfs = true;
-                //                 }
-
-                //                 euler.roll
-                //             })
-                //             .text("R"),
-                //         );
-                //         ui.add(
-                //             egui::Slider::from_get_set(0.0..=TAU, |v| {
-                //                 if let Some(v_) = v {
-                //                     euler.yaw = v_;
-                //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
-                //                     *updated_wfs = true;
-                //                 }
-
-                //                 euler.yaw
-                //             })
-                //             .text("Y"),
-                //         );
-                //     }
-            });
-
-            // todo: Text edit or dropdown for n.
-
-            ui.add(
-                egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
-                    if let Some(v_) = v {
-                        *basis.weight_mut() = v_;
+                    if basis.charge_id() != prev_charge_id {
+                        *basis.posit_mut() = state.charges_fixed[basis.charge_id()].0;
                         *updated_wfs = true;
                     }
 
-                    basis.weight()
-                })
+                    let n_prev = basis.n();
+                    let l_prev = basis.l();
+                    let m_prev = basis.m();
+
+                    // todo: Helper fn to reduce DRY here.
+                    ui.heading("n:");
+                    let mut entry = basis.n().to_string(); // angle
+                    let response =
+                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                    if response.changed() {
+                        *basis.n_mut() = entry.parse().unwrap_or(0);
+                    }
+
+                    ui.heading("l:");
+                    let mut entry = basis.l().to_string(); // angle
+                    let response =
+                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                    if response.changed() {
+                        *basis.l_mut() = entry.parse().unwrap_or(0);
+                    }
+
+                    ui.heading("m:");
+                    let mut entry = basis.m().to_string(); // angle
+                    let response =
+                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                    if response.changed() {
+                        *basis.m_mut() = entry.parse().unwrap_or(0);
+                    }
+
+                    // egui::ComboBox::from_id_source(id + 2_000)
+                    //     .width(30.)
+                    //     .selected_text(basis.n().to_string())
+                    //     .show_ui(ui, |ui| {
+                    //         for i in 1..4 {
+                    //             ui.selectable_value(basis.n_mut(), i, i.to_string());
+                    //         }
+                    //     });
+                    //
+                    // ui.heading("l:");
+                    //
+                    // egui::ComboBox::from_id_source(id + 3_000)
+                    //     .width(30.)
+                    //     .selected_text(basis.l().to_string())
+                    //     .show_ui(ui, |ui| {
+                    //         for i in 0..basis.n() {
+                    //             ui.selectable_value(basis.l_mut(), i, i.to_string());
+                    //         }
+                    //     });
+                    //
+                    // ui.heading("m:");
+                    //
+                    // egui::ComboBox::from_id_source(id + 4_000)
+                    //     .width(30.)
+                    //     .selected_text(basis.m().to_string())
+                    //     .show_ui(ui, |ui| {
+                    //         for i in -1 * basis.l() as i16..basis.l() as i16 + 1 {
+                    //             ui.selectable_value(basis.m_mut(), i, i.to_string());
+                    //         }
+                    //     });
+
+                    if basis.n() != n_prev || basis.l() != l_prev || basis.m() != m_prev {
+                        // Enforce quantum number constraints.
+                        if basis.l() >= basis.n() {
+                            *basis.l_mut() = basis.n() - 1;
+                        }
+                        if basis.m() < -1 * basis.l() as i16 {
+                            *basis.m_mut() = -1 * basis.l() as i16
+                        } else if basis.m() > basis.l() as i16 {
+                            *basis.m_mut() = basis.l() as i16
+                        }
+
+                        *updated_wfs = true;
+                    }
+
+                    // Note: We've replaced the below rotation-slider code with just using combinations of
+                    // different m
+                    // For now, we use an azimuth, elevation API for orientation.
+                    //     if basis.l() >= 1 && basis.weight().abs() > 0.00001 {
+                    //         let mut euler = basis.harmonic().orientation.to_euler();
+
+                    //         // todo: DRY between the 3.
+                    //         ui.add(
+                    //             // Offsets are to avoid gimball lock.
+                    //             egui::Slider::from_get_set(-TAU / 4.0 + 0.001..=TAU / 4.0 - 0.001, |v| {
+                    //                 if let Some(v_) = v {
+                    //                     euler.pitch = v_;
+                    //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
+                    //                     *updated_wfs = true;
+                    //                 }
+
+                    //                 euler.pitch
+                    //             })
+                    //             .text("P"),
+                    //         );
+                    //         ui.add(
+                    //             egui::Slider::from_get_set(-TAU / 2.0..=TAU / 2.0, |v| {
+                    //                 if let Some(v_) = v {
+                    //                     euler.roll = v_;
+                    //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
+                    //                     *updated_wfs = true;
+                    //                 }
+
+                    //                 euler.roll
+                    //             })
+                    //             .text("R"),
+                    //         );
+                    //         ui.add(
+                    //             egui::Slider::from_get_set(0.0..=TAU, |v| {
+                    //                 if let Some(v_) = v {
+                    //                     euler.yaw = v_;
+                    //                     basis.harmonic_mut().orientation = Quaternion::from_euler(&euler);
+                    //                     *updated_wfs = true;
+                    //                 }
+
+                    //                 euler.yaw
+                    //             })
+                    //             .text("Y"),
+                    //         );
+                    //     }
+                });
+
+                // todo: Text edit or dropdown for n.
+
+                ui.add(
+                    egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
+                        if let Some(v_) = v {
+                            *basis.weight_mut() = v_;
+                            *updated_wfs = true;
+                        }
+
+                        basis.weight()
+                    })
                     .text("Wt"),
-            );
-        }
-    });
+                );
+            }
+        });
 }
 
 /// This function draws the (immediate-mode) GUI.
@@ -350,7 +348,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.horizontal(|ui| {
             let mut entry = state.grid_n.to_string();
 
-            let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
+            let response =
+                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
             if response.changed() {
                 let result = entry.parse::<usize>().unwrap_or(20);
                 // if result >= 15 { // todo?
@@ -372,7 +371,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 let Es = [-0.7, -0.7]; // todo?
 
-                let mut surfaces_shared = crate::SurfacesShared::new(grid_min, grid_max, spacing_factor, state.grid_n);
+                let mut surfaces_shared =
+                    crate::SurfacesShared::new(grid_min, grid_max, spacing_factor, state.grid_n);
                 surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es, state.grid_n);
 
                 state.surfaces_shared = surfaces_shared;
@@ -493,7 +493,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.E[state.ui_active_elec]
             })
-                .text("E"),
+            .text("E"),
         );
         //
         // // todo: DRY!!
@@ -642,7 +642,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui_z_displayed
             })
-                .text("Z slice"),
+            .text("Z slice"),
         );
 
         ui.add(
@@ -654,7 +654,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-                .text("Visual rotation"),
+            .text("Visual rotation"),
         );
 
         ui.add(
@@ -672,7 +672,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_max
             })
-                .text("Grid range"),
+            .text("Grid range"),
         );
 
         ui.add(
@@ -684,8 +684,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.nudge_amount[state.ui_active_elec]
             })
-                .text("Nudge amount")
-                .logarithmic(true),
+            .text("Nudge amount")
+            .logarithmic(true),
         );
 
         ui.add_space(ITEM_SPACING);
@@ -711,21 +711,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.add_space(ITEM_SPACING);
 
         ui.horizontal(|ui| {
-            if ui.add(egui::Button::new("Find weights")).clicked() {
-                wf_ops::find_weights(
-                    &state.charges_fixed,
-                    &mut state.bases,
-                    &mut state.E,
-                    &mut state.surfaces_shared,
-                    &mut state.surfaces_per_elec,
-                    5,
-                    state.grid_n,
-                );
-
-                updated_basis_wfs = true;
-                updated_meshes = true;
-            }
-
             if ui.add(egui::Button::new("Nudge WF")).clicked() {
                 crate::nudge::nudge_wf(
                     &mut state.surfaces_per_elec[state.ui_active_elec],
@@ -803,6 +788,22 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // *updated_wfs = true;
             }
         });
+
+        if ui.add(egui::Button::new("Find weights")).clicked() {
+            wf_ops::find_weights(
+                &state.charges_fixed,
+                &mut state.bases,
+                &mut state.E,
+                &mut state.surfaces_shared,
+                &mut state.surfaces_per_elec,
+                5,
+                state.grid_n,
+                &mut state.bases_visible,
+            );
+
+            updated_basis_wfs = true;
+            updated_meshes = true;
+        }
 
         if updated_meshes {
             engine_updates.meshes = true;

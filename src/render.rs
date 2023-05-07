@@ -15,8 +15,7 @@ use lin_alg2::{
 use crate::types::new_data_real;
 use crate::{
     types::{Arr3d, Arr3dReal, Arr3dVec},
-    wf_ops,
-    State,
+    wf_ops, State,
 };
 
 type Color = (f32, f32, f32);
@@ -211,13 +210,21 @@ pub fn update_meshes(
             PSI_SCALER,
             mag_phase,
             false,
-            grid_n
+            grid_n,
         ),
         true,
     ));
 
     meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(grid_posits, &surfaces.psi, z_i, PSI_SCALER, mag_phase, true, grid_n),
+        &prepare_2d_mesh(
+            grid_posits,
+            &surfaces.psi,
+            z_i,
+            PSI_SCALER,
+            mag_phase,
+            true,
+            grid_n,
+        ),
         true,
     ));
 
