@@ -478,9 +478,6 @@ pub fn find_weights(
     // }
 
     // todo: DRY from `find_E`.
-    let mut weight_min = -2.;
-    let mut weight_max = 2.;
-    let mut weight_range_div2 = 2.;
     let vals_per_iter = 8;
 
     let num_iters = 4;
@@ -494,6 +491,10 @@ pub fn find_weights(
         //     *basis.weight_mut() = 1.;
         //     continue;
         // }
+
+        let mut weight_min = -2.;
+        let mut weight_max = 2.;
+        let mut weight_range_div2 = 2.;
 
         for _ in 0..num_iters {
             let weight_vals = util::linspace((weight_min, weight_max), vals_per_iter);
