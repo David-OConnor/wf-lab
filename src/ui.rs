@@ -792,13 +792,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         if ui.add(egui::Button::new("Find weights")).clicked() {
             wf_ops::find_weights(
                 &state.charges_fixed,
-                &mut state.bases,
-                &mut state.E,
+                &mut state.bases[state.ui_active_elec],
+                &mut state.E[state.ui_active_elec],
                 &mut state.surfaces_shared,
-                &mut state.surfaces_per_elec,
+                &mut state.surfaces_per_elec[state.ui_active_elec],
                 3,
                 state.grid_n,
-                &mut state.bases_visible,
+                &mut state.bases_visible[state.ui_active_elec],
             );
 
             updated_basis_wfs = true;

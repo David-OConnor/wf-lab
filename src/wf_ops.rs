@@ -429,27 +429,22 @@ pub fn update_grid_posits(
 /// Adjust weights of coefficiants until score is minimized.
 pub fn find_weights(
     charges_fixed: &Vec<(Vec3, f64)>,
-    bases: &mut Vec<Vec<Basis>>,
-    E: &mut Vec<f64>,
+    bases: &mut Vec<Basis>,
+    E: &mut f64,
     surfaces_shared: &mut SurfacesShared,
-    surfaces_per_elec: &mut Vec<SurfacesPerElec>,
+    surfaces_per_elec: &mut SurfacesPerElec,
     max_n: u16, // quantum number n
     grid_n: usize,
-    bases_visible: &mut Vec<Vec<bool>>,
+    bases_visible: &mut Vec<bool>,
 ) {
-    // let mut best_score = 9_999_999.;
-
     *bases = Vec::new();
     *bases_visible = Vec::new();
 
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
-        let mut bases_this_elec = Vec::new();
-        let mut visible_this_elec = Vec::new();
-
         for n in 1..max_n + 1 {
             for l in 0..n {
                 for m in -(l as i16)..l as i16 + 1 {
-                    bases_this_elec.push(Basis::H(HOrbital {
+                    bases.push(Basis::H(HOrbital {
                         posit: *nuc_posit,
                         n,
                         harmonic: SphericalHarmonic {
@@ -461,13 +456,10 @@ pub fn find_weights(
                         charge_id,
                     }));
 
-                    visible_this_elec.push(true);
+                    bases_visible.push(true);
                 }
             }
         }
-
-        bases.push(bases_this_elec);
-        bases_visible.push(visible_this_elec);
     }
 
     // todo: Outer loop where we go reshuffle them all a few times, possibly in random order?
@@ -493,47 +485,43 @@ pub fn find_weights(
 
     let num_iters = 4;
 
-    // We iterate first over nuclei, then over quantum numbers, then over basis values.
-    for (i, bases_this_elec) in bases.iter_mut().enumerate() {
+    // We use this to avoid mutable double-borrow errors.
+    let mut bases_temp = bases.clone();
 
-        // We use this to avoid mutable double-borrow errors.
-        let mut bases_temp = bases_this_elec.clone();
+    for (i, basis) in bases.iter_mut().enumerate() {
+        for _ in 0..num_iters {
+            let weight_vals = util::linspace((weight_min, weight_max), vals_per_iter);
+            let mut best_score = 100_000_000.;
+            let mut best_weight = 0.;
 
-        for (j, basis) in bases_this_elec.iter_mut().enumerate() {
-            for _ in 0..num_iters {
-                let weight_vals = util::linspace((weight_min, weight_max), vals_per_iter);
-                let mut best_score = 100_000_000.;
-                let mut best_weight = 0.;
+            for weight_trial in weight_vals {
+                let weight_prev = basis.weight();
+                // *basis.weight_mut() = weight_trial;
+                *bases_temp[i].weight_mut() = weight_trial;
 
-                for weight_trial in weight_vals {
-                    let weight_prev = basis.weight();
-                    // *basis.weight_mut() = weight_trial;
-                    *bases_temp[j].weight_mut() = weight_trial;
+                update_wf_fm_bases(
+                    &bases_temp,
+                    surfaces_per_elec,
+                    *E,
+                    &surfaces_shared.grid_posits,
+                    &bases_visible,
+                    grid_n,
+                );
+                find_E(surfaces_per_elec, E, grid_n);
 
-                    update_wf_fm_bases(
-                        &bases_temp,
-                        &mut surfaces_per_elec[i],
-                        E[i],
-                        &surfaces_shared.grid_posits,
-                        &bases_visible[i],
-                        grid_n,
-                    );
-                    find_E(&mut surfaces_per_elec[i], &mut E[i], grid_n);
+                let score = score_wf(surfaces_per_elec, grid_n);
+                if score < best_score {
+                    best_score = score;
+                    best_weight = weight_trial;
 
-                    let score = score_wf(&surfaces_per_elec[i], grid_n);
-                    if score < best_score {
-                        best_score = score;
-                        best_weight = weight_trial;
-                        // weight = weight_trial;
-                        *basis.weight_mut() = weight_trial;
-                    } else {
-                        *bases_temp[j].weight_mut() = weight_prev;
-                        // *basis.weight_mut() = weight_prev;
-                    }
+                    *basis.weight_mut() = weight_trial;
+                    *bases_temp[i].weight_mut() = weight_trial;
+                } else {
+                    *bases_temp[i].weight_mut() = weight_prev;
                 }
-                weight_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
-                weight_min = best_weight - weight_range_div2;
             }
+            weight_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
+            weight_min = best_weight - weight_range_div2;
         }
     }
 }
