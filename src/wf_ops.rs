@@ -440,10 +440,12 @@ pub fn find_weights(
     *bases = Vec::new();
     *bases_visible = Vec::new();
 
-    for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
-        for n in 1..max_n + 1 {
-            for l in 0..n {
-                for m in -(l as i16)..l as i16 + 1 {
+    // for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
+    for n in 1..max_n + 1 {
+        for l in 0..n {
+            for m in -(l as i16)..l as i16 + 1 {
+                // This loop order allows the basis sliders to be sorted with like-electrons next to each other.
+                for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
                     bases.push(Basis::H(HOrbital {
                         posit: *nuc_posit,
                         n,
@@ -479,8 +481,7 @@ pub fn find_weights(
 
     // todo: DRY from `find_E`.
     let vals_per_iter = 8;
-
-    let num_iters = 4;
+    let num_iters = 7;
 
     // We use this to avoid mutable double-borrow errors.
     let mut bases_temp = bases.clone();
@@ -492,8 +493,9 @@ pub fn find_weights(
         //     continue;
         // }
 
-        let mut weight_min = -2.;
-        let mut weight_max = 2.;
+        let mut weight_min = -4.; // todo: Sync with UI (?)
+        let mut weight_max = -weight_min;
+
         let mut weight_range_div2 = 2.;
 
         for _ in 0..num_iters {

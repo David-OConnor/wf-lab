@@ -20,8 +20,8 @@ const L_MIN: f64 = -3.;
 const L_MAX: f64 = 3.;
 
 // Wave fn weights
-const WEIGHT_MIN: f64 = -2.;
-const WEIGHT_MAX: f64 = 2.;
+pub const WEIGHT_MIN: f64 = -4.;
+pub const WEIGHT_MAX: f64 = 4.;
 
 // sets range of -size to +size
 const GRID_SIZE_MIN: f64 = 0.;
