@@ -126,88 +126,21 @@ fn main() {
 
     let neutral = Quaternion::new_identity();
 
-    // todo: Clean up constructor sequene for these basis fns A/R.
-    let h_bases = vec![
-        Basis::H(HOrbital::new(
-            posit_charge_1,
-            1,
-            SphericalHarmonic::default(),
-            1.,
-            0,
-        )),
-        Basis::H(HOrbital::new(
-            posit_charge_2,
-            1,
-            SphericalHarmonic::default(),
-            0.,
-            1,
-        )),
-        Basis::H(HOrbital::new(
-            posit_charge_1,
-            2,
-            SphericalHarmonic::default(),
-            0.,
-            0,
-        )),
-        Basis::H(HOrbital::new(
-            posit_charge_2,
-            2,
-            SphericalHarmonic::default(),
-            0.,
-            1,
-        )),
-        Basis::H(HOrbital::new(
-            posit_charge_1,
-            2,
-            SphericalHarmonic::new(1, 0, neutral),
-            0.,
-            0,
-        )),
-        Basis::H(HOrbital::new(
-            posit_charge_2,
-            2,
-            SphericalHarmonic::new(1, 0, neutral),
-            0.,
-            1,
-        )),
-        Basis::H(HOrbital::new(
-            posit_charge_1,
-            3,
-            SphericalHarmonic::default(),
-            0.,
-            0,
-        )),
-        Basis::Sto(Sto::new(
-            posit_charge_1,
-            1,
-            SphericalHarmonic::default(),
-            1.,
-            0.,
-            1,
-        )),
-    ];
-
-    let bases = vec![h_bases.clone(), h_bases.clone()];
-
-    let ui_active_elec = 0;
-    // H ion nuc dist is I believe 2 bohr radii.
-    // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
     let charges_fixed = vec![
         (posit_charge_1, Q_PROT * 1.), // helium
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
-    let mut bases_visible = Vec::new();
+    // Outer of these is per-elec.
+    let mut bases = vec![Vec::new()];
+    let mut bases_visible = vec![Vec::new()];
+    let max_n = 2;
+    wf_ops::initialize_bases(&charges_fixed, &mut bases[0], &mut bases_visible[0], max_n);
 
-    for i in 0..charges_fixed.len() {
-        let mut visible_this_charge = Vec::new();
-
-        for _ in 0..bases[i].len() {
-            visible_this_charge.push(true);
-        }
-        bases_visible.push(visible_this_charge);
-    }
+    let ui_active_elec = 0;
+    // H ion nuc dist is I believe 2 bohr radii.
+    // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
 
     let grid_n = GRID_N_DEFAULT;
 
@@ -252,7 +185,7 @@ fn main() {
 
     // Set up our basis-function based trial wave function.
     wf_ops::update_wf_fm_bases(
-        &h_bases,
+        &bases[0],
         &mut surfaces_per_elec[ui_active_elec],
         Es[ui_active_elec],
         &mut surfaces_shared.grid_posits,

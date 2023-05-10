@@ -133,18 +133,7 @@ pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, n: usize) {
 /// Note that due to phase symmetry, there are many ways to balance the normalization of the real
 /// vice imaginary parts. Our implmentation (dividing both real and imag parts by norm square)
 /// is one way.
-fn normalize_wf(arr: &mut Arr3d, n: usize) -> f64 {
-    // let mut norm = Cplx::new_zero();
-    let mut norm = 0.;
-
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
-                norm += arr[i][j][k].abs_sq();
-            }
-        }
-    }
-
+fn normalize_wf(arr: &mut Arr3d, norm: f64, n: usize) -> f64 {
     let norm_sqrt = norm.sqrt();
 
     for i in 0..n {
@@ -172,6 +161,11 @@ pub fn update_wf_fm_bases(
     bases_visible: &[bool],
     n: usize,
 ) {
+    // We intergrate normalization into the loops here, vice as a separate function,
+    // to prevent excess loops from running.
+
+    let mut norm = 0.;
+
     for i in 0..n {
         for j in 0..n {
             for k in 0..n {
@@ -187,6 +181,8 @@ pub fn update_wf_fm_bases(
                     };
                     sfcs.psi[i][j][k] += basis.value(posit_sample) * weight;
                 }
+
+                norm += sfcs.psi[i][j][k].abs_sq();
 
                 // sfcs.psi_pp_calculated[i][j][k] =
                 //     eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
@@ -205,13 +201,16 @@ pub fn update_wf_fm_bases(
         }
     }
 
-    let psi_norm_sqrt = normalize_wf(&mut sfcs.psi, n);
+    // let psi_norm_sqrt = norm.sqrt();
+    let psi_norm_sqrt = normalize_wf(&mut sfcs.psi, norm, n);
 
     // Update psi_pps after normalization.
     for i in 0..n {
         for j in 0..n {
             for k in 0..n {
                 let posit_sample = grid_posits[i][j][k];
+
+                // psi[i][j][k] = psi[i][j][k] / norm_sqrt;
 
                 sfcs.psi_pp_calculated[i][j][k] =
                     eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
@@ -361,9 +360,10 @@ pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, grid_n: usize) {
                 *E = E_trial;
             }
         }
-        E_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
+
         E_min = best_E - E_range_div2;
         E_max = best_E + E_range_div2;
+        E_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
     }
 }
 
@@ -430,16 +430,13 @@ pub fn update_grid_posits(
     }
 }
 
-/// Adjust weights of coefficiants until score is minimized.
-pub fn find_weights(
+/// Set up basis fns.
+/// (todo: Use this in main and lib inits, and when you add charges.
+pub fn initialize_bases(
     charges_fixed: &Vec<(Vec3, f64)>,
     bases: &mut Vec<Basis>,
-    E: &mut f64,
-    surfaces_shared: &mut SurfacesShared,
-    surfaces_per_elec: &mut SurfacesPerElec,
-    max_n: u16, // quantum number n
-    grid_n: usize,
     bases_visible: &mut Vec<bool>,
+    max_n: u16, // quantum number n
 ) {
     *bases = Vec::new();
     *bases_visible = Vec::new();
@@ -467,6 +464,20 @@ pub fn find_weights(
             }
         }
     }
+}
+
+/// Adjust weights of coefficiants until score is minimized.
+pub fn find_weights(
+    charges_fixed: &Vec<(Vec3, f64)>,
+    bases: &mut Vec<Basis>,
+    E: &mut f64,
+    surfaces_shared: &mut SurfacesShared,
+    surfaces_per_elec: &mut SurfacesPerElec,
+    max_n: u16, // quantum number n
+    grid_n: usize,
+    bases_visible: &mut Vec<bool>,
+) {
+    initialize_bases(charges_fixed, bases, bases_visible, max_n);
 
     // todo: Outer loop where we go reshuffle them all a few times, possibly in random order?
 
@@ -484,75 +495,133 @@ pub fn find_weights(
     // }
 
     // todo: DRY from `find_E`.
-    let weight_vals_per_iter = 8;
+    let weight_vals_per_iter = 3;
     let narrow_down_iters = 7;
-    // let num_passes = 1;
+    let num_passes = 2;
 
     // We use this to avoid mutable double-borrow errors.
     let mut bases_temp = bases.clone();
 
-    // todo: These passes are currently not doing anything for you!
-    // for _ in 0..num_passes {
-    for (i, basis) in bases.iter_mut().enumerate() {
-        // if i == 0 {
-        //     // A stake in the ground. // todo: QC.
-        //     *basis.weight_mut() = 1.;
-        //     continue;
-        // }
+    let mut weight_min = -4.;
+    let mut weight_max = 4.;
 
-        let mut weight_min = -4.; // todo: Sync with UI (?)
-        let mut weight_max = -weight_min;
+    // todo: Start of gradient-based code. Put back once you have your new wf-update fn working iwht
+    // todo the old approahc.
 
-        let mut weight_range_div2 = 2.;
+    // Infinitessimal weight change, used for assessing derivatives.
+    const DW: f64 = 0.00001;
 
+    // We will score the wave function, and along each dimension, in order to find the partial
+    // derivatives. We will then follow the gradients to victory (?)
+    let initial_sample_weights = util::linspace((weight_min, weight_max), weight_vals_per_iter);
 
-        for _ in 0..narrow_down_iters {
-            let weight_vals = util::linspace((weight_min, weight_max), weight_vals_per_iter);
-            let mut best_score = 100_000_000.;
-            let mut best_weight = 0.;
+    for sample_weight in initial_sample_weights {
+        for (i, basis) in bases.iter_mut().enumerate() {
+            *basis.weight_mut() = sample_weight;
 
-            for weight_trial in weight_vals {
-                let weight_prev = basis.weight();
-                // *basis.weight_mut() = weight_trial;
-                *bases_temp[i].weight_mut() = weight_trial;
+            update_wf_fm_bases(
+                &bases_temp,
+                surfaces_per_elec,
+                *E,
+                &surfaces_shared.grid_posits,
+                &bases_visible,
+                grid_n,
+            );
+            find_E(surfaces_per_elec, E, grid_n);
 
-                update_wf_fm_bases(
-                    &bases_temp,
-                    surfaces_per_elec,
-                    *E,
-                    &surfaces_shared.grid_posits,
-                    &bases_visible,
-                    grid_n,
-                );
-                find_E(surfaces_per_elec, E, grid_n);
-
-                let score = score_wf(surfaces_per_elec, grid_n);
-                if score < best_score {
-                    best_score = score;
-                    best_weight = weight_trial;
-
-                    *basis.weight_mut() = weight_trial;
-                    *bases_temp[i].weight_mut() = weight_trial;
-                } else {
-                    *bases_temp[i].weight_mut() = weight_prev;
-                }
-            }
-            weight_range_div2 /= weight_vals_per_iter as f64; // todo: May need a wider range than this.
-            weight_min = best_weight - weight_range_div2;
+            let score = score_wf(surfaces_per_elec, grid_n);
         }
     }
+
+    // todo: End new gradient-based code
+
+    //
+    //
+    //
+    // // Subsequent passes narrow down near the local minima found on prev ones. They only make the
+    // // solution it found more precise; won't find a better overall solution.
+    //
+    // // Note: Order matters. Ideally, we iterate over low ns first, as they're more fundamental. (?)
+    // // for pass_i in 0..num_passes {
+    // for (i, basis) in bases.iter_mut().enumerate() {
+    //     // if i == 0 {
+    //     //     // A stake in the ground. // todo: QC.
+    //     //     *basis.weight_mut() = 1.;
+    //     //     continue;
+    //     // }
+    //
+    //     // todo: Not a general approach! Hard-coded for 2 passes.
+    //     // if pass_i == 1 {
+    //     //     weight_min = basis.weight() - 0.4; // todo: Magic number
+    //     //     weight_max= basis.weight() + 0.4; // todo: Magic number
+    //     // }
+    //
+    //     let mut weight_range_div2 = 2.;
+    //
+    //     let weight_vals = util::linspace((weight_min, weight_max), weight_vals_per_iter);
+    //
+    //     for _ in 0..narrow_down_iters {
+    //
+    //         let mut best_score = 100_000_000.;
+    //         let mut best_weight = 0.;
+    //
+    //         for weight_trial in weight_vals {
+    //             if weight_trial.abs() < 0.000001 {
+    //                 continue
+    //                 // todo: Is this what we want? We're avoiding the case where all weights are 0,
+    //                 // todo, which indeed gives a perfect score.
+    //             }
+    //
+    //
+    //
+    //
+    //
+    //             let weight_prev = basis.weight();
+    //             // *basis.weight_mut() = weight_trial;
+    //             *bases_temp[i].weight_mut() = weight_trial;
+    //
+    //             update_wf_fm_bases(
+    //                 &bases_temp,
+    //                 surfaces_per_elec,
+    //                 *E,
+    //                 &surfaces_shared.grid_posits,
+    //                 &bases_visible,
+    //                 grid_n,
+    //             );
+    //             find_E(surfaces_per_elec, E, grid_n);
+    //
+    //             let score = score_wf(surfaces_per_elec, grid_n);
+    //             if score < best_score {
+    //                 best_score = score;
+    //                 best_weight = weight_trial;
+    //
+    //                 *basis.weight_mut() = weight_trial;
+    //                 *bases_temp[i].weight_mut() = weight_trial;
+    //             } else {
+    //                 *bases_temp[i].weight_mut() = weight_prev;
+    //             }
+    //         }
+    //
+    //         weight_min = best_weight - weight_range_div2;
+    //         weight_max = best_weight + weight_range_div2;
+    //         weight_range_div2 /= weight_vals_per_iter as f64; // todo: May need a wider range than this.
+    //         // println!("div2: {}, weight min: {}, max: {}", weight_range_div2, weight_min, weight_max);
+    //     }
     // }
-    
-    // Scale weights to keep them in our UI-adjustable range.
-    let mut max_weight = 0.;
-    for basis in bases.iter() {
-        if basis.weight().abs() > max_weight {
-            max_weight = basis.weight().abs();
-        }
-    }
-
-    for basis in bases {
-        // This scales so the highest weight is just inside our UI-set limits.
-        *basis.weight_mut() /= max_weight / (WEIGHT_MAX * 0.9);
-    }
+    // // }
+    //
+    // // Scale weights to keep them in our UI-adjustable range.
+    // let mut max_weight = 0.;
+    // for basis in bases.iter() {
+    //     if basis.weight().abs() > max_weight {
+    //         max_weight = basis.weight().abs();
+    //     }
+    // }
+    //
+    // for basis in bases {
+    //     // This scales so the highest weight is just inside our UI-set limits.
+    //     if max_weight >= 0.0000001 {
+    //         *basis.weight_mut() /= max_weight / (WEIGHT_MAX * 0.9);
+    //     }
+    // }
 }

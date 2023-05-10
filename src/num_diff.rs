@@ -65,22 +65,8 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
     psi_z_prev = psi_z_prev / psi_norm_sqrt;
     psi_z_next = psi_z_next / psi_norm_sqrt;
 
-    // println!("x p: {:?}", psi_x_prev);
-    // println!("y p: {:?}", psi_x_next);
-    // println!("z p : {:?}", psi_y_prev);
-    // println!("x p: {:?}", psi_y_next);
-    // println!("y p: {:?}", psi_z_prev);
-    // println!("z p: {:?}", psi_z_next);
-    //
-    // println!("Psi: {:?}", psi_sample_loc);
-
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - psi_sample_loc * 6.;
-
-    // println!("Sum: {:?}", psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next);
-    // println!("6 factor: {:?}", psi_sample_loc * 6.);
-    //
-    // println!("Result: {:?}. DivH^2: {:?}", result, result / H_SQ);
 
     result / H_SQ
 }

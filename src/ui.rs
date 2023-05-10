@@ -13,7 +13,7 @@ const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 260.;
 const SLIDER_WIDTH_ORIENTATION: f32 = 100.;
 
-const E_MIN: f64 = -1.2;
+const E_MIN: f64 = -2.0;
 const E_MAX: f64 = 0.2;
 
 const L_MIN: f64 = -3.;
@@ -699,7 +699,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.add_space(ITEM_SPACING);
 
-        ui.heading("Wave functions and weights:");
+        ui.heading("Basis functions and weights:");
 
         // basis_fn_mixer(state, &mut updated_wfs, ui, &mut engine_updates, scene);
         basis_fn_mixer(state, &mut updated_basis_wfs, ui);
@@ -816,6 +816,15 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         }
 
         if updated_charges {
+            // Reinintialize bases due to the added charges
+            // Note: An alternative would be to add the new bases without 0ing the existing ones.
+            wf_ops::initialize_bases(
+                &mut state.charges_fixed,
+                &mut state.bases[state.ui_active_elec],
+                &mut state.bases_visible[state.ui_active_elec],
+                2,
+            );
+
             wf_ops::update_V_fm_fixed_charges(
                 &state.charges_fixed,
                 &mut state.surfaces_shared.V_fixed_charges,
