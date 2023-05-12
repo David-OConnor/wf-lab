@@ -794,7 +794,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.surfaces_per_elec[state.ui_active_elec],
                 2,
                 state.grid_n,
-                &mut state.bases_visible[state.ui_active_elec],
             );
 
             updated_basis_wfs = true;
@@ -824,6 +823,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.bases_visible[state.ui_active_elec],
                 2,
             );
+            // state.bases_unweighted = wf_ops::create_bases_wfs_unweighted(&state.bases[0], &state.surfaces_shared.grid_posits, state.grid_n);
 
             wf_ops::update_V_fm_fixed_charges(
                 &state.charges_fixed,
@@ -851,6 +851,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             // Set up our basis-function based trial wave function.
             wf_ops::update_wf_fm_bases(
                 &state.bases[state.ui_active_elec],
+                // &state.bases_unweighted,
                 &mut state.surfaces_per_elec[state.ui_active_elec],
                 state.E[state.ui_active_elec],
                 &mut state.surfaces_shared.grid_posits,

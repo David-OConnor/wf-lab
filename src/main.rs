@@ -41,7 +41,7 @@ mod util;
 mod wf_ops;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
-use types::{Arr3dReal, SurfacesPerElec, SurfacesShared};
+use types::{Arr3d, Arr3dReal, SurfacesPerElec, SurfacesShared};
 use wf_ops::Q_PROT;
 
 const NUM_SURFACES: usize = 10;
@@ -68,6 +68,10 @@ pub struct State {
     /// Wave functions, with weights. Per-electron. (Outer Vec iterates over electrons; inner over
     /// bases per-electron)
     pub bases: Vec<Vec<Basis>>,
+    /// Basis wave functions. Perhaps faster to cache these (at the cost of more memory use, rather than
+    /// compute their value each time we change weights...)
+    /// todo: This should probably be in one of the surfaces.
+    pub bases_unweighted: Vec<Arr3d>,
     /// Used to toggle precense of a basi, effectively setting its weight ot 0 without losing the stored
     /// weight value.
     pub bases_visible: Vec<Vec<bool>>,
@@ -183,9 +187,16 @@ fn main() {
         types::copy_array_real(&mut sfc.V, &surfaces_shared.V_fixed_charges, grid_n);
     }
 
+    // todo: Handle the multi-electron case instead of hard-coding 0.
+    let bases_unweighted = wf_ops::create_bases_wfs_unweighted(&bases[0], &surfaces_shared.grid_posits, grid_n);
+
+    // println!("b: {:?}", bases_unweighted[0]);
+
     // Set up our basis-function based trial wave function.
     wf_ops::update_wf_fm_bases(
+        // todo: Handle the multi-electron case instead of hard-coding 0.
         &bases[0],
+        // &bases_unweighted,
         &mut surfaces_per_elec[ui_active_elec],
         Es[ui_active_elec],
         &mut surfaces_shared.grid_posits,
@@ -221,6 +232,7 @@ fn main() {
         charges_fixed,
         charges_electron,
         bases,
+        bases_unweighted,
         bases_visible,
         surfaces_shared,
         surfaces_per_elec,

@@ -468,6 +468,7 @@ impl HOrbital {
 
     /// Calculate this basis function's value at a given point.
     /// Does not include weight.
+    /// todo: Is this normalized?
     /// https://quantummechanics.ucsd.edu/ph130a/130_notes/node233.html
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         const EPS: f64 = 0.0000001;

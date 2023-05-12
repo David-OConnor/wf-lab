@@ -23,6 +23,7 @@
 // todo: Something that would really help: A recipe for which basis wfs to add for a given
 // todo potential.
 
+use std::f32::EPSILON;
 use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic},
     complex_nums::Cplx,
@@ -134,6 +135,11 @@ pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, n: usize) {
 /// vice imaginary parts. Our implmentation (dividing both real and imag parts by norm square)
 /// is one way.
 fn normalize_wf(arr: &mut Arr3d, norm: f64, n: usize) -> f64 {
+    const EPS: f64 = 0.000001;
+    if norm.abs() < EPS {
+        return 1.
+    }
+
     let norm_sqrt = norm.sqrt();
 
     for i in 0..n {
@@ -153,22 +159,52 @@ fn normalize_wf(arr: &mut Arr3d, norm: f64, n: usize) -> f64 {
 /// Modifies in place to conserve memory. These operations are combined in the same function to
 /// save computation, since they're often run at once, and can be iterated through using a single loop
 /// through all grid points.
+// pub fn update_wf_fm_bases(
+//     bases: &[Basis],
+//     basis_wfs: &[Arr3d],
+//     sfcs: &mut SurfacesPerElec,
+//     E: f64,
+//     grid_posits: &Arr3dVec,
+//     bases_visible: &[bool],
+//     grid_n: usize,
+// ) {
+//     let mut norm = 0.;
+//
+//     for i in 0..grid_n {
+//         for j in 0..grid_n {
+//             for k in 0..grid_n {
+//                 sfcs.psi[i][j][k] = Cplx::new_zero();
+//
+//                 for (i_basis, basis_wf) in basis_wfs.iter().enumerate() {
+//                     let weight = if bases_visible[i_basis] {
+//                         bases[i_basis].weight()
+//                     } else {
+//                         0.
+//                     };
+//                     sfcs.psi[i][j][k] += basis_wf[i][j][k] * weight;
+//                 }
+//
+//                 norm += sfcs.psi[i][j][k].abs_sq();
+//             }
+//         }
+//     }
+
 pub fn update_wf_fm_bases(
     bases: &[Basis],
     sfcs: &mut SurfacesPerElec,
     E: f64,
     grid_posits: &Arr3dVec,
     bases_visible: &[bool],
-    n: usize,
+    grid_n: usize,
 ) {
     // We intergrate normalization into the loops here, vice as a separate function,
     // to prevent excess loops from running.
 
     let mut norm = 0.;
 
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
                 let posit_sample = grid_posits[i][j][k];
 
                 sfcs.psi[i][j][k] = Cplx::new_zero();
@@ -202,27 +238,59 @@ pub fn update_wf_fm_bases(
     }
 
     // let psi_norm_sqrt = norm.sqrt();
-    let psi_norm_sqrt = normalize_wf(&mut sfcs.psi, norm, n);
+    let psi_norm_sqrt = normalize_wf(&mut sfcs.psi, norm, grid_n);
 
-    // Update psi_pps after normalization.
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
+    // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
+    // take infinitessimal differences on the analytic basis equations to find psi'' measured.
+    update_psi_pps_from_bases(
+        bases,
+        &sfcs.psi,
+        &sfcs.V,
+        &mut sfcs.psi_pp_calculated,
+        &mut sfcs.psi_pp_measured,
+        grid_posits,
+        E,
+        bases_visible,
+        grid_n,
+        psi_norm_sqrt,
+    );
+}
+
+/// Update psi'' calc and psi'' measured, assuming we are using basis WFs. This is done
+/// after the wave function is contructed and normalized.
+///
+/// We use a separate function from this since it's used separately in our basis-finding
+/// algorithm
+fn update_psi_pps_from_bases(
+    // We split these arguments up instead of using surfaces to control mutability.
+    bases: &[Basis],
+    psi: &Arr3d,
+    V: &Arr3dReal,
+    psi_pp_calc: &mut Arr3d,
+    psi_pp_meas: &mut Arr3d,
+    grid_posits: &Arr3dVec,
+    E: f64,
+    bases_visible: &[bool],
+    grid_n: usize,
+    psi_norm_sqrt: f64,
+) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
                 let posit_sample = grid_posits[i][j][k];
 
                 // psi[i][j][k] = psi[i][j][k] / norm_sqrt;
 
-                sfcs.psi_pp_calculated[i][j][k] =
-                    eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
+                psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(psi, V, E, i, j, k);
 
                 // Calculate psi'' based on a numerical derivative of psi
                 // in 3D.
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-                sfcs.psi_pp_measured[i][j][k] = num_diff::find_ψ_pp_meas_fm_bases(
+                psi_pp_meas[i][j][k] = num_diff::find_ψ_pp_meas_fm_bases(
                     posit_sample,
                     bases,
-                    sfcs.psi[i][j][k],
+                    psi[i][j][k],
                     psi_norm_sqrt,
                     bases_visible,
                 );
@@ -430,8 +498,8 @@ pub fn update_grid_posits(
     }
 }
 
-/// Set up basis fns.
-/// (todo: Use this in main and lib inits, and when you add charges.
+/// [re]Create a set of basis functions, given fixed-charges representing nuclei.
+/// Use this in main and lib inits, and when you add charges.
 pub fn initialize_bases(
     charges_fixed: &Vec<(Vec3, f64)>,
     bases: &mut Vec<Basis>,
@@ -475,9 +543,9 @@ pub fn find_weights(
     surfaces_per_elec: &mut SurfacesPerElec,
     max_n: u16, // quantum number n
     grid_n: usize,
-    bases_visible: &mut Vec<bool>,
 ) {
-    initialize_bases(charges_fixed, bases, bases_visible, max_n);
+    let mut visible = Vec::new();
+    initialize_bases(charges_fixed, bases, &mut visible, max_n);
 
     // todo: Outer loop where we go reshuffle them all a few times, possibly in random order?
 
@@ -511,27 +579,62 @@ pub fn find_weights(
     // Infinitessimal weight change, used for assessing derivatives.
     const DW: f64 = 0.00001;
 
+    // let mut basis_wfs_unweighted = Vec::new();
+    // let mut basis_wfs_weighted: Vec<Arr3d> = Vec::new();
+
+    let mut basis_wfs_unweighted = create_bases_wfs_unweighted(bases, &surfaces_shared.grid_posits, grid_n);
+    let mut basis_wfs_weighted: Vec<Arr3d> = Vec::new();
+
+    // Approach: Take a handleful of approaches, eg evenly-spaced; maybe 2-3 per dimension
+    // to start. From each, using gradient-descent to find a global minima of score.Then use the best of these.
+
+    // These points iterate through all bases, so the total number of points
+    // is initial_points^n_weights. These are where we begin our gradient-descents. More points allows
+    // for better differentiation of global vs local minima (of WF score);
+    let initial_weights = [-3., 0.1, 3.];
+
     // We will score the wave function, and along each dimension, in order to find the partial
     // derivatives. We will then follow the gradients to victory (?)
-    let initial_sample_weights = util::linspace((weight_min, weight_max), weight_vals_per_iter);
+    // let initial_sample_weights = util::linspace((weight_min, weight_max), weight_vals_per_iter);
 
-    for sample_weight in initial_sample_weights {
-        for (i, basis) in bases.iter_mut().enumerate() {
-            *basis.weight_mut() = sample_weight;
-
-            update_wf_fm_bases(
-                &bases_temp,
-                surfaces_per_elec,
-                *E,
-                &surfaces_shared.grid_posits,
-                &bases_visible,
-                grid_n,
-            );
-            find_E(surfaces_per_elec, E, grid_n);
-
-            let score = score_wf(surfaces_per_elec, grid_n);
-        }
+    for weight_init in initial_weights {
+        for (basis_i, basis) in bases.iter().enumerate() {}
     }
+
+    // Here: Isolated descent algo. Possibly put in a sep fn.
+    // This starts with a weight=1 n=1 orbital at each electron.
+
+    let mut weights = vec![0.; bases.len()];
+    weights[0] = 1.;
+    weights[1] = 1.;
+
+    for (i_basis, basis) in bases.iter().enumerate() {
+        let score_this = score_weight_set(
+            bases, E, surfaces_shared, surfaces_per_elec, grid_n
+        );
+
+        let score_prev =
+
+        let d_score__d_basis = ;
+    }
+
+    //
+    //
+    // for sample_weight in initial_sample_weights {
+    //     for i in 0..grid_n {
+    //         for j in 0..grid_n {
+    //             for k in 0..grid_n {
+    //                 for basis_i in 0..bases.len() {
+    //                     basis_wfs_weighted[basis_i][i][j][k] = basis_wfs_unweighted[basis_i][i][j][k] * sample_weight;
+    //
+    //
+    //                     basis_wfs_unweighted[basis_i][i][j][k] * sample_weight;
+    //                 }
+    //             }
+    //         }
+    //
+    //     }
+    // }
 
     // todo: End new gradient-based code
 
@@ -624,4 +727,88 @@ pub fn find_weights(
     //         *basis.weight_mut() /= max_weight / (WEIGHT_MAX * 0.9);
     //     }
     // }
+}
+
+/// Helper for finding weight gradient descent. Returns a score at a given set of weights.
+pub fn score_weight_set(
+    bases: &mut Vec<Basis>,
+    E: &mut f64,
+    surfaces_shared: &mut SurfacesShared,
+    surfaces_per_elec: &mut SurfacesPerElec,
+    grid_n: usize
+) -> f64 {
+    let mut norm = 0.;
+
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                surfaces_per_elec.psi[i][j][k] = Cplx::new_zero();
+
+                for (i_basis2, basis2) in bases.iter().enumerate() {
+                    surfaces_per_elec.psi[i][j][k] +=
+                        basis_wfs_unweighted[i_basis2][i][j][k] * weights[i_basis2]
+                }
+
+                norm += surfaces_per_elec.psi[i][j][k].abs_sq();
+            }
+        }
+    }
+
+    let psi_norm_sqrt = normalize_wf(&mut surfaces_shared.psi, norm, grid_n);
+
+    // kludge for API that needs work.
+    let mut bases_visible = Vec::new();
+    for _ in bases {
+        bases_visible.push(true);
+    }
+
+    update_psi_pps_from_bases(
+        bases,
+        &surfaces_per_elec.psi,
+        &surfaces_per_elec.V,
+        &mut surfaces_per_elec.psi_pp_calculated,
+        &mut surfaces_per_elec.psi_pp_measured,
+        &surfaces_shared.grid_posits,
+        *E,
+        &bases_visible,
+        grid_n,
+        psi_norm_sqrt,
+    );
+
+    find_E(surfaces_per_elec, E, grid_n);
+
+    score_wf(surfaces_per_elec, grid_n)
+}
+
+/// Create unweighted basis wave functions. Run this whenever we add or remove basis fns,
+/// and when changing the grid size. Each basis will be normalized in this function.
+pub fn create_bases_wfs_unweighted(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) -> Vec<Arr3d> {
+    let mut result = Vec::new();
+
+    for _ in 0..bases.len() {
+        result.push(crate::types::new_data(grid_n))
+    }
+
+    for (basis_i, basis) in bases.iter().enumerate() {
+        let mut norm = 0.;
+
+        for i in 0..grid_n {
+            for j in 0..grid_n {
+                for k in 0..grid_n {
+                    let posit_sample = grid_posits[i][j][k];
+
+                    let val = basis.value(posit_sample);
+                    // println!("VAL: {:?}", val);
+                    // println!("P: {:?}", posit_sample);
+
+                    result[basis_i][i][j][k] = val;
+                    norm += val.abs_sq();
+                }
+            }
+        }
+
+        // normalize_wf(&mut result[basis_i], norm, grid_n);
+    }
+
+    result
 }

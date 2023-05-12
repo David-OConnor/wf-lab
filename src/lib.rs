@@ -101,8 +101,18 @@ pub fn psi_from_pt_charges(
         grid_n,
     );
 
+    let bases_unweighted = wf_ops::create_bases_wfs_unweighted(&bases, &grid_posits, grid_n);
+
     // Set up our basis-function based trial wave function.
-    wf_ops::update_wf_fm_bases(&wfs, &mut sfcs, E, &mut grid_posits, &bases_visible, grid_n);
+    wf_ops::update_wf_fm_bases(
+        &wfs,
+        // &bases_unweighted,
+        &mut sfcs,
+        E,
+        &mut grid_posits,
+        &bases_visible,
+        grid_n,
+    );
 
     nudge::nudge_wf(
         &mut sfcs,
