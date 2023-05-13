@@ -23,7 +23,6 @@
 // todo: Something that would really help: A recipe for which basis wfs to add for a given
 // todo potential.
 
-use std::f32::EPSILON;
 use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic},
     complex_nums::Cplx,
@@ -33,6 +32,7 @@ use crate::{
     types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec, SurfacesShared},
     util::{self},
 };
+use std::f32::EPSILON;
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
@@ -137,7 +137,7 @@ pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, n: usize) {
 fn normalize_wf(arr: &mut Arr3d, norm: f64, n: usize) -> f64 {
     const EPS: f64 = 0.000001;
     if norm.abs() < EPS {
-        return 1.
+        return 1.;
     }
 
     let norm_sqrt = norm.sqrt();
@@ -535,6 +535,8 @@ pub fn initialize_bases(
 }
 
 /// Adjust weights of coefficiants until score is minimized.
+/// We use a gradient-descent approach to find local *score* minimum. (fidelity?)
+/// We choose several start points to help find a global solution.
 pub fn find_weights(
     charges_fixed: &Vec<(Vec3, f64)>,
     bases: &mut Vec<Basis>,
@@ -547,43 +549,18 @@ pub fn find_weights(
     let mut visible = Vec::new();
     initialize_bases(charges_fixed, bases, &mut visible, max_n);
 
-    // todo: Outer loop where we go reshuffle them all a few times, possibly in random order?
-
-    // todo: DRY from find_e
-    // todo: Dry from
-    // for (i, elec_bases) in bases.iter().enumerate() {
-    //     for basis in elec_bases {
-    //         let weight_vals = util::linspace((BASIS_MIN, BASIS_MAX), vals_per_iter);
-    //         let mut best_score = 100_000_000.;
-    //
-    //         for weight_trial in weight_vals {}
-    //     }
-    //
-    //
-    // }
-
-    // todo: DRY from `find_E`.
-    let weight_vals_per_iter = 3;
-    let narrow_down_iters = 7;
-    let num_passes = 2;
-
-    // We use this to avoid mutable double-borrow errors.
-    let mut bases_temp = bases.clone();
-
     let mut weight_min = -4.;
     let mut weight_max = 4.;
 
-    // todo: Start of gradient-based code. Put back once you have your new wf-update fn working iwht
-    // todo the old approahc.
-
     // Infinitessimal weight change, used for assessing derivatives.
-    const DW: f64 = 0.00001;
+    const D_WEIGHT: f64 = 0.00001;
 
-    // let mut basis_wfs_unweighted = Vec::new();
+    const NUM_DESCENTS: usize = 5; // todo
+    let mut descent_rate = 0.1; // todo? Factor for gradient descent based on the vector.
+
+    let basis_wfs_unweighted =
+        create_bases_wfs_unweighted(bases, &surfaces_shared.grid_posits, grid_n);
     // let mut basis_wfs_weighted: Vec<Arr3d> = Vec::new();
-
-    let mut basis_wfs_unweighted = create_bases_wfs_unweighted(bases, &surfaces_shared.grid_posits, grid_n);
-    let mut basis_wfs_weighted: Vec<Arr3d> = Vec::new();
 
     // Approach: Take a handleful of approaches, eg evenly-spaced; maybe 2-3 per dimension
     // to start. From each, using gradient-descent to find a global minima of score.Then use the best of these.
@@ -591,142 +568,61 @@ pub fn find_weights(
     // These points iterate through all bases, so the total number of points
     // is initial_points^n_weights. These are where we begin our gradient-descents. More points allows
     // for better differentiation of global vs local minima (of WF score);
-    let initial_weights = [-3., 0.1, 3.];
 
     // We will score the wave function, and along each dimension, in order to find the partial
     // derivatives. We will then follow the gradients to victory (?)
     // let initial_sample_weights = util::linspace((weight_min, weight_max), weight_vals_per_iter);
 
-    for weight_init in initial_weights {
-        for (basis_i, basis) in bases.iter().enumerate() {}
-    }
-
     // Here: Isolated descent algo. Possibly put in a sep fn.
     // This starts with a weight=1 n=1 orbital at each electron.
 
-    let mut weights = vec![0.; bases.len()];
-    weights[0] = 1.;
-    weights[1] = 1.;
+    // For now, let's use a single starting point, and gradient-descent from it.
+    let mut current_point = vec![0.; bases.len()];
+    current_point[0] = 1.;
+    current_point[1] = 1.;
 
-    for (i_basis, basis) in bases.iter().enumerate() {
+    for num_descents in 0..NUM_DESCENTS {
+        // todo: You could choose your initial points, where, for each atom, the n=1 bases
+        // todo are +- 1 for each, and all other bases are 0. Ie repeat the whole process,
+        // todo but for those initial points.
+
         let score_this = score_weight_set(
-            bases, E, surfaces_shared, surfaces_per_elec, grid_n
+            bases,
+            E,
+            surfaces_shared,
+            surfaces_per_elec,
+            grid_n,
+            &basis_wfs_unweighted,
+            &init_point,
         );
 
-        let score_prev =
+        // This is our gradient.
+        let diffs = vec![0.; bases.len()];
 
-        let d_score__d_basis = ;
+        for (i_basis, basis) in bases.iter().enumerate() {
+            // Scores from a small change along this dimension. basis = dimension
+            // We could use midpoint, but to save computation, we will do a simple 2-point.
+            let mut prev_point = current_point.clone();
+            prev_point[i_basis] -= D_WEIGHT;
+
+            let score_prev = score_weight_set(
+                bases,
+                E,
+                surfaces_shared,
+                surfaces_per_elec,
+                grid_n,
+                &basis_wfs_unweighted,
+                &prev_point,
+            );
+
+            diffs[i_basis] = (score_this - score_prev) / D_WEIGHT;
+        }
+
+        // Now that we've computed our gradient, shift down it to the next point.
+        for i in 0..bases.len() {
+            current_point[i] += diffs[i] * descent_rate;
+        }
     }
-
-    //
-    //
-    // for sample_weight in initial_sample_weights {
-    //     for i in 0..grid_n {
-    //         for j in 0..grid_n {
-    //             for k in 0..grid_n {
-    //                 for basis_i in 0..bases.len() {
-    //                     basis_wfs_weighted[basis_i][i][j][k] = basis_wfs_unweighted[basis_i][i][j][k] * sample_weight;
-    //
-    //
-    //                     basis_wfs_unweighted[basis_i][i][j][k] * sample_weight;
-    //                 }
-    //             }
-    //         }
-    //
-    //     }
-    // }
-
-    // todo: End new gradient-based code
-
-    //
-    //
-    //
-    // // Subsequent passes narrow down near the local minima found on prev ones. They only make the
-    // // solution it found more precise; won't find a better overall solution.
-    //
-    // // Note: Order matters. Ideally, we iterate over low ns first, as they're more fundamental. (?)
-    // // for pass_i in 0..num_passes {
-    // for (i, basis) in bases.iter_mut().enumerate() {
-    //     // if i == 0 {
-    //     //     // A stake in the ground. // todo: QC.
-    //     //     *basis.weight_mut() = 1.;
-    //     //     continue;
-    //     // }
-    //
-    //     // todo: Not a general approach! Hard-coded for 2 passes.
-    //     // if pass_i == 1 {
-    //     //     weight_min = basis.weight() - 0.4; // todo: Magic number
-    //     //     weight_max= basis.weight() + 0.4; // todo: Magic number
-    //     // }
-    //
-    //     let mut weight_range_div2 = 2.;
-    //
-    //     let weight_vals = util::linspace((weight_min, weight_max), weight_vals_per_iter);
-    //
-    //     for _ in 0..narrow_down_iters {
-    //
-    //         let mut best_score = 100_000_000.;
-    //         let mut best_weight = 0.;
-    //
-    //         for weight_trial in weight_vals {
-    //             if weight_trial.abs() < 0.000001 {
-    //                 continue
-    //                 // todo: Is this what we want? We're avoiding the case where all weights are 0,
-    //                 // todo, which indeed gives a perfect score.
-    //             }
-    //
-    //
-    //
-    //
-    //
-    //             let weight_prev = basis.weight();
-    //             // *basis.weight_mut() = weight_trial;
-    //             *bases_temp[i].weight_mut() = weight_trial;
-    //
-    //             update_wf_fm_bases(
-    //                 &bases_temp,
-    //                 surfaces_per_elec,
-    //                 *E,
-    //                 &surfaces_shared.grid_posits,
-    //                 &bases_visible,
-    //                 grid_n,
-    //             );
-    //             find_E(surfaces_per_elec, E, grid_n);
-    //
-    //             let score = score_wf(surfaces_per_elec, grid_n);
-    //             if score < best_score {
-    //                 best_score = score;
-    //                 best_weight = weight_trial;
-    //
-    //                 *basis.weight_mut() = weight_trial;
-    //                 *bases_temp[i].weight_mut() = weight_trial;
-    //             } else {
-    //                 *bases_temp[i].weight_mut() = weight_prev;
-    //             }
-    //         }
-    //
-    //         weight_min = best_weight - weight_range_div2;
-    //         weight_max = best_weight + weight_range_div2;
-    //         weight_range_div2 /= weight_vals_per_iter as f64; // todo: May need a wider range than this.
-    //         // println!("div2: {}, weight min: {}, max: {}", weight_range_div2, weight_min, weight_max);
-    //     }
-    // }
-    // // }
-    //
-    // // Scale weights to keep them in our UI-adjustable range.
-    // let mut max_weight = 0.;
-    // for basis in bases.iter() {
-    //     if basis.weight().abs() > max_weight {
-    //         max_weight = basis.weight().abs();
-    //     }
-    // }
-    //
-    // for basis in bases {
-    //     // This scales so the highest weight is just inside our UI-set limits.
-    //     if max_weight >= 0.0000001 {
-    //         *basis.weight_mut() /= max_weight / (WEIGHT_MAX * 0.9);
-    //     }
-    // }
 }
 
 /// Helper for finding weight gradient descent. Returns a score at a given set of weights.
@@ -735,9 +631,13 @@ pub fn score_weight_set(
     E: &mut f64,
     surfaces_shared: &mut SurfacesShared,
     surfaces_per_elec: &mut SurfacesPerElec,
-    grid_n: usize
+    grid_n: usize,
+    wfs_unweighted: &[Arr3d],
+    weights: &[f64],
 ) -> f64 {
     let mut norm = 0.;
+
+    // todo: Fix this. Need to use `weights`, probably in conjunction with unweight wfs
 
     for i in 0..grid_n {
         for j in 0..grid_n {
@@ -782,7 +682,11 @@ pub fn score_weight_set(
 
 /// Create unweighted basis wave functions. Run this whenever we add or remove basis fns,
 /// and when changing the grid size. Each basis will be normalized in this function.
-pub fn create_bases_wfs_unweighted(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) -> Vec<Arr3d> {
+pub fn create_bases_wfs_unweighted(
+    bases: &[Basis],
+    grid_posits: &Arr3dVec,
+    grid_n: usize,
+) -> Vec<Arr3d> {
     let mut result = Vec::new();
 
     for _ in 0..bases.len() {

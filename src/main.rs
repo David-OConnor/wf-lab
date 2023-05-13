@@ -188,7 +188,8 @@ fn main() {
     }
 
     // todo: Handle the multi-electron case instead of hard-coding 0.
-    let bases_unweighted = wf_ops::create_bases_wfs_unweighted(&bases[0], &surfaces_shared.grid_posits, grid_n);
+    let bases_unweighted =
+        wf_ops::create_bases_wfs_unweighted(&bases[0], &surfaces_shared.grid_posits, grid_n);
 
     // println!("b: {:?}", bases_unweighted[0]);
 
