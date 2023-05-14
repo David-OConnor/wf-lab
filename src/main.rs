@@ -26,7 +26,7 @@
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
-mod basis_fn_finder;
+mod basis_weight_finder;
 mod basis_wfs;
 mod complex_nums;
 mod eigen_fns;
@@ -71,7 +71,7 @@ pub struct State {
     /// Basis wave functions. Perhaps faster to cache these (at the cost of more memory use, rather than
     /// compute their value each time we change weights...)
     /// todo: This should probably be in one of the surfaces.
-    pub bases_unweighted: Vec<Arr3d>,
+    pub bases_unweighted: wf_ops::BasisWfsUnweighted,
     /// Used to toggle precense of a basi, effectively setting its weight ot 0 without losing the stored
     /// weight value.
     pub bases_visible: Vec<Vec<bool>>,
@@ -189,7 +189,7 @@ fn main() {
 
     // todo: Handle the multi-electron case instead of hard-coding 0.
     let bases_unweighted =
-        wf_ops::create_bases_wfs_unweighted(&bases[0], &surfaces_shared.grid_posits, grid_n);
+        wf_ops::BasisWfsUnweighted::new(&bases[0], &surfaces_shared.grid_posits, grid_n);
 
     // println!("b: {:?}", bases_unweighted[0]);
 
@@ -197,7 +197,7 @@ fn main() {
     wf_ops::update_wf_fm_bases(
         // todo: Handle the multi-electron case instead of hard-coding 0.
         &bases[0],
-        // &bases_unweighted,
+        &bases_unweighted,
         &mut surfaces_per_elec[ui_active_elec],
         Es[ui_active_elec],
         &mut surfaces_shared.grid_posits,

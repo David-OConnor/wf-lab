@@ -4,7 +4,9 @@ use egui::{self, Color32, RichText};
 
 use graphics::{EngineUpdates, Scene};
 
-use crate::{basis_wfs::Basis, eigen_fns, elec_elec, render, types, wf_ops, State};
+use crate::{
+    basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, render, types, wf_ops, State,
+};
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
@@ -348,8 +350,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 ui.add(egui::TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
             if response.changed() {
                 let result = entry.parse::<usize>().unwrap_or(20);
-                // if result >= 15 { // todo?
                 state.grid_n = result;
+
+                // Now, update all things that depend on n.
 
                 // todo: Start sloppy C+P from main. Put this into a fn etc.
                 let arr_real = types::new_data_real(state.grid_n);
@@ -373,6 +376,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.surfaces_shared = surfaces_shared;
                 state.surfaces_per_elec = surfaces_per_elec;
+
+                state.bases_unweighted = wf_ops::create_bases_wfs_unweighted(
+                    &state.bases[0],
+                    &state.surfaces_shared.grid_posits,
+                    state.grid_n,
+                );
 
                 // todo end sloppy C+P
 
@@ -786,7 +795,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         });
 
         if ui.add(egui::Button::new("Find weights")).clicked() {
-            wf_ops::find_weights(
+            basis_weight_finder::find_weights(
                 &state.charges_fixed,
                 &mut state.bases[state.ui_active_elec],
                 &mut state.E[state.ui_active_elec],
@@ -823,7 +832,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.bases_visible[state.ui_active_elec],
                 2,
             );
-            // state.bases_unweighted = wf_ops::create_bases_wfs_unweighted(&state.bases[0], &state.surfaces_shared.grid_posits, state.grid_n);
+            state.bases_unweighted = wf_ops::create_bases_wfs_unweighted(
+                &state.bases[0],
+                &state.surfaces_shared.grid_posits,
+                state.grid_n,
+            );
 
             wf_ops::update_V_fm_fixed_charges(
                 &state.charges_fixed,
@@ -851,7 +864,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             // Set up our basis-function based trial wave function.
             wf_ops::update_wf_fm_bases(
                 &state.bases[state.ui_active_elec],
-                // &state.bases_unweighted,
+                &state.bases_unweighted,
                 &mut state.surfaces_per_elec[state.ui_active_elec],
                 state.E[state.ui_active_elec],
                 &mut state.surfaces_shared.grid_posits,
