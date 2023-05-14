@@ -1,7 +1,7 @@
 use crate::{
     complex_nums::Cplx,
     num_diff,
-    wf_ops::{self, NUDGE_DEFAULT},
+    wf_ops::{self, PsiWDiffs, NUDGE_DEFAULT},
 };
 
 use lin_alg2::f64::Vec3;
@@ -40,6 +40,7 @@ impl SurfacesShared {
     }
 
     /// Update `psi` etc from that of individual electrons
+    /// Relevant for combining from multiplie elecs
     pub fn combine_psi_parts(&mut self, per_elec: &[SurfacesPerElec], E: &[f64], grid_n: usize) {
         // Todo: V. Before you update psi_pp_calc.
 
@@ -49,7 +50,7 @@ impl SurfacesShared {
                     self.psi[i][j][k] = Cplx::new_zero();
 
                     for (part_i, part) in per_elec.iter().enumerate() {
-                        self.psi[i][j][k] += part.psi[i][j][k];
+                        self.psi[i][j][k] += part.psi.on_pt[i][j][k];
 
                         // todo: Come back to this once you figure out how to handle V here.
                         // todo: Maybe you don't have psi_pp_calc here.
@@ -83,7 +84,8 @@ impl SurfacesShared {
 pub struct SurfacesPerElec {
     /// V from the nucleus, and all *other* electrons
     pub V: Arr3dReal,
-    pub psi: Arr3d,
+    // pub psi: Arr3d,
+    pub psi: PsiWDiffs,
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
     /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
@@ -132,9 +134,19 @@ impl SurfacesPerElec {
         // Set up a regular grid using this; this will allow us to convert to an irregular grid
         // later, once we've verified this works.
 
+        let psi = PsiWDiffs {
+            on_pt: data.clone(),
+            x_prev: data.clone(),
+            x_next: data.clone(),
+            y_prev: data.clone(),
+            y_next: data.clone(),
+            z_prev: data.clone(),
+            z_next: data.clone(),
+        };
+
         Self {
             V: data_real.clone(),
-            psi: data.clone(),
+            psi,
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
             nudge_amounts: default_nudges,

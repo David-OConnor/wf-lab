@@ -106,10 +106,10 @@ pub fn nudge_wf(
                 for j in 0..grid_n {
                     for k in 0..grid_n {
                         // sfcs.psi[i][j][k] -= diff_map[i][j][k] * sfcs.nudge_amounts[i][j][k];
-                        sfcs.psi[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
+                        sfcs.psi.on_pt[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
                         sfcs.psi_pp_calculated[i][j][k] =
-                            eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, *E, i, j, k);
+                            eigen_fns::find_ψ_pp_calc(&sfcs.psi.on_pt, &sfcs.V, *E, i, j, k);
                     }
                 }
             }
@@ -121,7 +121,7 @@ pub fn nudge_wf(
         // Calculated psi'' measured in a separate loop after updating psi, since it depends on
         // neighboring psi values as well.
         num_diff::find_ψ_pp_meas_fm_grid_irreg(
-            &sfcs.psi,
+            &sfcs.psi.on_pt,
             &mut sfcs.psi_pp_measured,
             grid_posits,
             grid_n,
@@ -157,7 +157,7 @@ pub fn nudge_wf(
                             psi_bases += basis.value(posit_sample) * basis.weight();
                         }
 
-                        correction_fm_bases[i][j][k] = (sfcs.psi[i][j][k] - psi_bases) * 1.;
+                        correction_fm_bases[i][j][k] = (sfcs.psi.on_pt[i][j][k] - psi_bases) * 1.;
                     }
                 }
             }

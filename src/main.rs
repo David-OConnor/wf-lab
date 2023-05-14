@@ -139,7 +139,7 @@ fn main() {
     // Outer of these is per-elec.
     let mut bases = vec![Vec::new()];
     let mut bases_visible = vec![Vec::new()];
-    let max_n = 2;
+    let max_n = 3;
     wf_ops::initialize_bases(&charges_fixed, &mut bases[0], &mut bases_visible[0], max_n);
 
     let ui_active_elec = 0;
@@ -206,7 +206,7 @@ fn main() {
         &basis_wfs_unweighted,
         &mut surfaces_per_elec[ui_active_elec],
         Es[ui_active_elec],
-        &surfaces_shared.grid_posits,
+        // &surfaces_shared.grid_posits,
         &bases_visible[ui_active_elec],
         grid_n,
         &weights,

@@ -115,7 +115,7 @@ pub fn psi_from_pt_charges(
         &bases_unweighted,
         &mut sfcs,
         E,
-        &mut grid_posits,
+        // &mut grid_posits,
         &bases_visible,
         grid_n,
         &weights,
@@ -134,5 +134,5 @@ pub fn psi_from_pt_charges(
 
     // let psi_pp_score = wf_ops::score_wf(&sfcs);
 
-    sfcs.psi.clone()
+    sfcs.psi.on_pt.clone()
 }

@@ -478,7 +478,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             for k in 0..state.grid_n {
                                 state.surfaces_per_elec[state.ui_active_elec].psi_pp_calculated[i]
                                     [j][k] = eigen_fns::find_ψ_pp_calc(
-                                    &state.surfaces_per_elec[state.ui_active_elec].psi,
+                                    &state.surfaces_per_elec[state.ui_active_elec].psi.on_pt,
                                     &state.surfaces_per_elec[state.ui_active_elec].V,
                                     state.E[state.ui_active_elec],
                                     i,
@@ -754,7 +754,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             if ui.add(egui::Button::new("Create e- charge")).clicked() {
                 elec_elec::update_charge_density_fm_psi(
-                    &state.surfaces_per_elec[state.ui_active_elec].psi,
+                    &state.surfaces_per_elec[state.ui_active_elec].psi.on_pt,
                     &mut state.charges_electron[state.ui_active_elec],
                     state.grid_n,
                 );
@@ -810,10 +810,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             basis_weight_finder::find_weights(
                 &state.charges_fixed,
                 &mut state.bases[state.ui_active_elec],
+                &mut state.bases_unweighted,
                 &mut state.E[state.ui_active_elec],
                 &mut state.surfaces_shared,
                 &mut state.surfaces_per_elec[state.ui_active_elec],
-                2,
+                3,
                 state.grid_n,
             );
 
@@ -880,7 +881,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &state.bases_unweighted,
                 &mut state.surfaces_per_elec[state.ui_active_elec],
                 state.E[state.ui_active_elec],
-                &mut state.surfaces_shared.grid_posits,
+                // &mut state.surfaces_shared.grid_posits,
                 &state.bases_visible[state.ui_active_elec],
                 state.grid_n,
                 &weights,

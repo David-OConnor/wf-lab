@@ -97,12 +97,12 @@ pub fn update_V_fm_fixed_charges(
 
     *grid_max = max_abs_val + RANGE_PAD;
     *grid_min = -*grid_max;
-    // update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor, n);
+    update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor, n);
     //
     // let mut grid_min = -5.; // todo ts
     // let mut grid_max = 5.; // todo t
 
-    update_grid_posits(grid_posits, grid_min, grid_max, spacing_factor, n);
+    // update_grid_posits(grid_posits, grid_min, grid_max, spacing_factor, n);
 
     for i in 0..n {
         for j in 0..n {
@@ -159,7 +159,69 @@ pub fn normalize_wf(arr: &mut Arr3d, norm: f64, n: usize) -> f64 {
     norm_sqrt
 }
 
-/// - Computes a trial ψ from basis functions
+/// Mix bases together into psi at each grid point, and at diffs.
+/// This is our mixer from pre-calculated basis fucntions: Create psi from summing them with
+/// their weights; do the same for the ones offset, used to numerically differtiate.
+pub fn mix_bases(
+    bases: &[Basis],
+    basis_wfs: &BasisWfsUnweighted,
+    psi: &mut PsiWDiffs,
+    bases_visible: &[bool],
+    grid_n: usize,
+    weights: Option<&[f64]>,
+) {
+    let mut norm = 0.;
+
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                psi.on_pt[i][j][k] = Cplx::new_zero();
+                psi.x_prev[i][j][k] = Cplx::new_zero();
+                psi.x_next[i][j][k] = Cplx::new_zero();
+                psi.y_prev[i][j][k] = Cplx::new_zero();
+                psi.y_next[i][j][k] = Cplx::new_zero();
+                psi.z_prev[i][j][k] = Cplx::new_zero();
+                psi.z_next[i][j][k] = Cplx::new_zero();
+
+                for i_basis in 0..bases.len() {
+                    let weight = match weights {
+                        Some(w) => w[i_basis],
+                        None => {
+                            if bases_visible[i_basis] {
+                                bases[i_basis].weight()
+                            } else {
+                                0.
+                            }
+                        }
+                    };
+
+                    psi.on_pt[i][j][k] += basis_wfs.on_pt[i_basis][i][j][k] * weight;
+                    psi.x_prev[i][j][k] += basis_wfs.x_prev[i_basis][i][j][k] * weight;
+                    psi.x_next[i][j][k] += basis_wfs.x_next[i_basis][i][j][k] * weight;
+                    psi.y_prev[i][j][k] += basis_wfs.y_prev[i_basis][i][j][k] * weight;
+                    psi.y_next[i][j][k] += basis_wfs.y_next[i_basis][i][j][k] * weight;
+                    psi.z_prev[i][j][k] += basis_wfs.z_prev[i_basis][i][j][k] * weight;
+                    psi.z_next[i][j][k] += basis_wfs.z_next[i_basis][i][j][k] * weight;
+                }
+
+                // todo: How should normalization work? Perhaps use the same const for all.
+                // todo: This is where it should be, but consider how.
+                norm += psi.on_pt[i][j][k].abs_sq();
+            }
+        }
+    }
+
+    let _psi_norm_sqrt = normalize_wf(&mut psi.on_pt, norm, grid_n);
+    let _psi_norm_sqrt = normalize_wf(&mut psi.x_prev, norm, grid_n);
+    let _psi_norm_sqrt = normalize_wf(&mut psi.x_next, norm, grid_n);
+    let _psi_norm_sqrt = normalize_wf(&mut psi.y_prev, norm, grid_n);
+    let _psi_norm_sqrt = normalize_wf(&mut psi.y_next, norm, grid_n);
+    let _psi_norm_sqrt = normalize_wf(&mut psi.z_prev, norm, grid_n);
+    let _psi_norm_sqrt = normalize_wf(&mut psi.z_next, norm, grid_n);
+}
+
+/// - Computes a trial ψ from basis functions. Computes it at each grid point, as well as
+/// the 6 offset ones along the 3 axis used to numerically differentiate.
 /// - Computes ψ'' calculated, and measured from the trial ψ
 /// Modifies in place to conserve memory. These operations are combined in the same function to
 /// save computation, since they're often run at once, and can be iterated through using a single loop
@@ -169,99 +231,22 @@ pub fn update_wf_fm_bases(
     basis_wfs: &BasisWfsUnweighted,
     sfcs: &mut SurfacesPerElec,
     E: f64,
-    grid_posits: &Arr3dVec,
+    // grid_posits: &Arr3dVec,
     bases_visible: &[bool],
     grid_n: usize,
     weights: &[f64],
 ) {
-    let mut norm = 0.;
-
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                sfcs.psi[i][j][k] = Cplx::new_zero();
-
-                for (i_basis, basis_wf) in basis_wfs.on_pt.iter().enumerate() {
-                    let weight = if bases_visible[i_basis] {
-                        bases[i_basis].weight()
-                    } else {
-                        0.
-                    };
-                    sfcs.psi[i][j][k] += basis_wf[i][j][k] * weight;
-                }
-
-                norm += sfcs.psi[i][j][k].abs_sq();
-            }
-        }
-    }
-    //
-    // pub fn update_wf_fm_bases(
-    //     bases: &[Basis],
-    //     sfcs: &mut SurfacesPerElec,
-    //     E: f64,
-    //     grid_posits: &Arr3dVec,
-    //     bases_visible: &[bool],
-    //     grid_n: usize,
-    // ) {
-    //     // We intergrate normalization into the loops here, vice as a separate function,
-    //     // to prevent excess loops from running.
-    //
-    //     let mut norm = 0.;
-    //
-    //     for i in 0..grid_n {
-    //         for j in 0..grid_n {
-    //             for k in 0..grid_n {
-    //                 let posit_sample = grid_posits[i][j][k];
-    //
-    //                 sfcs.psi[i][j][k] = Cplx::new_zero();
-    //
-    //                 for (basis_i, basis) in bases.iter().enumerate() {
-    //                     let weight = if bases_visible[basis_i] {
-    //                         basis.weight()
-    //                     } else {
-    //                         0.
-    //                     };
-    //                     sfcs.psi[i][j][k] += basis.value(posit_sample) * weight;
-    //                 }
-    //
-    //                 norm += sfcs.psi[i][j][k].abs_sq();
-    //
-    //                 // sfcs.psi_pp_calculated[i][j][k] =
-    //                 //     eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E, i, j, k);
-    //                 //
-    //                 // // Calculate psi'' based on a numerical derivative of psi
-    //                 // // in 3D.
-    //                 // // We can compute ψ'' measured this in the same loop here, since we're using an analytic
-    //                 // // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-    //                 // sfcs.psi_pp_measured[i][j][k] = num_diff::find_ψ_pp_meas_fm_bases(
-    //                 //     posit_sample,
-    //                 //     bases,
-    //                 //     sfcs.psi[i][j][k],
-    //                 //     bases_visible,
-    //                 // );
-    //             }
-    //         }
-    //     }
-
-    // let psi_norm_sqrt = norm.sqrt();
-    let psi_norm_sqrt = normalize_wf(&mut sfcs.psi, norm, grid_n);
+    mix_bases(bases, basis_wfs, &mut sfcs.psi, bases_visible, grid_n, None);
 
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.
     update_psi_pps_from_bases(
-        // bases,
-        basis_wfs,
         &sfcs.psi,
         &sfcs.V,
         &mut sfcs.psi_pp_calculated,
         &mut sfcs.psi_pp_measured,
-        grid_posits,
         E,
-        // bases_visible,
         grid_n,
-        // norms, // todo?
-        psi_norm_sqrt,
-        weights,
     );
 }
 
@@ -272,29 +257,17 @@ pub fn update_wf_fm_bases(
 /// algorithm
 pub fn update_psi_pps_from_bases(
     // We split these arguments up instead of using surfaces to control mutability.
-    // bases: &[Basis],
-    basis_wfs: &BasisWfsUnweighted,
-    psi: &Arr3d,
+    psi: &PsiWDiffs,
     V: &Arr3dReal,
     psi_pp_calc: &mut Arr3d,
     psi_pp_meas: &mut Arr3d,
-    grid_posits: &Arr3dVec,
     E: f64,
-    // bases_visible: &[bool],
     grid_n: usize,
-    // norms: (f64, f64, f64, f64, f64, f64),
-    norm_sqrt: f64, // todo?
-    // weights: Option<&[f64]>,
-    weights: &[f64],
 ) {
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
-                let posit_sample = grid_posits[i][j][k];
-
-                // psi[i][j][k] = psi[i][j][k] / norm_sqrt;
-
-                psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(psi, V, E, i, j, k);
+                psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(&psi.on_pt, V, E, i, j, k);
 
                 // Calculate psi'' based on a numerical derivative of psi
                 // in 3D.
@@ -303,26 +276,15 @@ pub fn update_psi_pps_from_bases(
 
                 // todo: Put back once you sorted out your anomoloous Psi behavior.
                 psi_pp_meas[i][j][k] = num_diff::find_ψ_pp_meas_fm_unweighted_bases(
-                    psi[i][j][k],
-                    basis_wfs,
-                    // norms,
-                    norm_sqrt,
-                    weights,
-                    i,
-                    k,
-                    k,
+                    // todo: Combine into a single struct etc A/R.
+                    psi.on_pt[i][j][k],
+                    psi.x_prev[i][j][k],
+                    psi.x_next[i][j][k],
+                    psi.y_prev[i][j][k],
+                    psi.y_next[i][j][k],
+                    psi.z_prev[i][j][k],
+                    psi.z_next[i][j][k],
                 );
-
-                //
-                //
-                //                 psi_pp_meas[i][j][k] = num_diff::find_ψ_pp_meas_fm_bases(
-                //     posit_sample,
-                //     bases,
-                //     psi[i][j][k],
-                //     psi_norm_sqrt,
-                //     bases_visible,
-                //     weights,
-                // );
             }
         }
     }
@@ -445,7 +407,7 @@ pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, grid_n: usize) {
                 for j in 0..grid_n {
                     for k in 0..grid_n {
                         sfcs.psi_pp_calculated[i][j][k] =
-                            eigen_fns::find_ψ_pp_calc(&sfcs.psi, &sfcs.V, E_trial, i, j, k);
+                            eigen_fns::find_ψ_pp_calc(&sfcs.psi.on_pt, &sfcs.V, E_trial, i, j, k);
                     }
                 }
             }
@@ -563,6 +525,19 @@ pub fn initialize_bases(
     }
 }
 
+/// Group that includes psi at a point, and at points surrounding it, an infinetesimal difference
+/// in both directions along each spacial axis.
+#[derive(Clone)]
+pub struct PsiWDiffs {
+    pub on_pt: Arr3d,
+    pub x_prev: Arr3d,
+    pub x_next: Arr3d,
+    pub y_prev: Arr3d,
+    pub y_next: Arr3d,
+    pub z_prev: Arr3d,
+    pub z_next: Arr3d,
+}
+
 /// We use this to store numerical wave functions for each basis, both at sample points, and
 /// a small amount along each axix, for calculating partial derivatives of psi''.
 /// The `Vec` index corresponds to basis index.
@@ -647,21 +622,29 @@ impl BasisWfsUnweighted {
                         norm_x_prev += val_x_prev.abs_sq();
                         norm_x_next += val_x_next.abs_sq();
                         norm_y_prev += val_y_prev.abs_sq();
-                        norm_x_next += val_y_next.abs_sq();
+                        norm_y_next += val_y_next.abs_sq();
                         norm_z_prev += val_z_prev.abs_sq();
-                        norm_x_next += val_z_next.abs_sq();
+                        norm_z_next += val_z_next.abs_sq();
                     }
                 }
             }
 
             normalize_wf(&mut on_pt[basis_i], norm_pt, grid_n);
 
-            normalize_wf(&mut x_prev[basis_i], norm_x_prev, grid_n);
-            normalize_wf(&mut x_next[basis_i], norm_x_next, grid_n);
-            normalize_wf(&mut y_prev[basis_i], norm_y_prev, grid_n);
-            normalize_wf(&mut y_next[basis_i], norm_y_next, grid_n);
-            normalize_wf(&mut z_prev[basis_i], norm_z_prev, grid_n);
-            normalize_wf(&mut z_next[basis_i], norm_z_next, grid_n);
+            // todo: Normalize all the same, or per const?
+            // normalize_wf(&mut x_prev[basis_i], norm_x_prev, grid_n);
+            // normalize_wf(&mut x_next[basis_i], norm_x_next, grid_n);
+            // normalize_wf(&mut y_prev[basis_i], norm_y_prev, grid_n);
+            // normalize_wf(&mut y_next[basis_i], norm_y_next, grid_n);
+            // normalize_wf(&mut z_prev[basis_i], norm_z_prev, grid_n);
+            // normalize_wf(&mut z_next[basis_i], norm_z_next, grid_n);
+
+            normalize_wf(&mut x_prev[basis_i], norm_pt, grid_n);
+            normalize_wf(&mut x_next[basis_i], norm_pt, grid_n);
+            normalize_wf(&mut y_prev[basis_i], norm_pt, grid_n);
+            normalize_wf(&mut y_next[basis_i], norm_pt, grid_n);
+            normalize_wf(&mut z_prev[basis_i], norm_pt, grid_n);
+            normalize_wf(&mut z_next[basis_i], norm_pt, grid_n);
         }
 
         Self {

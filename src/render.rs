@@ -205,7 +205,7 @@ pub fn update_meshes(
     meshes.push(Mesh::new_surface(
         &prepare_2d_mesh(
             grid_posits,
-            &surfaces.psi,
+            &surfaces.psi.on_pt,
             z_i,
             PSI_SCALER,
             mag_phase,
@@ -218,7 +218,7 @@ pub fn update_meshes(
     meshes.push(Mesh::new_surface(
         &prepare_2d_mesh(
             grid_posits,
-            &surfaces.psi,
+            &surfaces.psi.on_pt,
             z_i,
             PSI_SCALER,
             mag_phase,
@@ -229,7 +229,7 @@ pub fn update_meshes(
     ));
 
     let mut psi_sq = new_data_real(grid_n);
-    wf_ops::norm_sq(&mut psi_sq, &surfaces.psi, grid_n);
+    wf_ops::norm_sq(&mut psi_sq, &surfaces.psi.on_pt, grid_n);
 
     meshes.push(Mesh::new_surface(
         &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER, grid_n),
