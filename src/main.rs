@@ -154,10 +154,10 @@ fn main() {
     let charges_electron = vec![arr_real.clone(), arr_real];
 
     let E = -0.7;
-    let L_2 = 1.;
-    let L_x = 1.;
-    let L_y = 1.;
-    let L_z = 1.;
+    // let L_2 = 1.;
+    // let L_x = 1.;
+    // let L_y = 1.;
+    // let L_z = 1.;
 
     let Es = vec![E, E];
 
@@ -188,21 +188,28 @@ fn main() {
     }
 
     // todo: Handle the multi-electron case instead of hard-coding 0.
-    let bases_unweighted =
+    let basis_wfs_unweighted =
         wf_ops::BasisWfsUnweighted::new(&bases[0], &surfaces_shared.grid_posits, grid_n);
 
     // println!("b: {:?}", bases_unweighted[0]);
+
+    let mut weights = vec![0.; bases[0].len()];
+    // Syncing procedure pending a better API.
+    for (i, basis) in bases[0].iter().enumerate() {
+        weights[i] = basis.weight();
+    }
 
     // Set up our basis-function based trial wave function.
     wf_ops::update_wf_fm_bases(
         // todo: Handle the multi-electron case instead of hard-coding 0.
         &bases[0],
-        &bases_unweighted,
+        &basis_wfs_unweighted,
         &mut surfaces_per_elec[ui_active_elec],
         Es[ui_active_elec],
         &mut surfaces_shared.grid_posits,
         &bases_visible[ui_active_elec],
         grid_n,
+        &weights,
     );
 
     let psi_p_score = 0.; // todo T
@@ -233,7 +240,7 @@ fn main() {
         charges_fixed,
         charges_electron,
         bases,
-        bases_unweighted,
+        bases_unweighted: basis_wfs_unweighted,
         bases_visible,
         surfaces_shared,
         surfaces_per_elec,

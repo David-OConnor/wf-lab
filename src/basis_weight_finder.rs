@@ -9,6 +9,7 @@ use crate::{
     wf_ops::ħ,
 };
 
+use crate::wf_ops::BasisWfsUnweighted;
 use lin_alg2::f64::{Quaternion, Vec3};
 
 /// Adjust weights of coefficiants until score is minimized.
@@ -36,7 +37,7 @@ pub fn find_weights(
     let mut descent_rate = 5.; // todo? Factor for gradient descent based on the vector.
 
     let basis_wfs_unweighted =
-        wf_ops::create_bases_wfs_unweighted(bases, &surfaces_shared.grid_posits, grid_n);
+        wf_ops::BasisWfsUnweighted::new(&bases, &surfaces_shared.grid_posits, grid_n);
 
     // todo: Consider again using unweighted bases in your main logic. YOu removed it before
     // todo because it was bugged when you attempted it.
@@ -149,7 +150,7 @@ pub fn score_weight_set(
     surfaces_per_elec: &mut SurfacesPerElec,
     grid_posits: &Arr3dVec,
     grid_n: usize,
-    basis_wfs_unweighted: &[Arr3d],
+    basis_wfs_unweighted: &BasisWfsUnweighted,
     weights: &[f64],
 ) -> f64 {
     let mut norm = 0.;
@@ -157,14 +158,11 @@ pub fn score_weight_set(
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
-                // surfaces_per_elec.psi[i][j][k] +=  basis_wfs_unweighted[0][i][j][k];
-                // continue;
-
                 surfaces_per_elec.psi[i][j][k] = Cplx::new_zero();
 
                 for i_basis in 0..bases.len() {
                     surfaces_per_elec.psi[i][j][k] +=
-                        basis_wfs_unweighted[i_basis][i][j][k] * weights[i_basis]
+                        basis_wfs_unweighted.on_pt[i_basis][i][j][k] * weights[i_basis]
                 }
 
                 norm += surfaces_per_elec.psi[i][j][k].abs_sq();
@@ -181,17 +179,19 @@ pub fn score_weight_set(
     wf_ops::find_E(surfaces_per_elec, E, grid_n);
 
     wf_ops::update_psi_pps_from_bases(
-        bases,
+        // bases,
+        basis_wfs_unweighted,
         &surfaces_per_elec.psi,
         &surfaces_per_elec.V,
         &mut surfaces_per_elec.psi_pp_calculated,
         &mut surfaces_per_elec.psi_pp_measured,
         grid_posits,
         *E,
-        &bases_visible,
+        // &bases_visible,
         grid_n,
+        // norms,
         psi_norm_sqrt,
-        Some(&weights),
+        weights,
     );
 
     wf_ops::score_wf(surfaces_per_elec, grid_n)

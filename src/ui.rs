@@ -1,14 +1,12 @@
 use std::f64::consts::TAU;
 
 use egui::{self, Color32, RichText};
-
 use graphics::{EngineUpdates, Scene};
+use lin_alg2::f64::{Quaternion, Vec3};
 
 use crate::{
     basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, render, types, wf_ops, State,
 };
-
-use lin_alg2::f64::{Quaternion, Vec3};
 
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
@@ -377,8 +375,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 state.surfaces_shared = surfaces_shared;
                 state.surfaces_per_elec = surfaces_per_elec;
 
-                state.bases_unweighted = wf_ops::create_bases_wfs_unweighted(
-                    &state.bases[0],
+                state.bases_unweighted = wf_ops::BasisWfsUnweighted::new(
+                    &state.bases[state.ui_active_elec],
                     &state.surfaces_shared.grid_posits,
                     state.grid_n,
                 );
@@ -832,8 +830,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.bases_visible[state.ui_active_elec],
                 2,
             );
-            state.bases_unweighted = wf_ops::create_bases_wfs_unweighted(
-                &state.bases[0],
+            state.bases_unweighted = wf_ops::BasisWfsUnweighted::new(
+                &state.bases[state.ui_active_elec],
                 &state.surfaces_shared.grid_posits,
                 state.grid_n,
             );
@@ -861,6 +859,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         if updated_basis_wfs {
             engine_updates.meshes = true;
 
+            let mut weights = vec![0.; state.bases[state.ui_active_elec].len()];
+            // Syncing procedure pending a better API.
+            for (i, basis) in state.bases[state.ui_active_elec].iter().enumerate() {
+                weights[i] = basis.weight();
+            }
+
             // Set up our basis-function based trial wave function.
             wf_ops::update_wf_fm_bases(
                 &state.bases[state.ui_active_elec],
@@ -870,6 +874,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.surfaces_shared.grid_posits,
                 &state.bases_visible[state.ui_active_elec],
                 state.grid_n,
+                &weights,
             );
 
             state.psi_pp_score[state.ui_active_elec] =

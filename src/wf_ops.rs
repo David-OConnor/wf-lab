@@ -167,6 +167,7 @@ pub fn update_wf_fm_bases(
     grid_posits: &Arr3dVec,
     bases_visible: &[bool],
     grid_n: usize,
+    weights: &[f64],
 ) {
     let mut norm = 0.;
 
@@ -243,17 +244,19 @@ pub fn update_wf_fm_bases(
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.
     update_psi_pps_from_bases(
-        bases,
+        // bases,
+        basis_wfs,
         &sfcs.psi,
         &sfcs.V,
         &mut sfcs.psi_pp_calculated,
         &mut sfcs.psi_pp_measured,
         grid_posits,
         E,
-        bases_visible,
+        // bases_visible,
         grid_n,
+        // norms, // todo?
         psi_norm_sqrt,
-        None,
+        weights,
     );
 }
 
@@ -264,7 +267,7 @@ pub fn update_wf_fm_bases(
 /// algorithm
 pub fn update_psi_pps_from_bases(
     // We split these arguments up instead of using surfaces to control mutability.
-    bases: &[Basis],
+    // bases: &[Basis],
     basis_wfs: &BasisWfsUnweighted,
     psi: &Arr3d,
     V: &Arr3dReal,
@@ -272,9 +275,10 @@ pub fn update_psi_pps_from_bases(
     psi_pp_meas: &mut Arr3d,
     grid_posits: &Arr3dVec,
     E: f64,
-    bases_visible: &[bool],
+    // bases_visible: &[bool],
     grid_n: usize,
-    psi_norm_sqrt: f64,
+    // norms: (f64, f64, f64, f64, f64, f64),
+    norm_sqrt: f64, // todo?
     // weights: Option<&[f64]>,
     weights: &[f64],
 ) {
@@ -291,11 +295,17 @@ pub fn update_psi_pps_from_bases(
                 // in 3D.
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
+
+                // todo: Put back once you sorted out your anomoloous Psi behavior.
                 psi_pp_meas[i][j][k] = num_diff::find_ψ_pp_meas_fm_unweighted_bases(
+                    psi[i][j][k],
                     basis_wfs,
-                    psi_norm_sqrt,
+                    // norms,
+                    norm_sqrt,
                     weights,
-                    grid_n,
+                    i,
+                    k,
+                    k,
                 );
 
                 //
@@ -308,8 +318,6 @@ pub fn update_psi_pps_from_bases(
                 //     bases_visible,
                 //     weights,
                 // );
-
-
             }
         }
     }
@@ -586,7 +594,14 @@ impl BasisWfsUnweighted {
         }
 
         for (basis_i, basis) in bases.iter().enumerate() {
-            let mut norm = 0.;
+            let mut norm_pt = 0.;
+
+            let mut norm_x_prev = 0.;
+            let mut norm_x_next = 0.;
+            let mut norm_y_prev = 0.;
+            let mut norm_y_next = 0.;
+            let mut norm_z_prev = 0.;
+            let mut norm_z_next = 0.;
 
             for i in 0..grid_n {
                 for j in 0..grid_n {
@@ -606,32 +621,42 @@ impl BasisWfsUnweighted {
                         let posit_z_next =
                             Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
 
-                        let val = basis.value(posit_sample);
+                        let val_pt = basis.value(posit_sample);
 
-                        on_pt[basis_i][i][j][k] = val;
+                        let val_x_prev = basis.value(posit_x_prev);
+                        let val_x_next = basis.value(posit_x_next);
+                        let val_y_prev = basis.value(posit_y_prev);
+                        let val_y_next = basis.value(posit_y_next);
+                        let val_z_prev = basis.value(posit_z_prev);
+                        let val_z_next = basis.value(posit_z_next);
 
-                        x_prev[basis_i][i][j][k] = basis.value(posit_x_prev);
-                        x_next[basis_i][i][j][k] = basis.value(posit_x_next);
-                        y_prev[basis_i][i][j][k] = basis.value(posit_y_prev);
-                        y_next[basis_i][i][j][k] = basis.value(posit_y_next);
-                        z_prev[basis_i][i][j][k] = basis.value(posit_z_prev);
-                        z_next[basis_i][i][j][k] = basis.value(posit_z_next);
+                        on_pt[basis_i][i][j][k] = val_pt;
+                        x_prev[basis_i][i][j][k] = val_x_prev;
+                        x_next[basis_i][i][j][k] = val_x_next;
+                        y_prev[basis_i][i][j][k] = val_y_prev;
+                        y_next[basis_i][i][j][k] = val_y_next;
+                        z_prev[basis_i][i][j][k] = val_z_prev;
+                        z_next[basis_i][i][j][k] = val_z_next;
 
-                        // todo: Do you need a sep norm for each one?
-                        norm += val.abs_sq();
+                        norm_pt += val_pt.abs_sq();
+                        norm_x_prev += val_x_prev.abs_sq();
+                        norm_x_next += val_x_next.abs_sq();
+                        norm_y_prev += val_y_prev.abs_sq();
+                        norm_x_next += val_y_next.abs_sq();
+                        norm_z_prev += val_z_prev.abs_sq();
+                        norm_x_next += val_z_next.abs_sq();
                     }
                 }
             }
 
-            normalize_wf(&mut on_pt[basis_i], norm, grid_n);
+            normalize_wf(&mut on_pt[basis_i], norm_pt, grid_n);
 
-            // todo: DIff norm const for each?
-            normalize_wf(&mut x_prev[basis_i], norm, grid_n);
-            normalize_wf(&mut x_next[basis_i], norm, grid_n);
-            normalize_wf(&mut y_prev[basis_i], norm, grid_n);
-            normalize_wf(&mut y_next[basis_i], norm, grid_n);
-            normalize_wf(&mut z_prev[basis_i], norm, grid_n);
-            normalize_wf(&mut z_next[basis_i], norm, grid_n);
+            normalize_wf(&mut x_prev[basis_i], norm_x_prev, grid_n);
+            normalize_wf(&mut x_next[basis_i], norm_x_next, grid_n);
+            normalize_wf(&mut y_prev[basis_i], norm_y_prev, grid_n);
+            normalize_wf(&mut y_next[basis_i], norm_y_next, grid_n);
+            normalize_wf(&mut z_prev[basis_i], norm_z_prev, grid_n);
+            normalize_wf(&mut z_next[basis_i], norm_z_next, grid_n);
         }
 
         Self {

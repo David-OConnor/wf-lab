@@ -103,6 +103,12 @@ pub fn psi_from_pt_charges(
 
     let bases_unweighted = wf_ops::BasisWfsUnweighted::new(&bases, &grid_posits, grid_n);
 
+    let mut weights = vec![0.; bases.len()];
+    // Syncing procedure pending a better API.
+    for (i, basis) in bases.iter().enumerate() {
+        weights[i] = basis.weight();
+    }
+
     // Set up our basis-function based trial wave function.
     wf_ops::update_wf_fm_bases(
         &wfs,
@@ -112,6 +118,7 @@ pub fn psi_from_pt_charges(
         &mut grid_posits,
         &bases_visible,
         grid_n,
+        &weights,
     );
 
     nudge::nudge_wf(

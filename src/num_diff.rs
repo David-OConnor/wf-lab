@@ -2,6 +2,7 @@
 
 use lin_alg2::f64::Vec3;
 
+use crate::wf_ops::norm_sq;
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
@@ -27,12 +28,19 @@ pub const H_SQ: f64 = H * H;
 /// todo: This may replace the one below by using cached values of each wf at this point,
 /// todo and neighbors.
 pub(crate) fn find_ψ_pp_meas_fm_unweighted_bases(
+    psi_on_pt: Cplx,
     basis_wfs: &BasisWfsUnweighted,
-    psi_norm_sqrt: f64,
+    // norms: (f64, f64, f64, f64, f64, f64), // todO?
+    norm_sq: f64,
     weights: &[f64],
-    grid_n: usize,
+    i: usize,
+    j: usize,
+    k: usize,
 ) -> Cplx {
-    let mut psi_on_pt = Cplx::new_zero();
+    // todo: How do we handle norms here? Rethink.
+    // let (norm_x_prev, norm_x_next, norm_y_prev, norm_y_next, norm_z_prev, norm_z_next) = norms;
+    let (norm_x_prev, norm_x_next, norm_y_prev, norm_y_next, norm_z_prev, norm_z_next) =
+        (norm_sq, norm_sq, norm_sq, norm_sq, norm_sq, norm_sq);
 
     let mut psi_x_prev = Cplx::new_zero();
     let mut psi_x_next = Cplx::new_zero();
@@ -42,29 +50,21 @@ pub(crate) fn find_ψ_pp_meas_fm_unweighted_bases(
     let mut psi_z_next = Cplx::new_zero();
 
     for (basis_i, weight) in weights.iter().enumerate() {
-        for i in 0..grid_n {
-            for j in 0..grid_n {
-                for k in 0..grid_n {
-                    psi_on_pt += basis_wfs.on_pt[basis_i][i][j][k] * *weight;
-
-                    psi_x_prev += basis_wfs.x_prev[basis_i][i][j][k] * *weight;
-                    psi_x_next += basis_wfs.x_next[basis_i][i][j][k] * *weight;
-                    psi_y_prev += basis_wfs.y_prev[basis_i][i][j][k] * *weight;
-                    psi_y_next += basis_wfs.y_next[basis_i][i][j][k] * *weight;
-                    psi_z_prev += basis_wfs.z_prev[basis_i][i][j][k] * *weight;
-                    psi_z_next += basis_wfs.z_next[basis_i][i][j][k] * *weight;
-                }
-            }
-        }
+        psi_x_prev += basis_wfs.x_prev[basis_i][i][j][k] * *weight;
+        psi_x_next += basis_wfs.x_next[basis_i][i][j][k] * *weight;
+        psi_y_prev += basis_wfs.y_prev[basis_i][i][j][k] * *weight;
+        psi_y_next += basis_wfs.y_next[basis_i][i][j][k] * *weight;
+        psi_z_prev += basis_wfs.z_prev[basis_i][i][j][k] * *weight;
+        psi_z_next += basis_wfs.z_next[basis_i][i][j][k] * *weight;
     }
 
     // todo: Confirm this logic of normalizign using the norm factor used for psi, is valid.
-    psi_x_prev = psi_x_prev / psi_norm_sqrt;
-    psi_x_next = psi_x_next / psi_norm_sqrt;
-    psi_y_prev = psi_y_prev / psi_norm_sqrt;
-    psi_y_next = psi_y_next / psi_norm_sqrt;
-    psi_z_prev = psi_z_prev / psi_norm_sqrt;
-    psi_z_next = psi_z_next / psi_norm_sqrt;
+    psi_x_prev = psi_x_prev / norm_x_prev;
+    psi_x_next = psi_x_next / norm_x_next;
+    psi_y_prev = psi_y_prev / norm_y_prev;
+    psi_y_next = psi_y_next / norm_y_next;
+    psi_z_prev = psi_z_prev / norm_z_prev;
+    psi_z_next = psi_z_next / norm_z_next;
 
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - psi_on_pt * 6.;
