@@ -28,6 +28,7 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
     psi_sample_loc: Cplx,
     psi_norm_sqrt: f64,
     bases_visible: &[bool],
+    weights: Option<&[f64]>, // todo: This API eneds work.
 ) -> Cplx {
     let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
     let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
@@ -44,10 +45,15 @@ pub(crate) fn find_ψ_pp_meas_fm_bases(
     let mut psi_z_next = Cplx::new_zero();
 
     for (basis_i, basis) in bases.iter().enumerate() {
-        let weight = if bases_visible[basis_i] {
-            basis.weight()
-        } else {
-            0.
+        let weight = match weights {
+            Some(w) => w[basis_i],
+            None => {
+                if bases_visible[basis_i] {
+                    basis.weight()
+                } else {
+                    0.
+                }
+            }
         };
 
         psi_x_prev += basis.value(x_prev) * weight;

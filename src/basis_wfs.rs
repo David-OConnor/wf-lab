@@ -32,7 +32,7 @@ const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
 
 // todo: Remove this enum if you use STOs as the only basis
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Basis {
     Sto(Sto),
     H(HOrbital),
@@ -180,7 +180,7 @@ impl PartialEq for Basis {
 /// For now, represents a complex spherical harmonic.
 ///
 /// The base orientation is... // todo
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SphericalHarmonic {
     /// todo: Should we merge this back into `Basis`? Given l is used in the radial component calculation
     /// The quantum number the describes orbital shape.
@@ -308,8 +308,7 @@ impl Default for SphericalHarmonic {
 /// A Slater-Type Orbital (STO). Includes a `n`: The quantum number; the effective
 /// charge slater exponent (ζ) may be used to simulate "effective charge", which
 /// can represent "electron shielding".(?)
-/// todo: Update to include angular part
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Sto {
     pub posit: Vec3,
     pub n: u16,
@@ -364,7 +363,7 @@ impl Sto {
 /// effective charge.
 /// todo: If this turns out to be teh same as an STO but with effective-
 /// charge always equal to one, remove it.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct HOrbital {
     pub posit: Vec3,
     pub n: u16,
@@ -472,9 +471,10 @@ impl HOrbital {
     /// https://quantummechanics.ucsd.edu/ph130a/130_notes/node233.html
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         const EPS: f64 = 0.0000001;
-        if self.weight.abs() < EPS {
-            return Cplx::new_zero(); // saves some computation.
-        }
+        // todo: COnsider re-adding if aplicable to save computation, if you end up with lots of 0ed bases.
+        // if self.weight.abs() < EPS {
+        //     return Cplx::new_zero(); // saves some computation.
+        // }
 
         let mut diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();

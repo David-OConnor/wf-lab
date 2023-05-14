@@ -253,6 +253,7 @@ pub fn update_wf_fm_bases(
         bases_visible,
         grid_n,
         psi_norm_sqrt,
+        None,
     );
 }
 
@@ -273,6 +274,7 @@ fn update_psi_pps_from_bases(
     bases_visible: &[bool],
     grid_n: usize,
     psi_norm_sqrt: f64,
+    weights: Option<&[f64]>, // todo: This API eneds work.
 ) {
     for i in 0..grid_n {
         for j in 0..grid_n {
@@ -293,6 +295,7 @@ fn update_psi_pps_from_bases(
                     psi[i][j][k],
                     psi_norm_sqrt,
                     bases_visible,
+                    weights,
                 );
             }
         }
@@ -553,13 +556,17 @@ pub fn find_weights(
     let mut weight_max = 4.;
 
     // Infinitessimal weight change, used for assessing derivatives.
-    const D_WEIGHT: f64 = 0.00001;
+    const D_WEIGHT: f64 = 0.0001;
 
-    const NUM_DESCENTS: usize = 5; // todo
-    let mut descent_rate = 0.1; // todo? Factor for gradient descent based on the vector.
+    const NUM_DESCENTS: usize = 1; // todo
+    let mut descent_rate = 5.; // todo? Factor for gradient descent based on the vector.
 
     let basis_wfs_unweighted =
         create_bases_wfs_unweighted(bases, &surfaces_shared.grid_posits, grid_n);
+
+    // todo: Consider again using unweighted bases in your main logic. YOu removed it before
+    // todo because it was bugged when you attempted it.
+
     // let mut basis_wfs_weighted: Vec<Arr3d> = Vec::new();
 
     // Approach: Take a handleful of approaches, eg evenly-spaced; maybe 2-3 per dimension
@@ -581,7 +588,7 @@ pub fn find_weights(
     current_point[0] = 1.;
     current_point[1] = 1.;
 
-    for num_descents in 0..NUM_DESCENTS {
+    for descent_num in 0..NUM_DESCENTS {
         // todo: You could choose your initial points, where, for each atom, the n=1 bases
         // todo are +- 1 for each, and all other bases are 0. Ie repeat the whole process,
         // todo but for those initial points.
@@ -593,17 +600,26 @@ pub fn find_weights(
             surfaces_per_elec,
             grid_n,
             &basis_wfs_unweighted,
-            &init_point,
+            &current_point,
         );
 
-        // This is our gradient.
-        let diffs = vec![0.; bases.len()];
+        println!("This score: {:?}", score_this);
 
-        for (i_basis, basis) in bases.iter().enumerate() {
+        // This is our gradient.
+        let mut diffs = vec![0.; bases.len()];
+
+        // todo:  WIth our current API, the finding psi'' numericaly
+        // uses the weight field on bases to construct the nearby points.
+        // todo: YOu currently have a mixed API between this weights Vec,
+        // todo and that field. For now, update the weights field prior to scoring.
+
+        for (i_basis, _basis) in bases.iter().enumerate() {
             // Scores from a small change along this dimension. basis = dimension
             // We could use midpoint, but to save computation, we will do a simple 2-point.
             let mut prev_point = current_point.clone();
             prev_point[i_basis] -= D_WEIGHT;
+
+            // println!("Current: {:?}, prev: {:?}", current_point, prev_point);
 
             let score_prev = score_weight_set(
                 bases,
@@ -615,38 +631,51 @@ pub fn find_weights(
                 &prev_point,
             );
 
-            diffs[i_basis] = (score_this - score_prev) / D_WEIGHT;
+            println!("Score prev: {:?}", score_prev);
+
+            diffs[i_basis] = (score_this - score_prev) * D_WEIGHT;
         }
 
+        println!("Diffs: {:?}", diffs);
+        println!("current pt: {:?}", current_point);
         // Now that we've computed our gradient, shift down it to the next point.
         for i in 0..bases.len() {
-            current_point[i] += diffs[i] * descent_rate;
+            // todo: Dir?
+            current_point[i] -= diffs[i] * descent_rate;
         }
     }
+
+    println!("Final result: {:?}", current_point);
+
+    // Set our global weights to be the final descent result.
+    for (i, basis) in bases.iter_mut().enumerate() {
+        *basis.weight_mut() = current_point[i];
+    }
+    find_E(surfaces_per_elec, E, grid_n);
 }
 
 /// Helper for finding weight gradient descent. Returns a score at a given set of weights.
 pub fn score_weight_set(
-    bases: &mut Vec<Basis>,
+    bases: &[Basis],
     E: &mut f64,
     surfaces_shared: &mut SurfacesShared,
     surfaces_per_elec: &mut SurfacesPerElec,
     grid_n: usize,
-    wfs_unweighted: &[Arr3d],
+    basis_wfs_unweighted: &[Arr3d],
     weights: &[f64],
 ) -> f64 {
     let mut norm = 0.;
 
-    // todo: Fix this. Need to use `weights`, probably in conjunction with unweight wfs
+    // println!("Bases: {:?}", bases);
 
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
                 surfaces_per_elec.psi[i][j][k] = Cplx::new_zero();
 
-                for (i_basis2, basis2) in bases.iter().enumerate() {
+                for i_basis in 0..bases.len() {
                     surfaces_per_elec.psi[i][j][k] +=
-                        basis_wfs_unweighted[i_basis2][i][j][k] * weights[i_basis2]
+                        basis_wfs_unweighted[i_basis][i][j][k] * weights[i_basis]
                 }
 
                 norm += surfaces_per_elec.psi[i][j][k].abs_sq();
@@ -657,10 +686,10 @@ pub fn score_weight_set(
     let psi_norm_sqrt = normalize_wf(&mut surfaces_shared.psi, norm, grid_n);
 
     // kludge for API that needs work.
-    let mut bases_visible = Vec::new();
-    for _ in bases {
-        bases_visible.push(true);
-    }
+    let bases_visible = vec![true; bases.len()];
+
+    // Find E before finding psi'' calc.
+    find_E(surfaces_per_elec, E, grid_n);
 
     update_psi_pps_from_bases(
         bases,
@@ -673,9 +702,8 @@ pub fn score_weight_set(
         &bases_visible,
         grid_n,
         psi_norm_sqrt,
+        Some(&weights),
     );
-
-    find_E(surfaces_per_elec, E, grid_n);
 
     score_wf(surfaces_per_elec, grid_n)
 }
@@ -702,6 +730,7 @@ pub fn create_bases_wfs_unweighted(
                     let posit_sample = grid_posits[i][j][k];
 
                     let val = basis.value(posit_sample);
+
                     // println!("VAL: {:?}", val);
                     // println!("P: {:?}", posit_sample);
 
@@ -711,7 +740,7 @@ pub fn create_bases_wfs_unweighted(
             }
         }
 
-        // normalize_wf(&mut result[basis_i], norm, grid_n);
+        normalize_wf(&mut result[basis_i], norm, grid_n);
     }
 
     result
