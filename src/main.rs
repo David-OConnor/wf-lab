@@ -191,7 +191,7 @@ fn main() {
     let basis_wfs_unweighted =
         wf_ops::BasisWfsUnweighted::new(&bases[0], &surfaces_shared.grid_posits, grid_n);
 
-    // println!("b: {:?}", bases_unweighted[0]);
+    println!("b: {:?}", bases[0][0].posit());
 
     let mut weights = vec![0.; bases[0].len()];
     // Syncing procedure pending a better API.
@@ -206,7 +206,7 @@ fn main() {
         &basis_wfs_unweighted,
         &mut surfaces_per_elec[ui_active_elec],
         Es[ui_active_elec],
-        &mut surfaces_shared.grid_posits,
+        &surfaces_shared.grid_posits,
         &bases_visible[ui_active_elec],
         grid_n,
         &weights,

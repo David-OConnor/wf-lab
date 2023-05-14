@@ -43,7 +43,8 @@ fn text_edit_float(val: &mut f64, default: f64, ui: &mut egui::Ui) {
 fn charge_editor(
     charges: &mut Vec<(Vec3, f64)>,
     basis_fns: &mut Vec<Basis>,
-    updated_wfs: &mut bool,
+    updated_unweighted_basis_wfs: &mut bool,
+    updated_basis_weights: &mut bool,
     updated_charges: &mut bool,
     updated_entities: &mut bool,
     ui: &mut egui::Ui,
@@ -62,7 +63,8 @@ fn charge_editor(
             text_edit_float(&mut posit.z, 0., ui);
 
             if prev_posit != *posit {
-                *updated_wfs = true;
+                *updated_unweighted_basis_wfs = true;
+                *updated_basis_weights = true;
                 *updated_charges = true;
                 *updated_entities = true;
 
@@ -78,7 +80,8 @@ fn charge_editor(
             text_edit_float(val, crate::Q_PROT, ui);
 
             if prev_charge != *val {
-                *updated_wfs = true;
+                *updated_unweighted_basis_wfs = true;
+                *updated_basis_weights = true;
                 *updated_charges = true;
                 *updated_entities = true;
             }
@@ -86,7 +89,8 @@ fn charge_editor(
             if ui.button(RichText::new("❌").color(Color32::RED)).clicked() {
                 // Don't remove from a collection we're iterating over.
                 charge_removed = Some(i);
-                *updated_wfs = true;
+                *updated_unweighted_basis_wfs = true;
+                *updated_basis_weights = true;
                 *updated_charges = true;
                 // Update entities due to charge sphere placement.
                 *updated_entities = true;
@@ -96,14 +100,16 @@ fn charge_editor(
 
     if let Some(charge_i_removed) = charge_removed {
         charges.remove(charge_i_removed);
-        *updated_wfs = true;
+        *updated_unweighted_basis_wfs = true;
+        *updated_basis_weights = true;
         *updated_charges = true;
         *updated_entities = true;
     }
 
     if ui.add(egui::Button::new("Add charge")).clicked() {
         charges.push((Vec3::new_zero(), crate::Q_PROT));
-        *updated_wfs = true;
+        *updated_unweighted_basis_wfs = true;
+        *updated_basis_weights = true;
         *updated_charges = true;
         *updated_entities = true;
     }
@@ -112,7 +118,8 @@ fn charge_editor(
 /// Ui elements that allow mixing various basis WFs.
 fn basis_fn_mixer(
     state: &mut State,
-    updated_wfs: &mut bool,
+    updated_basis_weights: &mut bool,
+    updated_unweighted_basis_wfs: &mut bool,
     ui: &mut egui::Ui,
     // engine_updates: &mut EngineUpdates,
     // scene: &mut Scene,
@@ -129,14 +136,7 @@ fn basis_fn_mixer(
                         .checkbox(&mut state.bases_visible[state.ui_active_elec][id], "")
                         .clicked()
                     {
-                        *updated_wfs = true;
-                        // render::update_meshes(
-                        //     &state.surfaces[state.ui_active_elec],
-                        //     state.ui_z_displayed,
-                        //     scene,
-                        //     &state.surfaces_shared.grid_posits,
-                        // );
-                        // engine_updates.meshes = true;
+                        *updated_basis_weights = true;
                     }
 
                     ui.spacing_mut().slider_width = SLIDER_WIDTH_ORIENTATION; // Only affects sliders in this section.
@@ -162,7 +162,8 @@ fn basis_fn_mixer(
 
                     if basis.charge_id() != prev_charge_id {
                         *basis.posit_mut() = state.charges_fixed[basis.charge_id()].0;
-                        *updated_wfs = true;
+                        *updated_basis_weights = true;
+                        *updated_unweighted_basis_wfs = true;
                     }
 
                     let n_prev = basis.n();
@@ -175,7 +176,7 @@ fn basis_fn_mixer(
                     let response =
                         ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
                     if response.changed() {
-                        *basis.n_mut() = entry.parse().unwrap_or(0);
+                        *basis.n_mut() = entry.parse().unwrap_or(1);
                     }
 
                     ui.heading("l:");
@@ -236,7 +237,8 @@ fn basis_fn_mixer(
                             *basis.m_mut() = basis.l() as i16
                         }
 
-                        *updated_wfs = true;
+                        *updated_unweighted_basis_wfs = true;
+                        *updated_basis_weights = true;
                     }
 
                     // Note: We've replaced the below rotation-slider code with just using combinations of
@@ -292,7 +294,7 @@ fn basis_fn_mixer(
                     egui::Slider::from_get_set(wf_ops::WEIGHT_MIN..=wf_ops::WEIGHT_MAX, |v| {
                         if let Some(v_) = v {
                             *basis.weight_mut() = v_;
-                            *updated_wfs = true;
+                            *updated_basis_weights = true;
                         }
 
                         basis.weight()
@@ -337,8 +339,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         //     &state.surfaces_per_elec[state.ui_active_elec]
         // };
 
-        let mut updated_basis_wfs = false;
         let mut updated_charges = false;
+        let mut updated_unweighted_basis_wfs = false;
+        let mut updated_basis_weights = false;
         let mut updated_meshes = false;
 
         ui.horizontal(|ui| {
@@ -383,7 +386,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 // todo end sloppy C+P
 
-                updated_basis_wfs = true; // todo?
+                updated_basis_weights = true; // todo?
+                updated_unweighted_basis_wfs = true; // todo?
                 updated_charges = true; // todo?
                 updated_meshes = true;
             }
@@ -669,8 +673,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // state.h_grid = (state.grid_max - state.grid_min) / (N as f64);
                     // state.h_grid_sq = state.h_grid.powi(2);
 
-                    updated_basis_wfs = true;
+                    updated_basis_weights = true;
+                    updated_unweighted_basis_wfs = true;
                     updated_charges = true; // Seems to be required.
+                    updated_meshes = true;
                 }
 
                 state.grid_max
@@ -698,7 +704,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         charge_editor(
             &mut state.charges_fixed,
             &mut state.bases[state.ui_active_elec],
-            &mut updated_basis_wfs,
+            &mut updated_unweighted_basis_wfs,
+            &mut updated_basis_weights,
             &mut updated_charges,
             &mut engine_updates.entities,
             ui,
@@ -708,8 +715,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.heading("Basis functions and weights:");
 
-        // basis_fn_mixer(state, &mut updated_wfs, ui, &mut engine_updates, scene);
-        basis_fn_mixer(state, &mut updated_basis_wfs, ui);
+        basis_fn_mixer(
+            state,
+            &mut updated_basis_weights,
+            &mut updated_unweighted_basis_wfs,
+            ui,
+        );
 
         ui.add_space(ITEM_SPACING);
 
@@ -748,14 +759,16 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.grid_n,
                 );
 
-                updated_basis_wfs = true;
+                updated_basis_weights = true;
+                updated_unweighted_basis_wfs = true;
                 updated_charges = true;
             }
 
             if ui.add(egui::Button::new("Empty e- charge")).clicked() {
                 state.charges_electron[state.ui_active_elec] = types::new_data_real(state.grid_n);
 
-                updated_basis_wfs = true;
+                updated_basis_weights = true;
+                updated_unweighted_basis_wfs = true;
                 updated_charges = true;
             }
 
@@ -769,7 +782,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.grid_n,
                 );
 
-                updated_basis_wfs = true;
+                updated_basis_weights = true;
+                updated_unweighted_basis_wfs = true;
                 updated_charges = true;
             }
 
@@ -803,23 +817,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 state.grid_n,
             );
 
-            updated_basis_wfs = true;
+            // todo: These may not be required if handled by `find_weights`.
+            // updated_basis_weights = true;
+            // updated_unweighted_basis_wfs = true;
             updated_meshes = true;
         }
 
-        if updated_meshes {
-            engine_updates.meshes = true;
-
-            render::update_meshes(
-                &state.surfaces_shared,
-                &state.surfaces_per_elec[state.ui_active_elec],
-                state.ui_z_displayed,
-                scene,
-                &state.surfaces_shared.grid_posits,
-                state.mag_phase,
-                state.grid_n,
-            );
-        }
+        // Code below handles various updates that were flagged above.
 
         if updated_charges {
             // Reinintialize bases due to the added charges
@@ -829,11 +833,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.bases[state.ui_active_elec],
                 &mut state.bases_visible[state.ui_active_elec],
                 2,
-            );
-            state.bases_unweighted = wf_ops::BasisWfsUnweighted::new(
-                &state.bases[state.ui_active_elec],
-                &state.surfaces_shared.grid_posits,
-                state.grid_n,
             );
 
             wf_ops::update_V_fm_fixed_charges(
@@ -856,7 +855,17 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             }
         }
 
-        if updated_basis_wfs {
+        if updated_unweighted_basis_wfs {
+            engine_updates.meshes = true;
+
+            state.bases_unweighted = wf_ops::BasisWfsUnweighted::new(
+                &state.bases[state.ui_active_elec],
+                &state.surfaces_shared.grid_posits,
+                state.grid_n,
+            );
+        }
+
+        if updated_basis_weights {
             engine_updates.meshes = true;
 
             let mut weights = vec![0.; state.bases[state.ui_active_elec].len()];
@@ -880,6 +889,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             state.psi_pp_score[state.ui_active_elec] =
                 wf_ops::score_wf(&state.surfaces_per_elec[state.ui_active_elec], state.grid_n);
 
+            updated_meshes = true;
+        }
+
+        if updated_meshes {
+            engine_updates.meshes = true;
+
             render::update_meshes(
                 &state.surfaces_shared,
                 &state.surfaces_per_elec[state.ui_active_elec],
@@ -890,12 +905,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 state.grid_n,
             );
         }
-
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.
         if engine_updates.entities {
             render::update_entities(&state.charges_fixed, &state.show_surfaces, scene);
-            // todo
         }
     });
 

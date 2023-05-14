@@ -97,7 +97,12 @@ pub fn update_V_fm_fixed_charges(
 
     *grid_max = max_abs_val + RANGE_PAD;
     *grid_min = -*grid_max;
-    update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor, n);
+    // update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor, n);
+    //
+    // let mut grid_min = -5.; // todo ts
+    // let mut grid_max = 5.; // todo t
+
+    update_grid_posits(grid_posits, grid_min, grid_max, spacing_factor, n);
 
     for i in 0..n {
         for j in 0..n {
