@@ -97,12 +97,13 @@ pub fn update_V_fm_fixed_charges(
 
     *grid_max = max_abs_val + RANGE_PAD;
     *grid_min = -*grid_max;
-    update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor, n);
-    //
-    // let mut grid_min = -5.; // todo ts
-    // let mut grid_max = 5.; // todo t
 
-    // update_grid_posits(grid_posits, grid_min, grid_max, spacing_factor, n);
+    // update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor, n);
+    //
+    let mut grid_min = -5.; // todo ts
+    let mut grid_max = 5.; // todo t
+
+    update_grid_posits(grid_posits, grid_min, grid_max, spacing_factor, n);
 
     for i in 0..n {
         for j in 0..n {
@@ -497,15 +498,31 @@ pub fn initialize_bases(
     bases_visible: &mut Vec<bool>,
     max_n: u16, // quantum number n
 ) {
+    let mut prev_weights = Vec::new();
+    for basis in bases.iter() {
+        prev_weights.push(basis.weight());
+    }
+
     *bases = Vec::new();
     *bases_visible = Vec::new();
+    println!("Initializing bases");
 
+    // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
+    // todo for now as a kludge to preserve weights, we copy the prev weights.
+
+    let mut i = 0;
     // for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
     for n in 1..max_n + 1 {
         for l in 0..n {
             for m in -(l as i16)..l as i16 + 1 {
                 // This loop order allows the basis sliders to be sorted with like-electrons next to each other.
                 for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
+                    let weight = if i < prev_weights.len() {
+                        prev_weights[i]
+                    } else {
+                        0.
+                    };
+
                     bases.push(Basis::H(HOrbital {
                         posit: *nuc_posit,
                         n,
@@ -514,9 +531,11 @@ pub fn initialize_bases(
                             m,
                             orientation: Quaternion::new_identity(),
                         },
-                        weight: 0.,
+
+                        weight,
                         charge_id,
                     }));
+                    i += 1;
 
                     bases_visible.push(true);
                 }

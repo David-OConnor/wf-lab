@@ -13,7 +13,7 @@ use crate::wf_ops::BasisWfsUnweighted;
 use lin_alg2::f64::{Quaternion, Vec3};
 
 /// todo: Not sure exactly why, but we need to call this multiple times, and not just when scoring.
-fn prep(
+fn sync(
     bases: &[Basis],
     basis_wfs_unweighted: &BasisWfsUnweighted,
     surfaces: &mut SurfacesPerElec,
@@ -56,6 +56,7 @@ pub fn find_weights(
     surfaces_per_elec: &mut SurfacesPerElec,
     max_n: u16, // quantum number n
     grid_n: usize,
+    bases_visible: &mut Vec<bool>,
 ) {
     let mut visible = Vec::new();
     wf_ops::initialize_bases(charges_fixed, bases, &mut visible, max_n);
@@ -65,7 +66,7 @@ pub fn find_weights(
     // Infinitessimal weight change, used for assessing derivatives.
     const D_WEIGHT: f64 = 0.0001;
 
-    const NUM_DESCENTS: usize = 5; // todo
+    const NUM_DESCENTS: usize = 2; // todo
     let mut descent_rate = 1.; // todo? Factor for gradient descent based on the vector.
 
     // todo: Consider again using unweighted bases in your main logic. YOu removed it before
@@ -89,8 +90,9 @@ pub fn find_weights(
 
     // For now, let's use a single starting point, and gradient-descent from it.
     let mut current_point = vec![0.; bases.len()];
-    current_point[0] = 1.;
-    current_point[1] = 1.;
+    for i in 0..charges_fixed.len() {
+        current_point[i] = 1.;
+    }
 
     // For reasons not-yet determined, we appear to need to run these after initializing the weights,
     // even though they're include din the scoring algo. All 3 seem to be required.
@@ -104,7 +106,7 @@ pub fn find_weights(
         // todo, because this is dry with the top of the score fn.
 
         // todo: We are effectively calling this twice in a row...
-        prep(
+        sync(
             bases,
             basis_wfs_unweighted,
             surfaces_per_elec,
@@ -121,7 +123,7 @@ pub fn find_weights(
             &basis_wfs_unweighted,
             &current_point,
         );
-        // println!("\n\nThis score: {:?}", score_this);
+        println!("\n\nThis score: {:?}", score_this);
 
         // This is our gradient.
         let mut diffs = vec![0.; bases.len()];
@@ -137,7 +139,7 @@ pub fn find_weights(
             let mut prev_point = current_point.clone();
             prev_point[i_basis] -= D_WEIGHT;
 
-            // println!("Current: {:?}, prev: {:?}", current_point, prev_point);
+            println!("Current: {:?}, prev: {:?}", current_point, prev_point);
 
             let score_prev = score_weight_set(
                 bases,
@@ -148,7 +150,7 @@ pub fn find_weights(
                 &prev_point,
             );
 
-            // println!("Score prev: {:?}", score_prev);
+            println!("Score prev: {:?}", score_prev);
 
             // dscore / d_weight.
             diffs[i_basis] = (score_this - score_prev) / D_WEIGHT;
@@ -164,11 +166,23 @@ pub fn find_weights(
 
     println!("Result: {:?}", current_point);
 
-    // Set our global weights to be the final descent result.
+    // Set our global weights etc to be the final descent result.
     for (i, basis) in bases.iter_mut().enumerate() {
         *basis.weight_mut() = current_point[i];
     }
-    wf_ops::find_E(surfaces_per_elec, E, grid_n);
+    // wf_ops::find_E(surfaces_per_elec, E, grid_n);
+
+    // todo: Aain, this mysterious prep repetation that seems to be req...
+    sync(
+        bases,
+        basis_wfs_unweighted,
+        surfaces_per_elec,
+        E,
+        grid_n,
+        &current_point,
+    );
+
+    *bases_visible = visible;
 }
 
 /// Helper for finding weight gradient descent. Returns a score at a given set of weights.
@@ -180,7 +194,7 @@ pub fn score_weight_set(
     basis_wfs_unweighted: &BasisWfsUnweighted,
     weights: &[f64],
 ) -> f64 {
-    prep(
+    sync(
         bases,
         basis_wfs_unweighted,
         surfaces_per_elec,

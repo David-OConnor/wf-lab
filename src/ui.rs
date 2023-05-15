@@ -347,6 +347,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.horizontal(|ui| {
             let mut entry = state.grid_n.to_string();
 
+            // Box to adjust grid n.
             let response =
                 ui.add(egui::TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
             if response.changed() {
@@ -386,9 +387,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 // todo end sloppy C+P
 
-                updated_basis_weights = true; // todo?
-                updated_unweighted_basis_wfs = true; // todo?
-                updated_charges = true; // todo?
+                // updated_basis_weights = true; // todo?
+                updated_unweighted_basis_wfs = true;
+                updated_charges = true; // todo: Why does this appear to be required?
                 updated_meshes = true;
             }
 
@@ -816,6 +817,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.surfaces_per_elec[state.ui_active_elec],
                 3,
                 state.grid_n,
+                &mut state.bases_visible[state.ui_active_elec],
             );
 
             // todo: These may not be required if handled by `find_weights`.
