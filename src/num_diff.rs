@@ -2,7 +2,7 @@
 
 use lin_alg2::f64::Vec3;
 
-use crate::wf_ops::norm_sq;
+use crate::util::norm_sq;
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,

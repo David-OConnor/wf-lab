@@ -81,9 +81,7 @@ pub struct State {
     /// Wave function score, evaluated by comparing psi to psi'' from numerical evaluation, and
     /// from the Schrodinger equation. Per-electron.
     pub psi_pp_score: Vec<f64>,
-    /// Surface name
-    pub surface_names: [String; NUM_SURFACES],
-    pub show_surfaces: [bool; NUM_SURFACES],
+    pub surface_data: [SurfaceData; NUM_SURFACES],
     pub grid_n: usize,
     pub grid_min: f64,
     pub grid_max: f64,
@@ -153,6 +151,21 @@ fn choose_grid_limits(charges_fixed: &[(Vec3, f64)]) -> (f64, f64) {
 //     // Maybe a polynomial?
 // }
 
+pub struct SurfaceData {
+    pub name: String,
+    pub visible: bool,
+}
+
+impl SurfaceData {
+    /// This constructor simplifies syntax.
+    pub fn new(name: &str, visible: bool) -> Self {
+        Self {
+            name: name.to_owned(),
+            visible,
+        }
+    }
+}
+
 fn main() {
     let posit_charge_1 = Vec3::new(-1., 0., 0.);
     let posit_charge_2 = Vec3::new(1., 0., 0.);
@@ -203,13 +216,18 @@ fn main() {
     let mut surfaces_shared = SurfacesShared::new(grid_min, grid_max, spacing_factor, grid_n);
     surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es, grid_n);
 
-    wf_ops::update_V_fm_fixed_charges(
-        &charges_fixed,
-        &mut surfaces_shared.V_fixed_charges,
+    wf_ops::update_grid_posits(
+        &mut surfaces_shared.grid_posits,
         grid_min,
         grid_max,
         spacing_factor,
-        &mut surfaces_shared.grid_posits,
+        grid_n,
+    );
+
+    wf_ops::update_V_fm_fixed_charges(
+        &charges_fixed,
+        &mut surfaces_shared.V_fixed_charges,
+        &surfaces_shared.grid_posits,
         grid_n,
     );
 
@@ -226,12 +244,6 @@ fn main() {
 
     let bases_unweighted = vec![basis_wfs_unweighted.clone(), basis_wfs_unweighted];
 
-    let mut weights = vec![0.; bases[0].len()];
-    // Syncing procedure pending a better API.
-    for (i, basis) in bases[0].iter().enumerate() {
-        weights[i] = basis.weight();
-    }
-
     // Set up our basis-function based trial wave function.
     wf_ops::update_wf_fm_bases(
         // todo: Handle the multi-electron case instead of hard-coding 0.
@@ -244,7 +256,7 @@ fn main() {
         grid_n,
     );
 
-    let psi_p_score = 0.; // todo T
+    // let psi_p_score = 0.; // todo T
     let psi_pp_score_one = eval::score_wf(
         &surfaces_per_elec[ui_active_elec].psi_pp_calculated,
         &surfaces_per_elec[ui_active_elec].psi_pp_calculated,
@@ -253,23 +265,17 @@ fn main() {
 
     let psi_pp_score = vec![psi_pp_score_one, psi_pp_score_one];
 
-    let show_surfaces = [
-        true, true, false, false, true, false, true, false, false, false,
-    ];
-
-    let surface_names = [
-        "V".to_owned(),
-        "ψ".to_owned(),
-        "ψ im".to_owned(),
-        "ψ²".to_owned(),
-        "ψ'' calc".to_owned(),
-        "ψ'' calc im".to_owned(),
-        "ψ'' meas".to_owned(),
-        "ψ'' meas im".to_owned(),
-        // "ψ' calculated".to_owned(),
-        // "ψ' measured".to_owned(),
-        "Aux 1".to_owned(),
-        "Aux 2".to_owned(),
+    let surface_data = [
+        SurfaceData::new("V", true),
+        SurfaceData::new("ψ", true),
+        SurfaceData::new("ψ im", false),
+        SurfaceData::new("ψ²", false),
+        SurfaceData::new("ψ'' calc", true),
+        SurfaceData::new("ψ'' calc im", false),
+        SurfaceData::new("ψ'' meas", true),
+        SurfaceData::new("ψ'' meas im", false),
+        SurfaceData::new("Aux 1", false),
+        SurfaceData::new("Aux 2", false),
     ];
 
     let state = State {
@@ -283,23 +289,19 @@ fn main() {
         E: Es,
         nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],
         psi_pp_score,
-        surface_names,
-        show_surfaces,
+        surface_data,
         grid_n,
         grid_min,
         grid_max,
         spacing_factor,
-
         ui_z_displayed: 0.,
         ui_active_elec,
         ui_render_all_elecs: false,
         visual_rotation: 0.,
-        // gaussians,
         // L_2,
         // L_x,
         // L_y,
         // L_z,
-        // z_displayed,
         // psi_p_score,
         mag_phase: false,
         max_basis_n,

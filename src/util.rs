@@ -1,4 +1,8 @@
-use crate::wf_ops::K_C;
+use crate::{
+    types::{Arr3d, Arr3dReal},
+    wf_ops::K_C,
+};
+
 use lin_alg2::f64::Vec3;
 
 /// Create a set of values in a given range, with a given number of values.
@@ -46,8 +50,6 @@ pub fn _spherical_to_cart(ctr: Vec3, θ: f64, φ: f64, r: f64) -> Vec3 {
 //
 //
 // }
-
-// todo: 3rd-order interpolation as well.
 
 // langrange, as an alternative to spline:
 
@@ -170,4 +172,41 @@ pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> 
     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
     -K_C * charge / r
+}
+
+/// Calculate ψ* ψ
+pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, grid_n: usize) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                dest[i][j][k] = source[i][j][k].abs_sq();
+            }
+        }
+    }
+}
+
+/// Normalize a wave function so that <ψ|ψ> = 1.
+/// Returns the norm value for use in normalizing basis fns in psi''_measured calculation.
+///
+/// Note that due to phase symmetry, there are many ways to balance the normalization of the real
+/// vice imaginary parts. Our implmentation (dividing both real and imag parts by norm square)
+/// is one way.
+pub fn normalize_wf(arr: &mut Arr3d, norm: f64, grid_n: usize) {
+    const EPS: f64 = 0.000001;
+    if norm.abs() < EPS {
+        // return 1.;
+        return;
+    }
+
+    let norm_sqrt = norm.sqrt();
+
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                // Note: Check the div impl for details.
+                arr[i][j][k] = arr[i][j][k] / norm_sqrt;
+            }
+        }
+    }
+    // norm_sqrt
 }

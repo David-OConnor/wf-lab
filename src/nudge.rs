@@ -5,7 +5,7 @@ use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
     eigen_fns, eval, num_diff, types,
-    types::{Arr3dVec, SurfacesPerElec},
+    types::{Arr3d, Arr3dVec, SurfacesPerElec},
     wf_ops,
 };
 
@@ -20,8 +20,6 @@ pub fn nudge_wf(
     // charges: &[(Vec3, f64)],
     nudge_amount: &mut f64,
     E: &mut f64,
-    grid_min: f64,
-    grid_max: f64,
     bases: &[Basis],
     grid_posits: &Arr3dVec,
     grid_n: usize,
@@ -100,7 +98,7 @@ pub fn nudge_wf(
             // Note: It turns out smoothing makes a big difference, as does the smoothing coefficient.
             // diff_pre_smooth = diff_map.clone();
 
-            wf_ops::smooth_array(&mut diff_map, smooth_amt, grid_n);
+            smooth_array(&mut diff_map, smooth_amt, grid_n);
 
             for i in 0..grid_n {
                 for j in 0..grid_n {
@@ -167,4 +165,36 @@ pub fn nudge_wf(
     }
 
     sfcs.aux1 = diff_map;
+}
+
+/// A crude low pass
+pub fn smooth_array(arr: &mut Arr3d, smoothing_amt: f64, n: usize) {
+    let orig = arr.clone();
+
+    for i in 0..n {
+        if i == 0 || i == n - 1 {
+            continue;
+        }
+        for j in 0..n {
+            if j == 0 || j == n - 1 {
+                continue;
+            }
+            for k in 0..n {
+                if k == 0 || k == n - 1 {
+                    continue;
+                }
+                let neighbor_avg = (orig[i - 1][j][k]
+                    + orig[i + 1][j][k]
+                    + orig[i][j - 1][k]
+                    + orig[i][j + 1][k]
+                    + orig[i][j][k - 1]
+                    + orig[i][j][k + 1])
+                    / 6.;
+
+                let diff_from_neighbors = neighbor_avg - arr[i][j][k];
+
+                arr[i][j][k] += diff_from_neighbors * smoothing_amt;
+            }
+        }
+    }
 }

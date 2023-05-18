@@ -91,24 +91,18 @@ pub fn psi_from_pt_charges(
 
     let ui_active_elec = 0;
 
-    // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
-    wf_ops::update_V_fm_fixed_charges(
-        &charges_fixed,
-        &mut V_shared,
+    wf_ops::update_grid_posits(
+        &mut grid_posits,
         grid_bounds.0,
         grid_bounds.1,
         spacing_factor,
-        &mut grid_posits,
         grid_n,
     );
 
-    let bases_unweighted = wf_ops::BasisWfsUnweighted::new(&bases, &grid_posits, grid_n);
+    // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
+    wf_ops::update_V_fm_fixed_charges(&charges_fixed, &mut V_shared, &grid_posits, grid_n);
 
-    let mut weights = vec![0.; bases.len()];
-    // Syncing procedure pending a better API.
-    for (i, basis) in bases.iter().enumerate() {
-        weights[i] = basis.weight();
-    }
+    let bases_unweighted = wf_ops::BasisWfsUnweighted::new(&bases, &grid_posits, grid_n);
 
     // Set up our basis-function based trial wave function.
     wf_ops::update_wf_fm_bases(
@@ -116,24 +110,9 @@ pub fn psi_from_pt_charges(
         &bases_unweighted,
         &mut sfcs,
         E,
-        // &mut grid_posits,
         &bases_visible,
         grid_n,
-        // &weights,
     );
-
-    nudge::nudge_wf(
-        &mut sfcs,
-        &mut 0.1,
-        &mut E,
-        grid_bounds.0,
-        grid_bounds.1,
-        bases,
-        &grid_posits,
-        grid_n,
-    );
-
-    // let psi_pp_score = wf_ops::score_wf(&sfcs);
 
     sfcs.psi.on_pt.clone()
 }

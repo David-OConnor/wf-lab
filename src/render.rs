@@ -12,10 +12,10 @@ use lin_alg2::{
     f64::Vec3 as Vec3F64,
 };
 
-use crate::types::new_data_real;
 use crate::{
+    types::new_data_real,
     types::{Arr3d, Arr3dReal, Arr3dVec},
-    wf_ops, State,
+    util, wf_ops, State, SurfaceData,
 };
 
 type Color = (f32, f32, f32);
@@ -229,7 +229,7 @@ pub fn update_meshes(
     ));
 
     let mut psi_sq = new_data_real(grid_n);
-    wf_ops::norm_sq(&mut psi_sq, &surfaces.psi.on_pt, grid_n);
+    util::norm_sq(&mut psi_sq, &surfaces.psi.on_pt, grid_n);
 
     meshes.push(Mesh::new_surface(
         &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER, grid_n),
@@ -269,10 +269,14 @@ pub fn update_meshes(
 /// showing a mesh.
 /// Note that currently, we update charge displays along
 /// with surfaces.
-pub fn update_entities(charges: &[(Vec3F64, f64)], show_surfaces: &[bool], scene: &mut Scene) {
+pub fn update_entities(
+    charges: &[(Vec3F64, f64)],
+    surface_data: &[SurfaceData],
+    scene: &mut Scene,
+) {
     let mut entities = Vec::new();
     for i in 0..crate::NUM_SURFACES {
-        if !show_surfaces[i] {
+        if !surface_data[i].visible {
             continue;
         }
         entities.push(Entity::new(
@@ -385,7 +389,7 @@ pub fn render(state: State) {
         state.grid_n,
     );
 
-    update_entities(&state.charges_fixed, &state.show_surfaces, &mut scene);
+    update_entities(&state.charges_fixed, &state.surface_data, &mut scene);
 
     let input_settings = InputSettings {
         initial_controls: ControlScheme::FreeCamera,

@@ -13,4 +13,4 @@ egui = "^0.19"
 scilib = "^0.7.0"
 
 
-rulinalg = "^0.4" # Tempish: For adapting the RBF lib
+# rulinalg = "^0.4" # Tempish: For adapting the RBF lib

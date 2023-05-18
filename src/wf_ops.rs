@@ -66,20 +66,15 @@ pub enum Spin {
 pub fn update_V_fm_fixed_charges(
     charges_fixed: &[(Vec3, f64)],
     V_nuc_shared: &mut Arr3dReal,
-    grid_min: f64,
-    grid_max: f64,
-    spacing_factor: f64,
-    grid_posits: &mut Arr3dVec,
-    n: usize,
+    grid_posits: &Arr3dVec,
+    grid_n: usize,
     // Wave functions from other electrons, for calculating the Hartree potential.
     // charges_electron: &[Arr3dReal],
     // i_this_elec: usize,
 ) {
-    update_grid_posits(grid_posits, grid_min, grid_max, spacing_factor, n);
-
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
                 let posit_sample = grid_posits[i][j][k];
 
                 V_nuc_shared[i][j][k] = 0.;
@@ -93,46 +88,13 @@ pub fn update_V_fm_fixed_charges(
     }
 }
 
-/// Calculate ψ* ψ
-pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, n: usize) {
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
-                dest[i][j][k] = source[i][j][k].abs_sq();
-            }
-        }
-    }
-}
-
-/// Normalize a wave function so that <ψ|ψ> = 1.
-/// Returns the norm value for use in normalizing basis fns in psi''_measured calculation.
-///
-/// Note that due to phase symmetry, there are many ways to balance the normalization of the real
-/// vice imaginary parts. Our implmentation (dividing both real and imag parts by norm square)
-/// is one way.
-pub fn normalize_wf(arr: &mut Arr3d, norm: f64, n: usize) -> f64 {
-    const EPS: f64 = 0.000001;
-    if norm.abs() < EPS {
-        return 1.;
-    }
-
-    let norm_sqrt = norm.sqrt();
-
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
-                // Note: Check the div impl for details.
-                arr[i][j][k] = arr[i][j][k] / norm_sqrt;
-            }
-        }
-    }
-
-    norm_sqrt
-}
-
 /// Mix bases together into a numerical wave function at each grid point, and at diffs.
-/// This is our mixer from pre-calculated basis fucntions: Create psi from summing them with
-/// their weights; do the same for the ones offset, used to numerically differtiate.
+/// This is our mixer from pre-calculated basis fucntions: Create psi, including at
+/// neighboring points (used to numerically differentiate), from summing them with
+/// their weights. Basis wfs must be initialized prior to running this, and weights must
+/// be selected.
+///
+/// The resulting wave functions are normalized.
 pub fn mix_bases(
     bases: &[Basis],
     basis_wfs: &BasisWfsUnweighted,
@@ -141,7 +103,23 @@ pub fn mix_bases(
     grid_n: usize,
     weights: Option<&[f64]>,
 ) {
-    let mut norm = 0.;
+    // We don't need to normalize the result using the full procedure; the basis-wfs are already
+    // normalized, so divide by the cumulative basis weights.
+    let mut weight_total = 0.;
+    match weights {
+        Some(w) => {
+            for weight in w {
+                weight_total += weight;
+            }
+        }
+        None => {
+            for b in bases {
+                weight_total += b.weight();
+            }
+        }
+    }
+
+    let norm_scaler = 1. / weight_total;
 
     for i in 0..grid_n {
         for j in 0..grid_n {
@@ -155,7 +133,7 @@ pub fn mix_bases(
                 psi.z_next[i][j][k] = Cplx::new_zero();
 
                 for i_basis in 0..bases.len() {
-                    let weight = match weights {
+                    let mut weight = match weights {
                         Some(w) => w[i_basis],
                         None => {
                             if bases_visible[i_basis] {
@@ -166,6 +144,8 @@ pub fn mix_bases(
                         }
                     };
 
+                    weight *= norm_scaler;
+
                     psi.on_pt[i][j][k] += basis_wfs.on_pt[i_basis][i][j][k] * weight;
                     psi.x_prev[i][j][k] += basis_wfs.x_prev[i_basis][i][j][k] * weight;
                     psi.x_next[i][j][k] += basis_wfs.x_next[i_basis][i][j][k] * weight;
@@ -174,21 +154,9 @@ pub fn mix_bases(
                     psi.z_prev[i][j][k] += basis_wfs.z_prev[i_basis][i][j][k] * weight;
                     psi.z_next[i][j][k] += basis_wfs.z_next[i_basis][i][j][k] * weight;
                 }
-
-                // todo: How should normalization work? Perhaps use the same const for all.
-                // todo: This is where it should be, but consider how.
-                norm += psi.on_pt[i][j][k].abs_sq();
             }
         }
     }
-
-    let _psi_norm_sqrt = normalize_wf(&mut psi.on_pt, norm, grid_n);
-    let _psi_norm_sqrt = normalize_wf(&mut psi.x_prev, norm, grid_n);
-    let _psi_norm_sqrt = normalize_wf(&mut psi.x_next, norm, grid_n);
-    let _psi_norm_sqrt = normalize_wf(&mut psi.y_prev, norm, grid_n);
-    let _psi_norm_sqrt = normalize_wf(&mut psi.y_next, norm, grid_n);
-    let _psi_norm_sqrt = normalize_wf(&mut psi.z_prev, norm, grid_n);
-    let _psi_norm_sqrt = normalize_wf(&mut psi.z_next, norm, grid_n);
 }
 
 /// - Computes a trial ψ from basis functions. Computes it at each grid point, as well as
@@ -296,39 +264,7 @@ pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, grid_n: usize) {
     }
 }
 
-/// A crude low pass
-pub fn smooth_array(arr: &mut Arr3d, smoothing_amt: f64, n: usize) {
-    let orig = arr.clone();
-
-    for i in 0..n {
-        if i == 0 || i == n - 1 {
-            continue;
-        }
-        for j in 0..n {
-            if j == 0 || j == n - 1 {
-                continue;
-            }
-            for k in 0..n {
-                if k == 0 || k == n - 1 {
-                    continue;
-                }
-                let neighbor_avg = (orig[i - 1][j][k]
-                    + orig[i + 1][j][k]
-                    + orig[i][j - 1][k]
-                    + orig[i][j + 1][k]
-                    + orig[i][j][k - 1]
-                    + orig[i][j][k + 1])
-                    / 6.;
-
-                let diff_from_neighbors = neighbor_avg - arr[i][j][k];
-
-                arr[i][j][k] += diff_from_neighbors * smoothing_amt;
-            }
-        }
-    }
-}
-
-/// Update our grid positions
+/// Update our grid positions. Run this when we change grid bounds or spacing.
 pub fn update_grid_posits(
     grid_posits: &mut Arr3dVec,
     grid_min: f64,
@@ -348,7 +284,6 @@ pub fn update_grid_posits(
         }
         grid_1d[i] = val;
     }
-    // println!("\n\nGRID 1D: {:.2?}", grid_1d);
 
     for (i, x) in grid_1d.iter().enumerate() {
         for (j, y) in grid_1d.iter().enumerate() {
@@ -360,7 +295,7 @@ pub fn update_grid_posits(
 }
 
 /// [re]Create a set of basis functions, given fixed-charges representing nuclei.
-/// Use this in main and lib inits, and when you add charges.
+/// Use this in main and lib inits, and when you add or remove charges.
 pub fn initialize_bases(
     charges_fixed: &Vec<(Vec3, f64)>,
     bases: &mut Vec<Basis>,
@@ -442,7 +377,9 @@ pub struct BasisWfsUnweighted {
 
 impl BasisWfsUnweighted {
     /// Create unweighted basis wave functions. Run this whenever we add or remove basis fns,
-    /// and when changing the grid size. Each basis will be normalized in this function.
+    /// and when changing the grid. This evaluates the analytic basis functions at
+    /// each grid point. Each basis will be normalized in this function.
+    /// Relatively computationally intensive.
     pub fn new(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) -> Self {
         let mut on_pt = Vec::new();
         let mut x_prev = Vec::new();
@@ -518,22 +455,14 @@ impl BasisWfsUnweighted {
                 }
             }
 
-            normalize_wf(&mut on_pt[basis_i], norm_pt, grid_n);
+            util::normalize_wf(&mut on_pt[basis_i], norm_pt, grid_n);
 
-            // todo: Normalize all the same, or per const?
-            // normalize_wf(&mut x_prev[basis_i], norm_x_prev, grid_n);
-            // normalize_wf(&mut x_next[basis_i], norm_x_next, grid_n);
-            // normalize_wf(&mut y_prev[basis_i], norm_y_prev, grid_n);
-            // normalize_wf(&mut y_next[basis_i], norm_y_next, grid_n);
-            // normalize_wf(&mut z_prev[basis_i], norm_z_prev, grid_n);
-            // normalize_wf(&mut z_next[basis_i], norm_z_next, grid_n);
-
-            normalize_wf(&mut x_prev[basis_i], norm_pt, grid_n);
-            normalize_wf(&mut x_next[basis_i], norm_pt, grid_n);
-            normalize_wf(&mut y_prev[basis_i], norm_pt, grid_n);
-            normalize_wf(&mut y_next[basis_i], norm_pt, grid_n);
-            normalize_wf(&mut z_prev[basis_i], norm_pt, grid_n);
-            normalize_wf(&mut z_next[basis_i], norm_pt, grid_n);
+            util::normalize_wf(&mut x_prev[basis_i], norm_pt, grid_n);
+            util::normalize_wf(&mut x_next[basis_i], norm_pt, grid_n);
+            util::normalize_wf(&mut y_prev[basis_i], norm_pt, grid_n);
+            util::normalize_wf(&mut y_next[basis_i], norm_pt, grid_n);
+            util::normalize_wf(&mut z_prev[basis_i], norm_pt, grid_n);
+            util::normalize_wf(&mut z_next[basis_i], norm_pt, grid_n);
         }
 
         Self {

@@ -433,36 +433,33 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
-                for (i, name) in state.surface_names.iter_mut().enumerate() {
+                for (i, data) in state.surface_data.iter_mut().enumerate() {
                     if i > 3 {
                         continue;
                     }
-                    let show = &mut state.show_surfaces[i];
-                    if ui.checkbox(show, &*name).clicked() {
+                    if ui.checkbox(&mut data.visible, &data.name).clicked() {
                         engine_updates.entities = true;
                     }
                 }
             });
             // todo DRY
             ui.vertical(|ui| {
-                for (i, name) in state.surface_names.iter_mut().enumerate() {
+                for (i, data) in state.surface_data.iter_mut().enumerate() {
                     if i <= 3 || i > 6 {
                         continue;
                     }
-                    let show = &mut state.show_surfaces[i];
-                    if ui.checkbox(show, &*name).clicked() {
+                    if ui.checkbox(&mut data.visible, &data.name).clicked() {
                         engine_updates.entities = true;
                     }
                 }
             });
 
             ui.vertical(|ui| {
-                for (i, name) in state.surface_names.iter_mut().enumerate() {
+                for (i, data) in state.surface_data.iter_mut().enumerate() {
                     if i <= 6 {
                         continue;
                     }
-                    let show = &mut state.show_surfaces[i];
-                    if ui.checkbox(show, &*name).clicked() {
+                    if ui.checkbox(&mut data.visible, &data.name).clicked() {
                         engine_updates.entities = true;
                     }
                 }
@@ -741,8 +738,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // &state.charges,
                     &mut state.nudge_amount[state.ui_active_elec],
                     &mut state.E[state.ui_active_elec],
-                    state.grid_min,
-                    state.grid_max,
                     &state.bases[state.ui_active_elec],
                     &state.surfaces_shared.grid_posits,
                     state.grid_n,
@@ -853,10 +848,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             wf_ops::update_V_fm_fixed_charges(
                 &state.charges_fixed,
                 &mut state.surfaces_shared.V_fixed_charges,
-                state.grid_min,
-                state.grid_max,
-                state.spacing_factor,
-                &mut state.surfaces_shared.grid_posits,
+                &state.surfaces_shared.grid_posits,
                 state.grid_n,
             );
 
@@ -925,7 +917,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.
         if engine_updates.entities {
-            render::update_entities(&state.charges_fixed, &state.show_surfaces, scene);
+            render::update_entities(&state.charges_fixed, &state.surface_data, scene);
         }
     });
 
