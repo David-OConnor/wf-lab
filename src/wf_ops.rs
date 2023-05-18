@@ -159,6 +159,9 @@ pub fn mix_bases(
     }
 }
 
+/// This function combines mixing (pre-computed) numerical basis WFs with updating psi''.
+/// it updates E as well.
+///
 /// - Computes a trial ψ from basis functions. Computes it at each grid point, as well as
 /// the 6 offset ones along the 3 axis used to numerically differentiate.
 /// - Computes ψ'' calculated, and measured from the trial ψ
@@ -166,11 +169,13 @@ pub fn update_wf_fm_bases(
     bases: &[Basis],
     basis_wfs: &BasisWfsUnweighted,
     sfcs: &mut SurfacesPerElec,
-    E: f64,
+    E: &mut f64,
     bases_visible: &[bool],
     grid_n: usize,
 ) {
     mix_bases(bases, basis_wfs, &mut sfcs.psi, bases_visible, grid_n, None);
+
+    find_E(sfcs, E, grid_n);
 
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.

@@ -250,7 +250,7 @@ fn main() {
         &bases[0],
         &bases_unweighted[ui_active_elec],
         &mut surfaces_per_elec[ui_active_elec],
-        Es[ui_active_elec],
+        &mut Es[ui_active_elec],
         // &surfaces_shared.grid_posits,
         &bases_visible[ui_active_elec],
         grid_n,

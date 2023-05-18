@@ -294,13 +294,6 @@ fn basis_fn_mixer(
                     egui::Slider::from_get_set(wf_ops::WEIGHT_MIN..=wf_ops::WEIGHT_MAX, |v| {
                         if let Some(v_) = v {
                             *basis.weight_mut() = v_;
-
-                            // Auto-find E upon weight change.
-                            wf_ops::find_E(
-                                &mut state.surfaces_per_elec[state.ui_active_elec],
-                                &mut state.E[state.ui_active_elec],
-                                state.grid_n,
-                            );
                             *updated_basis_weights = true;
                         }
 
@@ -886,7 +879,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &state.bases[state.ui_active_elec],
                 &state.bases_unweighted[state.ui_active_elec],
                 &mut state.surfaces_per_elec[state.ui_active_elec],
-                state.E[state.ui_active_elec],
+                &mut state.E[state.ui_active_elec],
                 // &mut state.surfaces_shared.grid_posits,
                 &state.bases_visible[state.ui_active_elec],
                 state.grid_n,

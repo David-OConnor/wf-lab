@@ -11,38 +11,6 @@ use crate::{
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
-/// todo: Not sure exactly why, but we need to call this multiple times, and not just when scoring.
-fn sync(
-    bases: &[Basis],
-    basis_wfs_unweighted: &BasisWfsUnweighted,
-    surfaces: &mut SurfacesPerElec,
-    E: &mut f64,
-    grid_n: usize,
-    weights: &[f64],
-) {
-    let bases_visible = vec![true; bases.len()];
-    wf_ops::mix_bases(
-        bases,
-        basis_wfs_unweighted,
-        &mut surfaces.psi,
-        &bases_visible,
-        grid_n,
-        Some(&weights),
-    );
-
-    // Find E before finding psi'' calc.
-    wf_ops::find_E(surfaces, E, grid_n);
-
-    wf_ops::update_psi_pps_from_bases(
-        &surfaces.psi,
-        &surfaces.V,
-        &mut surfaces.psi_pp_calculated,
-        &mut surfaces.psi_pp_measured,
-        *E,
-        grid_n,
-    );
-}
-
 /// Adjust weights of coefficiants until score is minimized.
 /// We use a gradient-descent approach to find local *score* minimum. (fidelity?)
 /// We choose several start points to help find a global solution.
@@ -173,8 +141,6 @@ pub fn find_weights(
     for (i, basis) in bases.iter_mut().enumerate() {
         *basis.weight_mut() = current_point[i];
     }
-    // wf_ops::find_E(surfaces_per_elec, E, grid_n);
-
     // todo: Aain, this mysterious prep repetation that seems to be req...
     sync(
         bases,

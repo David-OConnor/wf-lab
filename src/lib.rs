@@ -91,14 +91,6 @@ pub fn psi_from_pt_charges(
 
     let ui_active_elec = 0;
 
-    wf_ops::update_grid_posits(
-        &mut grid_posits,
-        grid_bounds.0,
-        grid_bounds.1,
-        spacing_factor,
-        grid_n,
-    );
-
     // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
     wf_ops::update_V_fm_fixed_charges(&charges_fixed, &mut V_shared, &grid_posits, grid_n);
 
@@ -109,7 +101,7 @@ pub fn psi_from_pt_charges(
         &wfs,
         &bases_unweighted,
         &mut sfcs,
-        E,
+        &mut E,
         &bases_visible,
         grid_n,
     );
