@@ -94,8 +94,8 @@ pub fn psi_from_pt_charges(
     wf_ops::update_V_fm_fixed_charges(
         &charges_fixed,
         &mut V_shared,
-        &mut grid_bounds.0,
-        &mut grid_bounds.1,
+        grid_bounds.0,
+        grid_bounds.1,
         spacing_factor,
         &mut grid_posits,
         grid_n,

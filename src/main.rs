@@ -8,21 +8,17 @@
 //! This program explores solving the wave equation for
 //! arbitrary potentials. It visualizes the wave function in 3d, with user interaction.
 
-// todo: Consider instead of H orbitals, use the full set of Slater basis
-// functions, which are more general. Make a fn to generate them.
-
-// todo: Hylleraas basis functions?
+//  Consider instead of H orbitals, use the full set of Slater basis
+// functions, which are more general.
 
 // Idea, once your nudging etc code is faster and more accurate:
 // Create template WFs based on ICs. Ie, multi-charge potential starting points
 // based on a formula. Maybe they are something akin to a 3D LUT. So the converging
 // goes faster.
 
-//  When applying your force via electorn density (Sim code; maybe not this lib),
+// When applying your force via electorn density (Sim code; maybe not this lib),
 // You may need to interpolate to avoid quantized (not in the way we need!) positions
 // at the grid you chose. Linear is fine.
-
-// Consider an adjustable N, so you can use a coarse initial estimate, then refine.
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
@@ -42,6 +38,7 @@ mod wf_ops;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
 use types::{Arr3d, Arr3dReal, SurfacesPerElec, SurfacesShared};
+use wf_lab::types::new_data_real;
 use wf_ops::Q_PROT;
 
 const NUM_SURFACES: usize = 10;
@@ -69,11 +66,11 @@ pub struct State {
     /// bases per-electron)
     pub bases: Vec<Vec<Basis>>,
     /// Basis wave functions. Perhaps faster to cache these (at the cost of more memory use, rather than
-    /// compute their value each time we change weights...)
+    /// compute their value each time we change weights...) Per-electron.
     /// todo: This should probably be in one of the surfaces.
-    pub bases_unweighted: wf_ops::BasisWfsUnweighted,
-    /// Used to toggle precense of a basi, effectively setting its weight ot 0 without losing the stored
-    /// weight value.
+    pub bases_unweighted: Vec<wf_ops::BasisWfsUnweighted>,
+    /// Used to toggle precense of a bases, effectively setting its weight ot 0 without losing the stored
+    /// weight value. Per-electron.
     pub bases_visible: Vec<Vec<bool>>,
     /// Energy eigenvalue of the Hamiltonian; per electron.
     /// todo: You may need separate eigenvalues per electron-WF if you go that route.
@@ -81,8 +78,7 @@ pub struct State {
     /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
     pub nudge_amount: Vec<f64>,
     /// Wave function score, evaluated by comparing psi to psi'' from numerical evaluation, and
-    /// from the Schrodinger equation. Per-electron. todo: Consider replacing with the standard
-    /// todo evaluation of "wavefunction fidelity".
+    /// from the Schrodinger equation. Per-electron.
     pub psi_pp_score: Vec<f64>,
     /// Surface name
     pub surface_names: [String; NUM_SURFACES],
@@ -93,7 +89,6 @@ pub struct State {
     /// 1.0 is an evenly-spaced grid. A higher value spreads out the grid; high values
     /// mean increased non-linearity, with higher spacing farther from the center.
     pub spacing_factor: f64,
-
     /// When visualizing a 2d wave function over X and Y, this is the fixed Z value rendered.
     /// We only display a slice, since we are viewing a 4d object as a 3d rendering.
     pub ui_z_displayed: f64,
@@ -107,6 +102,8 @@ pub struct State {
     /// Visuals for complex fields default to real/imaginary. Enabling this
     /// switches this to magnitude and phase.
     pub mag_phase: bool,
+    /// When finding and initializing basis, this is the maximum n quantum number.
+    pub max_basis_n: u16,
     //
     // Below this are mainly experimental/WIP items
     //
@@ -119,6 +116,37 @@ pub struct State {
     // pub L_z: f64,
 }
 
+/// Set up the grid so that it smartly encompasses the charges, letting the WF go to 0
+/// towards the edges
+fn choose_grid_limits(charges_fixed: &[(Vec3, f64)]) -> (f64, f64) {
+    let mut max_abs_val = 0.;
+    for (posit, _) in charges_fixed {
+        if posit.x.abs() > max_abs_val {
+            max_abs_val = posit.x.abs();
+        }
+        if posit.y.abs() > max_abs_val {
+            max_abs_val = posit.y.abs();
+        }
+        if posit.z.abs() > max_abs_val {
+            max_abs_val = posit.z.abs();
+        }
+    }
+
+    // const RANGE_PAD: f64 = 1.6;
+    const RANGE_PAD: f64 = 5.8;
+    // const RANGE_PAD: f64 = 15.;
+
+    let grid_max = max_abs_val + RANGE_PAD;
+    let grid_min = -grid_max;
+
+    // update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor, n);
+    //
+    // let mut grid_min = -5.; // todo ts
+    // let mut grid_max = 5.; // todo t
+
+    (grid_min, grid_max)
+}
+
 // /// Interpolate a value from a discrete wave function, assuming (what about curvature)
 // fn interp_wf(psi: &Arr3d, posit_sample: Vec3) -> Cplx {
 //     // Maybe a polynomial?
@@ -128,19 +156,23 @@ fn main() {
     let posit_charge_1 = Vec3::new(-1., 0., 0.);
     let posit_charge_2 = Vec3::new(1., 0., 0.);
 
-    let neutral = Quaternion::new_identity();
-
     let charges_fixed = vec![
         (posit_charge_1, Q_PROT * 1.), // helium
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
+    let max_basis_n = 3;
+
     // Outer of these is per-elec.
     let mut bases = vec![Vec::new()];
     let mut bases_visible = vec![Vec::new()];
-    let max_n = 3;
-    wf_ops::initialize_bases(&charges_fixed, &mut bases[0], &mut bases_visible[0], max_n);
+    wf_ops::initialize_bases(
+        &charges_fixed,
+        &mut bases[0],
+        &mut bases_visible[0],
+        max_basis_n,
+    );
 
     let ui_active_elec = 0;
     // H ion nuc dist is I believe 2 bohr radii.
@@ -148,8 +180,7 @@ fn main() {
 
     let grid_n = GRID_N_DEFAULT;
 
-    let arr_real = types::new_data_real(grid_n);
-
+    let arr_real = new_data_real(grid_n);
     // These must be initialized from wave functions later.
     let charges_electron = vec![arr_real.clone(), arr_real];
 
@@ -165,8 +196,7 @@ fn main() {
 
     let mut surfaces_per_elec = vec![sfcs_one_elec.clone(), sfcs_one_elec];
 
-    let mut grid_min = -2.;
-    let mut grid_max = 2.; // todo: Is this used, or overridden?
+    let (grid_min, grid_max) = choose_grid_limits(&charges_fixed);
     let spacing_factor = 1.6;
 
     let mut surfaces_shared = SurfacesShared::new(grid_min, grid_max, spacing_factor, grid_n);
@@ -175,8 +205,8 @@ fn main() {
     wf_ops::update_V_fm_fixed_charges(
         &charges_fixed,
         &mut surfaces_shared.V_fixed_charges,
-        &mut grid_min,
-        &mut grid_max,
+        grid_min,
+        grid_max,
         spacing_factor,
         &mut surfaces_shared.grid_posits,
         grid_n,
@@ -191,6 +221,8 @@ fn main() {
     let basis_wfs_unweighted =
         wf_ops::BasisWfsUnweighted::new(&bases[0], &surfaces_shared.grid_posits, grid_n);
 
+    let bases_unweighted = vec![basis_wfs_unweighted.clone(), basis_wfs_unweighted];
+
     println!("b: {:?}", bases[0][0].posit());
 
     let mut weights = vec![0.; bases[0].len()];
@@ -203,7 +235,7 @@ fn main() {
     wf_ops::update_wf_fm_bases(
         // todo: Handle the multi-electron case instead of hard-coding 0.
         &bases[0],
-        &basis_wfs_unweighted,
+        &bases_unweighted[ui_active_elec],
         &mut surfaces_per_elec[ui_active_elec],
         Es[ui_active_elec],
         // &surfaces_shared.grid_posits,
@@ -240,7 +272,7 @@ fn main() {
         charges_fixed,
         charges_electron,
         bases,
-        bases_unweighted: basis_wfs_unweighted,
+        bases_unweighted,
         bases_visible,
         surfaces_shared,
         surfaces_per_elec,
@@ -266,6 +298,7 @@ fn main() {
         // z_displayed,
         // psi_p_score,
         mag_phase: false,
+        max_basis_n,
     };
 
     render::render(state);

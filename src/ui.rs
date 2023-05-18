@@ -379,7 +379,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 state.surfaces_shared = surfaces_shared;
                 state.surfaces_per_elec = surfaces_per_elec;
 
-                state.bases_unweighted = wf_ops::BasisWfsUnweighted::new(
+                state.bases_unweighted[state.ui_active_elec] = wf_ops::BasisWfsUnweighted::new(
                     &state.bases[state.ui_active_elec],
                     &state.surfaces_shared.grid_posits,
                     state.grid_n,
@@ -811,11 +811,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             basis_weight_finder::find_weights(
                 &state.charges_fixed,
                 &mut state.bases[state.ui_active_elec],
-                &mut state.bases_unweighted,
+                &mut state.bases_unweighted[state.ui_active_elec],
                 &mut state.E[state.ui_active_elec],
                 &mut state.surfaces_shared,
                 &mut state.surfaces_per_elec[state.ui_active_elec],
-                3,
+                state.max_basis_n,
                 state.grid_n,
                 &mut state.bases_visible[state.ui_active_elec],
             );
@@ -841,8 +841,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             wf_ops::update_V_fm_fixed_charges(
                 &state.charges_fixed,
                 &mut state.surfaces_shared.V_fixed_charges,
-                &mut state.grid_min,
-                &mut state.grid_max,
+                state.grid_min,
+                state.grid_max,
                 state.spacing_factor,
                 &mut state.surfaces_shared.grid_posits,
                 state.grid_n,
@@ -861,7 +861,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         if updated_unweighted_basis_wfs {
             engine_updates.meshes = true;
 
-            state.bases_unweighted = wf_ops::BasisWfsUnweighted::new(
+            state.bases_unweighted[state.ui_active_elec] = wf_ops::BasisWfsUnweighted::new(
                 &state.bases[state.ui_active_elec],
                 &state.surfaces_shared.grid_posits,
                 state.grid_n,
@@ -880,7 +880,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             // Set up our basis-function based trial wave function.
             wf_ops::update_wf_fm_bases(
                 &state.bases[state.ui_active_elec],
-                &state.bases_unweighted,
+                &state.bases_unweighted[state.ui_active_elec],
                 &mut state.surfaces_per_elec[state.ui_active_elec],
                 state.E[state.ui_active_elec],
                 // &mut state.surfaces_shared.grid_posits,

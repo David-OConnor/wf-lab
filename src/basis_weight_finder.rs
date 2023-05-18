@@ -94,6 +94,10 @@ pub fn find_weights(
         current_point[i] = 1.;
     }
 
+    // todo testing algo
+    current_point[2] = 0.4;
+    current_point[3] = -0.6;
+
     // For reasons not-yet determined, we appear to need to run these after initializing the weights,
     // even though they're include din the scoring algo. All 3 seem to be required.
 
@@ -156,8 +160,8 @@ pub fn find_weights(
             diffs[i_basis] = (score_this - score_prev) / D_WEIGHT;
         }
 
-        // println!("Diffs: {:?}", diffs);
-        // println!("current pt: {:?}", current_point);
+        println!("\nDiffs: {:?}\n", diffs);
+        println!("current pt: {:?}", current_point);
         // Now that we've computed our gradient, shift down it to the next point.
         for i in 0..bases.len() {
             current_point[i] -= diffs[i] * descent_rate;

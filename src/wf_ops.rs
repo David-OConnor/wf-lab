@@ -67,8 +67,8 @@ pub enum Spin {
 pub fn update_V_fm_fixed_charges(
     charges_fixed: &[(Vec3, f64)],
     V_nuc_shared: &mut Arr3dReal,
-    grid_min: &mut f64,
-    grid_max: &mut f64,
+    grid_min: f64,
+    grid_max: f64,
     spacing_factor: f64,
     grid_posits: &mut Arr3dVec,
     n: usize,
@@ -76,33 +76,6 @@ pub fn update_V_fm_fixed_charges(
     // charges_electron: &[Arr3dReal],
     // i_this_elec: usize,
 ) {
-    // Set up the grid so that it smartly encompasses the charges, letting the WF go to 0
-    // towards the edges
-    let mut max_abs_val = 0.;
-    for (posit, _) in charges_fixed {
-        if posit.x.abs() > max_abs_val {
-            max_abs_val = posit.x.abs();
-        }
-        if posit.y.abs() > max_abs_val {
-            max_abs_val = posit.y.abs();
-        }
-        if posit.z.abs() > max_abs_val {
-            max_abs_val = posit.z.abs();
-        }
-    }
-
-    // const RANGE_PAD: f64 = 1.6;
-    const RANGE_PAD: f64 = 5.8;
-    // const RANGE_PAD: f64 = 15.;
-
-    *grid_max = max_abs_val + RANGE_PAD;
-    *grid_min = -*grid_max;
-
-    // update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor, n);
-    //
-    let mut grid_min = -5.; // todo ts
-    let mut grid_max = 5.; // todo t
-
     update_grid_posits(grid_posits, grid_min, grid_max, spacing_factor, n);
 
     for i in 0..n {
@@ -560,6 +533,7 @@ pub struct PsiWDiffs {
 /// We use this to store numerical wave functions for each basis, both at sample points, and
 /// a small amount along each axix, for calculating partial derivatives of psi''.
 /// The `Vec` index corresponds to basis index.
+#[derive(Clone)]
 pub struct BasisWfsUnweighted {
     pub on_pt: Vec<Arr3d>,
     pub x_prev: Vec<Arr3d>,
