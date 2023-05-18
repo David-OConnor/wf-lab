@@ -26,18 +26,16 @@
 use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic},
     complex_nums::Cplx,
-    eigen_fns,
+    eigen_fns, eval,
     num_diff::{self, H, H_SQ},
-    // rbf::Rbf,
     types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec, SurfacesShared},
-    util::{self},
+    util,
 };
-use std::f32::EPSILON;
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
-const K_C: f64 = 1.;
+pub const K_C: f64 = 1.;
 pub const Q_PROT: f64 = 1.;
 pub const Q_ELEC: f64 = -1.;
 pub const M_ELEC: f64 = 1.;
@@ -61,7 +59,8 @@ pub enum Spin {
     Dn,
 }
 
-/// - Computes V from "fixed" charges, ie nuclei. Run this after changing these charges.
+/// Computes V from "fixed" charges, ie nuclei, by calculating Coulomb potential.
+/// Run this after changing these charges.
 /// Does not modify per-electron charges; those are updated elsewhere, incorporating the
 /// potential here, as well as from other electrons.
 pub fn update_V_fm_fixed_charges(
@@ -86,11 +85,9 @@ pub fn update_V_fm_fixed_charges(
                 V_nuc_shared[i][j][k] = 0.;
 
                 for (posit_charge, charge_amt) in charges_fixed.iter() {
-                    V_nuc_shared[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
+                    V_nuc_shared[i][j][k] +=
+                        util::V_coulomb(*posit_charge, posit_sample, *charge_amt);
                 }
-                // Note: We update individual electron Vs (eg with fixed + all *other* elec Vs
-                // in `elec_elec::update_V_individual()`.
-                // sfcs.V[i][j][k] = sfcs.V[i][j][k]
             }
         }
     }
@@ -133,7 +130,7 @@ pub fn normalize_wf(arr: &mut Arr3d, norm: f64, n: usize) -> f64 {
     norm_sqrt
 }
 
-/// Mix bases together into psi at each grid point, and at diffs.
+/// Mix bases together into a numerical wave function at each grid point, and at diffs.
 /// This is our mixer from pre-calculated basis fucntions: Create psi from summing them with
 /// their weights; do the same for the ones offset, used to numerically differtiate.
 pub fn mix_bases(
@@ -197,18 +194,13 @@ pub fn mix_bases(
 /// - Computes a trial ψ from basis functions. Computes it at each grid point, as well as
 /// the 6 offset ones along the 3 axis used to numerically differentiate.
 /// - Computes ψ'' calculated, and measured from the trial ψ
-/// Modifies in place to conserve memory. These operations are combined in the same function to
-/// save computation, since they're often run at once, and can be iterated through using a single loop
-/// through all grid points.
 pub fn update_wf_fm_bases(
     bases: &[Basis],
     basis_wfs: &BasisWfsUnweighted,
     sfcs: &mut SurfacesPerElec,
     E: f64,
-    // grid_posits: &Arr3dVec,
     bases_visible: &[bool],
     grid_n: usize,
-    weights: &[f64],
 ) {
     mix_bases(bases, basis_wfs, &mut sfcs.psi, bases_visible, grid_n, None);
 
@@ -225,7 +217,7 @@ pub fn update_wf_fm_bases(
 }
 
 /// Update psi'' calc and psi'' measured, assuming we are using basis WFs. This is done
-/// after the wave function is contructed and normalized.
+/// after the wave function is contructed and normalized, including at neighboring points.
 ///
 /// We use a separate function from this since it's used separately in our basis-finding
 /// algorithm
@@ -264,102 +256,6 @@ pub fn update_psi_pps_from_bases(
     }
 }
 
-/// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
-/// This requires normalizing the wave functions we're comparing.
-/// todo: Curretly not working.
-/// todo: I don't think you can use this approach comparing psi''s with fidelity, since they're
-/// todo not normalizsble.
-/// todo: Perhaps this isn't working because these aren't wave functions! psi is a WF;
-/// psi'' is not
-// fn wf_fidelity(sfcs: &Surfaces) -> f64 {
-fn fidelity(sfcs: &SurfacesPerElec, n: usize) -> f64 {
-    // "The accuracy should be scored by the fidelity of the wavefunction compared
-    // to the true wavefunction. Fidelity is defined as |<psi_trial | psi_true >|^2.
-    // For normalized states, this will always be bounded from above by 1.0. So it's
-    // lower than 1.0 for an imperfect variational function, but is 1 if you are
-    // able to exactly express it.""
-
-    // For normalization.
-    let mut norm_calc = Cplx::new_zero();
-    let mut norm_meas = Cplx::new_zero();
-
-    const SCORE_THRESH: f64 = 100.;
-
-    // Create normalization const.
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
-                // norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].abs_sq();
-                // norm_sq_meas += sfcs.psi_pp_measured[i][j][k].abs_sq();
-                // todo: .real is temp
-                if sfcs.psi_pp_calculated[i][j][k].real.abs() < SCORE_THRESH
-                    && sfcs.psi_pp_measured[i][j][k].real.abs() < SCORE_THRESH
-                {
-                    norm_calc += sfcs.psi_pp_calculated[i][j][k];
-                    norm_meas += sfcs.psi_pp_measured[i][j][k];
-                }
-            }
-        }
-    }
-
-    // Now that we have both wave functions and normalized them, calculate fidelity.
-    let mut result = Cplx::new_zero();
-
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
-                // todo: .reals here may be a kludge and not working with complex psi.
-
-                // todo: LHS should be conjugated.
-                if sfcs.psi_pp_calculated[i][j][k].real.abs() < SCORE_THRESH
-                    && sfcs.psi_pp_measured[i][j][k].real.abs() < SCORE_THRESH
-                {
-                    result += sfcs.psi_pp_calculated[i][j][k] / norm_calc.real
-                        * sfcs.psi_pp_calculated[i][j][k]
-                        / norm_calc.real;
-                }
-            }
-        }
-    }
-
-    result.abs_sq()
-}
-
-/// Score a wave function by comparing the least-squares sum of its measured and
-/// calculated second derivaties.
-pub fn score_wf(sfcs: &SurfacesPerElec, n: usize) -> f64 {
-    let mut result = 0.;
-
-    // Avoids numerical precision issues. Without this, certain values of N will lead
-    // to a bogus score. Values of N both too high and too low can lead to this. Likely due to
-    // if a grid value is too close to a charge source, the value baloons.
-    const SCORE_THRESH: f64 = 10.;
-
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
-                // todo: Check if either individual is outside a thresh?
-                let diff = sfcs.psi_pp_calculated[i][j][k] - sfcs.psi_pp_measured[i][j][k];
-                // let val = diff.real + diff.im; // todo: Do you want this, mag_sq, or something else?
-                let val = diff.abs_sq();
-                if val < SCORE_THRESH {
-                    result += val;
-                }
-            }
-        }
-    }
-
-    result
-}
-
-/// Single-point Coulomb potential, eg a hydrogen nuclei.
-pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
-    let diff = posit_sample - posit_charge;
-    let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
-
-    -K_C * charge / r
-}
-
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
 /// between E and psi'' score isn't straightforward, this will converge on a local minimum.
 pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, grid_n: usize) {
@@ -386,7 +282,7 @@ pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, grid_n: usize) {
                 }
             }
 
-            let score = score_wf(sfcs, grid_n);
+            let score = eval::score_wf(&sfcs.psi_pp_calculated, &sfcs.psi_pp_measured, grid_n);
             if score < best_score {
                 best_score = score;
                 best_E = E_trial;

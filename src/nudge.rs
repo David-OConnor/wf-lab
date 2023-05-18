@@ -4,7 +4,7 @@
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    eigen_fns, num_diff, types,
+    eigen_fns, eval, num_diff, types,
     types::{Arr3dVec, SurfacesPerElec},
     wf_ops,
 };
@@ -59,7 +59,7 @@ pub fn nudge_wf(
     let mut psi_backup = sfcs.psi.clone();
     let mut psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
     let mut psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
-    let mut current_score = wf_ops::score_wf(sfcs, grid_n);
+    let mut current_score = eval::score_wf(&sfcs.psi_pp_calculated, &sfcs.psi_pp_measured, grid_n);
 
     // We use diff map so we can lowpass the entire map before applying corrections.
     let mut diff_map = types::new_data(grid_n);
@@ -128,7 +128,7 @@ pub fn nudge_wf(
         );
 
         // If you use individual nudges, evaluate how you want to handle this.
-        let score = wf_ops::score_wf(sfcs, grid_n);
+        let score = eval::score_wf(&sfcs.psi_pp_calculated, &sfcs.psi_pp_measured, grid_n);
 
         // todo: Maybe update temp ones above instead of the main ones?
         if (score - current_score) > 0. {

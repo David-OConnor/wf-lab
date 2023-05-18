@@ -5,6 +5,7 @@ use core::f64::consts::FRAC_1_SQRT_2;
 
 use crate::{
     types::{Arr3d, Arr3dReal, Arr3dVec},
+    util,
     wf_ops::{self, Q_ELEC},
 };
 
@@ -99,7 +100,7 @@ pub(crate) fn find_hartree_V(
 
                     // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
                     result +=
-                        wf_ops::V_coulomb(posit_sample_electron, posit_sample, charge_this_grid_pt);
+                        util::V_coulomb(posit_sample_electron, posit_sample, charge_this_grid_pt);
                 }
             }
         }

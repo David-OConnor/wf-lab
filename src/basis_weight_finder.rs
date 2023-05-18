@@ -4,12 +4,11 @@
 use crate::{
     basis_wfs::{Basis, HOrbital},
     complex_nums::Cplx,
+    eval,
     types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec, SurfacesShared},
-    wf_ops,
-    wf_ops::ħ,
+    wf_ops::{self, ħ, BasisWfsUnweighted},
 };
 
-use crate::wf_ops::BasisWfsUnweighted;
 use lin_alg2::f64::{Quaternion, Vec3};
 
 /// todo: Not sure exactly why, but we need to call this multiple times, and not just when scoring.
@@ -207,5 +206,9 @@ pub fn score_weight_set(
         weights,
     );
 
-    wf_ops::score_wf(surfaces_per_elec, grid_n)
+    eval::score_wf(
+        &surfaces_per_elec.psi_pp_calculated,
+        &surfaces_per_elec.psi_pp_measured,
+        grid_n,
+    )
 }

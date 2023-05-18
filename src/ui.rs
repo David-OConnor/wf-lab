@@ -5,7 +5,7 @@ use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::{Quaternion, Vec3};
 
 use crate::{
-    basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, render, types, wf_ops, State,
+    basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval, render, types, wf_ops, State,
 };
 
 const UI_WIDTH: f32 = 300.;
@@ -294,6 +294,13 @@ fn basis_fn_mixer(
                     egui::Slider::from_get_set(wf_ops::WEIGHT_MIN..=wf_ops::WEIGHT_MAX, |v| {
                         if let Some(v_) = v {
                             *basis.weight_mut() = v_;
+
+                            // Auto-find E upon weight change.
+                            wf_ops::find_E(
+                                &mut state.surfaces_per_elec[state.ui_active_elec],
+                                &mut state.E[state.ui_active_elec],
+                                state.grid_n,
+                            );
                             *updated_basis_weights = true;
                         }
 
@@ -490,8 +497,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         }
                     }
 
-                    state.psi_pp_score[state.ui_active_elec] = wf_ops::score_wf(
-                        &state.surfaces_per_elec[state.ui_active_elec],
+                    state.psi_pp_score[state.ui_active_elec] = eval::score_wf(
+                        &state.surfaces_per_elec[state.ui_active_elec].psi_pp_calculated,
+                        &state.surfaces_per_elec[state.ui_active_elec].psi_pp_measured,
                         state.grid_n,
                     );
                     // state.psi_p_score[state.ui_active_elec] = 0.; // todo!
@@ -526,7 +534,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         //                 }
         //             }
         //
-        //             state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
+        //             state.psi_pp_score = eval::score_wf(&state.surfaces);
         //             state.psi_p_score = 0.; // todo!
         //
         //             render::update_meshes(&state.surfaces, state.ui_z_displayed, scene);
@@ -560,7 +568,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         //                 }
         //             }
         //
-        //             state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
+        //             state.psi_pp_score = eval::score_wf(&state.surfaces);
         //             state.psi_p_score = 0.; // todo!
         //
         //             render::update_meshes(&state.surfaces, state.ui_z_displayed, scene);
@@ -594,7 +602,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         //                 }
         //             }
         //
-        //             state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
+        //             state.psi_pp_score = eval::score_wf(&state.surfaces);
         //             state.psi_p_score = 0.; // todo!
         //
         //             render::update_meshes(&state.surfaces, state.ui_z_displayed, scene);
@@ -628,7 +636,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         //                 }
         //             }
         //
-        //             state.psi_pp_score = wf_ops::score_wf(&state.surfaces);
+        //             state.psi_pp_score = eval::score_wf(&state.surfaces);
         //             state.psi_p_score = 0.; // todo!
         //
         //             render::update_meshes(&state.surfaces, state.ui_z_displayed, scene);
@@ -742,8 +750,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 updated_meshes = true;
 
-                state.psi_pp_score[state.ui_active_elec] = crate::wf_ops::score_wf(
-                    &state.surfaces_per_elec[state.ui_active_elec],
+                state.psi_pp_score[state.ui_active_elec] = eval::score_wf(
+                    &state.surfaces_per_elec[state.ui_active_elec].psi_pp_calculated,
+                    &state.surfaces_per_elec[state.ui_active_elec].psi_pp_measured,
                     state.grid_n,
                 );
 
@@ -797,8 +806,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 updated_meshes = true;
 
-                state.psi_pp_score[state.ui_active_elec] =
-                    wf_ops::score_wf(&state.surfaces_per_elec[state.ui_active_elec], state.grid_n);
+                state.psi_pp_score[state.ui_active_elec] = eval::score_wf(
+                    &state.surfaces_per_elec[state.ui_active_elec].psi_pp_calculated,
+                    &state.surfaces_per_elec[state.ui_active_elec].psi_pp_measured,
+                    state.grid_n,
+                );
 
                 // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
                 // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
@@ -886,11 +898,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // &mut state.surfaces_shared.grid_posits,
                 &state.bases_visible[state.ui_active_elec],
                 state.grid_n,
-                &weights,
             );
 
-            state.psi_pp_score[state.ui_active_elec] =
-                wf_ops::score_wf(&state.surfaces_per_elec[state.ui_active_elec], state.grid_n);
+            state.psi_pp_score[state.ui_active_elec] = eval::score_wf(
+                &state.surfaces_per_elec[state.ui_active_elec].psi_pp_calculated,
+                &state.surfaces_per_elec[state.ui_active_elec].psi_pp_measured,
+                state.grid_n,
+            );
 
             updated_meshes = true;
         }

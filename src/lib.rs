@@ -11,6 +11,7 @@ pub mod basis_wfs;
 pub mod complex_nums;
 mod eigen_fns;
 pub mod elec_elec;
+pub mod eval;
 pub mod interp;
 pub mod nudge;
 mod num_diff;
@@ -118,7 +119,7 @@ pub fn psi_from_pt_charges(
         // &mut grid_posits,
         &bases_visible,
         grid_n,
-        &weights,
+        // &weights,
     );
 
     nudge::nudge_wf(

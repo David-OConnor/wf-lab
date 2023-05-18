@@ -27,6 +27,7 @@ mod basis_wfs;
 mod complex_nums;
 mod eigen_fns;
 mod elec_elec;
+mod eval;
 mod interp;
 mod nudge;
 mod num_diff;
@@ -217,13 +218,13 @@ fn main() {
         types::copy_array_real(&mut sfc.V, &surfaces_shared.V_fixed_charges, grid_n);
     }
 
-    // todo: Handle the multi-electron case instead of hard-coding 0.
-    let basis_wfs_unweighted =
-        wf_ops::BasisWfsUnweighted::new(&bases[0], &surfaces_shared.grid_posits, grid_n);
+    let basis_wfs_unweighted = wf_ops::BasisWfsUnweighted::new(
+        &bases[ui_active_elec],
+        &surfaces_shared.grid_posits,
+        grid_n,
+    );
 
     let bases_unweighted = vec![basis_wfs_unweighted.clone(), basis_wfs_unweighted];
-
-    println!("b: {:?}", bases[0][0].posit());
 
     let mut weights = vec![0.; bases[0].len()];
     // Syncing procedure pending a better API.
@@ -241,11 +242,14 @@ fn main() {
         // &surfaces_shared.grid_posits,
         &bases_visible[ui_active_elec],
         grid_n,
-        &weights,
     );
 
     let psi_p_score = 0.; // todo T
-    let psi_pp_score_one = wf_ops::score_wf(&surfaces_per_elec[ui_active_elec], grid_n);
+    let psi_pp_score_one = eval::score_wf(
+        &surfaces_per_elec[ui_active_elec].psi_pp_calculated,
+        &surfaces_per_elec[ui_active_elec].psi_pp_calculated,
+        grid_n,
+    );
 
     let psi_pp_score = vec![psi_pp_score_one, psi_pp_score_one];
 

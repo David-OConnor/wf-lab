@@ -1,3 +1,4 @@
+use crate::wf_ops::K_C;
 use lin_alg2::f64::Vec3;
 
 /// Create a set of values in a given range, with a given number of values.
@@ -161,4 +162,12 @@ pub(crate) fn factorial(val: u16) -> u64 {
         12 => 479_001_600,
         _ => unimplemented!(),
     }
+}
+
+/// Single-point Coulomb potential, eg a hydrogen nuclei.
+pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
+    let diff = posit_sample - posit_charge;
+    let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+    -K_C * charge / r
 }
