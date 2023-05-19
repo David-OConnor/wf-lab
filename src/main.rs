@@ -176,7 +176,7 @@ fn main() {
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
-    let max_basis_n = 3;
+    let max_basis_n = 2;
 
     // Outer of these is per-elec.
     let mut bases = vec![Vec::new()];
@@ -204,7 +204,7 @@ fn main() {
     // let L_y = 1.;
     // let L_z = 1.;
 
-    let Es = vec![E, E];
+    let mut Es = vec![E, E];
 
     let sfcs_one_elec = SurfacesPerElec::new(grid_n);
 
@@ -252,8 +252,9 @@ fn main() {
         &mut surfaces_per_elec[ui_active_elec],
         &mut Es[ui_active_elec],
         // &surfaces_shared.grid_posits,
-        &bases_visible[ui_active_elec],
+        Some(&bases_visible[ui_active_elec]),
         grid_n,
+        None,
     );
 
     // let psi_p_score = 0.; // todo T

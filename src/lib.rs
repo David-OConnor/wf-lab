@@ -80,8 +80,6 @@ pub fn psi_from_pt_charges(
 
     let spacing_factor = 1.;
 
-    let bases_visible = vec![true, true, true, true, true, true, true, true];
-
     let arr_real = types::new_data_real(grid_n);
 
     let mut V_shared = arr_real.clone();
@@ -102,8 +100,9 @@ pub fn psi_from_pt_charges(
         &bases_unweighted,
         &mut sfcs,
         &mut E,
-        &bases_visible,
+        None,
         grid_n,
+        None,
     );
 
     sfcs.psi.on_pt.clone()

@@ -28,10 +28,12 @@ use crate::{
     complex_nums::Cplx,
     eigen_fns, eval,
     num_diff::{self, H, H_SQ},
+    types,
     types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec, SurfacesShared},
     util,
 };
 
+use crate::types::new_data;
 use lin_alg2::f64::{Quaternion, Vec3};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
@@ -99,7 +101,7 @@ pub fn mix_bases(
     bases: &[Basis],
     basis_wfs: &BasisWfsUnweighted,
     psi: &mut PsiWDiffs,
-    bases_visible: &[bool],
+    bases_visible: Option<&[bool]>,
     grid_n: usize,
     weights: Option<&[f64]>,
 ) {
@@ -119,7 +121,12 @@ pub fn mix_bases(
         }
     }
 
-    let norm_scaler = 1. / weight_total;
+    let mut norm_scaler = 1. / weight_total;
+
+    // Prevents NaNs and related complications.
+    if weight_total < 0.000001 {
+        norm_scaler = 0.;
+    }
 
     for i in 0..grid_n {
         for j in 0..grid_n {
@@ -135,13 +142,16 @@ pub fn mix_bases(
                 for i_basis in 0..bases.len() {
                     let mut weight = match weights {
                         Some(w) => w[i_basis],
-                        None => {
-                            if bases_visible[i_basis] {
-                                bases[i_basis].weight()
-                            } else {
-                                0.
+                        None => match bases_visible {
+                            Some(visible) => {
+                                if visible[i_basis] {
+                                    bases[i_basis].weight()
+                                } else {
+                                    0.
+                                }
                             }
-                        }
+                            None => bases[i_basis].weight(),
+                        },
                     };
 
                     weight *= norm_scaler;
@@ -170,12 +180,20 @@ pub fn update_wf_fm_bases(
     basis_wfs: &BasisWfsUnweighted,
     sfcs: &mut SurfacesPerElec,
     E: &mut f64,
-    bases_visible: &[bool],
+    bases_visible: Option<&[bool]>,
     grid_n: usize,
+    weights: Option<&[f64]>,
 ) {
-    mix_bases(bases, basis_wfs, &mut sfcs.psi, bases_visible, grid_n, None);
+    mix_bases(
+        bases,
+        basis_wfs,
+        &mut sfcs.psi,
+        bases_visible,
+        grid_n,
+        weights,
+    );
 
-    find_E(sfcs, E, grid_n);
+    *E = find_E(sfcs, grid_n);
 
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.
@@ -184,9 +202,27 @@ pub fn update_wf_fm_bases(
         &sfcs.V,
         &mut sfcs.psi_pp_calculated,
         &mut sfcs.psi_pp_measured,
-        E,
+        *E,
         grid_n,
     );
+}
+
+/// Run this after update E.
+pub fn update_psi_pp_calc(
+    // We split these arguments up instead of using surfaces to control mutability.
+    psi: &Arr3d,
+    V: &Arr3dReal,
+    psi_pp_calc: &mut Arr3d,
+    E: f64,
+    grid_n: usize,
+) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(&psi, V, E, i, j, k);
+            }
+        }
+    }
 }
 
 /// Update psi'' calc and psi'' measured, assuming we are using basis WFs. This is done
@@ -231,14 +267,19 @@ pub fn update_psi_pps_from_bases(
 
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
 /// between E and psi'' score isn't straightforward, this will converge on a local minimum.
-pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, grid_n: usize) {
+pub fn find_E(sfcs: &SurfacesPerElec, grid_n: usize) -> f64 {
     // todo: WHere to configure these mins and maxes
+    let mut result = 0.;
+
     let mut E_min = -2.;
     let mut E_max = 2.;
     let mut E_range_div2 = 2.;
     let vals_per_iter = 8;
 
     let num_iters = 10;
+
+    let mut psi_pp_calc = new_data(grid_n);
+    types::copy_array(&mut psi_pp_calc, &sfcs.psi_pp_calculated, grid_n);
 
     for _ in 0..num_iters {
         let E_vals = util::linspace((E_min, E_max), vals_per_iter);
@@ -249,17 +290,17 @@ pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, grid_n: usize) {
             for i in 0..grid_n {
                 for j in 0..grid_n {
                     for k in 0..grid_n {
-                        sfcs.psi_pp_calculated[i][j][k] =
+                        psi_pp_calc[i][j][k] =
                             eigen_fns::find_ψ_pp_calc(&sfcs.psi.on_pt, &sfcs.V, E_trial, i, j, k);
                     }
                 }
             }
 
-            let score = eval::score_wf(&sfcs.psi_pp_calculated, &sfcs.psi_pp_measured, grid_n);
+            let score = eval::score_wf(&psi_pp_calc, &sfcs.psi_pp_measured, grid_n);
             if score < best_score {
                 best_score = score;
                 best_E = E_trial;
-                *E = E_trial;
+                result = E_trial;
             }
         }
 
@@ -267,6 +308,8 @@ pub fn find_E(sfcs: &mut SurfacesPerElec, E: &mut f64, grid_n: usize) {
         E_max = best_E + E_range_div2;
         E_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
     }
+
+    result
 }
 
 /// Update our grid positions. Run this when we change grid bounds or spacing.

@@ -238,3 +238,13 @@ pub fn copy_array_real(dest: &mut Arr3dReal, source: &Arr3dReal, grid_n: usize) 
         }
     }
 }
+
+pub fn copy_array(dest: &mut Arr3d, source: &Arr3d, grid_n: usize) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                dest[i][j][k] = source[i][j][k];
+            }
+        }
+    }
+}

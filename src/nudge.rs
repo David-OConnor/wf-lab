@@ -41,7 +41,7 @@ pub fn nudge_wf(
     // todo: Cheap lowpass for now on diff: Average it with its neighbors?
 
     // Find E before and after the nudge.
-    wf_ops::find_E(sfcs, E, grid_n);
+    *E = wf_ops::find_E(&sfcs, grid_n);
 
     // Really, the outliers are generally spiked very very high. (much higher than this)
     // This probably occurs near the nucleus.
@@ -144,7 +144,7 @@ pub fn nudge_wf(
             psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
             psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
             current_score = score;
-            wf_ops::find_E(sfcs, E, grid_n);
+            *E = wf_ops::find_E(&sfcs, grid_n);
 
             for i in 0..grid_n {
                 for j in 0..grid_n {

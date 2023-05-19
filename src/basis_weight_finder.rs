@@ -23,7 +23,6 @@ pub fn find_weights(
     surfaces_per_elec: &mut SurfacesPerElec,
     max_n: u16, // quantum number n
     grid_n: usize,
-    bases_visible: &mut Vec<bool>,
 ) {
     let mut visible = Vec::new();
     wf_ops::initialize_bases(charges_fixed, bases, &mut visible, max_n);
@@ -31,10 +30,10 @@ pub fn find_weights(
     *basis_wfs_unweighted = BasisWfsUnweighted::new(&bases, &surfaces_shared.grid_posits, grid_n);
 
     // Infinitessimal weight change, used for assessing derivatives.
-    const D_WEIGHT: f64 = 0.0001;
+    const D_WEIGHT: f64 = 0.001;
 
     const NUM_DESCENTS: usize = 2; // todo
-    let mut descent_rate = 1.; // todo? Factor for gradient descent based on the vector.
+    let mut descent_rate = 0.1; // todo? Factor for gradient descent based on the vector.
 
     // todo: Consider again using unweighted bases in your main logic. YOu removed it before
     // todo because it was bugged when you attempted it.
@@ -58,43 +57,45 @@ pub fn find_weights(
     // For now, let's use a single starting point, and gradient-descent from it.
     let mut current_point = vec![0.; bases.len()];
     for i in 0..charges_fixed.len() {
-        current_point[i] = 1.;
+        current_point[i] = 0.6;
     }
 
     // todo testing algo
-    current_point[2] = 0.4;
-    current_point[3] = -0.6;
+    current_point[1] = 0.4;
+    current_point[2] = -0.6;
 
     // For reasons not-yet determined, we appear to need to run these after initializing the weights,
     // even though they're include din the scoring algo. All 3 seem to be required.
 
     for _descent_num in 0..NUM_DESCENTS {
-        // todo: You could choose your initial points, where, for each atom, the n=1 bases
-        // todo are +- 1 for each, and all other bases are 0. Ie repeat the whole process,
-        // todo but for those initial points.
+        //
+        // // todo: TS. This should be handled by score_this. Get to the bottom of it, although
+        // // todo you've spent a while without results.
+        // wf_ops::update_wf_fm_bases(
+        //     bases,
+        //     &basis_wfs_unweighted,
+        //     surfaces_per_elec,
+        //     E,
+        //     None,
+        //     grid_n,
+        //     Some(&current_point),
+        // );
 
-        // todo: Hmm. Not sure why need here. If you don't figure it out or otherwise, make a fn
-        // todo, because this is dry with the top of the score fn.
-
-        // todo: We are effectively calling this twice in a row...
-        sync(
-            bases,
-            basis_wfs_unweighted,
-            surfaces_per_elec,
-            E,
-            grid_n,
-            &current_point,
-        );
+        // println!("Psi Before: {} {} {}", surfaces_per_elec.psi.on_pt[10][10][10],
+        //          surfaces_per_elec.psi.on_pt[1][10][15],
+        //          surfaces_per_elec.psi.on_pt[3][4][6]);
 
         let score_this = score_weight_set(
             bases,
-            E,
-            surfaces_per_elec,
+            *E,
+            &surfaces_per_elec,
             grid_n,
             &basis_wfs_unweighted,
             &current_point,
         );
-        println!("\n\nThis score: {:?}", score_this);
+
+        println!("\n\nScore this: {:?}", score_this);
+        println!("Current weight: {:?}", current_point);
 
         // This is our gradient.
         let mut diffs = vec![0.; bases.len()];
@@ -104,21 +105,28 @@ pub fn find_weights(
         // todo: YOu currently have a mixed API between this weights Vec,
         // todo and that field. For now, update the weights field prior to scoring.
 
+        // Iterate through each basis; calcualate a score using the same parameters as above,
+        // with the exception of a slightly small weight for the basis.
         for (i_basis, _basis) in bases.iter().enumerate() {
             // Scores from a small change along this dimension. basis = dimension
             // We could use midpoint, but to save computation, we will do a simple 2-point.
-            let mut prev_point = current_point.clone();
-            prev_point[i_basis] -= D_WEIGHT;
+            let mut point_shifted_left = current_point.clone();
 
-            println!("Current: {:?}, prev: {:?}", current_point, prev_point);
+            point_shifted_left[i_basis] -= D_WEIGHT;
+
+            println!("\nPrev weight: {:?}", point_shifted_left);
+            //
+            // println!("Psi After: {} {} {}", surfaces_per_elec.psi.on_pt[10][10][10],
+            //          surfaces_per_elec.psi.on_pt[1][10][15],
+            //          surfaces_per_elec.psi.on_pt[3][4][6]);
 
             let score_prev = score_weight_set(
                 bases,
-                E,
-                surfaces_per_elec,
+                *E,
+                &surfaces_per_elec,
                 grid_n,
                 &basis_wfs_unweighted,
-                &prev_point,
+                &point_shifted_left,
             );
 
             println!("Score prev: {:?}", score_prev);
@@ -129,52 +137,58 @@ pub fn find_weights(
 
         println!("\nDiffs: {:?}\n", diffs);
         println!("current pt: {:?}", current_point);
+
         // Now that we've computed our gradient, shift down it to the next point.
         for i in 0..bases.len() {
+            // Direction: Diff is current pt score minus score from a slightly
+            // lower value of a given basis. If it's positive, it means the score gets better
+            // (lower) with a smaller weight, so *reduce* weight accordingly.
             current_point[i] -= diffs[i] * descent_rate;
         }
     }
 
-    println!("Result: {:?}", current_point);
-
-    // Set our global weights etc to be the final descent result.
-    for (i, basis) in bases.iter_mut().enumerate() {
-        *basis.weight_mut() = current_point[i];
-    }
-    // todo: Aain, this mysterious prep repetation that seems to be req...
-    sync(
-        bases,
-        basis_wfs_unweighted,
-        surfaces_per_elec,
-        E,
-        grid_n,
-        &current_point,
-    );
-
-    *bases_visible = visible;
+    println!("\n\nResult: {:?}", current_point);
+    // for (i, basis) in bases.iter_mut().enumerate() {
+    //     *basis.weight_mut() = current_point[i];
+    // } // todo put this back too
+    // todo: Put this in: Update our main struct with our resulting basis weights:
+    // wf_ops::update_wf_fm_bases(
+    //     bases,
+    //     &basis_wfs_unweighted,
+    //     surfaces_per_elec,
+    //     E,
+    //     None,
+    //     grid_n,
+    //     Some(&current_point),
+    // );
 }
 
-/// Helper for finding weight gradient descent. Returns a score at a given set of weights.
+/// Helper for finding weight gradient descent. Updates psi and psi'', calculate E, and score.
+/// This function doesn't mutate any of the data.
 pub fn score_weight_set(
     bases: &[Basis],
-    E: &mut f64,
-    surfaces_per_elec: &mut SurfacesPerElec,
+    E: f64,
+    surfaces_per_elec: &SurfacesPerElec,
     grid_n: usize,
     basis_wfs_unweighted: &BasisWfsUnweighted,
     weights: &[f64],
 ) -> f64 {
-    sync(
+    let mut surfaces = surfaces_per_elec.clone();
+    let mut E = E;
+
+    wf_ops::update_wf_fm_bases(
         bases,
-        basis_wfs_unweighted,
-        surfaces_per_elec,
-        E,
+        &basis_wfs_unweighted,
+        &mut surfaces,
+        &mut E,
+        None,
         grid_n,
-        weights,
+        Some(weights),
     );
 
     eval::score_wf(
-        &surfaces_per_elec.psi_pp_calculated,
-        &surfaces_per_elec.psi_pp_measured,
+        &surfaces.psi_pp_calculated,
+        &surfaces.psi_pp_measured,
         grid_n,
     )
 }
