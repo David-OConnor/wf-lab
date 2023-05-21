@@ -101,7 +101,6 @@ pub fn mix_bases(
     bases: &[Basis],
     basis_wfs: &BasisWfsUnweighted,
     psi: &mut PsiWDiffs,
-    bases_visible: Option<&[bool]>,
     grid_n: usize,
     weights: Option<&[f64]>,
 ) {
@@ -142,16 +141,7 @@ pub fn mix_bases(
                 for i_basis in 0..bases.len() {
                     let mut weight = match weights {
                         Some(w) => w[i_basis],
-                        None => match bases_visible {
-                            Some(visible) => {
-                                if visible[i_basis] {
-                                    bases[i_basis].weight()
-                                } else {
-                                    0.
-                                }
-                            }
-                            None => bases[i_basis].weight(),
-                        },
+                        None => bases[i_basis].weight(),
                     };
 
                     weight *= norm_scaler;
@@ -180,18 +170,10 @@ pub fn update_wf_fm_bases(
     basis_wfs: &BasisWfsUnweighted,
     sfcs: &mut SurfacesPerElec,
     E: &mut f64,
-    bases_visible: Option<&[bool]>,
     grid_n: usize,
     weights: Option<&[f64]>,
 ) {
-    mix_bases(
-        bases,
-        basis_wfs,
-        &mut sfcs.psi,
-        bases_visible,
-        grid_n,
-        weights,
-    );
+    mix_bases(bases, basis_wfs, &mut sfcs.psi, grid_n, weights);
 
     *E = find_E(sfcs, grid_n);
 
@@ -356,7 +338,6 @@ pub fn initialize_bases(
     }
 
     *bases = Vec::new();
-    *bases_visible = Vec::new();
     println!("Initializing bases");
 
     // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
@@ -388,9 +369,8 @@ pub fn initialize_bases(
                         charge_id,
                     }));
                     i += 1;
-
-                    bases_visible.push(true);
                 }
+                bases_visible.push(true);
             }
         }
     }

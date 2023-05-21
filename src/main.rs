@@ -176,7 +176,6 @@ pub fn init_from_grid(
     Es: &mut [f64],
     bases: &Vec<Vec<Basis>>,
     charges_fixed: &Vec<(Vec3, f64)>,
-    bases_visible: &Vec<Vec<bool>>,
 ) -> (
     Vec<Arr3dReal>,
     Vec<wf_ops::BasisWfsUnweighted>,
@@ -231,7 +230,6 @@ pub fn init_from_grid(
         &mut surfaces_per_elec[ui_active_elec],
         &mut Es[ui_active_elec],
         // &surfaces_shared.grid_posits,
-        Some(&bases_visible[ui_active_elec]),
         grid_n,
         None,
     );
@@ -265,17 +263,18 @@ fn main() {
 
     let max_basis_n = 2;
 
+    let ui_active_elec = 0;
+
     // Outer of these is per-elec.
     let mut bases = vec![Vec::new()];
     let mut bases_visible = vec![Vec::new()];
     wf_ops::initialize_bases(
         &charges_fixed,
-        &mut bases[0],
-        &mut bases_visible[0],
+        &mut bases[ui_active_elec],
+        &mut bases_visible[ui_active_elec],
         max_basis_n,
     );
 
-    let ui_active_elec = 0;
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
 
@@ -301,7 +300,6 @@ fn main() {
             &mut Es,
             &bases,
             &charges_fixed,
-            &bases_visible,
         );
 
     let surface_data = [

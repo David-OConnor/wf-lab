@@ -293,8 +293,6 @@ pub fn update_entities(
     for (posit, val) in charges {
         entities.push(Entity::new(
             crate::NUM_SURFACES, // Index 1 after surfaces.
-            // Todo: You may need to scale posit's Z.
-            // todo: Heper for this?
             Vec3::new(
                 posit.x as f32,
                 // We invert Y and Z due to diff coord systems

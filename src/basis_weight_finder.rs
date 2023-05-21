@@ -17,6 +17,7 @@ use lin_alg2::f64::{Quaternion, Vec3};
 pub fn find_weights(
     charges_fixed: &Vec<(Vec3, f64)>,
     bases: &mut Vec<Basis>,
+    bases_visible: &mut Vec<bool>,
     basis_wfs_unweighted: &mut BasisWfsUnweighted,
     E: &mut f64,
     surfaces_shared: &mut SurfacesShared,
@@ -24,8 +25,7 @@ pub fn find_weights(
     max_n: u16, // quantum number n
     grid_n: usize,
 ) {
-    let mut visible = Vec::new();
-    wf_ops::initialize_bases(charges_fixed, bases, &mut visible, max_n);
+    wf_ops::initialize_bases(charges_fixed, bases, bases_visible, max_n);
 
     *basis_wfs_unweighted = BasisWfsUnweighted::new(&bases, &surfaces_shared.grid_posits, grid_n);
 
@@ -153,7 +153,6 @@ pub fn find_weights(
         &basis_wfs_unweighted,
         surfaces_per_elec,
         E,
-        None,
         grid_n,
         Some(&current_point),
     );
@@ -177,7 +176,6 @@ pub fn score_weight_set(
         &basis_wfs_unweighted,
         &mut surfaces,
         &mut E,
-        None,
         grid_n,
         Some(weights),
     );

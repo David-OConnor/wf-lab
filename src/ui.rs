@@ -369,7 +369,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &mut state.E,
                     &state.bases,
                     &state.charges_fixed,
-                    &state.bases_visible,
                 );
                 state.charges_electron = charges_electron;
                 state.bases_unweighted = bases_unweighted;
@@ -781,12 +780,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     wf_ops::find_E(&state.surfaces_per_elec[state.ui_active_elec], state.grid_n);
 
                 wf_ops::update_psi_pp_calc(
-                    &state.surfaces_per_elec[state.ui_active_elec].psi.on_pt,
-                    &state.surfaces_shared.V_fixed_charges,
-                    // todo: Cloning due to an API hiccup managing mutability.
-                    &mut state.surfaces_per_elec[state.ui_active_elec]
-                        .psi_pp_calculated
+                    // clone is due to an API hiccup.
+                    &state.surfaces_per_elec[state.ui_active_elec]
+                        .psi
+                        .on_pt
                         .clone(),
+                    &state.surfaces_shared.V_fixed_charges,
+                    &mut state.surfaces_per_elec[state.ui_active_elec].psi_pp_calculated,
                     state.E[state.ui_active_elec],
                     state.grid_n,
                 );
@@ -797,12 +797,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.grid_n,
                 );
 
-                println!("SCORE: {}", state.psi_pp_score[state.ui_active_elec]);
-
-                // let psi_pp_score = crate::eval_wf(&state.wfs, &state.charges, &mut state.surfaces, state.E);
-                // state.psi_pp_score  = crate::eval_wf(&state.wfs, &state.charges, state.E);
-
-                // *updated_wfs = true;
+                updated_meshes = true;
             }
         });
 
@@ -810,6 +805,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             basis_weight_finder::find_weights(
                 &state.charges_fixed,
                 &mut state.bases[state.ui_active_elec],
+                &mut state.bases_visible[state.ui_active_elec],
                 &mut state.bases_unweighted[state.ui_active_elec],
                 &mut state.E[state.ui_active_elec],
                 &mut state.surfaces_shared,
@@ -879,7 +875,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.surfaces_per_elec[state.ui_active_elec],
                 &mut state.E[state.ui_active_elec],
                 // &mut state.surfaces_shared.grid_posits,
-                Some(&state.bases_visible[state.ui_active_elec]),
                 state.grid_n,
                 None,
             );

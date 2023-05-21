@@ -95,15 +95,7 @@ pub fn psi_from_pt_charges(
     let bases_unweighted = wf_ops::BasisWfsUnweighted::new(&bases, &grid_posits, grid_n);
 
     // Set up our basis-function based trial wave function.
-    wf_ops::update_wf_fm_bases(
-        &wfs,
-        &bases_unweighted,
-        &mut sfcs,
-        &mut E,
-        None,
-        grid_n,
-        None,
-    );
+    wf_ops::update_wf_fm_bases(&wfs, &bases_unweighted, &mut sfcs, &mut E, grid_n, None);
 
     sfcs.psi.on_pt.clone()
 }
