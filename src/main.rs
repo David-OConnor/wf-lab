@@ -166,52 +166,31 @@ impl SurfaceData {
     }
 }
 
-fn main() {
-    let posit_charge_1 = Vec3::new(-1., 0., 0.);
-    let posit_charge_2 = Vec3::new(1., 0., 0.);
-
-    let charges_fixed = vec![
-        (posit_charge_1, Q_PROT * 1.), // helium
-                                       // (posit_charge_2, Q_PROT),
-                                       // (Vec3::new(0., 1., 0.), Q_ELEC),
-    ];
-
-    let max_basis_n = 2;
-
-    // Outer of these is per-elec.
-    let mut bases = vec![Vec::new()];
-    let mut bases_visible = vec![Vec::new()];
-    wf_ops::initialize_bases(
-        &charges_fixed,
-        &mut bases[0],
-        &mut bases_visible[0],
-        max_basis_n,
-    );
-
-    let ui_active_elec = 0;
-    // H ion nuc dist is I believe 2 bohr radii.
-    // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
-
-    let grid_n = GRID_N_DEFAULT;
-
+/// Run this whenever n changes. Ie, at init, or when n changes in the GUI.
+pub fn init_from_grid(
+    grid_min: f64,
+    grid_max: f64,
+    spacing_factor: f64,
+    grid_n: usize,
+    ui_active_elec: usize,
+    Es: &mut [f64],
+    bases: &Vec<Vec<Basis>>,
+    charges_fixed: &Vec<(Vec3, f64)>,
+    bases_visible: &Vec<Vec<bool>>,
+) -> (
+    Vec<Arr3dReal>,
+    Vec<wf_ops::BasisWfsUnweighted>,
+    SurfacesShared,
+    Vec<SurfacesPerElec>,
+    Vec<f64>,
+) {
     let arr_real = new_data_real(grid_n);
     // These must be initialized from wave functions later.
     let charges_electron = vec![arr_real.clone(), arr_real];
 
-    let E = -0.7;
-    // let L_2 = 1.;
-    // let L_x = 1.;
-    // let L_y = 1.;
-    // let L_z = 1.;
-
-    let mut Es = vec![E, E];
-
     let sfcs_one_elec = SurfacesPerElec::new(grid_n);
 
     let mut surfaces_per_elec = vec![sfcs_one_elec.clone(), sfcs_one_elec];
-
-    let (grid_min, grid_max) = choose_grid_limits(&charges_fixed);
-    let spacing_factor = 1.6;
 
     let mut surfaces_shared = SurfacesShared::new(grid_min, grid_max, spacing_factor, grid_n);
     surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es, grid_n);
@@ -257,7 +236,6 @@ fn main() {
         None,
     );
 
-    // let psi_p_score = 0.; // todo T
     let psi_pp_score_one = eval::score_wf(
         &surfaces_per_elec[ui_active_elec].psi_pp_calculated,
         &surfaces_per_elec[ui_active_elec].psi_pp_calculated,
@@ -265,6 +243,66 @@ fn main() {
     );
 
     let psi_pp_score = vec![psi_pp_score_one, psi_pp_score_one];
+
+    (
+        charges_electron,
+        bases_unweighted,
+        surfaces_shared,
+        surfaces_per_elec,
+        psi_pp_score,
+    )
+}
+
+fn main() {
+    let posit_charge_1 = Vec3::new(-1., 0., 0.);
+    let posit_charge_2 = Vec3::new(1., 0., 0.);
+
+    let charges_fixed = vec![
+        (posit_charge_1, Q_PROT * 1.), // helium
+                                       // (posit_charge_2, Q_PROT),
+                                       // (Vec3::new(0., 1., 0.), Q_ELEC),
+    ];
+
+    let max_basis_n = 2;
+
+    // Outer of these is per-elec.
+    let mut bases = vec![Vec::new()];
+    let mut bases_visible = vec![Vec::new()];
+    wf_ops::initialize_bases(
+        &charges_fixed,
+        &mut bases[0],
+        &mut bases_visible[0],
+        max_basis_n,
+    );
+
+    let ui_active_elec = 0;
+    // H ion nuc dist is I believe 2 bohr radii.
+    // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
+
+    let (grid_min, grid_max) = choose_grid_limits(&charges_fixed);
+    let spacing_factor = 1.6;
+    let grid_n = GRID_N_DEFAULT;
+
+    let E = -0.7;
+    // let L_2 = 1.;
+    // let L_x = 1.;
+    // let L_y = 1.;
+    // let L_z = 1.;
+
+    let mut Es = vec![E, E];
+
+    let (charges_electron, bases_unweighted, surfaces_shared, surfaces_per_elec, psi_pp_score) =
+        init_from_grid(
+            grid_min,
+            grid_max,
+            spacing_factor,
+            grid_n,
+            ui_active_elec,
+            &mut Es,
+            &bases,
+            &charges_fixed,
+            &bases_visible,
+        );
 
     let surface_data = [
         SurfaceData::new("V", true),

@@ -32,7 +32,7 @@ pub fn find_weights(
     // Infinitessimal weight change, used for assessing derivatives.
     const D_WEIGHT: f64 = 0.001;
 
-    const NUM_DESCENTS: usize = 2; // todo
+    const NUM_DESCENTS: usize = 10; // todo
     let mut descent_rate = 0.1; // todo? Factor for gradient descent based on the vector.
 
     // todo: Consider again using unweighted bases in your main logic. YOu removed it before
@@ -57,12 +57,8 @@ pub fn find_weights(
     // For now, let's use a single starting point, and gradient-descent from it.
     let mut current_point = vec![0.; bases.len()];
     for i in 0..charges_fixed.len() {
-        current_point[i] = 0.6;
+        current_point[i] = 1.;
     }
-
-    // todo testing algo
-    current_point[1] = 0.4;
-    current_point[2] = -0.6;
 
     // For reasons not-yet determined, we appear to need to run these after initializing the weights,
     // even though they're include din the scoring algo. All 3 seem to be required.
@@ -148,19 +144,19 @@ pub fn find_weights(
     }
 
     println!("\n\nResult: {:?}", current_point);
-    // for (i, basis) in bases.iter_mut().enumerate() {
-    //     *basis.weight_mut() = current_point[i];
-    // } // todo put this back too
-    // todo: Put this in: Update our main struct with our resulting basis weights:
-    // wf_ops::update_wf_fm_bases(
-    //     bases,
-    //     &basis_wfs_unweighted,
-    //     surfaces_per_elec,
-    //     E,
-    //     None,
-    //     grid_n,
-    //     Some(&current_point),
-    // );
+    for (i, basis) in bases.iter_mut().enumerate() {
+        *basis.weight_mut() = current_point[i];
+    }
+
+    wf_ops::update_wf_fm_bases(
+        bases,
+        &basis_wfs_unweighted,
+        surfaces_per_elec,
+        E,
+        None,
+        grid_n,
+        Some(&current_point),
+    );
 }
 
 /// Helper for finding weight gradient descent. Updates psi and psi'', calculate E, and score.

@@ -354,38 +354,28 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 let result = entry.parse::<usize>().unwrap_or(20);
                 state.grid_n = result;
 
-                // Now, update all things that depend on n.
-
-                // todo: Start sloppy C+P from main. Put this into a fn etc.
-                let arr_real = types::new_data_real(state.grid_n);
-
-                // These must be initialized from wave functions later.
-                let charges_electron = vec![arr_real.clone(), arr_real];
-
-                let sfcs_one_elec = crate::SurfacesPerElec::new(state.grid_n);
-
-                let mut surfaces_per_elec = vec![sfcs_one_elec.clone(), sfcs_one_elec];
-
-                let mut grid_min = -2.;
-                let mut grid_max = 2.; // todo: Is this used, or overridden?
-                let spacing_factor = 1.6;
-
-                let Es = [-0.7, -0.7]; // todo?
-
-                let mut surfaces_shared =
-                    crate::SurfacesShared::new(grid_min, grid_max, spacing_factor, state.grid_n);
-                surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es, state.grid_n);
-
+                let (
+                    charges_electron,
+                    bases_unweighted,
+                    surfaces_shared,
+                    surfaces_per_elec,
+                    psi_pp_score,
+                ) = crate::init_from_grid(
+                    state.grid_min,
+                    state.grid_max,
+                    state.spacing_factor,
+                    state.grid_n,
+                    state.ui_active_elec,
+                    &mut state.E,
+                    &state.bases,
+                    &state.charges_fixed,
+                    &state.bases_visible,
+                );
+                state.charges_electron = charges_electron;
+                state.bases_unweighted = bases_unweighted;
                 state.surfaces_shared = surfaces_shared;
                 state.surfaces_per_elec = surfaces_per_elec;
-
-                state.bases_unweighted[state.ui_active_elec] = wf_ops::BasisWfsUnweighted::new(
-                    &state.bases[state.ui_active_elec],
-                    &state.surfaces_shared.grid_posits,
-                    state.grid_n,
-                );
-
-                // todo end sloppy C+P
+                state.psi_pp_score = psi_pp_score;
 
                 // updated_basis_weights = true; // todo?
                 updated_unweighted_basis_wfs = true;
@@ -794,7 +784,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &state.surfaces_per_elec[state.ui_active_elec].psi.on_pt,
                     &state.surfaces_shared.V_fixed_charges,
                     // todo: Cloning due to an API hiccup managing mutability.
-                    &mut state.surfaces_per_elec[state.ui_active_elec].psi_pp_calculated.clone(),
+                    &mut state.surfaces_per_elec[state.ui_active_elec]
+                        .psi_pp_calculated
+                        .clone(),
                     state.E[state.ui_active_elec],
                     state.grid_n,
                 );

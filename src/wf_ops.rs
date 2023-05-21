@@ -111,12 +111,12 @@ pub fn mix_bases(
     match weights {
         Some(w) => {
             for weight in w {
-                weight_total += weight;
+                weight_total += weight.abs();
             }
         }
         None => {
             for b in bases {
-                weight_total += b.weight();
+                weight_total += b.weight().abs();
             }
         }
     }
@@ -124,7 +124,7 @@ pub fn mix_bases(
     let mut norm_scaler = 1. / weight_total;
 
     // Prevents NaNs and related complications.
-    if weight_total < 0.000001 {
+    if weight_total.abs() < 0.000001 {
         norm_scaler = 0.;
     }
 
@@ -312,7 +312,7 @@ pub fn find_E(sfcs: &SurfacesPerElec, grid_n: usize) -> f64 {
     result
 }
 
-/// Update our grid positions. Run this when we change grid bounds or spacing.
+/// Update our grid positions. Run this when we change grid bounds, resolution, or spacing.
 pub fn update_grid_posits(
     grid_posits: &mut Arr3dVec,
     grid_min: f64,
@@ -493,18 +493,27 @@ impl BasisWfsUnweighted {
                         z_next[basis_i][i][j][k] = val_z_next;
 
                         norm_pt += val_pt.abs_sq();
-                        norm_x_prev += val_x_prev.abs_sq();
-                        norm_x_next += val_x_next.abs_sq();
-                        norm_y_prev += val_y_prev.abs_sq();
-                        norm_y_next += val_y_next.abs_sq();
-                        norm_z_prev += val_z_prev.abs_sq();
-                        norm_z_next += val_z_next.abs_sq();
+                        // norm_x_prev += val_x_prev.abs_sq();
+                        // norm_x_next += val_x_next.abs_sq();
+                        // norm_y_prev += val_y_prev.abs_sq();
+                        // norm_y_next += val_y_next.abs_sq();
+                        // norm_z_prev += val_z_prev.abs_sq();
+                        // norm_z_next += val_z_next.abs_sq();
                     }
                 }
             }
 
             util::normalize_wf(&mut on_pt[basis_i], norm_pt, grid_n);
 
+            // note: Using individual norm consts appeares to produce incorrect results.
+
+            // util::normalize_wf(&mut x_prev[basis_i], norm_x_prev, grid_n);
+            // util::normalize_wf(&mut x_next[basis_i], norm_x_next, grid_n);
+            // util::normalize_wf(&mut y_prev[basis_i], norm_y_prev, grid_n);
+            // util::normalize_wf(&mut y_next[basis_i], norm_y_next, grid_n);
+            // util::normalize_wf(&mut z_prev[basis_i], norm_z_prev, grid_n);
+            // util::normalize_wf(&mut z_next[basis_i], norm_z_next, grid_n);
+            //
             util::normalize_wf(&mut x_prev[basis_i], norm_pt, grid_n);
             util::normalize_wf(&mut x_next[basis_i], norm_pt, grid_n);
             util::normalize_wf(&mut y_prev[basis_i], norm_pt, grid_n);
