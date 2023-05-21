@@ -332,10 +332,10 @@ pub fn initialize_bases(
     bases_visible: &mut Vec<bool>,
     max_n: u16, // quantum number n
 ) {
-    let mut prev_weights = Vec::new();
-    for basis in bases.iter() {
-        prev_weights.push(basis.weight());
-    }
+    // let mut prev_weights = Vec::new();
+    // for basis in bases.iter() {
+    //     prev_weights.push(basis.weight());
+    // }
 
     *bases = Vec::new();
     println!("Initializing bases");
@@ -350,11 +350,13 @@ pub fn initialize_bases(
             for m in -(l as i16)..l as i16 + 1 {
                 // This loop order allows the basis sliders to be sorted with like-electrons next to each other.
                 for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
-                    let weight = if i < prev_weights.len() {
-                        prev_weights[i]
-                    } else {
-                        0.
-                    };
+                    // let weight = if i < prev_weights.len() {
+                    //     prev_weights[i]
+                    // } else {
+                    //     0.
+                    // };
+
+                    let weight = 0.;
 
                     bases.push(Basis::H(HOrbital {
                         posit: *nuc_posit,
@@ -430,12 +432,12 @@ impl BasisWfsUnweighted {
         for (basis_i, basis) in bases.iter().enumerate() {
             let mut norm_pt = 0.;
 
-            let mut norm_x_prev = 0.;
-            let mut norm_x_next = 0.;
-            let mut norm_y_prev = 0.;
-            let mut norm_y_next = 0.;
-            let mut norm_z_prev = 0.;
-            let mut norm_z_next = 0.;
+            // let mut norm_x_prev = 0.;
+            // let mut norm_x_next = 0.;
+            // let mut norm_y_prev = 0.;
+            // let mut norm_y_next = 0.;
+            // let mut norm_z_prev = 0.;
+            // let mut norm_z_next = 0.;
 
             for i in 0..grid_n {
                 for j in 0..grid_n {

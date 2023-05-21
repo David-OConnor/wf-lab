@@ -261,7 +261,7 @@ fn main() {
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
-    let max_basis_n = 2;
+    let max_basis_n = 3;
 
     let ui_active_elec = 0;
 

@@ -808,8 +808,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 &mut state.bases_visible[state.ui_active_elec],
                 &mut state.bases_unweighted[state.ui_active_elec],
                 &mut state.E[state.ui_active_elec],
-                &mut state.surfaces_shared,
+                &state.surfaces_shared,
                 &mut state.surfaces_per_elec[state.ui_active_elec],
+                &mut state.psi_pp_score[state.ui_active_elec],
                 state.max_basis_n,
                 state.grid_n,
             );

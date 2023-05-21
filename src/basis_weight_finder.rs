@@ -20,8 +20,9 @@ pub fn find_weights(
     bases_visible: &mut Vec<bool>,
     basis_wfs_unweighted: &mut BasisWfsUnweighted,
     E: &mut f64,
-    surfaces_shared: &mut SurfacesShared,
+    surfaces_shared: &SurfacesShared,
     surfaces_per_elec: &mut SurfacesPerElec,
+    score: &mut f64,
     max_n: u16, // quantum number n
     grid_n: usize,
 ) {
@@ -30,10 +31,10 @@ pub fn find_weights(
     *basis_wfs_unweighted = BasisWfsUnweighted::new(&bases, &surfaces_shared.grid_posits, grid_n);
 
     // Infinitessimal weight change, used for assessing derivatives.
-    const D_WEIGHT: f64 = 0.001;
+    const D_WEIGHT: f64 = 0.01;
 
     const NUM_DESCENTS: usize = 10; // todo
-    let mut descent_rate = 0.1; // todo? Factor for gradient descent based on the vector.
+    let mut descent_rate = 15.; // todo? Factor for gradient descent based on the vector.
 
     // todo: Consider again using unweighted bases in your main logic. YOu removed it before
     // todo because it was bugged when you attempted it.
@@ -54,28 +55,30 @@ pub fn find_weights(
     // Here: Isolated descent algo. Possibly put in a sep fn.
     // This starts with a weight=1 n=1 orbital at each electron.
 
+    // todo: Find what's diff each run.
+
     // For now, let's use a single starting point, and gradient-descent from it.
     let mut current_point = vec![0.; bases.len()];
     for i in 0..charges_fixed.len() {
         current_point[i] = 1.;
     }
+    // current_point[2] = 0.6;
+    // current_point[3] = -0.5;
 
     // For reasons not-yet determined, we appear to need to run these after initializing the weights,
     // even though they're include din the scoring algo. All 3 seem to be required.
 
     for _descent_num in 0..NUM_DESCENTS {
-        //
-        // // todo: TS. This should be handled by score_this. Get to the bottom of it, although
-        // // todo you've spent a while without results.
-        // wf_ops::update_wf_fm_bases(
-        //     bases,
-        //     &basis_wfs_unweighted,
-        //     surfaces_per_elec,
-        //     E,
-        //     None,
-        //     grid_n,
-        //     Some(&current_point),
-        // );
+        // todo: This appears to be required, even though we set it in scores.
+        // todo: Still not sur ewhy
+        wf_ops::update_wf_fm_bases(
+            bases,
+            &basis_wfs_unweighted,
+            surfaces_per_elec,
+            E,
+            grid_n,
+            Some(&current_point),
+        );
 
         // println!("Psi Before: {} {} {}", surfaces_per_elec.psi.on_pt[10][10][10],
         //          surfaces_per_elec.psi.on_pt[1][10][15],
@@ -90,8 +93,8 @@ pub fn find_weights(
             &current_point,
         );
 
-        println!("\n\nScore this: {:?}", score_this);
-        println!("Current weight: {:?}", current_point);
+        // println!("\n\nScore this: {:?}", score_this);
+        // println!("Current weight: {:?}", current_point);
 
         // This is our gradient.
         let mut diffs = vec![0.; bases.len()];
@@ -110,7 +113,7 @@ pub fn find_weights(
 
             point_shifted_left[i_basis] -= D_WEIGHT;
 
-            println!("\nPrev weight: {:?}", point_shifted_left);
+            // println!("\nPrev weight: {:?}", point_shifted_left);
             //
             // println!("Psi After: {} {} {}", surfaces_per_elec.psi.on_pt[10][10][10],
             //          surfaces_per_elec.psi.on_pt[1][10][15],
@@ -125,20 +128,28 @@ pub fn find_weights(
                 &point_shifted_left,
             );
 
-            println!("Score prev: {:?}", score_prev);
+            // println!("Score prev: {:?}", score_prev);
 
             // dscore / d_weight.
             diffs[i_basis] = (score_this - score_prev) / D_WEIGHT;
         }
 
         println!("\nDiffs: {:?}\n", diffs);
-        println!("current pt: {:?}", current_point);
+        // println!("current pt: {:?}", current_point);
 
         // Now that we've computed our gradient, shift down it to the next point.
         for i in 0..bases.len() {
             // Direction: Diff is current pt score minus score from a slightly
             // lower value of a given basis. If it's positive, it means the score gets better
             // (lower) with a smaller weight, so *reduce* weight accordingly.
+
+            // Leave the n=1 weight for one of the fixed-charges fixed to a value of 1.
+            // Note that this may preclude solutions other than the ground state.
+            // This should help avoid the system seeking 0 on all weights.
+            if i == 0 {
+                continue;
+            }
+
             current_point[i] -= diffs[i] * descent_rate;
         }
     }
@@ -154,8 +165,14 @@ pub fn find_weights(
         surfaces_per_elec,
         E,
         grid_n,
-        Some(&current_point),
+        None,
     );
+
+    *score = eval::score_wf(
+        &surfaces_per_elec.psi_pp_calculated,
+        &surfaces_per_elec.psi_pp_measured,
+        grid_n,
+    )
 }
 
 /// Helper for finding weight gradient descent. Updates psi and psi'', calculate E, and score.
