@@ -382,7 +382,9 @@ pub fn render(state: State) {
     //     &state.surfaces_per_elec[state.ui_active_elec]
     // };
 
-    let surfaces = &state.surfaces_per_elec[state.ui_active_elec];
+    let active_elec_init = 0; // todo?
+
+    let surfaces = &state.surfaces_per_elec[active_elec_init];
 
     update_meshes(
         &state.surfaces_shared,
@@ -391,7 +393,7 @@ pub fn render(state: State) {
         &mut scene,
         &state.surfaces_shared.grid_posits,
         state.mag_phase,
-        &state.charges_electron[state.ui_active_elec],
+        &state.charges_electron[active_elec_init],
         state.grid_n,
     );
 

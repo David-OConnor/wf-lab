@@ -5,8 +5,8 @@ use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::{Quaternion, Vec3};
 
 use crate::{
-    ActiveElec,
-    basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval, render, types, wf_ops, State,
+    basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval, render, types, wf_ops,
+    ActiveElec, State,
 };
 
 const UI_WIDTH: f32 = 300.;
@@ -152,7 +152,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (mut charge_i, (_charge_posit, _amt)) in
-                            state.charges_fixed.iter().enumerate()
+                                state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -301,15 +301,19 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                        .text("Wt"),
+                    .text("Wt"),
                 );
             }
         });
 }
 
 /// Add buttons and other UI items at the bottom of the window.
-fn bottom_items(ui: &mut egui::Ui, state: &mut State, active_elec: usize) {
-
+fn bottom_items(
+    ui: &mut egui::Ui,
+    state: &mut State,
+    active_elec: usize,
+    updated_meshes: &mut bool,
+) {
     ui.horizontal(|ui| {
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
             crate::nudge::nudge_wf(
@@ -323,7 +327,7 @@ fn bottom_items(ui: &mut egui::Ui, state: &mut State, active_elec: usize) {
                 state.grid_n,
             );
 
-            updated_meshes = true;
+            *updated_meshes = true;
 
             state.psi_pp_score[active_elec] = eval::score_wf(
                 &state.surfaces_per_elec[active_elec].psi_pp_calculated,
@@ -344,13 +348,13 @@ fn bottom_items(ui: &mut egui::Ui, state: &mut State, active_elec: usize) {
                 state.grid_n,
             );
 
-            updated_meshes = true;
+            *updated_meshes = true;
         }
 
         if ui.add(egui::Button::new("Empty e- charge")).clicked() {
             state.charges_electron[active_elec] = types::new_data_real(state.grid_n);
 
-            updated_meshes = true;
+            *updated_meshes = true;
         }
 
         if ui.add(egui::Button::new("Create e- V")).clicked() {
@@ -363,7 +367,7 @@ fn bottom_items(ui: &mut egui::Ui, state: &mut State, active_elec: usize) {
                 state.grid_n,
             );
 
-            updated_meshes = true;
+            *updated_meshes = true;
         }
 
         if ui.add(egui::Button::new("Find E")).clicked() {
@@ -372,10 +376,7 @@ fn bottom_items(ui: &mut egui::Ui, state: &mut State, active_elec: usize) {
 
             wf_ops::update_psi_pp_calc(
                 // clone is due to an API hiccup.
-                &state.surfaces_per_elec[active_elec]
-                    .psi
-                    .on_pt
-                    .clone(),
+                &state.surfaces_per_elec[active_elec].psi.on_pt.clone(),
                 &state.surfaces_shared.V_fixed_charges,
                 &mut state.surfaces_per_elec[active_elec].psi_pp_calculated,
                 state.E[active_elec],
@@ -388,7 +389,7 @@ fn bottom_items(ui: &mut egui::Ui, state: &mut State, active_elec: usize) {
                 state.grid_n,
             );
 
-            updated_meshes = true;
+            *updated_meshes = true;
         }
     });
 
@@ -406,7 +407,7 @@ fn bottom_items(ui: &mut egui::Ui, state: &mut State, active_elec: usize) {
             state.grid_n,
         );
 
-        updated_meshes = true;
+        *updated_meshes = true;
     }
 }
 
@@ -435,15 +436,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         // Selector to choose the active electron
         let prev_active_elec = state.ui_active_elec;
 
-        // todo: Is this where the surfaces combined vs individual should be?
-
-        // todo: Unused.
-        // let surfaces = if state.ui_render_all_elecs {
-        //     &state.surfaces_shared
-        // } else {
-        //     &state.surfaces_per_elec[state.ui_active_elec]
-        // };
-
         let mut updated_fixed_charges = false;
         let mut updated_unweighted_basis_wfs = false;
         let mut updated_basis_weights = false;
@@ -470,7 +462,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.grid_max,
                     state.spacing_factor,
                     state.grid_n,
-                    state.ui_active_elec,
+                    // state.ui_active_elec,
                     &mut state.E,
                     &state.bases,
                     &state.charges_fixed,
@@ -492,16 +484,24 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             ui.add_space(20.);
 
             // Combobox to select the active electron.
+            let active_elec_text = match state.ui_active_elec {
+                ActiveElec::Combined => "C".to_owned(),
+                ActiveElec::PerElec(i) => i.to_string(),
+            };
             egui::ComboBox::from_id_source(0)
                 .width(30.)
-                .selected_text(state.ui_active_elec.to_string())
+                .selected_text(&active_elec_text)
                 .show_ui(ui, |ui| {
                     // A value to select the composite wave function.
-                    ui.selectable_value(&mut state.ui_active_elec, ActiveElec::Combined, "Combined");
+                    ui.selectable_value(&mut state.ui_active_elec, ActiveElec::Combined, "C");
 
                     // A value for each individual electron
                     for i in 0..state.surfaces_per_elec.len() {
-                        ui.selectable_value(&mut state.ui_active_elec, ActiveElec::PerElec(i), i.to_string());
+                        ui.selectable_value(
+                            &mut state.ui_active_elec,
+                            ActiveElec::PerElec(i),
+                            i.to_string(),
+                        );
                     }
                 });
 
@@ -560,50 +560,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             });
         });
 
-        // ui.add_space(ITEM_SPACING);
-
-        ui.heading(format!(
-            "ψ'' score: {:.10}",
-            state.psi_pp_score[state.ui_active_elec]
-        ));
-
-        ui.add(
-            egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
-                if let Some(v_) = v {
-                    state.E[state.ui_active_elec] = v_;
-
-                    for i in 0..state.grid_n {
-                        for j in 0..state.grid_n {
-                            for k in 0..state.grid_n {
-                                state.surfaces_per_elec[state.ui_active_elec].psi_pp_calculated[i]
-                                    [j][k] = eigen_fns::find_ψ_pp_calc(
-                                    &state.surfaces_per_elec[state.ui_active_elec].psi.on_pt,
-                                    &state.surfaces_per_elec[state.ui_active_elec].V,
-                                    state.E[state.ui_active_elec],
-                                    i,
-                                    j,
-                                    k,
-                                )
-                            }
-                        }
-                    }
-
-                    state.psi_pp_score[state.ui_active_elec] = eval::score_wf(
-                        &state.surfaces_per_elec[state.ui_active_elec].psi_pp_calculated,
-                        &state.surfaces_per_elec[state.ui_active_elec].psi_pp_measured,
-                        state.grid_n,
-                    );
-
-                    // state.psi_p_score[state.ui_active_elec] = 0.; // todo!
-
-                    updated_meshes = true;
-                }
-
-                state.E[state.ui_active_elec]
-            })
-                .text("E"),
-        );
-
         ui.add(
             // -0.1 is a kludge.
             egui::Slider::from_get_set(state.grid_min..=state.grid_max - 0.1, |v| {
@@ -614,7 +570,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui_z_displayed
             })
-                .text("Z slice"),
+            .text("Z slice"),
         );
 
         ui.add(
@@ -626,7 +582,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-                .text("Visual rotation"),
+            .text("Visual rotation"),
         );
 
         ui.add(
@@ -646,22 +602,64 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_max
             })
-                .text("Grid range"),
+            .text("Grid range"),
         );
 
         match state.ui_active_elec {
             ActiveElec::PerElec(active_elec) => {
+                ui.heading(format!(
+                    "ψ'' score: {:.10}",
+                    state.psi_pp_score[active_elec]
+                ));
+
+                ui.add(
+                    egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
+                        if let Some(v_) = v {
+                            state.E[active_elec] = v_;
+
+                            for i in 0..state.grid_n {
+                                for j in 0..state.grid_n {
+                                    for k in 0..state.grid_n {
+                                        state.surfaces_per_elec[active_elec].psi_pp_calculated[i]
+                                            [j][k] = eigen_fns::find_ψ_pp_calc(
+                                            &state.surfaces_per_elec[active_elec].psi.on_pt,
+                                            &state.surfaces_per_elec[active_elec].V,
+                                            state.E[active_elec],
+                                            i,
+                                            j,
+                                            k,
+                                        )
+                                    }
+                                }
+                            }
+
+                            state.psi_pp_score[active_elec] = eval::score_wf(
+                                &state.surfaces_per_elec[active_elec].psi_pp_calculated,
+                                &state.surfaces_per_elec[active_elec].psi_pp_measured,
+                                state.grid_n,
+                            );
+
+                            // state.psi_p_score[active_elec] = 0.; // todo!
+
+                            updated_meshes = true;
+                        }
+
+                        state.E[active_elec]
+                    })
+                    .text("E"),
+                );
+
                 ui.add(
                     // -0.1 is a kludge.
                     egui::Slider::from_get_set(NUDGE_MIN..=NUDGE_MAX, |v| {
                         if let Some(v_) = v {
-                            state.nudge_amount[active_elec,] = v_;
+                            state.nudge_amount[active_elec] = v_;
                         }
 
-                        state.nudge_amount[active_elec,]
+                        state.nudge_amount[active_elec]
                     })
-                        .text("Nudge amount")
-                        .logarithmic(true),
+                    .text("Nudge amount")
+                    .logarithmic(true),
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -670,7 +668,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 charge_editor(
                     &mut state.charges_fixed,
-                    &mut state.bases[ui_active_elec],
+                    &mut state.bases[active_elec],
                     &mut updated_unweighted_basis_wfs,
                     &mut updated_basis_weights,
                     &mut updated_fixed_charges,
@@ -692,7 +690,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 ui.add_space(ITEM_SPACING);
 
-                bottom_items(ui, state, active_elec);
+                bottom_items(ui, state, active_elec, &mut updated_meshes);
 
                 // Code below handles various updates that were flagged above.
 
@@ -701,8 +699,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // Note: An alternative would be to add the new bases without 0ing the existing ones.
                     wf_ops::initialize_bases(
                         &mut state.charges_fixed,
-                        &mut state.bases[state.ui_active_elec],
-                        &mut state.bases_visible[state.ui_active_elec],
+                        &mut state.bases[active_elec],
+                        &mut state.bases_visible[active_elec],
                         2,
                     );
 
@@ -787,13 +785,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Multiply wave functions together, and stores in Shared surfaces.
                 // todo: This is an approximation
                 if ui.add(egui::Button::new("Combine wavefunctions")).clicked() {
-
                     updated_meshes = true;
                 }
             }
         }
-
-
     });
 
     engine_updates

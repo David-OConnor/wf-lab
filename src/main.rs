@@ -180,7 +180,6 @@ pub fn init_from_grid(
     grid_max: f64,
     spacing_factor: f64,
     grid_n: usize,
-    ui_active_elec: usize,
     Es: &mut [f64],
     bases: &Vec<Vec<Basis>>,
     charges_fixed: &Vec<(Vec3, f64)>,
@@ -222,7 +221,7 @@ pub fn init_from_grid(
     }
 
     let basis_wfs_unweighted = wf_ops::BasisWfsUnweighted::new(
-        &bases[ui_active_elec],
+        &bases[0], // todo: A bit of a kludge
         &surfaces_shared.grid_posits,
         grid_n,
     );
@@ -328,7 +327,7 @@ fn main() {
             grid_max,
             spacing_factor,
             grid_n,
-            ui_active_elec,
+            // ui_active_elec,
             &mut Es,
             &bases,
             &charges_fixed,
