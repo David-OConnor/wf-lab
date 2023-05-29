@@ -4,12 +4,25 @@
 use core::f64::consts::FRAC_1_SQRT_2;
 
 use crate::{
+    complex_nums::Cplx,
     types::{Arr3d, Arr3dReal, Arr3dVec},
     util,
     wf_ops::{self, Q_ELEC},
 };
 
 use lin_alg2::f64::Vec3;
+
+/// WIP
+pub struct WaveFunctionMultiElec {
+    num_elecs: usize,
+}
+
+impl WaveFunctionMultiElec {
+    /// Returns
+    pub fn value(elec_posits: &[Vec3]) -> Cplx {
+        Cplx::new_zero()
+    }
+}
 
 /// Convert an array of ψ to one of electron charge, through space. Modifies in place
 /// to avoid unecessary allocations.

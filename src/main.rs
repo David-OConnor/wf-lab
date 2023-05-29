@@ -48,6 +48,12 @@ const GRID_N_DEFAULT: usize = 20;
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum ActiveElec {
+    PerElec(usize),
+    Combined,
+}
+
 pub struct State {
     /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
     /// due to electrons are stored in `Surfaces`.
@@ -93,7 +99,7 @@ pub struct State {
     /// We only display a slice, since we are viewing a 4d object as a 3d rendering.
     pub ui_z_displayed: f64,
     /// The electron UI controls adjust.
-    pub ui_active_elec: usize,
+    pub ui_active_elec: ActiveElec,
     /// if true, render the composite surfaces for all electrons, vice only the active one.
     pub ui_render_all_elecs: bool,
     /// Rotation of the visual, around either the X or Y axis; used to better visualize
@@ -359,7 +365,7 @@ fn main() {
         grid_max,
         spacing_factor,
         ui_z_displayed: 0.,
-        ui_active_elec,
+        ui_active_elec: ActiveElec::PerElec(ui_active_elec),
         ui_render_all_elecs: false,
         visual_rotation: 0.,
         // L_2,

@@ -1,5 +1,6 @@
 use crate::{
     complex_nums::Cplx,
+    elec_elec::WaveFunctionMultiElec,
     num_diff,
     wf_ops::{self, PsiWDiffs, NUDGE_DEFAULT},
 };
@@ -16,6 +17,7 @@ pub struct SurfacesShared {
     pub V_fixed_charges: Arr3dReal,
     /// `psi` etc here are combined from all individual electron wave functions.
     pub psi: Arr3d,
+    // pub psi: WaveFunctionMultiElec,
     // pub psi_pp_calculated: Arr3d, // todo??
     // todo: Do you want this?
     pub psi_pp_measured: Arr3d,
