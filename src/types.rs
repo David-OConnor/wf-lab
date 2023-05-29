@@ -91,7 +91,7 @@ pub struct SurfacesPerElec {
     /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
     /// between psi'' measured and calcualted, which is complex.
     pub nudge_amounts: Arr3dReal,
-
+    // pub elec_charge: Arr3dReal,
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3d,
     pub aux2: Arr3d,

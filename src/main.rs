@@ -52,8 +52,9 @@ pub struct State {
     /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
     /// due to electrons are stored in `Surfaces`.
     pub charges_fixed: Vec<(Vec3, f64)>,
-    /// Charges from electrons, over 3d space. Computed from <ψ|ψ> // todo: Alternatively, we could just
-    /// todo use the sfcs.psi and compute from that.
+    /// Charges from electrons, over 3d space. Computed from <ψ|ψ>.
+    /// This is not part of `SurfacesPerElec` since we use all values at once (or all except one)
+    /// when calculating the potential
     pub charges_electron: Vec<Arr3dReal>,
     /// Surfaces that are not electron-specific.
     pub surfaces_shared: SurfacesShared,
@@ -103,6 +104,7 @@ pub struct State {
     pub mag_phase: bool,
     /// When finding and initializing basis, this is the maximum n quantum number.
     pub max_basis_n: u16,
+    pub num_elecs: usize,
     //
     // Below this are mainly experimental/WIP items
     //
@@ -176,6 +178,7 @@ pub fn init_from_grid(
     Es: &mut [f64],
     bases: &Vec<Vec<Basis>>,
     charges_fixed: &Vec<(Vec3, f64)>,
+    num_electrons: usize,
 ) -> (
     Vec<Arr3dReal>,
     Vec<wf_ops::BasisWfsUnweighted>,
@@ -184,8 +187,6 @@ pub fn init_from_grid(
     Vec<f64>,
 ) {
     let arr_real = new_data_real(grid_n);
-    // These must be initialized from wave functions later.
-    let charges_electron = vec![arr_real.clone(), arr_real];
 
     let sfcs_one_elec = SurfacesPerElec::new(grid_n);
 
@@ -220,27 +221,35 @@ pub fn init_from_grid(
         grid_n,
     );
 
-    let bases_unweighted = vec![basis_wfs_unweighted.clone(), basis_wfs_unweighted];
+    // These must be initialized from wave functions later.
+    let mut bases_unweighted = Vec::new();
+    let mut charges_electron = Vec::new();
+    let mut psi_pp_score = Vec::new();
 
-    // Set up our basis-function based trial wave function.
-    wf_ops::update_wf_fm_bases(
-        // todo: Handle the multi-electron case instead of hard-coding 0.
-        &bases[0],
-        &bases_unweighted[ui_active_elec],
-        &mut surfaces_per_elec[ui_active_elec],
-        &mut Es[ui_active_elec],
-        // &surfaces_shared.grid_posits,
-        grid_n,
-        None,
-    );
+    for i_elec in 0..num_electrons {
+        charges_electron.push(arr_real.clone());
+        bases_unweighted.push(basis_wfs_unweighted.clone());
 
-    let psi_pp_score_one = eval::score_wf(
-        &surfaces_per_elec[ui_active_elec].psi_pp_calculated,
-        &surfaces_per_elec[ui_active_elec].psi_pp_calculated,
-        grid_n,
-    );
+        // Set up our basis-function based trial wave function.
+        wf_ops::update_wf_fm_bases(
+            // todo: Handle the multi-electron case instead of hard-coding 0.
+            &bases[0],
+            &bases_unweighted[i_elec],
+            &mut surfaces_per_elec[i_elec],
+            &mut Es[i_elec],
+            // &surfaces_shared.grid_posits,
+            grid_n,
+            None,
+        );
 
-    let psi_pp_score = vec![psi_pp_score_one, psi_pp_score_one];
+        let psi_pp_score_one = eval::score_wf(
+            &surfaces_per_elec[i_elec].psi_pp_calculated,
+            &surfaces_per_elec[i_elec].psi_pp_calculated,
+            grid_n,
+        );
+
+        psi_pp_score.push(psi_pp_score_one);
+    }
 
     (
         charges_electron,
@@ -256,7 +265,7 @@ fn main() {
     let posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let charges_fixed = vec![
-        (posit_charge_1, Q_PROT * 1.), // helium
+        (posit_charge_1, Q_PROT * 2.), // helium
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
@@ -265,15 +274,35 @@ fn main() {
 
     let ui_active_elec = 0;
 
+    let num_elecs = 2;
+
     // Outer of these is per-elec.
-    let mut bases = vec![Vec::new()];
-    let mut bases_visible = vec![Vec::new()];
+    let mut bases = Vec::new();
+    let mut bases_visible = Vec::new();
+
+    let E_start = -0.7;
+    let mut Es = Vec::new();
+
+    for _ in 0..num_elecs {
+        bases.push(Vec::new());
+        bases_visible.push(Vec::new());
+        Es.push(E_start);
+    }
+
     wf_ops::initialize_bases(
         &charges_fixed,
         &mut bases[ui_active_elec],
         &mut bases_visible[ui_active_elec],
         max_basis_n,
     );
+
+    // todo: This is getting weird re multiple electrons; perhaps you should switch
+    // todo an approach where bases don't have weights, but you use a separate
+    // weights array.
+    for i_elec in 1..num_elecs {
+        bases[i_elec] = bases[0].clone();
+        bases_visible[i_elec] = bases_visible[0].clone();
+    }
 
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
@@ -282,13 +311,10 @@ fn main() {
     let spacing_factor = 1.6;
     let grid_n = GRID_N_DEFAULT;
 
-    let E = -0.7;
     // let L_2 = 1.;
     // let L_x = 1.;
     // let L_y = 1.;
     // let L_z = 1.;
-
-    let mut Es = vec![E, E];
 
     let (charges_electron, bases_unweighted, surfaces_shared, surfaces_per_elec, psi_pp_score) =
         init_from_grid(
@@ -300,6 +326,7 @@ fn main() {
             &mut Es,
             &bases,
             &charges_fixed,
+            num_elecs,
         );
 
     let surface_data = [
@@ -342,6 +369,7 @@ fn main() {
         // psi_p_score,
         mag_phase: false,
         max_basis_n,
+        num_elecs,
     };
 
     render::render(state);

@@ -13,7 +13,7 @@ const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 260.;
 const SLIDER_WIDTH_ORIENTATION: f32 = 100.;
 
-const E_MIN: f64 = -2.0;
+const E_MIN: f64 = -3.5;
 const E_MAX: f64 = 0.2;
 
 const L_MIN: f64 = -3.;
@@ -339,7 +339,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         //     &state.surfaces_per_elec[state.ui_active_elec]
         // };
 
-        let mut updated_charges = false;
+        let mut updated_fixed_charges = false;
         let mut updated_unweighted_basis_wfs = false;
         let mut updated_basis_weights = false;
         let mut updated_meshes = false;
@@ -369,6 +369,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &mut state.E,
                     &state.bases,
                     &state.charges_fixed,
+                    state.num_elecs,
                 );
                 state.charges_electron = charges_electron;
                 state.bases_unweighted = bases_unweighted;
@@ -378,7 +379,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 // updated_basis_weights = true; // todo?
                 updated_unweighted_basis_wfs = true;
-                updated_charges = true; // todo: Why does this appear to be required?
+                updated_fixed_charges = true; // todo: Why does this appear to be required?
                 updated_meshes = true;
             }
 
@@ -664,7 +665,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                     updated_basis_weights = true;
                     updated_unweighted_basis_wfs = true;
-                    updated_charges = true; // Seems to be required.
+                    updated_fixed_charges = true; // Seems to be required.
                     updated_meshes = true;
                 }
 
@@ -695,7 +696,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             &mut state.bases[state.ui_active_elec],
             &mut updated_unweighted_basis_wfs,
             &mut updated_basis_weights,
-            &mut updated_charges,
+            &mut updated_fixed_charges,
             &mut engine_updates.entities,
             ui,
         );
@@ -747,17 +748,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.grid_n,
                 );
 
-                updated_basis_weights = true;
-                updated_unweighted_basis_wfs = true;
-                updated_charges = true;
+                updated_meshes = true;
             }
 
             if ui.add(egui::Button::new("Empty e- charge")).clicked() {
                 state.charges_electron[state.ui_active_elec] = types::new_data_real(state.grid_n);
 
-                updated_basis_weights = true;
-                updated_unweighted_basis_wfs = true;
-                updated_charges = true;
+                updated_meshes = true;
             }
 
             if ui.add(egui::Button::new("Create e- V")).clicked() {
@@ -770,9 +767,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.grid_n,
                 );
 
-                updated_basis_weights = true;
-                updated_unweighted_basis_wfs = true;
-                updated_charges = true;
+                updated_meshes = true;
             }
 
             if ui.add(egui::Button::new("Find E")).clicked() {
@@ -823,7 +818,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         // Code below handles various updates that were flagged above.
 
-        if updated_charges {
+        if updated_fixed_charges {
             // Reinintialize bases due to the added charges
             // Note: An alternative would be to add the new bases without 0ing the existing ones.
             wf_ops::initialize_bases(
@@ -899,6 +894,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 scene,
                 &state.surfaces_shared.grid_posits,
                 state.mag_phase,
+                &state.charges_electron[state.ui_active_elec],
                 state.grid_n,
             );
         }

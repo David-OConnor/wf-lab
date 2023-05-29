@@ -72,6 +72,17 @@ pub fn score_wf(psi_pp_calc: &Arr3d, psi_pp_meas: &Arr3d, n: usize) -> f64 {
     // if a grid value is too close to a charge source, the value baloons.
     const SCORE_THRESH: f64 = 10.;
 
+    // Attempting to prevent 0ed solutions from being favored.
+    // Note that this has a performance cost.
+    let mut norm_calc = 0.;
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
+                norm_calc += psi_pp_calc[i][j][k].abs_sq();
+            }
+        }
+    }
+
     for i in 0..n {
         for j in 0..n {
             for k in 0..n {
@@ -86,5 +97,6 @@ pub fn score_wf(psi_pp_calc: &Arr3d, psi_pp_meas: &Arr3d, n: usize) -> f64 {
         }
     }
 
-    result
+    result / norm_calc
+    // result
 }

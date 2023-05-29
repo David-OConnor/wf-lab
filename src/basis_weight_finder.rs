@@ -33,8 +33,8 @@ pub fn find_weights(
     // Infinitessimal weight change, used for assessing derivatives.
     const D_WEIGHT: f64 = 0.01;
 
-    const NUM_DESCENTS: usize = 10; // todo
-    let mut descent_rate = 15.; // todo? Factor for gradient descent based on the vector.
+    const NUM_DESCENTS: usize = 5; // todo
+    let mut descent_rate = 2.; // todo? Factor for gradient descent based on the vector.
 
     // todo: Consider again using unweighted bases in your main logic. YOu removed it before
     // todo because it was bugged when you attempted it.
@@ -84,14 +84,14 @@ pub fn find_weights(
         //          surfaces_per_elec.psi.on_pt[1][10][15],
         //          surfaces_per_elec.psi.on_pt[3][4][6]);
 
-        let score_this = score_weight_set(
-            bases,
-            *E,
-            &surfaces_per_elec,
-            grid_n,
-            &basis_wfs_unweighted,
-            &current_point,
-        );
+        // let score_this = score_weight_set(
+        //     bases,
+        //     *E,
+        //     &surfaces_per_elec,
+        //     grid_n,
+        //     &basis_wfs_unweighted,
+        //     &current_point,
+        // );
 
         // println!("\n\nScore this: {:?}", score_this);
         // println!("Current weight: {:?}", current_point);
@@ -99,58 +99,67 @@ pub fn find_weights(
         // This is our gradient.
         let mut diffs = vec![0.; bases.len()];
 
-        // todo:  WIth our current API, the finding psi'' numericaly
-        // uses the weight field on bases to construct the nearby points.
-        // todo: YOu currently have a mixed API between this weights Vec,
-        // todo and that field. For now, update the weights field prior to scoring.
+        for n in 1..max_n + 1 {
+            // Iterate through each basis; calcualate a score using the same parameters as above,
+            // with the exception of a slightly small weight for the basis.
+            for (i_basis, _basis) in bases.iter().enumerate() {
+                // todo: Sloppy
+                if _basis.n() != n {
+                    continue;
+                }
 
-        // Iterate through each basis; calcualate a score using the same parameters as above,
-        // with the exception of a slightly small weight for the basis.
-        for (i_basis, _basis) in bases.iter().enumerate() {
-            // Scores from a small change along this dimension. basis = dimension
-            // We could use midpoint, but to save computation, we will do a simple 2-point.
-            let mut point_shifted_left = current_point.clone();
+                // Scores from a small change along this dimension. basis = dimension
+                // Midpoint.
+                let mut point_shifted_left = current_point.clone();
+                let mut point_shifted_right = current_point.clone();
 
-            point_shifted_left[i_basis] -= D_WEIGHT;
+                point_shifted_left[i_basis] -= D_WEIGHT;
+                point_shifted_right[i_basis] += D_WEIGHT;
 
-            // println!("\nPrev weight: {:?}", point_shifted_left);
-            //
-            // println!("Psi After: {} {} {}", surfaces_per_elec.psi.on_pt[10][10][10],
-            //          surfaces_per_elec.psi.on_pt[1][10][15],
-            //          surfaces_per_elec.psi.on_pt[3][4][6]);
+                let score_prev = score_weight_set(
+                    bases,
+                    *E,
+                    &surfaces_per_elec,
+                    grid_n,
+                    &basis_wfs_unweighted,
+                    &point_shifted_left,
+                );
 
-            let score_prev = score_weight_set(
-                bases,
-                *E,
-                &surfaces_per_elec,
-                grid_n,
-                &basis_wfs_unweighted,
-                &point_shifted_left,
-            );
+                let score_next = score_weight_set(
+                    bases,
+                    *E,
+                    &surfaces_per_elec,
+                    grid_n,
+                    &basis_wfs_unweighted,
+                    &point_shifted_right,
+                );
 
-            // println!("Score prev: {:?}", score_prev);
+                // println!("Score prev: {:?}", score_prev);
 
-            // dscore / d_weight.
-            diffs[i_basis] = (score_this - score_prev) / D_WEIGHT;
-        }
-
-        println!("\nDiffs: {:?}\n", diffs);
-        // println!("current pt: {:?}", current_point);
-
-        // Now that we've computed our gradient, shift down it to the next point.
-        for i in 0..bases.len() {
-            // Direction: Diff is current pt score minus score from a slightly
-            // lower value of a given basis. If it's positive, it means the score gets better
-            // (lower) with a smaller weight, so *reduce* weight accordingly.
-
-            // Leave the n=1 weight for one of the fixed-charges fixed to a value of 1.
-            // Note that this may preclude solutions other than the ground state.
-            // This should help avoid the system seeking 0 on all weights.
-            if i == 0 {
-                continue;
+                // dscore / d_weight.
+                // diffs[i_basis] = (score_this - score_prev) / D_WEIGHT;
+                diffs[i_basis] = (score_next - score_prev) / (2. * D_WEIGHT);
             }
+            // }
 
-            current_point[i] -= diffs[i] * descent_rate;
+            println!("\nDiffs: {:?}\n", diffs);
+            // println!("current pt: {:?}", current_point);
+
+            // Now that we've computed our gradient, shift down it to the next point.
+            for i in 0..bases.len() {
+                // Direction: Diff is current pt score minus score from a slightly
+                // lower value of a given basis. If it's positive, it means the score gets better
+                // (lower) with a smaller weight, so *reduce* weight accordingly.
+
+                // Leave the n=1 weight for one of the fixed-charges fixed to a value of 1.
+                // Note that this may preclude solutions other than the ground state.
+                // This should help avoid the system seeking 0 on all weights.
+                if i == 0 {
+                    continue;
+                }
+
+                current_point[i] -= diffs[i] * descent_rate;
+            }
         }
     }
 

@@ -18,6 +18,14 @@ pub(crate) fn update_charge_density_fm_psi(
     charge_density: &mut Arr3dReal,
     grid_n: usize,
 ) {
+    println!("Creating electron charge for the active e-");
+
+    // todo: Problem? Needs to sum to 1 over *all space*, not just in the grid.
+    // todo: We can mitigate this by using a sufficiently large grid bounds, since the WF
+    // todo goes to 0 at distance.
+
+    // todo: Consequence of your irregular grid: Is this normalization process correct?
+
     // Normalize <ψ|ψ>
     let mut psi_sq_size = 0.;
     for i in 0..grid_n {
@@ -73,10 +81,6 @@ pub(crate) fn find_hartree_V(
     // But, it should follow that at a distance, the electsron force and potential is as strong as the proton's
     // (Yet, at a distance, the electron and proton charges cancel each other out largely, unless it's an ion...)
     // So I guess it follows that the interesting bits are in the intermediate distances...
-    // todo: Hard coded ito index 0.
-
-    // Oh boy... this will slow things down... Simulating a charge at every grid point.,
-    // acting on every other grid point.
 
     let mut result = 0.;
 
@@ -84,6 +88,8 @@ pub(crate) fn find_hartree_V(
         if i_other_elec == i_this_elec {
             continue;
         }
+
+        let mut test_sum = 0.;
 
         for i2 in 0..grid_n {
             for j2 in 0..grid_n {
@@ -94,16 +100,20 @@ pub(crate) fn find_hartree_V(
                         continue;
                     }
 
-                    let posit_sample_electron = grid_posits[i2][j2][k2];
+                    let posit_charge = grid_posits[i2][j2][k2];
+                    let charge = charge_other_elec[i2][j2][k2];
 
-                    let charge_this_grid_pt = charge_other_elec[i2][j2][k2];
+                    test_sum += charge;
+
+                    // println!("Charge: {:?}", charge);
 
                     // todo: This may not be quite right, ie matching the posit_sample grid with the i2, j2, k2 elec charges.
-                    result +=
-                        util::V_coulomb(posit_sample_electron, posit_sample, charge_this_grid_pt);
+                    result += util::V_coulomb(posit_charge, posit_sample, charge);
                 }
             }
         }
+
+        // println!("Total Q: {}", test_sum);
     }
 
     result
@@ -112,6 +122,7 @@ pub(crate) fn find_hartree_V(
 /// Update the (nuclear and other-electron) potential for a single electron. This resets it to the V from nuclei,
 /// plus V from the wavefunction -> charge density of other electrons. Does not include charge density
 /// from own Psi.
+/// This must be run after charge from the other electrons is created from the wave function square.
 pub(crate) fn update_V_individual(
     V_this_elec: &mut Arr3dReal,
     V_nuclei: &Arr3dReal,
@@ -121,12 +132,28 @@ pub(crate) fn update_V_individual(
     grid_posits: &Arr3dVec,
     grid_n: usize,
 ) {
+    println!("Updating V for {}", i_this_elec);
+
+    // println!("C1: {}", charges_electron[0][6][5][5]);
+    // println!("C2: {}", charges_electron[1][6][5][5]);
+
+    // let mut test_nuc_sum = 0.;
+    // let mut test_tot_sum = 0.;
+
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
                 let posit_sample = grid_posits[i][j][k];
 
+                // Combine nuclear charge with charge from other electrons.
                 V_this_elec[i][j][k] = V_nuclei[i][j][k];
+
+                // println!("Vn: {}", V_nuclei[i][j][k]);
+
+                // test_nuc_sum += V_nuclei[i][j][k];
+
+                // println!("C3: {}", charges_electron[0][i][j][k]);
+                // println!("C4: {}", charges_electron[1][i][j][k]);
 
                 V_this_elec[i][j][k] += find_hartree_V(
                     charges_electron,
@@ -138,9 +165,14 @@ pub(crate) fn update_V_individual(
                     k,
                     grid_n,
                 );
+
+                // println!("N: {} T: {}",  V_nuclei[i][j][k], V_this_elec[i][j][k]);
+                // test_tot_sum += V_this_elec[i][j][k];
             }
         }
     }
+
+    println!("V update complete");
 }
 
 /// Calculate the result of exchange interactions between electrons.

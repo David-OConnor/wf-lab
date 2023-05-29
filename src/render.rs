@@ -48,11 +48,15 @@ const SURFACE_COLORS: [Color; 10] = [
 const SURFACE_SHINYNESS: f32 = 10.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
-const PSI_SCALER: f32 = 120.; // to make WF more visually significant.
-const PSI_SQ_SCALER: f32 = 12_000.; // to make WF more visually significant.
-const PSI_P_SCALER: f32 = 15.; // to make WF more visually significant.
-const PSI_PP_SCALER: f32 = 20.; // to make WF more visually significant.
-const ELEC_V_SCALER: f32 = 100_000.; // to make WF more visually significant.
+// To make the WF and other surfaces more visually significant.
+const PSI_SCALER: f32 = 120.;
+const PSI_SQ_SCALER: f32 = 12_000.;
+const PSI_P_SCALER: f32 = 15.;
+const PSI_PP_SCALER: f32 = 20.;
+
+const ELEC_CHARGE_SCALER: f32 = 600.; // to make WF more visually significant.
+                                      // const ELEC_V_SCALER: f32 = 1100.; // to make WF more visually significant.
+const V_SCALER: f32 = 10.; // to make WF more visually significant.
 
 fn event_handler(
     _state: &mut State,
@@ -173,6 +177,7 @@ pub fn update_meshes(
     scene: &mut Scene,
     grid_posits: &Arr3dVec,
     mag_phase: bool,
+    charges_electron: &Arr3dReal,
     grid_n: usize,
 ) {
     // Our meshes are defined in terms of a start point,
@@ -198,7 +203,7 @@ pub fn update_meshes(
 
     meshes.push(Mesh::new_surface(
         // todo: Be able to show shared V and per-elec. Currently hard-coded.
-        &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, 1., grid_n),
+        &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, V_SCALER, grid_n),
         true,
     ));
 
@@ -251,14 +256,16 @@ pub fn update_meshes(
         ));
     }
 
-    // meshes.push(Mesh::new_surface(
-    //     // &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.aux2, z_i, ELEC_V_SCALER),
-    //     &prepare_2d_mesh(&surfaces.grid_posits, &surfaces.aux2, z_i, 10.),
-    //     // todo: Center! Maybe offset in entities.
-    //     // sfc_mesh_start,
-    //     // sfc_mesh_step,
-    //     true,
-    // ));
+    meshes.push(Mesh::new_surface(
+        &prepare_2d_mesh_real(
+            grid_posits,
+            charges_electron,
+            z_i,
+            ELEC_CHARGE_SCALER,
+            grid_n,
+        ),
+        true,
+    ));
 
     meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 8, 8));
 
@@ -384,6 +391,7 @@ pub fn render(state: State) {
         &mut scene,
         &state.surfaces_shared.grid_posits,
         state.mag_phase,
+        &state.charges_electron[state.ui_active_elec],
         state.grid_n,
     );
 
