@@ -4,6 +4,7 @@ use egui::{self, Color32, RichText};
 use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::{Quaternion, Vec3};
 
+use crate::types::new_data;
 use crate::{
     basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval, render, types, wf_ops,
     ActiveElec, State,
@@ -772,6 +773,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         state.mag_phase,
                         &state.charges_electron[active_elec],
                         state.grid_n,
+                        false,
                     );
                 }
                 // Track using a variable to avoid mixing mutable and non-mutable borrows to
@@ -785,7 +787,25 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Multiply wave functions together, and stores in Shared surfaces.
                 // todo: This is an approximation
                 if ui.add(egui::Button::new("Combine wavefunctions")).clicked() {
-                    updated_meshes = true;
+                    elec_elec::combine_wavefunctions(
+                        &mut state.surfaces_shared.psi,
+                        &state.surfaces_per_elec,
+                        // state.grid_n,
+                    );
+
+                    engine_updates.meshes = true;
+
+                    render::update_meshes(
+                        &state.surfaces_shared,
+                        &state.surfaces_per_elec[0], // dummy
+                        state.ui_z_displayed,
+                        scene,
+                        &state.surfaces_shared.grid_posits,
+                        state.mag_phase,
+                        &state.charges_electron[0], // dummy
+                        state.grid_n,
+                        true,
+                    );
                 }
             }
         }

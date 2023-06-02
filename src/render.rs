@@ -179,6 +179,8 @@ pub fn update_meshes(
     mag_phase: bool,
     charges_electron: &Arr3dReal,
     grid_n: usize,
+    // Render the combined wave function from all electrons.
+    render_combined: bool,
 ) {
     // Our meshes are defined in terms of a start point,
     // and a step. Adjust the step to center the grid at
@@ -201,71 +203,74 @@ pub fn update_meshes(
 
     let mut meshes = Vec::new();
 
-    meshes.push(Mesh::new_surface(
-        // todo: Be able to show shared V and per-elec. Currently hard-coded.
-        &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, V_SCALER, grid_n),
-        true,
-    ));
-
-    meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(
-            grid_posits,
-            &surfaces.psi.on_pt,
-            z_i,
-            PSI_SCALER,
-            mag_phase,
-            false,
-            grid_n,
-        ),
-        true,
-    ));
-
-    meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh(
-            grid_posits,
-            &surfaces.psi.on_pt,
-            z_i,
-            PSI_SCALER,
-            mag_phase,
-            true,
-            grid_n,
-        ),
-        true,
-    ));
-
-    let mut psi_sq = new_data_real(grid_n);
-    util::norm_sq(&mut psi_sq, &surfaces.psi.on_pt, grid_n);
-
-    meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER, grid_n),
-        true,
-    ));
-
-    for (scaler, sfc) in [
-        (PSI_PP_SCALER, &surfaces.psi_pp_calculated),
-        (PSI_PP_SCALER, &surfaces.psi_pp_measured),
-    ] {
+    if render_combined {
+    } else {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false, grid_n),
+            // todo: Be able to show shared V and per-elec. Currently hard-coded.
+            &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, V_SCALER, grid_n),
             true,
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, true, grid_n),
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.psi.on_pt,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.psi.on_pt,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                true,
+                grid_n,
+            ),
+            true,
+        ));
+
+        let mut psi_sq = new_data_real(grid_n);
+        util::norm_sq(&mut psi_sq, &surfaces.psi.on_pt, grid_n);
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER, grid_n),
+            true,
+        ));
+
+        for (scaler, sfc) in [
+            (PSI_PP_SCALER, &surfaces.psi_pp_calculated),
+            (PSI_PP_SCALER, &surfaces.psi_pp_measured),
+        ] {
+            meshes.push(Mesh::new_surface(
+                &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false, grid_n),
+                true,
+            ));
+
+            meshes.push(Mesh::new_surface(
+                &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, true, grid_n),
+                true,
+            ));
+        }
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(
+                grid_posits,
+                charges_electron,
+                z_i,
+                ELEC_CHARGE_SCALER,
+                grid_n,
+            ),
             true,
         ));
     }
-
-    meshes.push(Mesh::new_surface(
-        &prepare_2d_mesh_real(
-            grid_posits,
-            charges_electron,
-            z_i,
-            ELEC_CHARGE_SCALER,
-            grid_n,
-        ),
-        true,
-    ));
 
     meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 8, 8));
 
@@ -395,6 +400,7 @@ pub fn render(state: State) {
         state.mag_phase,
         &state.charges_electron[active_elec_init],
         state.grid_n,
+        state.ui_render_all_elecs,
     );
 
     update_entities(&state.charges_fixed, &state.surface_data, &mut scene);
@@ -408,7 +414,7 @@ pub fn render(state: State) {
         // todo: How to handle this? For blocking keyboard and moues inputs when over the UI.
         // width: gui::UI_WIDTH as f64, // todo: Not working correctly.
         size: 0., // todo: Bad API here.
-        icon_path: None,
+        icon_path: Some("./resources/icon.png".to_owned()),
     };
 
     graphics::run(

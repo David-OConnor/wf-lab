@@ -1,7 +1,7 @@
 //! This module contains code for electron-electron interactions, including EM repulsion,
 //! and exchange forces.
 
-use core::f64::consts::FRAC_1_SQRT_2;
+use std::f64::consts::FRAC_1_SQRT_2;
 
 use crate::{
     complex_nums::Cplx,
@@ -10,18 +10,144 @@ use crate::{
     wf_ops::{self, Q_ELEC},
 };
 
+use crate::types::SurfacesPerElec;
 use lin_alg2::f64::Vec3;
 
 /// WIP
 pub struct WaveFunctionMultiElec {
     num_elecs: usize,
+    // components: HashMap<Vec<Vec3>, Arr3d>,
+    /// A column-major slater determinant.
+    // components_slater: Vec<Arr3d>
+
+    /// Maps permutations of position index to wave function value.
+    /// `Vec` length is `num_elecs`.
+    posit_permutation_map: Vec<(Vec<(usize, usize, usize)>, Cplx)>,
 }
 
+/// Be careful: (Wiki): "Only a small subset of all possible fermionic wave functions can be written
+/// as a single Slater determinant, but those form an important and useful subset because of their simplicity."
+/// What is the more general case?
 impl WaveFunctionMultiElec {
-    /// Returns
-    pub fn value(elec_posits: &[Vec3]) -> Cplx {
+    /// `posits_by_elec` is indexed by the electron index. For example, for a 2-electron system, returns
+    /// the probability of finding electron 0 in `posits_by_elec[0]`, and electron 1 in `posits_by_elec[1]`.
+    pub fn probability(posits_by_elec: &[Vec3]) -> Cplx {
         Cplx::new_zero()
     }
+    // let's say n = 2, and r spans 0, 1, 2, 3
+    // we want to calc electron density at 2, or collect all relevant parts
+    // val([x0, x1], [r0, r0, r0]),
+    // val ([x0, x1], [r0, r0, r1]),
+    // val([x0, x1], [r0, r0, r2]),
+    // val([x0, x1], [r0, r0, 3]),
+    // val([x0, x1], [r0, r1, 0]),
+
+    // let's say, n=3. x = [x0, x1, x2]
+    // posits = [r0, r1, r2] where we
+
+    pub fn setup_vals(&mut self, wfs: &[Arr3d], grid_n: usize) {
+        // todo: If you run this function more often than generating the posits
+        // todo store them somewhere;
+        let mut posits = Vec::new();
+
+        for i in 0..grid_n {
+            for j in 0..grid_n {
+                for k in 0..grid_n {
+                    posits.push((i, j, k));
+                }
+            }
+        }
+
+        let mut map = Vec::new();
+
+        let mut posit_permutations = Vec::new();
+        // for 2 elecs:
+        // [p0, p0], [p0, p1], [p0, p2].. etc, [p1, p0]... etc
+        // todo: Hard-coded for 2 electrons. Find or use a general algorithm.
+
+        // for r_i in 0..self.num_elecs {
+        //     let mut permutation = Vec::new();
+        //     for (i, r) in posits.iter().enumerate() {
+        //         permutation[i] = r;
+        //     }
+        //     posit_permutations.push(permutation);
+        // }
+
+        for r0 in &posits {
+            for r1 in &posits {
+                posit_permutations.push(vec![*r0, *r1]);
+            }
+        }
+
+        for permutation in posit_permutations {
+            map.push((permutation.clone(), self.val(wfs, &permutation)));
+        }
+
+        // for (i, x) in wfs.iter().enumerate() {
+        //     for posit_combo in posit_permutations {
+        //         self.val(x, posit_combo)
+        //     }
+        // }
+
+        self.posit_permutation_map = map;
+    }
+
+    /// Find the probability associated with a single permutation of position. Eg, the probability
+    /// that electron 0 is in position 0 and electron 1 is in position 1.
+    pub fn val(&mut self, x: &[Arr3d], r: &[(usize, usize, usize)]) -> Cplx {
+        // hardcoded 2x2 to test
+        return Cplx::from_real(FRAC_1_SQRT_2)
+            * (x[0][r[0].0][r[0].1][r[0].2] * x[1][r[1].0][r[1].1][r[1].2]
+                - x[1][r[0].0][r[0].1][r[0].2] * x[0][r[1].0][r[1].1][r[1].2]);
+
+        // hardcoded 3x3 to test. // todo: QC norm const
+        // 1. / 3.0.sqrt() * (
+        //     x[0][i0][j0][k0] * x[1][i1][j1][k1] * x[2][i2][j2][k2] +
+        //         x[1][i0][j0][k0] * x[2][i1][j1][k1] * x[0][i2][j2][k2] +
+        //         x[2][i0][j0][k0] * x[0][i1][j1][k1] * x[1][i2][j2][k2] -
+        //         x[0][i0][j0][k0] * x[2][i1][j1][k1] * x[1][i2][j2][k2] -
+        //         x[1][i0][j0][k0] * x[0][i1][j1][k1] * x[2][i2][j2][k2] -
+        //         x[2][i0][j0][k0] * x[1][i1][j1][k1] * x[0][i2][j2][k2]
+        // );
+
+        // for i_x in 0..self.num_elecs {
+        //     let mut entry = 1.;
+        //     for i_posit in 0..self.num_elecs {
+        //         entry *= x[i_x]posits[i_posit]; // todo not quite right. Check the 3x3 example for how it goes.
+        //     }
+        // }
+    }
+
+    pub fn calc_charge_density(&self, posit: Vec3) -> f64 {
+        0.
+    }
+}
+
+pub fn combine_wavefunctions(psi_combined: &mut Arr3d, per_elec: &[SurfacesPerElec]) {
+    //     // todo: You need to combine as psi_sq
+    //     // todo: Or skip whatever you're doing, and do this properly with a betetr understanding
+    //     // todo of identical particles.
+    //
+    //     psi_combined = crate::new_data_real(state.grid_n);
+    //
+    //     // todo: Split this off into a
+    //     for i in 0..state.grid_n {
+    //         for j in 0..state.grid_n {
+    //             for k in 0..state.grid_n {
+    //                 psi_combined[i][j][k] = 1.;
+    //             }
+    //         }
+    //     }
+    //
+    //     for i_elec in 0..state.num_elecs {
+    //         for i in 0..state.grid_n {
+    //             for j in 0..state.grid_n {
+    //                 for k in 0..state.grid_n {
+    //                     psi_combined[i][j][k] *= per_elec[i_elec].psi[i][j][k]
+    //                 }
+    //             }
+    //         }
+    //     }
 }
 
 /// Convert an array of ψ to one of electron charge, through space. Modifies in place

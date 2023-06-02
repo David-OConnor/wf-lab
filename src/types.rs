@@ -15,11 +15,12 @@ pub struct SurfacesShared {
     /// Potential from nuclei only. We use this as a baseline for individual electron
     /// potentials, prior to summing over V from other electrons.
     pub V_fixed_charges: Arr3dReal,
+    // todo: This may not be a good model: the wave function isn't a function of position
+    // mapped to a value for multi-elecs. It's a function of a position for each elec.
     /// `psi` etc here are combined from all individual electron wave functions.
     pub psi: Arr3d,
     // pub psi: WaveFunctionMultiElec,
-    // pub psi_pp_calculated: Arr3d, // todo??
-    // todo: Do you want this?
+    pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
 }
 
@@ -37,7 +38,8 @@ impl SurfacesShared {
             V_fixed_charges: data_real,
             psi: data.clone(),
             // psi_pp_calculated: data.clone(),
-            psi_pp_measured: data,
+            psi_pp_measured: data.clone(),
+            psi_pp_calculated: data,
         }
     }
 
