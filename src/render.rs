@@ -13,8 +13,7 @@ use lin_alg2::{
 };
 
 use crate::{
-    types::new_data_real,
-    types::{Arr3d, Arr3dReal, Arr3dVec},
+    types::{new_data_real, Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec, SurfacesShared},
     util, wf_ops, State, SurfaceData,
 };
 
@@ -171,8 +170,8 @@ fn prepare_2d_mesh(
 /// Updates meshes. For example, when updating a plot due to changing parameters.
 /// Note that this is where we decide which Z to render.
 pub fn update_meshes(
-    surfaces_shared: &crate::SurfacesShared,
-    surfaces: &crate::SurfacesPerElec,
+    surfaces_shared: &SurfacesShared,
+    surfaces: &SurfacesPerElec,
     z_displayed: f64,
     scene: &mut Scene,
     grid_posits: &Arr3dVec,
@@ -180,7 +179,7 @@ pub fn update_meshes(
     charges_electron: &Arr3dReal,
     grid_n: usize,
     // Render the combined wave function from all electrons.
-    render_combined: bool,
+    render_multi_elec: bool,
 ) {
     // Our meshes are defined in terms of a start point,
     // and a step. Adjust the step to center the grid at
@@ -203,10 +202,67 @@ pub fn update_meshes(
 
     let mut meshes = Vec::new();
 
-    if render_combined {
+    if render_multi_elec {
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(
+                grid_posits,
+                &surfaces_shared.V_combined,
+                z_i,
+                V_SCALER,
+                grid_n,
+            ),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces_shared.psi.psi_marginal,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+
+        let mut psi_sq = new_data_real(grid_n);
+        util::norm_sq(&mut psi_sq, &surfaces_shared.psi.psi_marginal, grid_n);
+
+        // todo: Lots of DRY here that is fixable between multi-elec and single-elec
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER, grid_n),
+            true,
+        ));
+
+        for (scaler, sfc) in [
+            (PSI_PP_SCALER, &surfaces_shared.psi_pp_calculated),
+            (PSI_PP_SCALER, &surfaces_shared.psi_pp_measured),
+        ] {
+            meshes.push(Mesh::new_surface(
+                &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false, grid_n),
+                true,
+            ));
+
+            meshes.push(Mesh::new_surface(
+                &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, true, grid_n),
+                true,
+            ));
+        }
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(
+                grid_posits,
+                charges_electron,
+                z_i,
+                ELEC_CHARGE_SCALER,
+                grid_n,
+            ),
+            true,
+        ));
     } else {
         meshes.push(Mesh::new_surface(
-            // todo: Be able to show shared V and per-elec. Currently hard-coded.
             &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, V_SCALER, grid_n),
             true,
         ));
@@ -400,7 +456,7 @@ pub fn render(state: State) {
         state.mag_phase,
         &state.charges_electron[active_elec_init],
         state.grid_n,
-        state.ui_render_all_elecs,
+        false,
     );
 
     update_entities(&state.charges_fixed, &state.surface_data, &mut scene);

@@ -18,65 +18,74 @@ pub struct SurfacesShared {
     // todo: This may not be a good model: the wave function isn't a function of position
     // mapped to a value for multi-elecs. It's a function of a position for each elec.
     /// `psi` etc here are combined from all individual electron wave functions.
-    pub psi: Arr3d,
-    // pub psi: WaveFunctionMultiElec,
+    // pub psi: Arr3d,
+    pub psi: WaveFunctionMultiElec,
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
+    pub E: f64,
 }
 
 impl SurfacesShared {
-    pub fn new(grid_min: f64, grid_max: f64, spacing_factor: f64, n: usize) -> Self {
-        let data = new_data(n);
-        let data_real = new_data_real(n);
+    pub fn new(
+        grid_min: f64,
+        grid_max: f64,
+        spacing_factor: f64,
+        n_grid: usize,
+        num_elecs: usize,
+    ) -> Self {
+        let data = new_data(n_grid);
+        let data_real = new_data_real(n_grid);
 
-        let mut grid_posits = new_data_vec(n);
-        wf_ops::update_grid_posits(&mut grid_posits, grid_min, grid_max, spacing_factor, n);
+        let mut grid_posits = new_data_vec(n_grid);
+        wf_ops::update_grid_posits(&mut grid_posits, grid_min, grid_max, spacing_factor, n_grid);
 
         Self {
             grid_posits,
             V_combined: data_real.clone(),
             V_fixed_charges: data_real,
-            psi: data.clone(),
+            // psi: data.clone(),
+            psi: WaveFunctionMultiElec::new(num_elecs, n_grid),
             // psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
             psi_pp_calculated: data,
+            E: -0.50,
         }
     }
-
-    /// Update `psi` etc from that of individual electrons
-    /// Relevant for combining from multiplie elecs
-    pub fn combine_psi_parts(&mut self, per_elec: &[SurfacesPerElec], E: &[f64], grid_n: usize) {
-        // Todo: V. Before you update psi_pp_calc.
-
-        for i in 0..grid_n {
-            for j in 0..grid_n {
-                for k in 0..grid_n {
-                    self.psi[i][j][k] = Cplx::new_zero();
-
-                    for (part_i, part) in per_elec.iter().enumerate() {
-                        self.psi[i][j][k] += part.psi.on_pt[i][j][k];
-
-                        // todo: Come back to this once you figure out how to handle V here.
-                        // todo: Maybe you don't have psi_pp_calc here.
-                        // self.psi_pp_calculated[i][j][k] =
-                        //     eigen_fns::find_ψ_pp_calc(&self.psi, &self.V, E[part_i], i, j, k)
-                    }
-                }
-            }
-        }
-
-        num_diff::find_ψ_pp_meas_fm_grid_irreg(
-            &self.psi,
-            &mut self.psi_pp_measured,
-            &self.grid_posits,
-            grid_n,
-        );
-
-        // todo: What to do with score?
-        // let score = wf_ops::score_wf(self); // todo
-
-        // todo: You probably need a score_total and e_total in state.
-    }
+    //
+    // /// Update `psi` etc from that of individual electrons
+    // /// Relevant for combining from multiplie elecs
+    // pub fn combine_psi_parts(&mut self, per_elec: &[SurfacesPerElec], E: &[f64], grid_n: usize) {
+    //     // Todo: V. Before you update psi_pp_calc.
+    //
+    //     for i in 0..grid_n {
+    //         for j in 0..grid_n {
+    //             for k in 0..grid_n {
+    //                 self.psi[i][j][k] = Cplx::new_zero();
+    //
+    //                 for (part_i, part) in per_elec.iter().enumerate() {
+    //                     self.psi[i][j][k] += part.psi.on_pt[i][j][k];
+    //
+    //                     // todo: Come back to this once you figure out how to handle V here.
+    //                     // todo: Maybe you don't have psi_pp_calc here.
+    //                     // self.psi_pp_calculated[i][j][k] =
+    //                     //     eigen_fns::find_ψ_pp_calc(&self.psi, &self.V, E[part_i], i, j, k)
+    //                 }
+    //             }
+    //         }
+    //     }
+    //
+    //     num_diff::find_ψ_pp_meas_fm_grid_irreg(
+    //         &self.psi,
+    //         &mut self.psi_pp_measured,
+    //         &self.grid_posits,
+    //         grid_n,
+    //     );
+    //
+    //     // todo: What to do with score?
+    //     // let score = wf_ops::score_wf(self); // todo
+    //
+    //     // todo: You probably need a score_total and e_total in state.
+    // }
 }
 
 /// Represents important data, in describe 3D arrays.
@@ -88,6 +97,7 @@ impl SurfacesShared {
 pub struct SurfacesPerElec {
     /// V from the nucleus, and all *other* electrons
     pub V: Arr3dReal,
+    pub E: f64,
     // pub psi: Arr3d,
     pub psi: PsiWDiffs,
     pub psi_pp_calculated: Arr3d,
@@ -150,6 +160,7 @@ impl SurfacesPerElec {
 
         Self {
             V: data_real.clone(),
+            E: -0.50,
             psi,
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),

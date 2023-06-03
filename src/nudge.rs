@@ -19,7 +19,6 @@ pub fn nudge_wf(
     // wfs: &[SlaterOrbital],
     // charges: &[(Vec3, f64)],
     nudge_amount: &mut f64,
-    E: &mut f64,
     bases: &[Basis],
     grid_posits: &Arr3dVec,
     grid_n: usize,
@@ -41,7 +40,7 @@ pub fn nudge_wf(
     // todo: Cheap lowpass for now on diff: Average it with its neighbors?
 
     // Find E before and after the nudge.
-    *E = wf_ops::find_E(&sfcs, grid_n);
+    sfcs.E = wf_ops::find_E(&sfcs, grid_n);
 
     // Really, the outliers are generally spiked very very high. (much higher than this)
     // This probably occurs near the nucleus.
@@ -107,7 +106,7 @@ pub fn nudge_wf(
                         sfcs.psi.on_pt[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
                         sfcs.psi_pp_calculated[i][j][k] =
-                            eigen_fns::find_ψ_pp_calc(&sfcs.psi.on_pt, &sfcs.V, *E, i, j, k);
+                            eigen_fns::find_ψ_pp_calc(&sfcs.psi.on_pt, &sfcs.V, sfcs.E, i, j, k);
                     }
                 }
             }
@@ -144,7 +143,7 @@ pub fn nudge_wf(
             psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
             psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
             current_score = score;
-            *E = wf_ops::find_E(&sfcs, grid_n);
+            sfcs.E = wf_ops::find_E(&sfcs, grid_n);
 
             for i in 0..grid_n {
                 for j in 0..grid_n {

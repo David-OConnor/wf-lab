@@ -80,9 +80,9 @@ pub struct State {
     /// Used to toggle precense of a bases, effectively setting its weight ot 0 without losing the stored
     /// weight value. Per-electron.
     pub bases_visible: Vec<Vec<bool>>,
-    /// Energy eigenvalue of the Hamiltonian; per electron.
-    /// todo: You may need separate eigenvalues per electron-WF if you go that route.
-    pub E: Vec<f64>,
+    // /// Energy eigenvalue of the Hamiltonian; per electron.
+    // /// todo: You may need separate eigenvalues per electron-WF if you go that route.
+    // pub E: Vec<f64>,
     /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
     pub nudge_amount: Vec<f64>,
     /// Wave function score, evaluated by comparing psi to psi'' from numerical evaluation, and
@@ -100,8 +100,8 @@ pub struct State {
     pub ui_z_displayed: f64,
     /// The electron UI controls adjust.
     pub ui_active_elec: ActiveElec,
-    /// if true, render the composite surfaces for all electrons, vice only the active one.
-    pub ui_render_all_elecs: bool,
+    // /// if true, render the composite surfaces for all electrons, vice only the active one.
+    // pub ui_render_all_elecs: bool,
     /// Rotation of the visual, around either the X or Y axis; used to better visualize
     /// cases that would normally need to be panned through using hte Z-slic slider.
     pub visual_rotation: f64,
@@ -180,7 +180,6 @@ pub fn init_from_grid(
     grid_max: f64,
     spacing_factor: f64,
     grid_n: usize,
-    Es: &mut [f64],
     bases: &Vec<Vec<Basis>>,
     charges_fixed: &Vec<(Vec3, f64)>,
     num_electrons: usize,
@@ -197,8 +196,9 @@ pub fn init_from_grid(
 
     let mut surfaces_per_elec = vec![sfcs_one_elec.clone(), sfcs_one_elec];
 
-    let mut surfaces_shared = SurfacesShared::new(grid_min, grid_max, spacing_factor, grid_n);
-    surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es, grid_n);
+    let mut surfaces_shared =
+        SurfacesShared::new(grid_min, grid_max, spacing_factor, grid_n, num_electrons);
+    // surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es, grid_n);
 
     wf_ops::update_grid_posits(
         &mut surfaces_shared.grid_posits,
@@ -241,7 +241,6 @@ pub fn init_from_grid(
             &bases[0],
             &bases_unweighted[i_elec],
             &mut surfaces_per_elec[i_elec],
-            &mut Es[i_elec],
             // &surfaces_shared.grid_posits,
             grid_n,
             None,
@@ -285,13 +284,13 @@ fn main() {
     let mut bases = Vec::new();
     let mut bases_visible = Vec::new();
 
-    let E_start = -0.7;
-    let mut Es = Vec::new();
+    // let E_start = -0.7;
+    // let mut Es = Vec::new();
 
     for _ in 0..num_elecs {
         bases.push(Vec::new());
         bases_visible.push(Vec::new());
-        Es.push(E_start);
+        // Es.push(E_start);
     }
 
     wf_ops::initialize_bases(
@@ -328,7 +327,6 @@ fn main() {
             spacing_factor,
             grid_n,
             // ui_active_elec,
-            &mut Es,
             &bases,
             &charges_fixed,
             num_elecs,
@@ -355,7 +353,6 @@ fn main() {
         bases_visible,
         surfaces_shared,
         surfaces_per_elec,
-        E: Es,
         nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],
         psi_pp_score,
         surface_data,
@@ -365,13 +362,7 @@ fn main() {
         spacing_factor,
         ui_z_displayed: 0.,
         ui_active_elec: ActiveElec::PerElec(ui_active_elec),
-        ui_render_all_elecs: false,
         visual_rotation: 0.,
-        // L_2,
-        // L_x,
-        // L_y,
-        // L_z,
-        // psi_p_score,
         mag_phase: false,
         max_basis_n,
         num_elecs,

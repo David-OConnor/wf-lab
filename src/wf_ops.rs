@@ -169,13 +169,12 @@ pub fn update_wf_fm_bases(
     bases: &[Basis],
     basis_wfs: &BasisWfsUnweighted,
     sfcs: &mut SurfacesPerElec,
-    E: &mut f64,
     grid_n: usize,
     weights: Option<&[f64]>,
 ) {
     mix_bases(bases, basis_wfs, &mut sfcs.psi, grid_n, weights);
 
-    *E = find_E(sfcs, grid_n);
+    sfcs.E = find_E(sfcs, grid_n);
 
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.
@@ -184,7 +183,7 @@ pub fn update_wf_fm_bases(
         &sfcs.V,
         &mut sfcs.psi_pp_calculated,
         &mut sfcs.psi_pp_measured,
-        *E,
+        sfcs.E,
         grid_n,
     );
 }

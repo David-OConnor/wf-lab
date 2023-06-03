@@ -319,10 +319,7 @@ fn bottom_items(
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
             crate::nudge::nudge_wf(
                 &mut state.surfaces_per_elec[active_elec],
-                // &state.bases,
-                // &state.charges,
                 &mut state.nudge_amount[active_elec],
-                &mut state.E[active_elec],
                 &state.bases[active_elec],
                 &state.surfaces_shared.grid_posits,
                 state.grid_n,
@@ -372,7 +369,7 @@ fn bottom_items(
         }
 
         if ui.add(egui::Button::new("Find E")).clicked() {
-            state.E[active_elec] =
+            state.surfaces_per_elec[active_elec].E =
                 wf_ops::find_E(&state.surfaces_per_elec[active_elec], state.grid_n);
 
             wf_ops::update_psi_pp_calc(
@@ -380,7 +377,7 @@ fn bottom_items(
                 &state.surfaces_per_elec[active_elec].psi.on_pt.clone(),
                 &state.surfaces_shared.V_fixed_charges,
                 &mut state.surfaces_per_elec[active_elec].psi_pp_calculated,
-                state.E[active_elec],
+                state.surfaces_per_elec[active_elec].E,
                 state.grid_n,
             );
 
@@ -400,7 +397,6 @@ fn bottom_items(
             &mut state.bases[active_elec],
             &mut state.bases_visible[active_elec],
             &mut state.bases_unweighted[active_elec],
-            &mut state.E[active_elec],
             &state.surfaces_shared,
             &mut state.surfaces_per_elec[active_elec],
             &mut state.psi_pp_score[active_elec],
@@ -464,7 +460,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.spacing_factor,
                     state.grid_n,
                     // state.ui_active_elec,
-                    &mut state.E,
                     &state.bases,
                     &state.charges_fixed,
                     state.num_elecs,
@@ -511,12 +506,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 updated_meshes = true;
             }
 
-            if ui
-                .checkbox(&mut state.ui_render_all_elecs, "Render all elecs")
-                .clicked()
-            {
-                updated_meshes = true;
-            }
+            // if ui
+            //     .checkbox(&mut state.ui_render_all_elecs, "Render all elecs")
+            //     .clicked()
+            // {
+            //     updated_meshes = true;
+            // }
 
             if ui
                 .checkbox(&mut state.mag_phase, "Show mag, phase")
@@ -616,7 +611,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 ui.add(
                     egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
                         if let Some(v_) = v {
-                            state.E[active_elec] = v_;
+                            state.surfaces_per_elec[active_elec].E = v_;
 
                             for i in 0..state.grid_n {
                                 for j in 0..state.grid_n {
@@ -625,7 +620,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                             [j][k] = eigen_fns::find_ψ_pp_calc(
                                             &state.surfaces_per_elec[active_elec].psi.on_pt,
                                             &state.surfaces_per_elec[active_elec].V,
-                                            state.E[active_elec],
+                                            state.surfaces_per_elec[active_elec].E,
                                             i,
                                             j,
                                             k,
@@ -645,7 +640,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             updated_meshes = true;
                         }
 
-                        state.E[active_elec]
+                        state.surfaces_per_elec[active_elec].E
                     })
                     .text("E"),
                 );
@@ -746,7 +741,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         &state.bases[active_elec],
                         &state.bases_unweighted[active_elec],
                         &mut state.surfaces_per_elec[active_elec],
-                        &mut state.E[active_elec],
                         // &mut state.surfaces_shared.grid_posits,
                         state.grid_n,
                         None,
@@ -787,10 +781,28 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Multiply wave functions together, and stores in Shared surfaces.
                 // todo: This is an approximation
                 if ui.add(egui::Button::new("Combine wavefunctions")).clicked() {
-                    elec_elec::combine_wavefunctions(
-                        &mut state.surfaces_shared.psi,
-                        &state.surfaces_per_elec,
-                        // state.grid_n,
+                    // todo: Yu are making a one-off fully memory copy that is not necessary.
+                    let mut per_elec_wfs = Vec::new();
+                    for sfc in &state.surfaces_per_elec {
+                        per_elec_wfs.push(sfc.psi.on_pt.clone());
+                    }
+
+                    state
+                        .surfaces_shared
+                        .psi
+                        .setup_joint_wf(&per_elec_wfs, state.grid_n);
+                    state.surfaces_shared.psi.populate_psi_combined();
+
+                    state.surfaces_shared.psi.populate_psi_combined();
+
+                    // todo!
+                    wf_ops::update_psi_pps_from_bases(
+                        &state.surfaces_shared.psi.psi_marginal,
+                        &state.surfaces_shared.V_combined,
+                        &mut state.surfaces_shared.psi_pp_calculated,
+                        &mut state.surfaces_shared.psi_pp_measured,
+                        state.surfaces_shared.E,
+                        state.grid_n,
                     );
 
                     engine_updates.meshes = true;

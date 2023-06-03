@@ -19,7 +19,6 @@ pub fn find_weights(
     bases: &mut Vec<Basis>,
     bases_visible: &mut Vec<bool>,
     basis_wfs_unweighted: &mut BasisWfsUnweighted,
-    E: &mut f64,
     surfaces_shared: &SurfacesShared,
     surfaces_per_elec: &mut SurfacesPerElec,
     score: &mut f64,
@@ -75,7 +74,6 @@ pub fn find_weights(
             bases,
             &basis_wfs_unweighted,
             surfaces_per_elec,
-            E,
             grid_n,
             Some(&current_point),
         );
@@ -118,7 +116,6 @@ pub fn find_weights(
 
                 let score_prev = score_weight_set(
                     bases,
-                    *E,
                     &surfaces_per_elec,
                     grid_n,
                     &basis_wfs_unweighted,
@@ -127,7 +124,6 @@ pub fn find_weights(
 
                 let score_next = score_weight_set(
                     bases,
-                    *E,
                     &surfaces_per_elec,
                     grid_n,
                     &basis_wfs_unweighted,
@@ -172,7 +168,6 @@ pub fn find_weights(
         bases,
         &basis_wfs_unweighted,
         surfaces_per_elec,
-        E,
         grid_n,
         None,
     );
@@ -188,20 +183,20 @@ pub fn find_weights(
 /// This function doesn't mutate any of the data.
 pub fn score_weight_set(
     bases: &[Basis],
-    E: f64,
     surfaces_per_elec: &SurfacesPerElec,
     grid_n: usize,
     basis_wfs_unweighted: &BasisWfsUnweighted,
     weights: &[f64],
 ) -> f64 {
     let mut surfaces = surfaces_per_elec.clone();
-    let mut E = E;
 
+    // todo: Previously, you decoupled E from this so it wouldn't change the overall E.
+    // todo, if, 3 June 2023, there are problems, look to this, and figure out how to handle.
+    // todo: Likely, update_wf_fm_bases will need to take E explicilty instead of pulling form sfcs.
     wf_ops::update_wf_fm_bases(
         bases,
         &basis_wfs_unweighted,
         &mut surfaces,
-        &mut E,
         grid_n,
         Some(weights),
     );

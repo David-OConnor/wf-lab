@@ -5,34 +5,50 @@ use std::f64::consts::FRAC_1_SQRT_2;
 
 use crate::{
     complex_nums::Cplx,
+    types::{new_data, SurfacesPerElec},
     types::{Arr3d, Arr3dReal, Arr3dVec},
     util,
-    wf_ops::{self, Q_ELEC},
+    wf_ops::{self, PsiWDiffs, Q_ELEC},
 };
 
-use crate::types::SurfacesPerElec;
 use lin_alg2::f64::Vec3;
 
-/// WIP
+/// Represents a wave function of multiple electrons
+/// todo: Incorporate spin.
 pub struct WaveFunctionMultiElec {
     num_elecs: usize,
-    // components: HashMap<Vec<Vec3>, Arr3d>,
     /// A column-major slater determinant.
     // components_slater: Vec<Arr3d>
 
     /// Maps permutations of position index to wave function value.
-    /// `Vec` length is `num_elecs`.
-    posit_permutation_map: Vec<(Vec<(usize, usize, usize)>, Cplx)>,
+    /// The outer vec has a value for each permutation of spacial coordinates, with length
+    /// `num_elecs`. So, its length is (n_grid^3)^num_elecs
+    psi_joint: Vec<(Vec<(usize, usize, usize)>, Cplx)>,
+    /// This is the combined probability, created from `psi_joint`.
+    pub psi_marginal: PsiWDiffs,
 }
 
 /// Be careful: (Wiki): "Only a small subset of all possible fermionic wave functions can be written
 /// as a single Slater determinant, but those form an important and useful subset because of their simplicity."
 /// What is the more general case?
+/// todo: YOu may need to figure out how to deal with chareg density on an irregular grid.
 impl WaveFunctionMultiElec {
+    pub fn new(num_elecs: usize, n_grid: usize) -> Self {
+        Self {
+            num_elecs,
+            psi_joint: Vec::new(),
+            psi_marginal: new_data(n_grid),
+        }
+    }
+
     /// `posits_by_elec` is indexed by the electron index. For example, for a 2-electron system, returns
     /// the probability of finding electron 0 in `posits_by_elec[0]`, and electron 1 in `posits_by_elec[1]`.
-    pub fn probability(posits_by_elec: &[Vec3]) -> Cplx {
-        Cplx::new_zero()
+    pub fn populate_psi_combined(&mut self) {
+        for (posits, val) in &self.psi_joint {
+            for posit in posits {
+                self.psi_marginal[posit.0][posit.1][posit.2] += *val;
+            }
+        }
     }
     // let's say n = 2, and r spans 0, 1, 2, 3
     // we want to calc electron density at 2, or collect all relevant parts
@@ -45,7 +61,9 @@ impl WaveFunctionMultiElec {
     // let's say, n=3. x = [x0, x1, x2]
     // posits = [r0, r1, r2] where we
 
-    pub fn setup_vals(&mut self, wfs: &[Arr3d], grid_n: usize) {
+    /// Set up values for the joint wavefunction; related to probabilities of the electrons
+    /// being in a combination of positions.
+    pub fn setup_joint_wf(&mut self, wfs: &[Arr3d], grid_n: usize) {
         // todo: If you run this function more often than generating the posits
         // todo store them somewhere;
         let mut posits = Vec::new();
@@ -58,7 +76,7 @@ impl WaveFunctionMultiElec {
             }
         }
 
-        let mut map = Vec::new();
+        let mut psi_joint = Vec::new();
 
         let mut posit_permutations = Vec::new();
         // for 2 elecs:
@@ -80,7 +98,10 @@ impl WaveFunctionMultiElec {
         }
 
         for permutation in posit_permutations {
-            map.push((permutation.clone(), self.val(wfs, &permutation)));
+            psi_joint.push((
+                permutation.clone(),
+                self.joint_wf_at_permutation(wfs, &permutation),
+            ));
         }
 
         // for (i, x) in wfs.iter().enumerate() {
@@ -89,12 +110,12 @@ impl WaveFunctionMultiElec {
         //     }
         // }
 
-        self.posit_permutation_map = map;
+        self.psi_joint = psi_joint;
     }
 
-    /// Find the probability associated with a single permutation of position. Eg, the probability
-    /// that electron 0 is in position 0 and electron 1 is in position 1.
-    pub fn val(&mut self, x: &[Arr3d], r: &[(usize, usize, usize)]) -> Cplx {
+    /// Find the wave fucntion value associated with a single permutation of position. Eg, the one associated
+    /// with the probability that electron 0 is in position 0 and electron 1 is in position 1.
+    pub fn joint_wf_at_permutation(&mut self, x: &[Arr3d], r: &[(usize, usize, usize)]) -> Cplx {
         // hardcoded 2x2 to test
         return Cplx::from_real(FRAC_1_SQRT_2)
             * (x[0][r[0].0][r[0].1][r[0].2] * x[1][r[1].0][r[1].1][r[1].2]
@@ -121,33 +142,6 @@ impl WaveFunctionMultiElec {
     pub fn calc_charge_density(&self, posit: Vec3) -> f64 {
         0.
     }
-}
-
-pub fn combine_wavefunctions(psi_combined: &mut Arr3d, per_elec: &[SurfacesPerElec]) {
-    //     // todo: You need to combine as psi_sq
-    //     // todo: Or skip whatever you're doing, and do this properly with a betetr understanding
-    //     // todo of identical particles.
-    //
-    //     psi_combined = crate::new_data_real(state.grid_n);
-    //
-    //     // todo: Split this off into a
-    //     for i in 0..state.grid_n {
-    //         for j in 0..state.grid_n {
-    //             for k in 0..state.grid_n {
-    //                 psi_combined[i][j][k] = 1.;
-    //             }
-    //         }
-    //     }
-    //
-    //     for i_elec in 0..state.num_elecs {
-    //         for i in 0..state.grid_n {
-    //             for j in 0..state.grid_n {
-    //                 for k in 0..state.grid_n {
-    //                     psi_combined[i][j][k] *= per_elec[i_elec].psi[i][j][k]
-    //                 }
-    //             }
-    //         }
-    //     }
 }
 
 /// Convert an array of ψ to one of electron charge, through space. Modifies in place
