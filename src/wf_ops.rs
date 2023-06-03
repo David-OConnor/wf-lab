@@ -71,8 +71,6 @@ pub fn update_V_fm_fixed_charges(
     grid_posits: &Arr3dVec,
     grid_n: usize,
     // Wave functions from other electrons, for calculating the Hartree potential.
-    // charges_electron: &[Arr3dReal],
-    // i_this_elec: usize,
 ) {
     for i in 0..grid_n {
         for j in 0..grid_n {
@@ -388,6 +386,20 @@ pub struct PsiWDiffs {
     pub y_next: Arr3d,
     pub z_prev: Arr3d,
     pub z_next: Arr3d,
+}
+
+impl PsiWDiffs {
+    pub fn init(data: &Arr3d) -> Self {
+        Self {
+            on_pt: data.clone(),
+            x_prev: data.clone(),
+            x_next: data.clone(),
+            y_prev: data.clone(),
+            y_next: data.clone(),
+            z_prev: data.clone(),
+            z_next: data.clone(),
+        }
+    }
 }
 
 /// We use this to store numerical wave functions for each basis, both at sample points, and

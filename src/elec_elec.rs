@@ -34,10 +34,11 @@ pub struct WaveFunctionMultiElec {
 /// todo: YOu may need to figure out how to deal with chareg density on an irregular grid.
 impl WaveFunctionMultiElec {
     pub fn new(num_elecs: usize, n_grid: usize) -> Self {
+        let data = new_data(n_grid);
         Self {
             num_elecs,
             psi_joint: Vec::new(),
-            psi_marginal: new_data(n_grid),
+            psi_marginal: PsiWDiffs::init(&data),
         }
     }
 
@@ -46,7 +47,7 @@ impl WaveFunctionMultiElec {
     pub fn populate_psi_combined(&mut self) {
         for (posits, val) in &self.psi_joint {
             for posit in posits {
-                self.psi_marginal[posit.0][posit.1][posit.2] += *val;
+                self.psi_marginal.on_pt[posit.0][posit.1][posit.2] += *val;
             }
         }
     }

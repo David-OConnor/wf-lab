@@ -148,15 +148,7 @@ impl SurfacesPerElec {
         // Set up a regular grid using this; this will allow us to convert to an irregular grid
         // later, once we've verified this works.
 
-        let psi = PsiWDiffs {
-            on_pt: data.clone(),
-            x_prev: data.clone(),
-            x_next: data.clone(),
-            y_prev: data.clone(),
-            y_next: data.clone(),
-            z_prev: data.clone(),
-            z_next: data.clone(),
-        };
+        let psi = PsiWDiffs::init(&data);
 
         Self {
             V: data_real.clone(),

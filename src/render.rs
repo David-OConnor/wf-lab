@@ -217,7 +217,7 @@ pub fn update_meshes(
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh(
                 grid_posits,
-                &surfaces_shared.psi.psi_marginal,
+                &surfaces_shared.psi.psi_marginal.on_pt,
                 z_i,
                 PSI_SCALER,
                 mag_phase,
@@ -228,7 +228,7 @@ pub fn update_meshes(
         ));
 
         let mut psi_sq = new_data_real(grid_n);
-        util::norm_sq(&mut psi_sq, &surfaces_shared.psi.psi_marginal, grid_n);
+        util::norm_sq(&mut psi_sq, &surfaces_shared.psi.psi_marginal.on_pt, grid_n);
 
         // todo: Lots of DRY here that is fixable between multi-elec and single-elec
         meshes.push(Mesh::new_surface(

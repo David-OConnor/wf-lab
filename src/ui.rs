@@ -124,8 +124,6 @@ fn basis_fn_mixer(
     updated_unweighted_basis_wfs: &mut bool,
     ui: &mut egui::Ui,
     active_elec: usize,
-    // engine_updates: &mut EngineUpdates,
-    // scene: &mut Scene,
 ) {
     // Select with charge (and its position) this basis fn is associated with.
     egui::containers::ScrollArea::vertical()
@@ -197,37 +195,6 @@ fn basis_fn_mixer(
                     if response.changed() {
                         *basis.m_mut() = entry.parse().unwrap_or(0);
                     }
-
-                    // egui::ComboBox::from_id_source(id + 2_000)
-                    //     .width(30.)
-                    //     .selected_text(basis.n().to_string())
-                    //     .show_ui(ui, |ui| {
-                    //         for i in 1..4 {
-                    //             ui.selectable_value(basis.n_mut(), i, i.to_string());
-                    //         }
-                    //     });
-                    //
-                    // ui.heading("l:");
-                    //
-                    // egui::ComboBox::from_id_source(id + 3_000)
-                    //     .width(30.)
-                    //     .selected_text(basis.l().to_string())
-                    //     .show_ui(ui, |ui| {
-                    //         for i in 0..basis.n() {
-                    //             ui.selectable_value(basis.l_mut(), i, i.to_string());
-                    //         }
-                    //     });
-                    //
-                    // ui.heading("m:");
-                    //
-                    // egui::ComboBox::from_id_source(id + 4_000)
-                    //     .width(30.)
-                    //     .selected_text(basis.m().to_string())
-                    //     .show_ui(ui, |ui| {
-                    //         for i in -1 * basis.l() as i16..basis.l() as i16 + 1 {
-                    //             ui.selectable_value(basis.m_mut(), i, i.to_string());
-                    //         }
-                    //     });
 
                     if basis.n() != n_prev || basis.l() != l_prev || basis.m() != m_prev {
                         // Enforce quantum number constraints.
@@ -372,12 +339,13 @@ fn bottom_items(
             state.surfaces_per_elec[active_elec].E =
                 wf_ops::find_E(&state.surfaces_per_elec[active_elec], state.grid_n);
 
+            let E = state.surfaces_per_elec[active_elec].E; // avoids mutable/immutable borrow issues.
             wf_ops::update_psi_pp_calc(
                 // clone is due to an API hiccup.
                 &state.surfaces_per_elec[active_elec].psi.on_pt.clone(),
                 &state.surfaces_shared.V_fixed_charges,
                 &mut state.surfaces_per_elec[active_elec].psi_pp_calculated,
-                state.surfaces_per_elec[active_elec].E,
+                E,
                 state.grid_n,
             );
 
@@ -471,9 +439,16 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 state.surfaces_per_elec = surfaces_per_elec;
                 state.psi_pp_score = psi_pp_score;
 
-                // updated_basis_weights = true; // todo?
+                for elec_i in 0..state.surfaces_per_elec.len() {
+                    wf_ops::initialize_bases(
+                        &mut state.charges_fixed,
+                        &mut state.bases[elec_i],
+                        &mut state.bases_visible[elec_i],
+                        2,
+                    );
+                }
+
                 updated_unweighted_basis_wfs = true;
-                updated_fixed_charges = true; // todo: Why does this appear to be required?
                 updated_meshes = true;
             }
 
@@ -691,14 +666,17 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Code below handles various updates that were flagged above.
 
                 if updated_fixed_charges {
-                    // Reinintialize bases due to the added charges
+                    // Reinintialize bases due to the added charges, since we initialize bases centered
+                    // on the charges.
                     // Note: An alternative would be to add the new bases without 0ing the existing ones.
-                    wf_ops::initialize_bases(
-                        &mut state.charges_fixed,
-                        &mut state.bases[active_elec],
-                        &mut state.bases_visible[active_elec],
-                        2,
-                    );
+                    for elec_i in 0..state.surfaces_per_elec.len() {
+                        wf_ops::initialize_bases(
+                            &mut state.charges_fixed,
+                            &mut state.bases[elec_i],
+                            &mut state.bases_visible[elec_i],
+                            2,
+                        );
+                    }
 
                     wf_ops::update_V_fm_fixed_charges(
                         &state.charges_fixed,
