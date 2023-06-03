@@ -18,7 +18,7 @@ use std::f64::consts::PI;
 
 use crate::{
     complex_nums::{Cplx, IM},
-    util::{factorial, make_laguerre},
+    util::factorial,
 };
 
 use scilib::{self, math::polynomial::Poly};
@@ -476,7 +476,7 @@ impl HOrbital {
         //     return Cplx::new_zero(); // saves some computation.
         // }
 
-        let mut diff = posit_sample - self.posit;
+        let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
         let radial = self.radial(r, self.harmonic.l);

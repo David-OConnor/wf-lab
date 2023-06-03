@@ -74,7 +74,7 @@ pub fn _spherical_to_cart(ctr: Vec3, θ: f64, φ: f64, r: f64) -> Vec3 {
 ///
 /// Wikipedia has info on generating arbitrary ones:
 /// https://en.wikipedia.org/wiki/Laguerre_polynomials
-pub(crate) fn make_laguerre(n: u16, alhpa: f64) -> impl Fn(f64) -> f64 {
+pub(crate) fn _make_laguerre(n: u16, alhpa: f64) -> impl Fn(f64) -> f64 {
     // todo: For now, we've just hard-coded some values for low n.
 
     // todo: You may need the generalized Laguerre polynomial; QC this.
@@ -110,7 +110,7 @@ pub(crate) fn make_laguerre(n: u16, alhpa: f64) -> impl Fn(f64) -> f64 {
 }
 
 /// Generate a Legendre polynomial for a given value. Used in the angular component of Hydrogen basis functions.
-pub(crate) fn legendre(n: u16, x: f64) -> f64 {
+pub(crate) fn _legendre(n: u16, x: f64) -> f64 {
     // todo: For now, we've just hard-coded some values for low n.
 
     // todo: You may need the generalized Laguerre polynomial; QC this.

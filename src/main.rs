@@ -20,7 +20,7 @@
 // You may need to interpolate to avoid quantized (not in the way we need!) positions
 // at the grid you chose. Linear is fine.
 
-use lin_alg2::f64::{Quaternion, Vec3};
+use lin_alg2::f64::Vec3;
 
 mod basis_weight_finder;
 mod basis_wfs;
@@ -37,8 +37,8 @@ mod ui;
 mod util;
 mod wf_ops;
 
-use basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto};
-use types::{Arr3d, Arr3dReal, SurfacesPerElec, SurfacesShared};
+use basis_wfs::Basis;
+use types::{Arr3dReal, SurfacesPerElec, SurfacesShared};
 use wf_lab::types::new_data_real;
 use wf_ops::Q_PROT;
 
@@ -87,7 +87,7 @@ pub struct State {
     pub nudge_amount: Vec<f64>,
     /// Wave function score, evaluated by comparing psi to psi'' from numerical evaluation, and
     /// from the Schrodinger equation. Per-electron.
-    pub psi_pp_score: Vec<f64>,
+    // pub psi_pp_score: Vec<f64>,
     pub surface_data: [SurfaceData; NUM_SURFACES],
     pub grid_n: usize,
     pub grid_min: f64,
@@ -188,7 +188,7 @@ pub fn init_from_grid(
     Vec<wf_ops::BasisWfsUnweighted>,
     SurfacesShared,
     Vec<SurfacesPerElec>,
-    Vec<f64>,
+    // Vec<f64>,
 ) {
     let arr_real = new_data_real(grid_n);
 
@@ -229,7 +229,7 @@ pub fn init_from_grid(
     // These must be initialized from wave functions later.
     let mut bases_unweighted = Vec::new();
     let mut charges_electron = Vec::new();
-    let mut psi_pp_score = Vec::new();
+    // let mut psi_pp_score = Vec::new();
 
     for i_elec in 0..num_electrons {
         charges_electron.push(arr_real.clone());
@@ -246,13 +246,13 @@ pub fn init_from_grid(
             None,
         );
 
-        let psi_pp_score_one = eval::score_wf(
+        surfaces_per_elec[i_elec].psi_pp_score = eval::score_wf(
             &surfaces_per_elec[i_elec].psi_pp_calculated,
             &surfaces_per_elec[i_elec].psi_pp_calculated,
             grid_n,
         );
 
-        psi_pp_score.push(psi_pp_score_one);
+        // psi_pp_score.push(psi_pp_score_one);
     }
 
     (
@@ -260,7 +260,7 @@ pub fn init_from_grid(
         bases_unweighted,
         surfaces_shared,
         surfaces_per_elec,
-        psi_pp_score,
+        // psi_pp_score,
     )
 }
 
@@ -320,17 +320,16 @@ fn main() {
     // let L_y = 1.;
     // let L_z = 1.;
 
-    let (charges_electron, bases_unweighted, surfaces_shared, surfaces_per_elec, psi_pp_score) =
-        init_from_grid(
-            grid_min,
-            grid_max,
-            spacing_factor,
-            grid_n,
-            // ui_active_elec,
-            &bases,
-            &charges_fixed,
-            num_elecs,
-        );
+    let (charges_electron, bases_unweighted, surfaces_shared, surfaces_per_elec) = init_from_grid(
+        grid_min,
+        grid_max,
+        spacing_factor,
+        grid_n,
+        // ui_active_elec,
+        &bases,
+        &charges_fixed,
+        num_elecs,
+    );
 
     let surface_data = [
         SurfaceData::new("V", true),
@@ -354,7 +353,6 @@ fn main() {
         surfaces_shared,
         surfaces_per_elec,
         nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],
-        psi_pp_score,
         surface_data,
         grid_n,
         grid_min,

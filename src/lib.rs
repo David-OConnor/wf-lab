@@ -74,8 +74,6 @@ pub fn psi_from_pt_charges(
 
     let wfs = create_trial_wfs(charges_fixed);
 
-    let mut E = 0.5;
-
     // todo: grids that aren't centered at 0? Non-cube grids?
 
     let spacing_factor = 1.;

@@ -11,7 +11,7 @@ pub struct SurfacesShared {
     /// Represents points on a grid, for our non-uniform grid.
     pub grid_posits: Arr3dVec,
     /// Potential from nuclei, and all electrons
-    pub V_combined: Arr3dReal,
+    pub V: Arr3dReal,
     /// Potential from nuclei only. We use this as a baseline for individual electron
     /// potentials, prior to summing over V from other electrons.
     pub V_fixed_charges: Arr3dReal,
@@ -23,6 +23,7 @@ pub struct SurfacesShared {
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
     pub E: f64,
+    pub psi_pp_score: f64,
 }
 
 impl SurfacesShared {
@@ -41,7 +42,7 @@ impl SurfacesShared {
 
         Self {
             grid_posits,
-            V_combined: data_real.clone(),
+            V: data_real.clone(),
             V_fixed_charges: data_real,
             // psi: data.clone(),
             psi: WaveFunctionMultiElec::new(num_elecs, n_grid),
@@ -49,6 +50,7 @@ impl SurfacesShared {
             psi_pp_measured: data.clone(),
             psi_pp_calculated: data,
             E: -0.50,
+            psi_pp_score: 1.,
         }
     }
     //
@@ -97,7 +99,6 @@ impl SurfacesShared {
 pub struct SurfacesPerElec {
     /// V from the nucleus, and all *other* electrons
     pub V: Arr3dReal,
-    pub E: f64,
     // pub psi: Arr3d,
     pub psi: PsiWDiffs,
     pub psi_pp_calculated: Arr3d,
@@ -106,6 +107,8 @@ pub struct SurfacesPerElec {
     /// between psi'' measured and calcualted, which is complex.
     pub nudge_amounts: Arr3dReal,
     // pub elec_charge: Arr3dReal,
+    pub E: f64,
+    pub psi_pp_score: f64,
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3d,
     pub aux2: Arr3d,
@@ -152,12 +155,12 @@ impl SurfacesPerElec {
 
         Self {
             V: data_real.clone(),
-            E: -0.50,
             psi,
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
+            E: -0.50,
+            psi_pp_score: 1.,
             nudge_amounts: default_nudges,
-
             aux1: data.clone(),
             aux2: data,
             // psi_prev: data.clone(),

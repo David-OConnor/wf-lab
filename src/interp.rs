@@ -4,7 +4,7 @@
 // todo: This possibly needs complex support. Perhaps as a wrapper since you can treat the real and
 // todo complex parts separately.
 
-use crate::{basis_wfs::Basis, complex_nums::Cplx};
+use crate::complex_nums::Cplx;
 
 use lin_alg2::f64::Vec3;
 
@@ -137,7 +137,7 @@ pub fn linear_1d(posit_sample: f64, range: (f64, f64), val_l: f64, val_r: f64) -
 /// Create an order-2 polynomial based on 3 points. (1D: pts are (input, output).
 /// `a` is the ^2 term, `b` is the linear term, `c` is the constant term.
 /// This is a general mathematical function, and can be derived using a system of equations.
-pub fn create_polynomial_terms(
+pub fn _create_polynomial_terms(
     pt0: (f64, f64),
     pt1: (f64, f64),
     pt2: (f64, f64),

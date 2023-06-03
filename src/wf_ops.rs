@@ -340,7 +340,6 @@ pub fn initialize_bases(
     // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
     // todo for now as a kludge to preserve weights, we copy the prev weights.
 
-    let mut i = 0;
     // for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
     for n in 1..max_n + 1 {
         for l in 0..n {
@@ -367,7 +366,6 @@ pub fn initialize_bases(
                         weight,
                         charge_id,
                     }));
-                    i += 1;
                 }
                 bases_visible.push(true);
             }

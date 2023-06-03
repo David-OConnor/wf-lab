@@ -14,7 +14,7 @@ use lin_alg2::{
 
 use crate::{
     types::{new_data_real, Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec, SurfacesShared},
-    util, wf_ops, State, SurfaceData,
+    util, State, SurfaceData,
 };
 
 type Color = (f32, f32, f32);
@@ -81,7 +81,7 @@ fn render_handler(_state: &mut State, _scene: &mut Scene, _dt: f32) -> EngineUpd
 }
 
 /// Utility function to linearly map an input value to an output
-pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 {
+pub fn _map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 {
     // todo: You may be able to optimize calls to this by having the ranges pre-store
     // todo the total range vals.
     let portion = (val - range_in.0) / (range_in.1 - range_in.0);
@@ -204,13 +204,7 @@ pub fn update_meshes(
 
     if render_multi_elec {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(
-                grid_posits,
-                &surfaces_shared.V_combined,
-                z_i,
-                V_SCALER,
-                grid_n,
-            ),
+            &prepare_2d_mesh_real(grid_posits, &surfaces_shared.V, z_i, V_SCALER, grid_n),
             true,
         ));
 

@@ -5,10 +5,10 @@ use std::f64::consts::FRAC_1_SQRT_2;
 
 use crate::{
     complex_nums::Cplx,
-    types::{new_data, SurfacesPerElec},
+    types::new_data,
     types::{Arr3d, Arr3dReal, Arr3dVec},
     util,
-    wf_ops::{self, PsiWDiffs, Q_ELEC},
+    wf_ops::{PsiWDiffs, Q_ELEC},
 };
 
 use lin_alg2::f64::Vec3;
@@ -44,12 +44,17 @@ impl WaveFunctionMultiElec {
 
     /// `posits_by_elec` is indexed by the electron index. For example, for a 2-electron system, returns
     /// the probability of finding electron 0 in `posits_by_elec[0]`, and electron 1 in `posits_by_elec[1]`.
-    pub fn populate_psi_combined(&mut self) {
+    pub fn populate_psi_combined(&mut self, grid_n: usize) {
         for (posits, val) in &self.psi_joint {
             for posit in posits {
                 self.psi_marginal.on_pt[posit.0][posit.1][posit.2] += *val;
             }
         }
+
+        // todo: set up diffs. This is a relatively coarse numerical diff vice the analytic ones we use
+        // todo for the individual electrons.
+        for i in 0..grid_n {}
+        // self.psi_marginal.x_prev =
     }
     // let's say n = 2, and r spans 0, 1, 2, 3
     // we want to calc electron density at 2, or collect all relevant parts

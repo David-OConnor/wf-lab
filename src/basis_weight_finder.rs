@@ -2,14 +2,13 @@
 //! or arrangement of nuclei.
 
 use crate::{
-    basis_wfs::{Basis, HOrbital},
-    complex_nums::Cplx,
+    basis_wfs::Basis,
     eval,
-    types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec, SurfacesShared},
-    wf_ops::{self, ħ, BasisWfsUnweighted},
+    types::{SurfacesPerElec, SurfacesShared},
+    wf_ops::{self, BasisWfsUnweighted},
 };
 
-use lin_alg2::f64::{Quaternion, Vec3};
+use lin_alg2::f64::Vec3;
 
 /// Adjust weights of coefficiants until score is minimized.
 /// We use a gradient-descent approach to find local *score* minimum. (fidelity?)
@@ -21,7 +20,6 @@ pub fn find_weights(
     basis_wfs_unweighted: &mut BasisWfsUnweighted,
     surfaces_shared: &SurfacesShared,
     surfaces_per_elec: &mut SurfacesPerElec,
-    score: &mut f64,
     max_n: u16, // quantum number n
     grid_n: usize,
 ) {
@@ -172,7 +170,7 @@ pub fn find_weights(
         None,
     );
 
-    *score = eval::score_wf(
+    surfaces_per_elec.psi_pp_score = eval::score_wf(
         &surfaces_per_elec.psi_pp_calculated,
         &surfaces_per_elec.psi_pp_measured,
         grid_n,

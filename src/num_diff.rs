@@ -2,16 +2,12 @@
 
 use lin_alg2::f64::Vec3;
 
-use crate::util::norm_sq;
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
     interp,
     types::{Arr3d, Arr3dVec},
     // rbf::Rbf,
-    util::{self},
-    wf_ops::ħ,
-    wf_ops::BasisWfsUnweighted,
 };
 
 // Used for calculating numerical psi''.
@@ -161,7 +157,7 @@ pub(crate) fn _find_ψ_pp_meas_fm_grid_reg(
 }
 
 #[derive(Clone, Copy)]
-pub enum PsiPVar {
+pub enum _PsiPVar {
     Total,
     X,
     Y,
@@ -182,11 +178,11 @@ pub enum PsiPVar {
 /// todo: Calculated version we can compare to? Maybe sum of momentum of basis fns used?
 /// todo: ie find_ψ_p_calc in `wf_ops`.
 /// Pψ = pψ . -iħ ψ' = Pψ. ψ' = piħ ψ
-pub fn find_ψ_p_meas_fm_grid_irreg(
+pub fn _find_ψ_p_meas_fm_grid_irreg(
     psi: &Arr3d,
     result: &mut Arr3d,
     grid_posits: &Arr3dVec,
-    var: PsiPVar,
+    var: _PsiPVar,
     grid_n: usize,
 ) {
     // This is `i * ħ`. Const expr limits avail syntax.
@@ -206,7 +202,7 @@ pub fn find_ψ_p_meas_fm_grid_irreg(
                 }
 
                 match var {
-                    PsiPVar::Total => {
+                    _PsiPVar::Total => {
                         let dx = grid_posits[i + 1][j][k].x - grid_posits[i - 1][j][k].x;
                         let dy = grid_posits[i][j + 1][k].y - grid_posits[i][j - 1][k].y;
                         let dz = grid_posits[i][j][k + 1].z - grid_posits[i][j][k - 1].z;
@@ -217,19 +213,19 @@ pub fn find_ψ_p_meas_fm_grid_irreg(
 
                         result[i][j][k] = d_psi_d_x + d_psi_d_y + d_psi_d_z;
                     }
-                    PsiPVar::X => {
+                    _PsiPVar::X => {
                         let dx = grid_posits[i + 1][j][k].x - grid_posits[i - 1][j][k].x;
                         let d_psi_d_x = (psi[i + 1][j][k] - psi[i - 1][j][k]) / dx;
 
                         result[i][j][k] = d_psi_d_x;
                     }
-                    PsiPVar::Y => {
+                    _PsiPVar::Y => {
                         let dy = grid_posits[i][j + 1][k].y - grid_posits[i][j - 1][k].y;
                         let d_psi_d_y = (psi[i][j + 1][k] - psi[i][j - 1][k]) / dy;
 
                         result[i][j][k] = d_psi_d_y;
                     }
-                    PsiPVar::Z => {
+                    _PsiPVar::Z => {
                         let dz = grid_posits[i][j][k + 1].z - grid_posits[i][j][k - 1].z;
                         let d_psi_d_z = (psi[i][j][k + 1] - psi[i][j][k - 1]) / dz;
 
