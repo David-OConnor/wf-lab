@@ -45,9 +45,12 @@ impl WaveFunctionMultiElec {
     /// `posits_by_elec` is indexed by the electron index. For example, for a 2-electron system, returns
     /// the probability of finding electron 0 in `posits_by_elec[0]`, and electron 1 in `posits_by_elec[1]`.
     pub fn populate_psi_combined(&mut self, grid_n: usize) {
+        println!("Populating psi combined...");
         for (posits, val) in &self.psi_joint {
             for posit in posits {
                 self.psi_marginal.on_pt[posit.0][posit.1][posit.2] += *val;
+
+                println!("v{}", val);
             }
         }
 
@@ -55,6 +58,8 @@ impl WaveFunctionMultiElec {
         // todo for the individual electrons.
         for i in 0..grid_n {}
         // self.psi_marginal.x_prev =
+
+        println!("complete");
     }
     // let's say n = 2, and r spans 0, 1, 2, 3
     // we want to calc electron density at 2, or collect all relevant parts
@@ -70,6 +75,7 @@ impl WaveFunctionMultiElec {
     /// Set up values for the joint wavefunction; related to probabilities of the electrons
     /// being in a combination of positions.
     pub fn setup_joint_wf(&mut self, wfs: &[Arr3d], grid_n: usize) {
+        println!("Setting up psi joint...");
         // todo: If you run this function more often than generating the posits
         // todo store them somewhere;
         let mut posits = Vec::new();
@@ -104,11 +110,14 @@ impl WaveFunctionMultiElec {
         }
 
         for permutation in posit_permutations {
+            // println!("j{}", self.joint_wf_at_permutation(wfs, &permutation));
             psi_joint.push((
                 permutation.clone(),
                 self.joint_wf_at_permutation(wfs, &permutation),
             ));
         }
+
+        // todo: Here or elsewhere, normalize.
 
         // for (i, x) in wfs.iter().enumerate() {
         //     for posit_combo in posit_permutations {
@@ -117,6 +126,7 @@ impl WaveFunctionMultiElec {
         // }
 
         self.psi_joint = psi_joint;
+        println!("Complete");
     }
 
     /// Find the wave fucntion value associated with a single permutation of position. Eg, the one associated

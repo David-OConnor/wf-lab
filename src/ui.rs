@@ -9,7 +9,7 @@ use crate::{
     basis_wfs::Basis,
     eigen_fns, elec_elec, eval, render, types,
     types::{Arr3d, Arr3dReal},
-    wf_ops, ActiveElec, State,
+    wf_ops, ActiveElec, State, SurfaceData,
 };
 
 const UI_WIDTH: f32 = 300.;
@@ -430,9 +430,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         // ui.heading("Show surfaces:");
 
-        // Selector to choose the active electron
-        let prev_active_elec = state.ui_active_elec;
-
         let mut updated_fixed_charges = false;
         let mut updated_unweighted_basis_wfs = false;
         let mut updated_basis_weights = false;
@@ -480,11 +477,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             ui.add_space(20.);
 
-            // Combobox to select the active electron.
+            let prev_active_elec = state.ui_active_elec;
+            // Combobox to select the active electron, or select the combined wave functino.
             let active_elec_text = match state.ui_active_elec {
                 ActiveElec::Combined => "C".to_owned(),
                 ActiveElec::PerElec(i) => i.to_string(),
             };
+
             egui::ComboBox::from_id_source(0)
                 .width(30.)
                 .selected_text(&active_elec_text)
@@ -769,21 +768,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     updated_meshes = true;
                 }
 
-                if updated_meshes {
-                    engine_updates.meshes = true;
-
-                    render::update_meshes(
-                        &state.surfaces_shared,
-                        &state.surfaces_per_elec[active_elec],
-                        state.ui_z_displayed,
-                        scene,
-                        &state.surfaces_shared.grid_posits,
-                        state.mag_phase,
-                        &state.charges_electron[active_elec],
-                        state.grid_n,
-                        false,
-                    );
-                }
                 // Track using a variable to avoid mixing mutable and non-mutable borrows to
                 // surfaces.
                 if engine_updates.entities {
@@ -827,7 +811,20 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                 state.grid_n,
                             );
 
-                            updated_meshes = true;
+                            // updated_meshes = true;
+
+                            // todo: DRY
+                            render::update_meshes(
+                                &state.surfaces_shared,
+                                &state.surfaces_per_elec[0],
+                                state.ui_z_displayed,
+                                scene,
+                                &state.surfaces_shared.grid_posits,
+                                state.mag_phase,
+                                &state.charges_electron[0],
+                                state.grid_n,
+                                true,
+                            );
                         }
 
                         state.surfaces_shared.E
@@ -863,21 +860,66 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         state.grid_n,
                     );
 
-                    engine_updates.meshes = true;
+                    engine_updates.meshes = true; // todo: Currently does not work.
 
-                    render::update_meshes(
-                        &state.surfaces_shared,
-                        &state.surfaces_per_elec[0], // dummy
-                        state.ui_z_displayed,
-                        scene,
-                        &state.surfaces_shared.grid_posits,
-                        state.mag_phase,
-                        &state.charges_electron[0], // dummy
-                        state.grid_n,
-                        true,
-                    );
+                    // render::update_meshes(
+                    //     &state.surfaces_shared,
+                    //     &state.surfaces_per_elec[0], // dummy
+                    //     state.ui_z_displayed,
+                    //     scene,
+                    //     &state.surfaces_shared.grid_posits,
+                    //     state.mag_phase,
+                    //     &state.charges_electron[0], // dummy
+                    //     state.grid_n,
+                    //     true,
+                    // );
+
+                    // todo: DRY with main.
+                    // todo
+                    // let surface_data = [
+                    //     SurfaceData::new("V", false),
+                    //     SurfaceData::new("ψ", true),
+                    //     SurfaceData::new("ψ im", false),
+                    //     SurfaceData::new("ψ²", false),
+                    //     SurfaceData::new("ψ'' calc", true),
+                    //     SurfaceData::new("ψ'' calc im", false),
+                    //     SurfaceData::new("ψ'' meas", true),
+                    //     SurfaceData::new("ψ'' meas im", false),
+                    // ];
+                    //
+
+                    // todo: Do we want this? Why?
+                    render::update_entities(&state.charges_fixed, &state.surface_data, scene)
                 }
             }
+        }
+        // Code here runs for both multi-electron, and combined states
+
+        if updated_meshes {
+            engine_updates.meshes = true;
+
+            let render_multi_elec = match state.ui_active_elec {
+                ActiveElec::PerElec(_) => false,
+                ActiveElec::Combined => true,
+            };
+
+            let active_elec = match state.ui_active_elec {
+                ActiveElec::Combined => 0,
+                ActiveElec::PerElec(v) => v,
+            };
+
+            render::update_meshes(
+                &state.surfaces_shared,
+                &state.surfaces_per_elec[active_elec],
+                state.ui_z_displayed,
+                scene,
+                &state.surfaces_shared.grid_posits,
+                state.mag_phase,
+                &state.charges_electron[active_elec],
+                state.grid_n,
+                // render_multi_elec
+                render_multi_elec,
+            );
         }
     });
 
