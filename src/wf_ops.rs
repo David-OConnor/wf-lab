@@ -24,7 +24,7 @@
 // todo potential.
 
 use crate::{
-    basis_wfs::{Basis, HOrbital, SphericalHarmonic},
+    basis_wfs::{Basis, GeneralS0, HOrbital, SphericalHarmonic},
     complex_nums::Cplx,
     eigen_fns, eval,
     num_diff::{self, H, H_SQ},
@@ -339,6 +339,59 @@ pub fn initialize_bases(
 
     // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
     // todo for now as a kludge to preserve weights, we copy the prev weights.
+    for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
+        // See Sebens, for weights under equation 24; this is for Helium.
+        bases.push(Basis::GeneralS0(GeneralS0 {
+            posit: *nuc_posit,
+            c: 0.76837,
+            chi: 1.41714,
+            weight: 1.,
+            charge_id,
+            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // dummy
+            n: 1,                                                               //dummy
+        }));
+        bases.push(Basis::GeneralS0(GeneralS0 {
+            posit: *nuc_posit,
+            c: 0.22346,
+            chi: 2.37682,
+            weight: 1.,
+            charge_id,
+            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // dummy
+            n: 1,                                                               //dummy
+        }));
+        bases.push(Basis::GeneralS0(GeneralS0 {
+            posit: *nuc_posit,
+            c: 0.04082,
+            chi: 4.39628,
+            weight: 1.,
+            charge_id,
+            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // dummy,
+            n: 1,                                                               //dummy
+        }));
+        bases.push(Basis::GeneralS0(GeneralS0 {
+            posit: *nuc_posit,
+            c: -0.00994,
+            chi: 6.52699,
+            weight: 1.,
+            charge_id,
+            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // dummy
+            n: 1,                                                               //dummy
+        }));
+        bases.push(Basis::GeneralS0(GeneralS0 {
+            posit: *nuc_posit,
+            c: 0.00230,
+            chi: 7.94252,
+            weight: 1.,
+            charge_id,
+            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // dummy
+            n: 1,                                                               //dummy
+        }));
+
+        for _ in 0..5 {
+            bases_visible.push(true);
+        }
+    }
+    return; // todo temp
 
     // for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
     for n in 1..max_n + 1 {
@@ -354,18 +407,18 @@ pub fn initialize_bases(
 
                     let weight = 0.;
 
-                    bases.push(Basis::H(HOrbital {
-                        posit: *nuc_posit,
-                        n,
-                        harmonic: SphericalHarmonic {
-                            l,
-                            m,
-                            orientation: Quaternion::new_identity(),
-                        },
-
-                        weight,
-                        charge_id,
-                    }));
+                    // bases.push(Basis::H(HOrbital {
+                    //     posit: *nuc_posit,
+                    //     n,
+                    //     harmonic: SphericalHarmonic {
+                    //         l,
+                    //         m,
+                    //         orientation: Quaternion::new_identity(),
+                    //     },
+                    //
+                    //     weight,
+                    //     charge_id,
+                    // }));
                 }
                 bases_visible.push(true);
             }

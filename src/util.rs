@@ -194,7 +194,6 @@ pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, grid_n: usize) {
 pub fn normalize_wf(arr: &mut Arr3d, norm: f64, grid_n: usize) {
     const EPS: f64 = 0.000001;
     if norm.abs() < EPS {
-        // return 1.;
         return;
     }
 

@@ -13,7 +13,28 @@ use crate::{
 
 use lin_alg2::f64::Vec3;
 
+/// This struct helps keep syntax more readable
+#[derive(Clone, Copy, PartialEq)]
+pub struct PositIndex {
+    pub x: usize,
+    pub y: usize,
+    pub z: usize,
+}
+
+impl PositIndex {
+    pub fn new(x: usize, y: usize, z: usize) -> Self {
+        Self { x, y, z }
+    }
+
+    pub fn index(&self, wf: &Arr3d) -> Cplx {
+        wf[self.x][self.y][self.z]
+    }
+}
+
 /// Represents a wave function of multiple electrons
+/// ψ(r1, r2) = ψ_a(r1)ψb(r2), wherein we are combining probabilities.
+/// fermions: two identical fermions cannot occupy the same state.
+/// ψ(r1, r2) = A[ψ_a(r1)ψ_b(r2) - ψ_b(r1)ψ_a(r2)]
 /// todo: Incorporate spin.
 pub struct WaveFunctionMultiElec {
     num_elecs: usize,
@@ -23,7 +44,7 @@ pub struct WaveFunctionMultiElec {
     /// Maps permutations of position index to wave function value.
     /// The outer vec has a value for each permutation of spacial coordinates, with length
     /// `num_elecs`. So, its length is (n_grid^3)^num_elecs
-    psi_joint: Vec<(Vec<(usize, usize, usize)>, Cplx)>,
+    psi_joint: Vec<(Vec<PositIndex>, Cplx)>,
     /// This is the combined probability, created from `psi_joint`.
     pub psi_marginal: PsiWDiffs,
 }
@@ -42,24 +63,73 @@ impl WaveFunctionMultiElec {
         }
     }
 
-    /// `posits_by_elec` is indexed by the electron index. For example, for a 2-electron system, returns
-    /// the probability of finding electron 0 in `posits_by_elec[0]`, and electron 1 in `posits_by_elec[1]`.
-    pub fn populate_psi_combined(&mut self, grid_n: usize) {
-        println!("Populating psi combined...");
-        for (posits, val) in &self.psi_joint {
-            for posit in posits {
-                self.psi_marginal.on_pt[posit.0][posit.1][posit.2] += *val;
+    /// Create the wave function that, when squared, represents electron charge density.
+    /// This is constructed by integrating out the electrons over position space.
+    /// todo: Fix this description, and code A/R.
+    pub fn populate_psi_marginal(&mut self, grid_n: usize) {
+        println!("Populating psi marginal...");
+        // for i in 0..grid_n {
+        //     for j in 0..grid_n {
+        //         for k in 0..grid_n {
+        //             self.psi_marginal.on_pt = 1.;
+        //         }
+        //     }
+        // }
 
-                println!("v{}", val);
+        // todo: Maybe there's no wf, but there is a wf squared?
+
+        // Todo: What is this? Likely a function of n_electrons and n_points. Maybe multiply them,
+        // todo then subtract one?
+        let n_components_per_posit = (grid_n.pow(3) * self.num_elecs) as f64;
+
+        for (posits, wf_val) in &self.psi_joint {
+            for posit in posits {
+                // posit.index_mut(&mut self.psi_marginal.on_pt) += *wf_val;
+                // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val;
+                // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val / n_components_per_posit;
+
+                // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val;
+
+                // todo: Experimenting with treating the abs_square as what we combine, vice making a "marginal"
+                // todo combined WF we square to find charge density
+                // Note: We are hijacking psi_marginal to be this squared value. (Noting that
+                // we are still storing it as a complex value)
+
+                // todo: This produces a visible result (as opposed to when we don't square it...), but
+                // todo: how do we score this using psi''s?
+                // todo: (The impliciation here is perhaps the various values are variously positive and negative,
+                // todo, so they cancel if not squared)
+                self.psi_marginal.on_pt[posit.x][posit.y][posit.z] +=
+                    Cplx::from_real(wf_val.abs_sq());
+
+                // println!("v{}", val);
             }
         }
+
+        // Normalize the wave function.
+        let mut norm = 0.;
+
+        for i in 0..grid_n {
+            for j in 0..grid_n {
+                for k in 0..grid_n {
+                    norm += self.psi_marginal.on_pt[i][j][k].abs_sq();
+                }
+            }
+        }
+
+        util::normalize_wf(&mut self.psi_marginal.on_pt, norm, grid_n);
+
+        println!("Some vals: {:?}", self.psi_marginal.on_pt[5][6][4]);
+        println!("Some vals: {:?}", self.psi_marginal.on_pt[1][3][6]);
+        // println!("Some vals: {:?}", self.psi_marginal.on_pt[7][10][2]);
+        println!("Some vals: {:?}", self.psi_marginal.on_pt[6][4][3]);
 
         // todo: set up diffs. This is a relatively coarse numerical diff vice the analytic ones we use
         // todo for the individual electrons.
         for i in 0..grid_n {}
         // self.psi_marginal.x_prev =
 
-        println!("complete");
+        println!("Complete");
     }
     // let's say n = 2, and r spans 0, 1, 2, 3
     // we want to calc electron density at 2, or collect all relevant parts
@@ -73,7 +143,7 @@ impl WaveFunctionMultiElec {
     // posits = [r0, r1, r2] where we
 
     /// Set up values for the joint wavefunction; related to probabilities of the electrons
-    /// being in a combination of positions.
+    /// being in a permutation of positions.
     pub fn setup_joint_wf(&mut self, wfs: &[Arr3d], grid_n: usize) {
         println!("Setting up psi joint...");
         // todo: If you run this function more often than generating the posits
@@ -83,12 +153,12 @@ impl WaveFunctionMultiElec {
         for i in 0..grid_n {
             for j in 0..grid_n {
                 for k in 0..grid_n {
-                    posits.push((i, j, k));
+                    posits.push(PositIndex::new(i, j, k));
                 }
             }
         }
 
-        let mut psi_joint = Vec::new();
+        self.psi_joint = Vec::new();
 
         let mut posit_permutations = Vec::new();
         // for 2 elecs:
@@ -103,39 +173,59 @@ impl WaveFunctionMultiElec {
         //     posit_permutations.push(permutation);
         // }
 
+        // todo: Combinations instead of permutations? Would that solve your WF-is-cancelled problem
+        // todo without squaring?
+
+        // let mut combo_indexes_added = Vec::new();
+
+        // todo: Reason-out adn write out to determine if you want permutations or combinations. Ie,
+        // are permutatinos with order reversed the same? If the WF is the same? If different?
+
+        // for (i0, r0) in posits.iter().enumerate() {
+        //     for (i1, r1) in posits.iter().enumerate() {
         for r0 in &posits {
             for r1 in &posits {
+                // if combo_indexes_added.contains(&vec![i1, i0]) {
+                //     continue;
+                // }
+                // combo_indexes_added.push(vec![i0, i1]);
+
                 posit_permutations.push(vec![*r0, *r1]);
             }
         }
 
         for permutation in posit_permutations {
             // println!("j{}", self.joint_wf_at_permutation(wfs, &permutation));
-            psi_joint.push((
+            self.psi_joint.push((
                 permutation.clone(),
                 self.joint_wf_at_permutation(wfs, &permutation),
             ));
         }
 
-        // todo: Here or elsewhere, normalize.
-
-        // for (i, x) in wfs.iter().enumerate() {
-        //     for posit_combo in posit_permutations {
-        //         self.val(x, posit_combo)
-        //     }
-        // }
-
-        self.psi_joint = psi_joint;
         println!("Complete");
     }
 
     /// Find the wave fucntion value associated with a single permutation of position. Eg, the one associated
     /// with the probability that electron 0 is in position 0 and electron 1 is in position 1.
-    pub fn joint_wf_at_permutation(&mut self, x: &[Arr3d], r: &[(usize, usize, usize)]) -> Cplx {
+    pub fn joint_wf_at_permutation(&self, x: &[Arr3d], r: &[PositIndex]) -> Cplx {
+        // todo: Hard-coded for 2-elecs of opposite spin; ie no exchange interaction.
+
+        // so, for posits 0, 1
+        // we have permutations
+        // 00 01 10 11
+        // x0[0] * x1[0] + x0[0] * x1[1] + x0[1] x1[0] + x0[1] * x1[1]
+
+        return r[0].index(&x[0]) * r[1].index(&x[1]);
+
         // hardcoded 2x2 to test
+
+        // println!("a {}", r[0].index(&x[0]));
+        // println!("b {}", r[1].index(&x[1]));
+        // println!("c {}", r[1].index(&x[0]));
+        // println!("d {}", r[0].index(&x[1]));
+        // todo: Incorporate spin.
         return Cplx::from_real(FRAC_1_SQRT_2)
-            * (x[0][r[0].0][r[0].1][r[0].2] * x[1][r[1].0][r[1].1][r[1].2]
-                - x[1][r[0].0][r[0].1][r[0].2] * x[0][r[1].0][r[1].1][r[1].2]);
+            * (r[0].index(&x[0]) * r[1].index(&x[1]) - r[1].index(&x[0]) * r[0].index(&x[1]));
 
         // hardcoded 3x3 to test. // todo: QC norm const
         // 1. / 3.0.sqrt() * (

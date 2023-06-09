@@ -849,7 +849,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state
                         .surfaces_shared
                         .psi
-                        .populate_psi_combined(state.grid_n);
+                        .populate_psi_marginal(state.grid_n);
 
                     wf_ops::update_psi_pps_from_bases(
                         &state.surfaces_shared.psi.psi_marginal,
@@ -873,20 +873,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     //     state.grid_n,
                     //     true,
                     // );
-
-                    // todo: DRY with main.
-                    // todo
-                    // let surface_data = [
-                    //     SurfaceData::new("V", false),
-                    //     SurfaceData::new("ψ", true),
-                    //     SurfaceData::new("ψ im", false),
-                    //     SurfaceData::new("ψ²", false),
-                    //     SurfaceData::new("ψ'' calc", true),
-                    //     SurfaceData::new("ψ'' calc im", false),
-                    //     SurfaceData::new("ψ'' meas", true),
-                    //     SurfaceData::new("ψ'' meas im", false),
-                    // ];
-                    //
 
                     // todo: Do we want this? Why?
                     render::update_entities(&state.charges_fixed, &state.surface_data, scene)

@@ -38,10 +38,13 @@ pub const _KE_COEFF_INV: f64 = 1. / KE_COEFF;
 ///
 /// Hψ = Eψ. -ħ^2/2m * ψ'' + Vψ = Eψ. ψ'' = [(E - V) / (-ħ^2/2m)] ψ
 pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
-    // ψ(r1, r2) = ψ_a(r1)ψb(r2), wherein we are combining probabilities.
-    // fermions: two identical fermions cannot occupy the same state.
-    // ψ(r1, r2) = A[ψ_a(r1)ψ_b(r2) - ψ_b(r1)ψ_a(r2)]
     psi[i][j][k] * (E - V[i][j][k]) * KE_COEFF
+}
+
+/// Todo WIP/probably wrong approach
+/// L^2 ψ = ħ^2 l(l+1)ψ
+pub fn find_spin(psi: &Arr3d, l: f64, L: f64, i: usize, j: usize, k: usize) -> Cplx {
+    Cplx::new_zero()
 }
 
 // /// Calcualte dψ/dx, from ψ and L_x.

@@ -31,11 +31,14 @@ use lin_alg2::f64::{Quaternion, Vec3};
 const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
 
+const PI_SQRT_INV: f64 = 0.5641895835477563;
+
 // todo: Remove this enum if you use STOs as the only basis
 #[derive(Clone, Debug)]
 pub enum Basis {
     Sto(Sto),
     H(HOrbital),
+    GeneralS0(GeneralS0),
 }
 
 impl Basis {
@@ -44,6 +47,7 @@ impl Basis {
         match self {
             Self::Sto(v) => v.posit,
             Self::H(v) => v.posit,
+            Self::GeneralS0(v) => v.posit,
         }
     }
 
@@ -51,6 +55,7 @@ impl Basis {
         match self {
             Self::Sto(v) => &mut v.posit,
             Self::H(v) => &mut v.posit,
+            Self::GeneralS0(v) => &mut v.posit,
         }
     }
 
@@ -58,6 +63,7 @@ impl Basis {
         match self {
             Self::Sto(v) => v.n,
             Self::H(v) => v.n,
+            Self::GeneralS0(v) => 1,
         }
     }
 
@@ -65,6 +71,7 @@ impl Basis {
         match self {
             Self::Sto(v) => &mut v.n,
             Self::H(v) => &mut v.n,
+            Self::GeneralS0(v) => &mut v.n,
         }
     }
 
@@ -72,6 +79,7 @@ impl Basis {
         match self {
             Self::Sto(v) => v.harmonic.l,
             Self::H(v) => v.harmonic.l,
+            Self::GeneralS0(v) => 0,
         }
     }
 
@@ -79,6 +87,7 @@ impl Basis {
         match self {
             Self::Sto(v) => &mut v.harmonic.l,
             Self::H(v) => &mut v.harmonic.l,
+            Self::GeneralS0(v) => &mut v.harmonic.l, // dummy
         }
     }
 
@@ -86,6 +95,7 @@ impl Basis {
         match self {
             Self::Sto(v) => v.harmonic.m,
             Self::H(v) => v.harmonic.m,
+            Self::GeneralS0(v) => 0,
         }
     }
 
@@ -93,6 +103,7 @@ impl Basis {
         match self {
             Self::Sto(v) => &mut v.harmonic.m,
             Self::H(v) => &mut v.harmonic.m,
+            Self::GeneralS0(v) => &mut v.harmonic.m, // dummy
         }
     }
 
@@ -100,6 +111,7 @@ impl Basis {
         match self {
             Self::Sto(v) => &v.harmonic,
             Self::H(v) => &v.harmonic,
+            Self::GeneralS0(v) => &v.harmonic, // dummy
         }
     }
 
@@ -107,6 +119,7 @@ impl Basis {
         match self {
             Self::Sto(v) => &mut v.harmonic,
             Self::H(v) => &mut v.harmonic,
+            Self::GeneralS0(v) => &mut v.harmonic, // dummy
         }
     }
 
@@ -114,6 +127,7 @@ impl Basis {
         match self {
             Self::Sto(v) => v.weight,
             Self::H(v) => v.weight,
+            Self::GeneralS0(v) => v.weight,
         }
     }
 
@@ -121,6 +135,7 @@ impl Basis {
         match self {
             Self::Sto(v) => &mut v.weight,
             Self::H(v) => &mut v.weight,
+            Self::GeneralS0(v) => &mut v.weight,
         }
     }
 
@@ -128,6 +143,7 @@ impl Basis {
         match self {
             Self::Sto(v) => v.value(posit_sample),
             Self::H(v) => v.value(posit_sample),
+            Self::GeneralS0(v) => v.value(posit_sample),
         }
     }
 
@@ -135,6 +151,7 @@ impl Basis {
         match self {
             Self::Sto(v) => v.charge_id,
             Self::H(v) => v.charge_id,
+            Self::GeneralS0(v) => v.charge_id,
         }
     }
 
@@ -142,6 +159,7 @@ impl Basis {
         match self {
             Self::Sto(v) => &mut v.charge_id,
             Self::H(v) => &mut v.charge_id,
+            Self::GeneralS0(v) => &mut v.charge_id,
         }
     }
 
@@ -149,6 +167,7 @@ impl Basis {
         match self {
             Self::Sto(_) => "STO",
             Self::H(_) => "H",
+            Self::GeneralS0(_) => "S0",
         }
         .to_owned()
     }
@@ -164,6 +183,10 @@ impl PartialEq for Basis {
             },
             Self::H(_) => match other {
                 Self::Sto(_) => false,
+                _ => true,
+            },
+            Self::GeneralS0(_) => match other {
+                Self::GeneralS0(_) => false,
                 _ => true,
             },
         }
@@ -356,6 +379,30 @@ impl Sto {
         let angular = self.harmonic.value(θ, ϕ);
 
         Cplx::from_real(N) * Cplx::from_real(radial) * angular
+    }
+}
+
+/// See Sebens: Electric Charge Density, equation 24
+#[derive(Clone, Debug)]
+pub struct GeneralS0 {
+    pub posit: Vec3,
+    pub c: f64,
+    pub chi: f64,
+    pub weight: f64,
+    pub charge_id: usize,
+    /// Unused: This is here for API compatibility
+    pub harmonic: SphericalHarmonic, // dummy
+    pub n: u16, // dummy
+}
+
+impl GeneralS0 {
+    pub fn value(&self, posit_sample: Vec3) -> Cplx {
+        let diff = posit_sample - self.posit;
+        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+        Cplx::from_real(
+            PI_SQRT_INV * self.c * (self.chi / A_0).powf(1.5) * (-self.chi * r / A_0).exp(),
+        )
     }
 }
 
