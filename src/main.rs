@@ -31,6 +31,7 @@ mod eval;
 mod interp;
 mod nudge;
 mod num_diff;
+mod potential;
 mod render;
 mod types;
 mod ui;
@@ -60,7 +61,7 @@ pub struct State {
     pub charges_fixed: Vec<(Vec3, f64)>,
     /// Charges from electrons, over 3d space. Computed from <ψ|ψ>.
     /// This is not part of `SurfacesPerElec` since we use all values at once (or all except one)
-    /// when calculating the potential
+    /// when calculating the potential. (easier to work with API)
     pub charges_electron: Vec<Arr3dReal>,
     /// Surfaces that are not electron-specific.
     pub surfaces_shared: SurfacesShared,
@@ -80,9 +81,6 @@ pub struct State {
     /// Used to toggle precense of a bases, effectively setting its weight ot 0 without losing the stored
     /// weight value. Per-electron.
     pub bases_visible: Vec<Vec<bool>>,
-    // /// Energy eigenvalue of the Hamiltonian; per electron.
-    // /// todo: You may need separate eigenvalues per electron-WF if you go that route.
-    // pub E: Vec<f64>,
     /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
     pub nudge_amount: Vec<f64>,
     /// Wave function score, evaluated by comparing psi to psi'' from numerical evaluation, and
@@ -210,14 +208,14 @@ pub fn init_from_grid(
 
     wf_ops::update_V_fm_fixed_charges(
         &charges_fixed,
-        &mut surfaces_shared.V_fixed_charges,
+        &mut surfaces_shared.V_from_nuclei,
         &surfaces_shared.grid_posits,
         grid_n,
     );
 
     // todo: For now and for here at least, make all individual V = to fixed V at init.
     for sfc in &mut surfaces_per_elec {
-        types::copy_array_real(&mut sfc.V, &surfaces_shared.V_fixed_charges, grid_n);
+        types::copy_array_real(&mut sfc.V_from_this, &surfaces_shared.V_from_nuclei, grid_n);
     }
 
     let basis_wfs_unweighted = wf_ops::BasisWfsUnweighted::new(

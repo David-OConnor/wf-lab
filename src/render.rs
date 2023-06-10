@@ -204,7 +204,7 @@ pub fn update_meshes(
 
     if render_multi_elec {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces_shared.V, z_i, V_SCALER, grid_n),
+            &prepare_2d_mesh_real(grid_posits, &surfaces_shared.V_total, z_i, V_SCALER, grid_n),
             true,
         ));
 
@@ -257,7 +257,7 @@ pub fn update_meshes(
         ));
     } else {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces.V, z_i, V_SCALER, grid_n),
+            &prepare_2d_mesh_real(grid_posits, &surfaces.V_from_this, z_i, V_SCALER, grid_n),
             true,
         ));
 

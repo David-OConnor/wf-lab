@@ -26,7 +26,7 @@
 use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto2},
     complex_nums::Cplx,
-    eigen_fns, eval,
+    eigen_fns, elec_elec, eval,
     num_diff::{self, H, H_SQ},
     types,
     types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec, SurfacesShared},
@@ -67,7 +67,7 @@ pub enum Spin {
 /// potential here, as well as from other electrons.
 pub fn update_V_fm_fixed_charges(
     charges_fixed: &[(Vec3, f64)],
-    V_nuc_shared: &mut Arr3dReal,
+    V_fixed_charges: &mut Arr3dReal,
     grid_posits: &Arr3dVec,
     grid_n: usize,
     // Wave functions from other electrons, for calculating the Hartree potential.
@@ -77,11 +77,36 @@ pub fn update_V_fm_fixed_charges(
             for k in 0..grid_n {
                 let posit_sample = grid_posits[i][j][k];
 
-                V_nuc_shared[i][j][k] = 0.;
+                V_fixed_charges[i][j][k] = 0.;
 
                 for (posit_charge, charge_amt) in charges_fixed.iter() {
-                    V_nuc_shared[i][j][k] +=
+                    V_fixed_charges[i][j][k] +=
                         util::V_coulomb(*posit_charge, posit_sample, *charge_amt);
+                }
+            }
+        }
+    }
+}
+
+// todo: QC if the individual Vs you're adding here already have nuc baked in; I think they do!
+// todo: You should likely split them off.
+
+/// Update the shared V. Must be done after individual Vs are generated.
+pub fn update_V_shared(
+    V_shared: &mut Arr3dReal,
+    V_nuc: &Arr3dReal,
+    V_elecs: &[&Arr3dReal],
+    grid_n: usize,
+) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                // todo: Make sur eV_nuc gets updated.
+
+                V_shared[i][j][k] = V_nuc[i][j][k];
+
+                for V_elec in V_elecs {
+                    V_shared[i][j][k] += V_elec[i][j][k]
                 }
             }
         }
@@ -178,7 +203,7 @@ pub fn update_wf_fm_bases(
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.
     update_psi_pps_from_bases(
         &sfcs.psi,
-        &sfcs.V,
+        &sfcs.V_acting_on_this,
         &mut sfcs.psi_pp_calculated,
         &mut sfcs.psi_pp_measured,
         sfcs.E,
@@ -269,8 +294,14 @@ pub fn find_E(sfcs: &SurfacesPerElec, grid_n: usize) -> f64 {
             for i in 0..grid_n {
                 for j in 0..grid_n {
                     for k in 0..grid_n {
-                        psi_pp_calc[i][j][k] =
-                            eigen_fns::find_ψ_pp_calc(&sfcs.psi.on_pt, &sfcs.V, E_trial, i, j, k);
+                        psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(
+                            &sfcs.psi.on_pt,
+                            &sfcs.V_acting_on_this,
+                            E_trial,
+                            i,
+                            j,
+                            k,
+                        );
                     }
                 }
             }
@@ -348,6 +379,7 @@ pub fn initialize_bases(
             // weight: 1.,
             weight: 0.76837,
             charge_id,
+            harmonic: Default::default(),
         }));
         bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
@@ -356,6 +388,7 @@ pub fn initialize_bases(
             // weight: 1.,
             weight: 0.22346,
             charge_id,
+            harmonic: Default::default(),
         }));
         bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
@@ -364,6 +397,7 @@ pub fn initialize_bases(
             // weight: 1.,
             weight: 0.04082,
             charge_id,
+            harmonic: Default::default(),
         }));
         bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
@@ -372,6 +406,7 @@ pub fn initialize_bases(
             // weight: 1.,
             weight: -0.00994,
             charge_id,
+            harmonic: Default::default(),
         }));
         bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
@@ -380,6 +415,7 @@ pub fn initialize_bases(
             // weight: 1.,
             weight: 0.00230,
             charge_id,
+            harmonic: Default::default(),
         }));
 
         for _ in 0..5 {
@@ -402,18 +438,18 @@ pub fn initialize_bases(
 
                     let weight = 0.;
 
-                    // bases.push(Basis::H(HOrbital {
-                    //     posit: *nuc_posit,
-                    //     n,
-                    //     harmonic: SphericalHarmonic {
-                    //         l,
-                    //         m,
-                    //         orientation: Quaternion::new_identity(),
-                    //     },
-                    //
-                    //     weight,
-                    //     charge_id,
-                    // }));
+                    bases.push(Basis::H(HOrbital {
+                        posit: *nuc_posit,
+                        n,
+                        harmonic: SphericalHarmonic {
+                            l,
+                            m,
+                            orientation: Quaternion::new_identity(),
+                        },
+
+                        weight,
+                        charge_id,
+                    }));
                 }
                 bases_visible.push(true);
             }
@@ -569,28 +605,6 @@ impl BasisWfsUnweighted {
             y_next,
             z_prev,
             z_next,
-        }
-    }
-}
-
-/// Update the shared V. Must be done after individual Vs are generated.
-pub fn update_V_shared(
-    V_shared: &mut Arr3dReal,
-    V_nuc: &Arr3dReal,
-    V_elecs: &[&Arr3dReal],
-    grid_n: usize,
-) {
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                // todo: Make sur eV_nuc gets updated.
-
-                V_shared[i][j][k] = V_nuc[i][j][k];
-
-                for V_elec in V_elecs {
-                    V_shared[i][j][k] += V_elec[i][j][k]
-                }
-            }
         }
     }
 }

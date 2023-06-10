@@ -7,7 +7,7 @@ use lin_alg2::f64::Vec3;
 use crate::{
     basis_weight_finder,
     basis_wfs::Basis,
-    eigen_fns, elec_elec, eval, render, types,
+    eigen_fns, elec_elec, eval, potential, render, types,
     types::{Arr3d, Arr3dReal},
     wf_ops, ActiveElec, State, SurfaceData,
 };
@@ -276,8 +276,7 @@ fn basis_fn_mixer(
                             if response.changed() {
                                 b.xi = entry.parse().unwrap_or(1.);
                             }
-                        }
-                        Basis::Sto(_b) => (),
+                        } // Basis::Sto(_b) => (),
                     }
 
                     // Note: We've replaced the below rotation-slider code with just using combinations of
@@ -382,11 +381,9 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
         }
 
         if ui.add(egui::Button::new("Create e- V")).clicked() {
-            elec_elec::update_V_individual(
-                &mut state.surfaces_per_elec[active_elec].V,
-                &state.surfaces_shared.V_fixed_charges,
-                &state.charges_electron,
-                active_elec,
+            potential::create_V_from_an_elec(
+                &mut state.surfaces_per_elec[active_elec].V_from_this,
+                &state.charges_electron[active_elec],
                 &state.surfaces_shared.grid_posits,
                 state.grid_n,
             );
@@ -402,7 +399,7 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             wf_ops::update_psi_pp_calc(
                 // clone is due to an API hiccup.
                 &state.surfaces_per_elec[active_elec].psi.on_pt.clone(),
-                &state.surfaces_shared.V_fixed_charges,
+                &state.surfaces_shared.V_from_nuclei,
                 &mut state.surfaces_per_elec[active_elec].psi_pp_calculated,
                 E,
                 state.grid_n,
@@ -657,7 +654,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                         state.surfaces_per_elec[active_elec].psi_pp_calculated[i]
                                             [j][k] = eigen_fns::find_ψ_pp_calc(
                                             &state.surfaces_per_elec[active_elec].psi.on_pt,
-                                            &state.surfaces_per_elec[active_elec].V,
+                                            &state.surfaces_per_elec[active_elec].V_from_this,
                                             state.surfaces_per_elec[active_elec].E,
                                             i,
                                             j,
@@ -727,9 +724,27 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Code below handles various updates that were flagged above.
 
                 if updated_fixed_charges {
+                    wf_ops::update_V_fm_fixed_charges(
+                        &state.charges_fixed,
+                        &mut state.surfaces_shared.V_from_nuclei,
+                        &state.surfaces_shared.grid_posits,
+                        state.grid_n,
+                    );
+
                     // Reinintialize bases due to the added charges, since we initialize bases centered
                     // on the charges.
                     // Note: An alternative would be to add the new bases without 0ing the existing ones.
+
+                    let mut V_from_elecs = Vec::new();
+                    for elec in &state.surfaces_per_elec {
+                        // This clone is due to not being able to the borrow-checker not
+                        // being able to take a mutable ref to one field and an immutable ref to another.
+                        // todo: Maybe override the borrow checker here somehow?
+                        // todo: See your approach to charges, where it's a freestanding
+                        // todo var in main instead of part of surfaces_per_elec.
+                        V_from_elecs.push(elec.V_from_this.clone());
+                    }
+
                     for elec_i in 0..state.surfaces_per_elec.len() {
                         wf_ops::initialize_bases(
                             &mut state.charges_fixed,
@@ -737,20 +752,21 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             &mut state.bases_visible[elec_i],
                             2,
                         );
-                    }
 
-                    wf_ops::update_V_fm_fixed_charges(
-                        &state.charges_fixed,
-                        &mut state.surfaces_shared.V_fixed_charges,
-                        &state.surfaces_shared.grid_posits,
-                        state.grid_n,
-                    );
+                        potential::update_V_acting_on_elec(
+                            &mut state.surfaces_per_elec[elec_i].V_acting_on_this,
+                            &state.surfaces_shared.V_from_nuclei,
+                            &V_from_elecs,
+                            elec_i,
+                            state.grid_n,
+                        );
+                    }
 
                     // Replace indiv sfc charges with this. A bit of a kludge, perhaps
                     for sfc in &mut state.surfaces_per_elec {
                         types::copy_array_real(
-                            &mut sfc.V,
-                            &state.surfaces_shared.V_fixed_charges,
+                            &mut sfc.V_from_this,
+                            &state.surfaces_shared.V_from_nuclei,
                             state.grid_n,
                         );
                     }
@@ -793,12 +809,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                     updated_meshes = true;
                 }
-
-                // Track using a variable to avoid mixing mutable and non-mutable borrows to
-                // surfaces.
-                if engine_updates.entities {
-                    render::update_entities(&state.charges_fixed, &state.surface_data, scene);
-                }
             }
 
             ActiveElec::Combined => {
@@ -821,7 +831,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                         state.surfaces_shared.psi_pp_calculated[i][j][k] =
                                             eigen_fns::find_ψ_pp_calc(
                                                 &state.surfaces_shared.psi.psi_marginal.on_pt,
-                                                &state.surfaces_shared.V,
+                                                &state.surfaces_shared.V_total,
                                                 state.surfaces_shared.E,
                                                 i,
                                                 j,
@@ -863,13 +873,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 if ui.add(egui::Button::new("Combine wavefunctions")).clicked() {
                     let mut V_elecs = Vec::new();
                     for elec in &state.surfaces_per_elec {
-                        V_elecs.push(&elec.V);
+                        V_elecs.push(&elec.V_from_this);
                     }
 
                     // todo: Is this the right place to combine V?
                     wf_ops::update_V_shared(
-                        &mut state.surfaces_shared.V,
-                        &state.surfaces_shared.V_fixed_charges,
+                        &mut state.surfaces_shared.V_total,
+                        &state.surfaces_shared.V_from_nuclei,
                         &V_elecs,
                         state.grid_n,
                     );
@@ -895,7 +905,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                     wf_ops::update_psi_pps_from_bases(
                         &state.surfaces_shared.psi.psi_marginal,
-                        &state.surfaces_shared.V,
+                        &state.surfaces_shared.V_total,
                         &mut state.surfaces_shared.psi_pp_calculated,
                         &mut state.surfaces_shared.psi_pp_measured,
                         state.surfaces_shared.E,
@@ -922,6 +932,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             }
         }
         // Code here runs for both multi-electron, and combined states
+
+        // Track using a variable to avoid mixing mutable and non-mutable borrows to
+        // surfaces.
+        if engine_updates.entities {
+            render::update_entities(&state.charges_fixed, &state.surface_data, scene);
+        }
 
         if updated_meshes {
             engine_updates.meshes = true;

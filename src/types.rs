@@ -11,10 +11,10 @@ pub struct SurfacesShared {
     /// Represents points on a grid, for our non-uniform grid.
     pub grid_posits: Arr3dVec,
     /// Potential from nuclei, and all electrons
-    pub V: Arr3dReal,
+    pub V_total: Arr3dReal,
     /// Potential from nuclei only. We use this as a baseline for individual electron
     /// potentials, prior to summing over V from other electrons.
-    pub V_fixed_charges: Arr3dReal,
+    pub V_from_nuclei: Arr3dReal,
     // todo: This may not be a good model: the wave function isn't a function of position
     // mapped to a value for multi-elecs. It's a function of a position for each elec.
     /// `psi` etc here are combined from all individual electron wave functions.
@@ -42,8 +42,8 @@ impl SurfacesShared {
 
         Self {
             grid_posits,
-            V: data_real.clone(),
-            V_fixed_charges: data_real,
+            V_total: data_real.clone(),
+            V_from_nuclei: data_real,
             // psi: data.clone(),
             psi: WaveFunctionMultiElec::new(num_elecs, n_grid),
             // psi_pp_calculated: data.clone(),
@@ -97,8 +97,11 @@ impl SurfacesShared {
 /// `Vec`s here generally mean per-electron.
 #[derive(Clone)]
 pub struct SurfacesPerElec {
-    /// V from the nucleus, and all *other* electrons
-    pub V: Arr3dReal,
+    /// V from this electron's charge only.
+    pub V_from_this: Arr3dReal,
+    /// V from the nucleii, and all other electrons. Does not include this electron's charge.
+    /// We use this as a cache instead of generating it on the fly.
+    pub V_acting_on_this: Arr3dReal,
     // pub psi: Arr3d,
     pub psi: PsiWDiffs,
     pub psi_pp_calculated: Arr3d,
@@ -154,7 +157,8 @@ impl SurfacesPerElec {
         let psi = PsiWDiffs::init(&data);
 
         Self {
-            V: data_real.clone(),
+            V_from_this: data_real.clone(),
+            V_acting_on_this: data_real.clone(),
             psi,
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),

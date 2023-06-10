@@ -15,6 +15,7 @@ pub mod eval;
 pub mod interp;
 pub mod nudge;
 mod num_diff;
+pub mod potential;
 pub mod types;
 pub mod util;
 pub mod wf_ops;

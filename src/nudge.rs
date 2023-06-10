@@ -105,8 +105,14 @@ pub fn nudge_wf(
                         // sfcs.psi[i][j][k] -= diff_map[i][j][k] * sfcs.nudge_amounts[i][j][k];
                         sfcs.psi.on_pt[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
-                        sfcs.psi_pp_calculated[i][j][k] =
-                            eigen_fns::find_ψ_pp_calc(&sfcs.psi.on_pt, &sfcs.V, sfcs.E, i, j, k);
+                        sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
+                            &sfcs.psi.on_pt,
+                            &sfcs.V_from_this,
+                            sfcs.E,
+                            i,
+                            j,
+                            k,
+                        );
                     }
                 }
             }
