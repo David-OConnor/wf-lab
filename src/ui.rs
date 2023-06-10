@@ -17,7 +17,7 @@ const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 260.;
 const SLIDER_WIDTH_ORIENTATION: f32 = 100.;
 
-const E_MIN: f64 = -3.5;
+const E_MIN: f64 = -4.5;
 const E_MAX: f64 = 0.2;
 
 const _L_MIN: f64 = -3.;
@@ -210,48 +210,74 @@ fn basis_fn_mixer(
                         *updated_unweighted_basis_wfs = true;
                     }
 
-                    let n_prev = basis.n();
-                    let l_prev = basis.l();
-                    let m_prev = basis.m();
+                    // todo: If the basis is the general S0 type etc, replace the n, l etc sliders with
+                    // todo chi and c, and make GO's implementation of n(), l() etc unimplemented!.
 
-                    // todo: Helper fn to reduce DRY here.
-                    ui.heading("n:");
-                    let mut entry = basis.n().to_string(); // angle
-                    let response =
-                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-                    if response.changed() {
-                        *basis.n_mut() = entry.parse().unwrap_or(1);
-                    }
+                    match basis {
+                        Basis::H(b) => {
+                            // todo: Intead of the getter methods, maybe call the params directly?
+                            let n_prev = basis.n();
+                            let l_prev = basis.l();
+                            let m_prev = basis.m();
 
-                    ui.heading("l:");
-                    let mut entry = basis.l().to_string(); // angle
-                    let response =
-                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-                    if response.changed() {
-                        *basis.l_mut() = entry.parse().unwrap_or(0);
-                    }
+                            // todo: Helper fn to reduce DRY here.
+                            ui.heading("n:");
+                            let mut entry = basis.n().to_string(); // angle
+                            let response =
+                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            if response.changed() {
+                                *basis.n_mut() = entry.parse().unwrap_or(1);
+                            }
 
-                    ui.heading("m:");
-                    let mut entry = basis.m().to_string(); // angle
-                    let response =
-                        ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
-                    if response.changed() {
-                        *basis.m_mut() = entry.parse().unwrap_or(0);
-                    }
+                            ui.heading("l:");
+                            let mut entry = basis.l().to_string(); // angle
+                            let response =
+                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            if response.changed() {
+                                *basis.l_mut() = entry.parse().unwrap_or(0);
+                            }
 
-                    if basis.n() != n_prev || basis.l() != l_prev || basis.m() != m_prev {
-                        // Enforce quantum number constraints.
-                        if basis.l() >= basis.n() {
-                            *basis.l_mut() = basis.n() - 1;
+                            ui.heading("m:");
+                            let mut entry = basis.m().to_string(); // angle
+                            let response =
+                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            if response.changed() {
+                                *basis.m_mut() = entry.parse().unwrap_or(0);
+                            }
+
+                            if basis.n() != n_prev || basis.l() != l_prev || basis.m() != m_prev {
+                                // Enforce quantum number constraints.
+                                if basis.l() >= basis.n() {
+                                    *basis.l_mut() = basis.n() - 1;
+                                }
+                                if basis.m() < -1 * basis.l() as i16 {
+                                    *basis.m_mut() = -1 * basis.l() as i16
+                                } else if basis.m() > basis.l() as i16 {
+                                    *basis.m_mut() = basis.l() as i16
+                                }
+
+                                *updated_unweighted_basis_wfs = true;
+                                *updated_basis_weights = true;
+                            }
                         }
-                        if basis.m() < -1 * basis.l() as i16 {
-                            *basis.m_mut() = -1 * basis.l() as i16
-                        } else if basis.m() > basis.l() as i16 {
-                            *basis.m_mut() = basis.l() as i16
-                        }
+                        Basis::Sto2(b) => {
+                            // ui.heading("c:");
+                            // let mut entry = b.c.to_string(); // angle
+                            // let response =
+                            //     ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            // if response.changed() {
+                            //     b.c = entry.parse().unwrap_or(1.);
+                            // }
 
-                        *updated_unweighted_basis_wfs = true;
-                        *updated_basis_weights = true;
+                            ui.heading("ξ:");
+                            let mut entry = b.xi.to_string(); // angle
+                            let response =
+                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            if response.changed() {
+                                b.xi = entry.parse().unwrap_or(1.);
+                            }
+                        }
+                        Basis::Sto(_b) => (),
                     }
 
                     // Note: We've replaced the below rotation-slider code with just using combinations of
@@ -835,10 +861,24 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Multiply wave functions together, and stores in Shared surfaces.
                 // todo: This is an approximation
                 if ui.add(egui::Button::new("Combine wavefunctions")).clicked() {
+                    let mut V_elecs = Vec::new();
+                    for elec in &state.surfaces_per_elec {
+                        V_elecs.push(&elec.V);
+                    }
+
+                    // todo: Is this the right place to combine V?
+                    wf_ops::update_V_shared(
+                        &mut state.surfaces_shared.V,
+                        &state.surfaces_shared.V_fixed_charges,
+                        &V_elecs,
+                        state.grid_n,
+                    );
+
                     // todo: Yu are making a one-off fully memory copy that is not necessary.
                     let mut per_elec_wfs = Vec::new();
                     for sfc in &state.surfaces_per_elec {
-                        per_elec_wfs.push(sfc.psi.on_pt.clone());
+                        // per_elec_wfs.push(sfc.psi.on_pt.clone());
+                        per_elec_wfs.push(sfc.psi.clone());
                     }
 
                     state
@@ -850,6 +890,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         .surfaces_shared
                         .psi
                         .populate_psi_marginal(state.grid_n);
+
+                    // todO: Make sure shared V is updated from elecs.
 
                     wf_ops::update_psi_pps_from_bases(
                         &state.surfaces_shared.psi.psi_marginal,

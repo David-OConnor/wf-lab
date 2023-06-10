@@ -24,7 +24,7 @@
 // todo potential.
 
 use crate::{
-    basis_wfs::{Basis, GeneralS0, HOrbital, SphericalHarmonic},
+    basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto2},
     complex_nums::Cplx,
     eigen_fns, eval,
     num_diff::{self, H, H_SQ},
@@ -341,50 +341,45 @@ pub fn initialize_bases(
     // todo for now as a kludge to preserve weights, we copy the prev weights.
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
         // See Sebens, for weights under equation 24; this is for Helium.
-        bases.push(Basis::GeneralS0(GeneralS0 {
+        bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
-            c: 0.76837,
-            chi: 1.41714,
-            weight: 1.,
+            // c: 0.76837,
+            xi: 1.41714,
+            // weight: 1.,
+            weight: 0.76837,
             charge_id,
-            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // dummy
-            n: 1,                                                               //dummy
         }));
-        bases.push(Basis::GeneralS0(GeneralS0 {
+        bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
-            c: 0.22346,
-            chi: 2.37682,
-            weight: 1.,
+            // c: 0.22346,
+            xi: 2.37682,
+            // weight: 1.,
+            weight: 0.22346,
             charge_id,
-            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // dummy
-            n: 1,                                                               //dummy
         }));
-        bases.push(Basis::GeneralS0(GeneralS0 {
+        bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
-            c: 0.04082,
-            chi: 4.39628,
-            weight: 1.,
+            // c: 0.04082,
+            xi: 4.39628,
+            // weight: 1.,
+            weight: 0.04082,
             charge_id,
-            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // dummy,
-            n: 1,                                                               //dummy
         }));
-        bases.push(Basis::GeneralS0(GeneralS0 {
+        bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
-            c: -0.00994,
-            chi: 6.52699,
-            weight: 1.,
+            // c: -0.00994,
+            xi: 6.52699,
+            // weight: 1.,
+            weight: -0.00994,
             charge_id,
-            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // dummy
-            n: 1,                                                               //dummy
         }));
-        bases.push(Basis::GeneralS0(GeneralS0 {
+        bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
-            c: 0.00230,
-            chi: 7.94252,
-            weight: 1.,
+            // c: 0.00230,
+            xi: 7.94252,
+            // weight: 1.,
+            weight: 0.00230,
             charge_id,
-            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // dummy
-            n: 1,                                                               //dummy
         }));
 
         for _ in 0..5 {
@@ -574,6 +569,28 @@ impl BasisWfsUnweighted {
             y_next,
             z_prev,
             z_next,
+        }
+    }
+}
+
+/// Update the shared V. Must be done after individual Vs are generated.
+pub fn update_V_shared(
+    V_shared: &mut Arr3dReal,
+    V_nuc: &Arr3dReal,
+    V_elecs: &[&Arr3dReal],
+    grid_n: usize,
+) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                // todo: Make sur eV_nuc gets updated.
+
+                V_shared[i][j][k] = V_nuc[i][j][k];
+
+                for V_elec in V_elecs {
+                    V_shared[i][j][k] += V_elec[i][j][k]
+                }
+            }
         }
     }
 }

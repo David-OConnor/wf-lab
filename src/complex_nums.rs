@@ -8,7 +8,7 @@ use std::{
 
 pub const IM: Cplx = Cplx { real: 0., im: 1. };
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Cplx {
     // todo should probably just use num::Complex
     pub real: f64,

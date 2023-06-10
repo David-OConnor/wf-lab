@@ -7,7 +7,7 @@ use crate::{
     complex_nums::Cplx,
     types::new_data,
     types::{Arr3d, Arr3dReal, Arr3dVec},
-    util,
+    util, wf_ops,
     wf_ops::{PsiWDiffs, Q_ELEC},
 };
 
@@ -31,6 +31,18 @@ impl PositIndex {
     }
 }
 
+/// Variant of `PsiWDiffs`, to fit into our multi-elec WF data type.
+#[derive(Clone, Default)]
+pub struct CplxWDiffs {
+    pub on_pt: Cplx,
+    pub x_prev: Cplx,
+    pub x_next: Cplx,
+    pub y_prev: Cplx,
+    pub y_next: Cplx,
+    pub z_prev: Cplx,
+    pub z_next: Cplx,
+}
+
 /// Represents a wave function of multiple electrons
 /// ψ(r1, r2) = ψ_a(r1)ψb(r2), wherein we are combining probabilities.
 /// fermions: two identical fermions cannot occupy the same state.
@@ -44,7 +56,7 @@ pub struct WaveFunctionMultiElec {
     /// Maps permutations of position index to wave function value.
     /// The outer vec has a value for each permutation of spacial coordinates, with length
     /// `num_elecs`. So, its length is (n_grid^3)^num_elecs
-    psi_joint: Vec<(Vec<PositIndex>, Cplx)>,
+    psi_joint: Vec<(Vec<PositIndex>, CplxWDiffs)>,
     /// This is the combined probability, created from `psi_joint`.
     pub psi_marginal: PsiWDiffs,
 }
@@ -82,6 +94,10 @@ impl WaveFunctionMultiElec {
         // todo then subtract one?
         let n_components_per_posit = (grid_n.pow(3) * self.num_elecs) as f64;
 
+        // Start clean
+        let data = new_data(grid_n);
+        self.psi_marginal = PsiWDiffs::init(&data);
+
         for (posits, wf_val) in &self.psi_joint {
             for posit in posits {
                 // posit.index_mut(&mut self.psi_marginal.on_pt) += *wf_val;
@@ -100,9 +116,20 @@ impl WaveFunctionMultiElec {
                 // todo: (The impliciation here is perhaps the various values are variously positive and negative,
                 // todo, so they cancel if not squared)
                 self.psi_marginal.on_pt[posit.x][posit.y][posit.z] +=
-                    Cplx::from_real(wf_val.abs_sq());
+                    Cplx::from_real(wf_val.on_pt.abs_sq());
 
-                // println!("v{}", val);
+                self.psi_marginal.x_prev[posit.x][posit.y][posit.z] +=
+                    Cplx::from_real(wf_val.x_prev.abs_sq());
+                self.psi_marginal.x_next[posit.x][posit.y][posit.z] +=
+                    Cplx::from_real(wf_val.x_next.abs_sq());
+                self.psi_marginal.y_prev[posit.x][posit.y][posit.z] +=
+                    Cplx::from_real(wf_val.y_prev.abs_sq());
+                self.psi_marginal.y_next[posit.x][posit.y][posit.z] +=
+                    Cplx::from_real(wf_val.y_next.abs_sq());
+                self.psi_marginal.z_prev[posit.x][posit.y][posit.z] +=
+                    Cplx::from_real(wf_val.z_prev.abs_sq());
+                self.psi_marginal.z_next[posit.x][posit.y][posit.z] +=
+                    Cplx::from_real(wf_val.z_next.abs_sq());
             }
         }
 
@@ -119,6 +146,13 @@ impl WaveFunctionMultiElec {
 
         util::normalize_wf(&mut self.psi_marginal.on_pt, norm, grid_n);
 
+        util::normalize_wf(&mut self.psi_marginal.x_prev, norm, grid_n);
+        util::normalize_wf(&mut self.psi_marginal.x_next, norm, grid_n);
+        util::normalize_wf(&mut self.psi_marginal.y_prev, norm, grid_n);
+        util::normalize_wf(&mut self.psi_marginal.y_next, norm, grid_n);
+        util::normalize_wf(&mut self.psi_marginal.z_prev, norm, grid_n);
+        util::normalize_wf(&mut self.psi_marginal.z_next, norm, grid_n);
+
         println!("Some vals: {:?}", self.psi_marginal.on_pt[5][6][4]);
         println!("Some vals: {:?}", self.psi_marginal.on_pt[1][3][6]);
         // println!("Some vals: {:?}", self.psi_marginal.on_pt[7][10][2]);
@@ -128,6 +162,15 @@ impl WaveFunctionMultiElec {
         // todo for the individual electrons.
         for i in 0..grid_n {}
         // self.psi_marginal.x_prev =
+
+        // todo: Set up prevs and nexts.
+
+        //             psi: &PsiWDiffs,
+        // V: &Arr3dReal,
+        // psi_pp_calc: &mut Arr3d,
+        // psi_pp_meas: &mut Arr3d,
+        // E: f64,
+        // grid_n: usize,
 
         println!("Complete");
     }
@@ -144,7 +187,7 @@ impl WaveFunctionMultiElec {
 
     /// Set up values for the joint wavefunction; related to probabilities of the electrons
     /// being in a permutation of positions.
-    pub fn setup_joint_wf(&mut self, wfs: &[Arr3d], grid_n: usize) {
+    pub fn setup_joint_wf(&mut self, wfs: &[PsiWDiffs], grid_n: usize) {
         println!("Setting up psi joint...");
         // todo: If you run this function more often than generating the posits
         // todo store them somewhere;
@@ -198,7 +241,43 @@ impl WaveFunctionMultiElec {
             // println!("j{}", self.joint_wf_at_permutation(wfs, &permutation));
             self.psi_joint.push((
                 permutation.clone(),
-                self.joint_wf_at_permutation(wfs, &permutation),
+                CplxWDiffs {
+                    // on_pt: self.joint_wf_at_permutation(wfs.on_pt, &permutation),
+                    // x_prev:self.joint_wf_at_permutation(wfs.x_prev, &permutation),
+                    // x_next:self.joint_wf_at_permutation(wfs.x_next, &permutation),
+                    // y_prev:self.joint_wf_at_permutation(wfs.y_prev, &permutation),
+                    // y_next:self.joint_wf_at_permutation(wfs.y_next, &permutation),
+                    // z_prev:self.joint_wf_at_permutation(wfs.z_prev, &permutation),
+                    // z_next:self.joint_wf_at_permutation(wfs.z_next, &permutation),
+
+                    // todo: Temp approach to mitigate our API. Hard-coded for 2-elecs.
+                    on_pt: self
+                        .joint_wf_at_permutation(&vec![&wfs[0].on_pt, &wfs[1].on_pt], &permutation),
+                    x_prev: self.joint_wf_at_permutation(
+                        &vec![&wfs[0].x_prev, &wfs[1].x_prev],
+                        &permutation,
+                    ),
+                    x_next: self.joint_wf_at_permutation(
+                        &vec![&wfs[0].x_prev, &wfs[1].x_next],
+                        &permutation,
+                    ),
+                    y_prev: self.joint_wf_at_permutation(
+                        &vec![&wfs[0].y_prev, &wfs[1].y_prev],
+                        &permutation,
+                    ),
+                    y_next: self.joint_wf_at_permutation(
+                        &vec![&wfs[0].y_prev, &wfs[1].y_next],
+                        &permutation,
+                    ),
+                    z_prev: self.joint_wf_at_permutation(
+                        &vec![&wfs[0].z_prev, &wfs[1].z_prev],
+                        &permutation,
+                    ),
+                    z_next: self.joint_wf_at_permutation(
+                        &vec![&wfs[0].z_prev, &wfs[1].z_next],
+                        &permutation,
+                    ),
+                },
             ));
         }
 
@@ -207,7 +286,8 @@ impl WaveFunctionMultiElec {
 
     /// Find the wave fucntion value associated with a single permutation of position. Eg, the one associated
     /// with the probability that electron 0 is in position 0 and electron 1 is in position 1.
-    pub fn joint_wf_at_permutation(&self, x: &[Arr3d], r: &[PositIndex]) -> Cplx {
+    // pub fn joint_wf_at_permutation(&self, x: &[Arr3d], r: &[PositIndex]) -> Cplx {
+    pub fn joint_wf_at_permutation(&self, x: &[&Arr3d], r: &[PositIndex]) -> Cplx {
         // todo: Hard-coded for 2-elecs of opposite spin; ie no exchange interaction.
 
         // so, for posits 0, 1
@@ -257,7 +337,7 @@ pub(crate) fn update_charge_density_fm_psi(
     charge_density: &mut Arr3dReal,
     grid_n: usize,
 ) {
-    println!("Creating electron charge for the active e-");
+    println!("Creating electron charge for the active e- ...");
 
     // todo: Problem? Needs to sum to 1 over *all space*, not just in the grid.
     // todo: We can mitigate this by using a sufficiently large grid bounds, since the WF
@@ -286,6 +366,7 @@ pub(crate) fn update_charge_density_fm_psi(
             }
         }
     }
+    println!("Complete");
 }
 
 // todo: Currently unused.
@@ -371,7 +452,7 @@ pub(crate) fn update_V_individual(
     grid_posits: &Arr3dVec,
     grid_n: usize,
 ) {
-    println!("Updating V for {}", i_this_elec);
+    println!("Updating V for {}...", i_this_elec);
 
     // println!("C1: {}", charges_electron[0][6][5][5]);
     // println!("C2: {}", charges_electron[1][6][5][5]);
