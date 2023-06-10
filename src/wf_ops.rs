@@ -61,57 +61,8 @@ pub enum Spin {
     Dn,
 }
 
-/// Computes V from "fixed" charges, ie nuclei, by calculating Coulomb potential.
-/// Run this after changing these charges.
-/// Does not modify per-electron charges; those are updated elsewhere, incorporating the
-/// potential here, as well as from other electrons.
-pub fn update_V_fm_fixed_charges(
-    charges_fixed: &[(Vec3, f64)],
-    V_fixed_charges: &mut Arr3dReal,
-    grid_posits: &Arr3dVec,
-    grid_n: usize,
-    // Wave functions from other electrons, for calculating the Hartree potential.
-) {
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                let posit_sample = grid_posits[i][j][k];
-
-                V_fixed_charges[i][j][k] = 0.;
-
-                for (posit_charge, charge_amt) in charges_fixed.iter() {
-                    V_fixed_charges[i][j][k] +=
-                        util::V_coulomb(*posit_charge, posit_sample, *charge_amt);
-                }
-            }
-        }
-    }
-}
-
 // todo: QC if the individual Vs you're adding here already have nuc baked in; I think they do!
 // todo: You should likely split them off.
-
-/// Update the shared V. Must be done after individual Vs are generated.
-pub fn update_V_shared(
-    V_shared: &mut Arr3dReal,
-    V_nuc: &Arr3dReal,
-    V_elecs: &[&Arr3dReal],
-    grid_n: usize,
-) {
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                // todo: Make sur eV_nuc gets updated.
-
-                V_shared[i][j][k] = V_nuc[i][j][k];
-
-                for V_elec in V_elecs {
-                    V_shared[i][j][k] += V_elec[i][j][k]
-                }
-            }
-        }
-    }
-}
 
 /// Mix bases together into a numerical wave function at each grid point, and at diffs.
 /// This is our mixer from pre-calculated basis fucntions: Create psi, including at

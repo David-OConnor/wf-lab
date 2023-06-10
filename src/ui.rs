@@ -724,9 +724,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Code below handles various updates that were flagged above.
 
                 if updated_fixed_charges {
-                    wf_ops::update_V_fm_fixed_charges(
-                        &state.charges_fixed,
+                    potential::update_V_from_nuclei(
                         &mut state.surfaces_shared.V_from_nuclei,
+                        &state.charges_fixed,
                         &state.surfaces_shared.grid_posits,
                         state.grid_n,
                     );
@@ -876,8 +876,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         V_elecs.push(&elec.V_from_this);
                     }
 
-                    // todo: Is this the right place to combine V?
-                    wf_ops::update_V_shared(
+                    potential::update_V_combined(
                         &mut state.surfaces_shared.V_total,
                         &state.surfaces_shared.V_from_nuclei,
                         &V_elecs,

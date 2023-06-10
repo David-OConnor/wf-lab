@@ -7,6 +7,53 @@ use crate::{
 
 use lin_alg2::f64::Vec3;
 
+/// Computes V from nuclei, by calculating Coulomb potential.
+/// Run this after changing these charges.
+/// Does not modify per-electron charges; those are updated elsewhere, incorporating the
+/// potential here, as well as from other electrons.
+pub fn update_V_from_nuclei(
+    V_nuclei: &mut Arr3dReal,
+    charges_nuc: &[(Vec3, f64)],
+    grid_posits: &Arr3dVec,
+    grid_n: usize,
+    // Wave functions from other electrons, for calculating the Hartree potential.
+) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                let posit_sample = grid_posits[i][j][k];
+
+                V_nuclei[i][j][k] = 0.;
+
+                for (posit_charge, charge_amt) in charges_nuc.iter() {
+                    V_nuclei[i][j][k] += util::V_coulomb(*posit_charge, posit_sample, *charge_amt);
+                }
+            }
+        }
+    }
+}
+
+/// Update the combined V; this is from nuclei, and all electrons.
+/// Must be done after individual V from individual electrons are generated.
+pub fn update_V_combined(
+    V_combined: &mut Arr3dReal,
+    V_nuc: &Arr3dReal,
+    V_elecs: &[&Arr3dReal],
+    grid_n: usize,
+) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                V_combined[i][j][k] = V_nuc[i][j][k];
+
+                for V_elec in V_elecs {
+                    V_combined[i][j][k] += V_elec[i][j][k]
+                }
+            }
+        }
+    }
+}
+
 /// Update the V acting on a given electron. Run this after changing V nuclei, or V from another electron.
 pub(crate) fn update_V_acting_on_elec(
     V_on_this_elec: &mut Arr3dReal,
@@ -15,6 +62,7 @@ pub(crate) fn update_V_acting_on_elec(
     i_this_elec: usize,
     grid_n: usize,
 ) {
+    println!("Updating V on this elec");
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {

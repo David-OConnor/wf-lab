@@ -206,16 +206,21 @@ pub fn init_from_grid(
         grid_n,
     );
 
-    wf_ops::update_V_fm_fixed_charges(
-        &charges_fixed,
+    potential::update_V_from_nuclei(
         &mut surfaces_shared.V_from_nuclei,
+        &charges_fixed,
         &surfaces_shared.grid_posits,
         grid_n,
     );
 
-    // todo: For now and for here at least, make all individual V = to fixed V at init.
-    for sfc in &mut surfaces_per_elec {
-        types::copy_array_real(&mut sfc.V_from_this, &surfaces_shared.V_from_nuclei, grid_n);
+    for (elec_i, electron) in surfaces_per_elec.iter_mut().enumerate() {
+        potential::update_V_acting_on_elec(
+            &mut electron.V_acting_on_this,
+            &surfaces_shared.V_from_nuclei,
+            &[], // Not ready to apply V from other elecs yet.
+            elec_i,
+            grid_n,
+        );
     }
 
     let basis_wfs_unweighted = wf_ops::BasisWfsUnweighted::new(

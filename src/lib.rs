@@ -89,7 +89,7 @@ pub fn psi_from_pt_charges(
     let ui_active_elec = 0;
 
     // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
-    wf_ops::update_V_fm_fixed_charges(&charges_fixed, &mut V_shared, &grid_posits, grid_n);
+    potential::update_V_from_nuclei(&mut V_shared, &charges_fixed, &grid_posits, grid_n);
 
     let bases_unweighted = wf_ops::BasisWfsUnweighted::new(&bases, &grid_posits, grid_n);
 

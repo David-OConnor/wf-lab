@@ -257,7 +257,13 @@ pub fn update_meshes(
         ));
     } else {
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces.V_from_this, z_i, V_SCALER, grid_n),
+            &prepare_2d_mesh_real(
+                grid_posits,
+                &surfaces.V_acting_on_this,
+                z_i,
+                V_SCALER,
+                grid_n,
+            ),
             true,
         ));
 
