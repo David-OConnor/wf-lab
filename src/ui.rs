@@ -364,27 +364,51 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             );
         }
 
-        if ui.add(egui::Button::new("Create e- charge")).clicked() {
+        // if ui.add(egui::Button::new("Create e- charge")).clicked() {
+        //     elec_elec::update_charge_density_fm_psi(
+        //         &state.surfaces_per_elec[active_elec].psi.on_pt,
+        //         &mut state.charges_electron[active_elec],
+        //         state.grid_n,
+        //     );
+        //
+        //     *updated_meshes = true;
+        // }
+
+        // if ui.add(egui::Button::new("Empty e- charge")).clicked() {
+        //     state.charges_electron[active_elec] = types::new_data_real(state.grid_n);
+        //
+        //     *updated_meshes = true;
+        // }
+
+        if ui
+            .add(egui::Button::new("Create V from this elec"))
+            .clicked()
+        {
             elec_elec::update_charge_density_fm_psi(
-                &state.surfaces_per_elec[active_elec].psi.on_pt,
                 &mut state.charges_electron[active_elec],
+                &state.surfaces_per_elec[active_elec].psi.on_pt,
+                state.grid_n,
+            );
+
+            potential::create_V_from_an_elec(
+                &mut state.V_from_elecs[active_elec],
+                &state.charges_electron[active_elec],
+                &state.surfaces_shared.grid_posits,
                 state.grid_n,
             );
 
             *updated_meshes = true;
         }
 
-        if ui.add(egui::Button::new("Empty e- charge")).clicked() {
-            state.charges_electron[active_elec] = types::new_data_real(state.grid_n);
-
-            *updated_meshes = true;
-        }
-
-        if ui.add(egui::Button::new("Create e- V")).clicked() {
-            potential::create_V_from_an_elec(
-                &mut state.surfaces_per_elec[active_elec].V_from_this,
-                &state.charges_electron[active_elec],
-                &state.surfaces_shared.grid_posits,
+        if ui
+            .add(egui::Button::new("Update V acting on this elec"))
+            .clicked()
+        {
+            potential::update_V_acting_on_elec(
+                &mut state.surfaces_per_elec[active_elec].V_acting_on_this,
+                &state.surfaces_shared.V_from_nuclei,
+                &state.V_from_elecs,
+                active_elec,
                 state.grid_n,
             );
 
@@ -468,19 +492,25 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 let result = entry.parse::<usize>().unwrap_or(20);
                 state.grid_n = result;
 
-                let (charges_electron, bases_unweighted, surfaces_shared, surfaces_per_elec) =
-                    crate::init_from_grid(
-                        state.grid_min,
-                        state.grid_max,
-                        state.spacing_factor,
-                        state.grid_n,
-                        // state.ui_active_elec,
-                        &state.bases,
-                        &state.charges_fixed,
-                        state.num_elecs,
-                    );
+                let (
+                    charges_electron,
+                    V_from_elecs,
+                    bases_unweighted,
+                    surfaces_shared,
+                    surfaces_per_elec,
+                ) = crate::init_from_grid(
+                    state.grid_min,
+                    state.grid_max,
+                    state.spacing_factor,
+                    state.grid_n,
+                    // state.ui_active_elec,
+                    &state.bases,
+                    &state.charges_fixed,
+                    state.num_elecs,
+                );
 
                 state.charges_electron = charges_electron;
+                state.V_from_elecs = V_from_elecs;
                 state.bases_unweighted = bases_unweighted;
                 state.surfaces_shared = surfaces_shared;
                 state.surfaces_per_elec = surfaces_per_elec;
@@ -654,7 +684,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                         state.surfaces_per_elec[active_elec].psi_pp_calculated[i]
                                             [j][k] = eigen_fns::find_ψ_pp_calc(
                                             &state.surfaces_per_elec[active_elec].psi.on_pt,
-                                            &state.surfaces_per_elec[active_elec].V_from_this,
+                                            &state.V_from_elecs[active_elec],
                                             state.surfaces_per_elec[active_elec].E,
                                             i,
                                             j,
@@ -734,17 +764,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // Reinintialize bases due to the added charges, since we initialize bases centered
                     // on the charges.
                     // Note: An alternative would be to add the new bases without 0ing the existing ones.
-
-                    let mut V_from_elecs = Vec::new();
-                    for elec in &state.surfaces_per_elec {
-                        // This clone is due to not being able to the borrow-checker not
-                        // being able to take a mutable ref to one field and an immutable ref to another.
-                        // todo: Maybe override the borrow checker here somehow?
-                        // todo: See your approach to charges, where it's a freestanding
-                        // todo var in main instead of part of surfaces_per_elec.
-                        V_from_elecs.push(elec.V_from_this.clone());
-                    }
-
                     for elec_i in 0..state.surfaces_per_elec.len() {
                         wf_ops::initialize_bases(
                             &mut state.charges_fixed,
@@ -756,20 +775,21 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         potential::update_V_acting_on_elec(
                             &mut state.surfaces_per_elec[elec_i].V_acting_on_this,
                             &state.surfaces_shared.V_from_nuclei,
-                            &V_from_elecs,
+                            &state.V_from_elecs,
                             elec_i,
                             state.grid_n,
                         );
                     }
 
+                    // todo: Come back to if having trouble.
                     // Replace indiv sfc charges with this. A bit of a kludge, perhaps
-                    for sfc in &mut state.surfaces_per_elec {
-                        types::copy_array_real(
-                            &mut sfc.V_from_this,
-                            &state.surfaces_shared.V_from_nuclei,
-                            state.grid_n,
-                        );
-                    }
+                    // for sfc in &mut state.surfaces_per_elec {
+                    //     types::copy_array_real(
+                    //         &mut state.V_from_elecs[elec_i],
+                    //         &state.surfaces_shared.V_from_nuclei,
+                    //         state.grid_n,
+                    //     );
+                    // }
                 }
 
                 if updated_unweighted_basis_wfs {
@@ -871,15 +891,15 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Multiply wave functions together, and stores in Shared surfaces.
                 // todo: This is an approximation
                 if ui.add(egui::Button::new("Combine wavefunctions")).clicked() {
-                    let mut V_elecs = Vec::new();
-                    for elec in &state.surfaces_per_elec {
-                        V_elecs.push(&elec.V_from_this);
-                    }
+                    // let mut V_elecs = Vec::new();
+                    // for elec in &state.surfaces_per_elec {
+                    //     V_elecs.push(&elec.V_from_this);
+                    // }
 
                     potential::update_V_combined(
                         &mut state.surfaces_shared.V_total,
                         &state.surfaces_shared.V_from_nuclei,
-                        &V_elecs,
+                        &state.V_from_elecs,
                         state.grid_n,
                     );
 

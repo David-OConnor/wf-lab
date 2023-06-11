@@ -107,7 +107,7 @@ pub fn nudge_wf(
 
                         sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
                             &sfcs.psi.on_pt,
-                            &sfcs.V_from_this,
+                            &sfcs.V_acting_on_this,
                             sfcs.E,
                             i,
                             j,

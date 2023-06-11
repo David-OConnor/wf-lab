@@ -98,7 +98,7 @@ impl SurfacesShared {
 #[derive(Clone)]
 pub struct SurfacesPerElec {
     /// V from this electron's charge only.
-    pub V_from_this: Arr3dReal,
+    // pub V_from_this: Arr3dReal,
     /// V from the nucleii, and all other electrons. Does not include this electron's charge.
     /// We use this as a cache instead of generating it on the fly.
     pub V_acting_on_this: Arr3dReal,
@@ -157,7 +157,7 @@ impl SurfacesPerElec {
         let psi = PsiWDiffs::init(&data);
 
         Self {
-            V_from_this: data_real.clone(),
+            // V_from_this: data_real.clone(),
             V_acting_on_this: data_real.clone(),
             psi,
             psi_pp_calculated: data.clone(),

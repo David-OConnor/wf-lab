@@ -333,8 +333,8 @@ impl WaveFunctionMultiElec {
 /// Convert an array of ψ to one of electron charge, through space. Modifies in place
 /// to avoid unecessary allocations.
 pub(crate) fn update_charge_density_fm_psi(
-    psi: &Arr3d,
     charge_density: &mut Arr3dReal,
+    psi: &Arr3d,
     grid_n: usize,
 ) {
     println!("Creating electron charge for the active e- ...");
@@ -367,18 +367,6 @@ pub(crate) fn update_charge_density_fm_psi(
         }
     }
     println!("Complete");
-}
-
-// todo: Currently unused.
-/// Update electron charge densities ψ, for every electron.
-pub(crate) fn update_charge_densities_fm_psi(
-    charges_fm_elecs: &mut [Arr3dReal],
-    psi_per_electron: &[Arr3d],
-    grid_n: usize,
-) {
-    for (i, psi) in psi_per_electron.iter().enumerate() {
-        update_charge_density_fm_psi(psi, &mut charges_fm_elecs[i], grid_n)
-    }
 }
 
 /// Calculate the result of exchange interactions between electrons.

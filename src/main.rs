@@ -63,6 +63,8 @@ pub struct State {
     /// This is not part of `SurfacesPerElec` since we use all values at once (or all except one)
     /// when calculating the potential. (easier to work with API)
     pub charges_electron: Vec<Arr3dReal>,
+    /// Also stored here vice part of per-elec structs due to borrow-limiting on struct fields.
+    pub V_from_elecs: Vec<Arr3dReal>,
     /// Surfaces that are not electron-specific.
     pub surfaces_shared: SurfacesShared,
     /// Computed surfaces, per electron. These span 3D space, are are quite large in memory. Contains various
@@ -183,6 +185,7 @@ pub fn init_from_grid(
     num_electrons: usize,
 ) -> (
     Vec<Arr3dReal>,
+    Vec<Arr3dReal>,
     Vec<wf_ops::BasisWfsUnweighted>,
     SurfacesShared,
     Vec<SurfacesPerElec>,
@@ -232,10 +235,12 @@ pub fn init_from_grid(
     // These must be initialized from wave functions later.
     let mut bases_unweighted = Vec::new();
     let mut charges_electron = Vec::new();
+    let mut V_from_elecs = Vec::new();
     // let mut psi_pp_score = Vec::new();
 
     for i_elec in 0..num_electrons {
         charges_electron.push(arr_real.clone());
+        V_from_elecs.push(arr_real.clone());
         bases_unweighted.push(basis_wfs_unweighted.clone());
 
         // Set up our basis-function based trial wave function.
@@ -260,6 +265,7 @@ pub fn init_from_grid(
 
     (
         charges_electron,
+        V_from_elecs,
         bases_unweighted,
         surfaces_shared,
         surfaces_per_elec,
@@ -323,16 +329,17 @@ fn main() {
     // let L_y = 1.;
     // let L_z = 1.;
 
-    let (charges_electron, bases_unweighted, surfaces_shared, surfaces_per_elec) = init_from_grid(
-        grid_min,
-        grid_max,
-        spacing_factor,
-        grid_n,
-        // ui_active_elec,
-        &bases,
-        &charges_fixed,
-        num_elecs,
-    );
+    let (charges_electron, V_from_elecs, bases_unweighted, surfaces_shared, surfaces_per_elec) =
+        init_from_grid(
+            grid_min,
+            grid_max,
+            spacing_factor,
+            grid_n,
+            // ui_active_elec,
+            &bases,
+            &charges_fixed,
+            num_elecs,
+        );
 
     let surface_data = [
         SurfaceData::new("V", true),
@@ -350,6 +357,7 @@ fn main() {
     let state = State {
         charges_fixed,
         charges_electron,
+        V_from_elecs,
         bases,
         bases_unweighted,
         bases_visible,
