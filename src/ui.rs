@@ -79,7 +79,7 @@ fn _E_slider(
 
             *E
         })
-        .text("E"),
+            .text("E"),
     );
 }
 
@@ -194,7 +194,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                                state.charges_fixed.iter().enumerate()
+                            state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -337,7 +337,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                    .text("Wt"),
+                        .text("Wt"),
                 );
             }
         });
@@ -420,14 +420,31 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
                 wf_ops::find_E(&state.surfaces_per_elec[active_elec], state.grid_n);
 
             let E = state.surfaces_per_elec[active_elec].E; // avoids mutable/immutable borrow issues.
-            wf_ops::update_psi_pp_calc(
-                // clone is due to an API hiccup.
-                &state.surfaces_per_elec[active_elec].psi.on_pt.clone(),
-                &state.surfaces_shared.V_from_nuclei,
-                &mut state.surfaces_per_elec[active_elec].psi_pp_calculated,
-                E,
-                state.grid_n,
-            );
+            // wf_ops::update_psi_pp_calc(
+            //     // clone is due to an API hiccup.
+            //     &state.surfaces_per_elec[active_elec].psi.on_pt.clone(),
+            //     &state.surfaces_per_elec[active_elec].V_acting_on_this,
+            //     &mut state.surfaces_per_elec[active_elec].psi_pp_calculated,
+            //     E,
+            //     state.grid_n,
+            // );
+
+            // todo: We use this instead of the above method due to mutable/immutable borrow conflicts.
+            for i in 0..state.grid_n {
+                for j in 0..state.grid_n {
+                    for k in 0..state.grid_n {
+                        state.surfaces_per_elec[active_elec].psi_pp_calculated[i]
+                            [j][k] = eigen_fns::find_ψ_pp_calc(
+                            &state.surfaces_per_elec[active_elec].psi.on_pt,
+                            &state.surfaces_per_elec[active_elec].V_acting_on_this,
+                            state.surfaces_per_elec[active_elec].E,
+                            i,
+                            j,
+                            k,
+                        );
+                    }
+                }
+            }
 
             state.surfaces_per_elec[active_elec].psi_pp_score = eval::score_wf(
                 &state.surfaces_per_elec[active_elec].psi_pp_calculated,
@@ -619,7 +636,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui_z_displayed
             })
-            .text("Z slice"),
+                .text("Z slice"),
         );
 
         ui.add(
@@ -631,7 +648,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-            .text("Visual rotation"),
+                .text("Visual rotation"),
         );
 
         ui.add(
@@ -651,7 +668,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_max
             })
-            .text("Grid range"),
+                .text("Grid range"),
         );
 
         match state.ui_active_elec {
@@ -684,7 +701,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                         state.surfaces_per_elec[active_elec].psi_pp_calculated[i]
                                             [j][k] = eigen_fns::find_ψ_pp_calc(
                                             &state.surfaces_per_elec[active_elec].psi.on_pt,
-                                            &state.V_from_elecs[active_elec],
+                                            &state.surfaces_per_elec[active_elec].V_acting_on_this,
                                             state.surfaces_per_elec[active_elec].E,
                                             i,
                                             j,
@@ -705,7 +722,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_per_elec[active_elec].E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 ui.add(
@@ -717,8 +734,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.nudge_amount[active_elec]
                     })
-                    .text("Nudge amount")
-                    .logarithmic(true),
+                        .text("Nudge amount")
+                        .logarithmic(true),
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -870,7 +887,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 // Multiply wave functions together, and stores in Shared surfaces.

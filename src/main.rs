@@ -139,9 +139,8 @@ fn choose_grid_limits(charges_fixed: &[(Vec3, f64)]) -> (f64, f64) {
         }
     }
 
-    // const RANGE_PAD: f64 = 1.6;
-    const RANGE_PAD: f64 = 5.8;
-    // const RANGE_PAD: f64 = 15.;
+    // const RANGE_PAD: f64 = 5.8;
+    const RANGE_PAD: f64 = 2.5;
 
     let grid_max = max_abs_val + RANGE_PAD;
     let grid_min = -grid_max;
@@ -321,13 +320,9 @@ fn main() {
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
 
     let (grid_min, grid_max) = choose_grid_limits(&charges_fixed);
+    // let spacing_factor = 1.6;
     let spacing_factor = 1.6;
     let grid_n = GRID_N_DEFAULT;
-
-    // let L_2 = 1.;
-    // let L_x = 1.;
-    // let L_y = 1.;
-    // let L_z = 1.;
 
     let (charges_electron, V_from_elecs, bases_unweighted, surfaces_shared, surfaces_per_elec) =
         init_from_grid(

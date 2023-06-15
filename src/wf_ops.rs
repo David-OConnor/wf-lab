@@ -194,7 +194,6 @@ pub fn update_psi_pps(
     E: f64,
     grid_n: usize,
 ) {
-    println!("E: {}", E);
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
@@ -216,11 +215,6 @@ pub fn update_psi_pps(
             }
         }
     }
-
-    println!(
-        "Calc: {} - mes: {}",
-        psi_pp_calc[8][8][7], psi_pp_meas[5][7][8]
-    );
 }
 
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship

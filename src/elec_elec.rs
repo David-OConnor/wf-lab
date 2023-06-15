@@ -59,6 +59,8 @@ pub struct WaveFunctionMultiElec {
     psi_joint: Vec<(Vec<PositIndex>, CplxWDiffs)>,
     /// This is the combined probability, created from `psi_joint`.
     pub psi_marginal: PsiWDiffs,
+    /// Maybe temp; experimenting;
+    individual_elec_wfs: Vec<PsiWDiffs>,
 }
 
 /// Be careful: (Wiki): "Only a small subset of all possible fermionic wave functions can be written
@@ -72,6 +74,7 @@ impl WaveFunctionMultiElec {
             num_elecs,
             psi_joint: Vec::new(),
             psi_marginal: PsiWDiffs::init(&data),
+            individual_elec_wfs: Vec::new(),
         }
     }
 
@@ -97,6 +100,26 @@ impl WaveFunctionMultiElec {
         // Start clean
         let data = new_data(grid_n);
         self.psi_marginal = PsiWDiffs::init(&data);
+
+        // todo: trying something
+        for wf in &self.individual_elec_wfs {
+            for i in 0..grid_n {
+                for j in 0..grid_n {
+                    for k in 0..grid_n {
+                        self.psi_marginal.on_pt[i][j][k] += wf.on_pt[i][j][k];
+
+                        self.psi_marginal.x_prev[i][j][k] += wf.x_prev[i][j][k];
+                        self.psi_marginal.x_next[i][j][k] += wf.x_next[i][j][k];
+                        self.psi_marginal.y_prev[i][j][k] += wf.y_prev[i][j][k];
+                        self.psi_marginal.y_next[i][j][k] += wf.y_next[i][j][k];
+                        self.psi_marginal.z_prev[i][j][k] += wf.z_prev[i][j][k];
+                        self.psi_marginal.z_next[i][j][k] += wf.z_next[i][j][k];
+                    }
+                }
+            }
+        }
+        println!("Complete");
+        return;
 
         for (posits, wf_val) in &self.psi_joint {
             for posit in posits {
@@ -153,10 +176,10 @@ impl WaveFunctionMultiElec {
         util::normalize_wf(&mut self.psi_marginal.z_prev, norm, grid_n);
         util::normalize_wf(&mut self.psi_marginal.z_next, norm, grid_n);
 
-        println!("Some vals: {:?}", self.psi_marginal.on_pt[5][6][4]);
-        println!("Some vals: {:?}", self.psi_marginal.on_pt[1][3][6]);
-        // println!("Some vals: {:?}", self.psi_marginal.on_pt[7][10][2]);
-        println!("Some vals: {:?}", self.psi_marginal.on_pt[6][4][3]);
+        // println!("Some vals: {:?}", self.psi_marginal.on_pt[5][6][4]);
+        // println!("Some vals: {:?}", self.psi_marginal.on_pt[1][3][6]);
+        // // println!("Some vals: {:?}", self.psi_marginal.on_pt[7][10][2]);
+        // println!("Some vals: {:?}", self.psi_marginal.on_pt[6][4][3]);
 
         // todo: set up diffs. This is a relatively coarse numerical diff vice the analytic ones we use
         // todo for the individual electrons.
@@ -189,6 +212,13 @@ impl WaveFunctionMultiElec {
     /// being in a permutation of positions.
     pub fn setup_joint_wf(&mut self, wfs: &[&PsiWDiffs], grid_n: usize) {
         println!("Setting up psi joint...");
+
+        // Experimenting with a different approach.
+        for wf in wfs {
+            self.individual_elec_wfs.push((*wf).clone());
+        }
+        return;
+
         // todo: If you run this function more often than generating the posits
         // todo store them somewhere;
         let mut posits = Vec::new();

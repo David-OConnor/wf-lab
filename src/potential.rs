@@ -1,7 +1,7 @@
 //! Contains code related to creating and combining potentials.
 
 use crate::{
-    types::{Arr3dReal, Arr3dVec},
+    types::{self, Arr3dReal, Arr3dVec},
     util,
 };
 
@@ -42,6 +42,20 @@ pub fn update_V_combined(
     V_elecs: &[Arr3dReal],
     grid_n: usize,
 ) {
+    // todo: QC this.
+    // We combine electron Vs initially; this is required to prevent numerical errors. (??)
+    // let mut V_from_elecs = types::new_data_real(grid_n);
+    // for i in 0..grid_n {
+    //     for j in 0..grid_n {
+    //         for k in 0..grid_n {
+    //             for V_elec in V_elecs {
+    //                 V_from_elecs[i][j][k] += V_elec[i][j][k];
+    //             }
+    //         }
+    //     }
+    // }
+
+
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
@@ -50,6 +64,13 @@ pub fn update_V_combined(
                 for V_elec in V_elecs {
                     V_combined[i][j][k] += V_elec[i][j][k]
                 }
+
+                // todo temp
+                // V_combined[i][j][k] += V_elecs[0][i][j][k];
+                // V_combined[i][j][k] += V_from_elecs[i][j][k];
+
+                // println!("Nuc: {}", V_nuc[i][j][k]);
+                // println!("Elec: {}", V_from_elecs[i][j][k]);
             }
         }
     }
