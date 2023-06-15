@@ -202,6 +202,7 @@ pub fn update_meshes(
 
     let mut meshes = Vec::new();
 
+    // todo: Fix the DRY between multi and single-elec renders
     if render_multi_elec {
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh_real(grid_posits, &surfaces_shared.V_total, z_i, V_SCALER, grid_n),
@@ -216,6 +217,19 @@ pub fn update_meshes(
                 PSI_SCALER,
                 mag_phase,
                 false,
+                grid_n,
+            ),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces_shared.psi.psi_marginal.on_pt,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                true,
                 grid_n,
             ),
             true,

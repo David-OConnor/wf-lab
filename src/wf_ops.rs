@@ -152,7 +152,7 @@ pub fn update_wf_fm_bases(
 
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.
-    update_psi_pps_from_bases(
+    update_psi_pps(
         &sfcs.psi,
         &sfcs.V_acting_on_this,
         &mut sfcs.psi_pp_calculated,
@@ -185,7 +185,7 @@ pub fn update_psi_pp_calc(
 ///
 /// We use a separate function from this since it's used separately in our basis-finding
 /// algorithm
-pub fn update_psi_pps_from_bases(
+pub fn update_psi_pps(
     // We split these arguments up instead of using surfaces to control mutability.
     psi: &PsiWDiffs,
     V: &Arr3dReal,
@@ -194,6 +194,7 @@ pub fn update_psi_pps_from_bases(
     E: f64,
     grid_n: usize,
 ) {
+    println!("E: {}", E);
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
@@ -203,10 +204,7 @@ pub fn update_psi_pps_from_bases(
                 // in 3D.
                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-
-                // todo: Put back once you sorted out your anomoloous Psi behavior.
-                psi_pp_meas[i][j][k] = num_diff::find_ψ_pp_meas_fm_unweighted_bases(
-                    // todo: Combine into a single struct etc A/R.
+                psi_pp_meas[i][j][k] = num_diff::find_ψ_pp_meas(
                     psi.on_pt[i][j][k],
                     psi.x_prev[i][j][k],
                     psi.x_next[i][j][k],
@@ -218,6 +216,11 @@ pub fn update_psi_pps_from_bases(
             }
         }
     }
+
+    println!(
+        "Calc: {} - mes: {}",
+        psi_pp_calc[8][8][7], psi_pp_meas[5][7][8]
+    );
 }
 
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship

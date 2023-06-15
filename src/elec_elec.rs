@@ -187,7 +187,7 @@ impl WaveFunctionMultiElec {
 
     /// Set up values for the joint wavefunction; related to probabilities of the electrons
     /// being in a permutation of positions.
-    pub fn setup_joint_wf(&mut self, wfs: &[PsiWDiffs], grid_n: usize) {
+    pub fn setup_joint_wf(&mut self, wfs: &[&PsiWDiffs], grid_n: usize) {
         println!("Setting up psi joint...");
         // todo: If you run this function more often than generating the posits
         // todo store them somewhere;
@@ -258,7 +258,7 @@ impl WaveFunctionMultiElec {
                         &permutation,
                     ),
                     x_next: self.joint_wf_at_permutation(
-                        &vec![&wfs[0].x_prev, &wfs[1].x_next],
+                        &vec![&wfs[0].x_next, &wfs[1].x_next],
                         &permutation,
                     ),
                     y_prev: self.joint_wf_at_permutation(
@@ -266,7 +266,7 @@ impl WaveFunctionMultiElec {
                         &permutation,
                     ),
                     y_next: self.joint_wf_at_permutation(
-                        &vec![&wfs[0].y_prev, &wfs[1].y_next],
+                        &vec![&wfs[0].y_next, &wfs[1].y_next],
                         &permutation,
                     ),
                     z_prev: self.joint_wf_at_permutation(
@@ -274,7 +274,7 @@ impl WaveFunctionMultiElec {
                         &permutation,
                     ),
                     z_next: self.joint_wf_at_permutation(
-                        &vec![&wfs[0].z_prev, &wfs[1].z_next],
+                        &vec![&wfs[0].z_next, &wfs[1].z_next],
                         &permutation,
                     ),
                 },
@@ -367,44 +367,4 @@ pub(crate) fn update_charge_density_fm_psi(
         }
     }
     println!("Complete");
-}
-
-/// Calculate the result of exchange interactions between electrons.
-pub(crate) fn calc_exchange(psis: &[Arr3d], result: &mut Arr3d, grid_n: usize) {
-    // for i_a in 0..N {
-    //     for j_a in 0..N {
-    //         for k_a in 0..N {
-    //             for i_b in 0..N {
-    //                 for j_b in 0..N {
-    //                     for k_b in 0..N {
-    //
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    *result = Arr3d::new();
-
-    for a in 0..grid_n {
-        // todo: i, j, k for 3D
-        for b in 0..grid_n {
-            // This term will always be 0, so skipping  here may save calculation.
-            if a == b {
-                continue;
-            }
-            // Enumerate so we don't calculate exchange on a WF with itself.
-            for (i_1, psi_1) in psis.iter().enumerate() {
-                for (i_2, psi_2) in psis.iter().enumerate() {
-                    // Don't calcualte exchange with self
-                    if i_1 == i_2 {
-                        continue;
-                    }
-
-                    // todo: THink this through. What index to update?
-                    // result[a] += FRAC_1_SQRT_2 * (psi_1[a] * psi_2[b] - psi_2[a] * psi_1[b]);
-                }
-            }
-        }
-    }
 }

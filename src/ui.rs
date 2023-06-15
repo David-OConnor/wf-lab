@@ -793,18 +793,16 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 }
 
                 if updated_unweighted_basis_wfs {
-                    engine_updates.meshes = true;
-
                     state.bases_unweighted[active_elec] = wf_ops::BasisWfsUnweighted::new(
                         &state.bases[active_elec],
                         &state.surfaces_shared.grid_posits,
                         state.grid_n,
                     );
+
+                    updated_meshes = true;
                 }
 
                 if updated_basis_weights {
-                    engine_updates.meshes = true;
-
                     let mut weights = vec![0.; state.bases[active_elec].len()];
                     // Syncing procedure pending a better API.
                     for (i, basis) in state.bases[active_elec].iter().enumerate() {
@@ -867,20 +865,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                 state.grid_n,
                             );
 
-                            // updated_meshes = true;
-
-                            // todo: DRY
-                            render::update_meshes(
-                                &state.surfaces_shared,
-                                &state.surfaces_per_elec[0],
-                                state.ui_z_displayed,
-                                scene,
-                                &state.surfaces_shared.grid_posits,
-                                state.mag_phase,
-                                &state.charges_electron[0],
-                                state.grid_n,
-                                true,
-                            );
+                            updated_meshes = true;
                         }
 
                         state.surfaces_shared.E
@@ -891,11 +876,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Multiply wave functions together, and stores in Shared surfaces.
                 // todo: This is an approximation
                 if ui.add(egui::Button::new("Combine wavefunctions")).clicked() {
-                    // let mut V_elecs = Vec::new();
-                    // for elec in &state.surfaces_per_elec {
-                    //     V_elecs.push(&elec.V_from_this);
-                    // }
-
                     potential::update_V_combined(
                         &mut state.surfaces_shared.V_total,
                         &state.surfaces_shared.V_from_nuclei,
@@ -903,11 +883,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         state.grid_n,
                     );
 
-                    // todo: Yu are making a one-off fully memory copy that is not necessary.
                     let mut per_elec_wfs = Vec::new();
                     for sfc in &state.surfaces_per_elec {
-                        // per_elec_wfs.push(sfc.psi.on_pt.clone());
-                        per_elec_wfs.push(sfc.psi.clone());
+                        per_elec_wfs.push(&sfc.psi);
                     }
 
                     state
@@ -920,9 +898,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         .psi
                         .populate_psi_marginal(state.grid_n);
 
-                    // todO: Make sure shared V is updated from elecs.
-
-                    wf_ops::update_psi_pps_from_bases(
+                    wf_ops::update_psi_pps(
                         &state.surfaces_shared.psi.psi_marginal,
                         &state.surfaces_shared.V_total,
                         &mut state.surfaces_shared.psi_pp_calculated,
@@ -931,22 +907,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         state.grid_n,
                     );
 
-                    engine_updates.meshes = true; // todo: Currently does not work.
-
-                    // render::update_meshes(
-                    //     &state.surfaces_shared,
-                    //     &state.surfaces_per_elec[0], // dummy
-                    //     state.ui_z_displayed,
-                    //     scene,
-                    //     &state.surfaces_shared.grid_posits,
-                    //     state.mag_phase,
-                    //     &state.charges_electron[0], // dummy
-                    //     state.grid_n,
-                    //     true,
-                    // );
-
-                    // todo: Do we want this? Why?
-                    render::update_entities(&state.charges_fixed, &state.surface_data, scene)
+                    updated_meshes = true;
+                    engine_updates.entities = true;
                 }
             }
         }
@@ -980,7 +942,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 state.mag_phase,
                 &state.charges_electron[active_elec],
                 state.grid_n,
-                // render_multi_elec
                 render_multi_elec,
             );
         }

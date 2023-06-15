@@ -105,6 +105,11 @@ pub(crate) fn create_V_from_an_elec(
                 for i_charge in 0..grid_n {
                     for j_charge in 0..grid_n {
                         for k_charge in 0..grid_n {
+                            // This will produce infinities due to 0 r.
+                            if i == i_charge && j == j_charge && k == k_charge {
+                                continue;
+                            }
+
                             let posit_charge = grid_posits[i_charge][j_charge][k_charge];
                             let charge = charge_this_elec[i_charge][j_charge][k_charge];
 

@@ -23,7 +23,7 @@ pub const H_SQ: f64 = H * H;
 ///
 /// todo: This may replace the one below by using cached values of each wf at this point,
 /// todo and neighbors.
-pub(crate) fn find_ψ_pp_meas_fm_unweighted_bases(
+pub(crate) fn find_ψ_pp_meas(
     // todo: Combine these into a single struct a/r
     psi_on_pt: Cplx,
     psi_x_prev: Cplx,
@@ -32,29 +32,7 @@ pub(crate) fn find_ψ_pp_meas_fm_unweighted_bases(
     psi_y_next: Cplx,
     psi_z_prev: Cplx,
     psi_z_next: Cplx,
-    // basis_wfs: &BasisWfsUnweighted,
-    // weights: &[f64],
-    // i: usize,
-    // j: usize,
-    // k: usize,
 ) -> Cplx {
-    //
-    // let mut psi_x_prev = Cplx::new_zero();
-    // let mut psi_x_next = Cplx::new_zero();
-    // let mut psi_y_prev = Cplx::new_zero();
-    // let mut psi_y_next = Cplx::new_zero();
-    // let mut psi_z_prev = Cplx::new_zero();
-    // let mut psi_z_next = Cplx::new_zero();
-    //
-    // for (basis_i, weight) in weights.iter().enumerate() {
-    //     psi_x_prev += basis_wfs.x_prev[basis_i][i][j][k] * *weight;
-    //     psi_x_next += basis_wfs.x_next[basis_i][i][j][k] * *weight;
-    //     psi_y_prev += basis_wfs.y_prev[basis_i][i][j][k] * *weight;
-    //     psi_y_next += basis_wfs.y_next[basis_i][i][j][k] * *weight;
-    //     psi_z_prev += basis_wfs.z_prev[basis_i][i][j][k] * *weight;
-    //     psi_z_next += basis_wfs.z_next[basis_i][i][j][k] * *weight;
-    // }
-
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - psi_on_pt * 6.;
 
