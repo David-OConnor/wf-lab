@@ -150,17 +150,19 @@ impl Mul<f64> for Cplx {
     }
 }
 
-// impl Div<Self> for Cplx {
-//     type Output = Self;
-//
-//     fn div(self, other: Self) -> Self {
-//         Self {
-//             // todo
-//             real: self.real * other.real - self.im * other.im,
-//             im: self.real * other.im + self.im * other.real,
-//         }
-//     }
-// }
+impl Div<Self> for Cplx {
+    type Output = Self;
+
+    fn div(self, other: Self) -> Self {
+        Self {
+            // toodo: QC this
+            real: (self.real * other.real + self.im * other.im)
+                / (other.real.powi(2) + other.im.powi(2)),
+            im: self.im * other.real
+                - self.real * other.im / (other.real.powi(2) + other.im.powi(2)),
+        }
+    }
+}
 
 impl Div<f64> for Cplx {
     type Output = Self;

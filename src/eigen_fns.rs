@@ -24,14 +24,14 @@
 use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
-    types::{Arr3d, Arr3dReal},
-    wf_ops::{self, ħ, Q_ELEC, Q_PROT, K_C},
     types::Arr3dVec,
+    types::{Arr3d, Arr3dReal},
+    wf_ops::{self, ħ, K_C, Q_ELEC, Q_PROT},
 };
 
 use lin_alg2::f64::Vec3;
 
-pub const KE_COEFF: f64 = -(ħ * ħ) / (2. & wf_ops::M_ELEC);
+pub const KE_COEFF: f64 = -(ħ * ħ) / (2. * wf_ops::M_ELEC);
 pub const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 /// Calcualte psi'', calculated from psi, and E. Note that the V term used must include both
@@ -42,23 +42,37 @@ pub const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 ///
 /// Hψ = Eψ. -ħ^2/2m * ψ'' + Vψ = Eψ. ψ'' = [(E - V) / (-ħ^2/2m)] ψ
 pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
-    KE_COEFF_INV  * (E - V[i][j][k]) * psi[i][j][k]
-
-    // (E - V)= psi'' / (psi * KE_COEFF)
-}
-
-/// Returns the *sum of psi'' from the 2 electrons*.
-/// Note: V must be calculatd appropriately from the 3 relevant terms.
-/// todo: MOre general one, not limited to to elecs
-pub fn find_ψ_pp_calc_2_elec(psi_joint: &WaveFunctionMultiElec, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
     psi[i][j][k] * (E - V[i][j][k]) * KE_COEFF_INV
 }
 
+// todo: Come back to A/R
+// /// Returns the *sum of psi'' from the 2 electrons*.
+// /// Note: V must be calculatd appropriately from the 3 relevant terms.
+// /// todo: MOre general one, not limited to to elecs
+// pub fn find_ψ_pp_calc_2_elec(
+//     psi_joint: &WaveFunctionMultiElec,
+//     V: &Arr3dReal,
+//     E: f64,
+//     i: usize,
+//     j: usize,
+//     k: usize,
+// ) -> Cplx {
+//     psi_joint[i][j][k] * (E - V[i][j][k]) * KE_COEFF_INV
+// }
+
 /// Experimental function to calculate E from a 2-electron WF.
 /// todo: How to
-pub fn find_E_2_elec_at_pt(psi_joint: Cplx, psi_pp_0: Cplx, psi_pp_1: Cplx, posit_nuc: Vec3, posit_elec_0: Vec3, posit_elec_1: Vec3) {
+pub fn find_E_2_elec_at_pt(
+    psi_joint: Cplx,
+    V_combined: f64,
+    psi_pp_0: Cplx,
+    psi_pp_1: Cplx,
+    posit_nuc: Vec3,
+    posit_elec_0: Vec3,
+    posit_elec_1: Vec3,
+) -> f64 {
     // Note: This uses a factor of 4 due to m = 2.
-    const KE_COEFF_2_ELEC: f64 = - (ħ * ħ) / (4. * wf_ops::M_ELEC);
+    const KE_COEFF_2_ELEC: f64 = -(ħ * ħ) / (4. * wf_ops::M_ELEC);
 
     let diff_e0_nuc = posit_elec_0 - posit_nuc;
     let diff_e1_nuc = posit_elec_1 - posit_nuc;
@@ -70,14 +84,20 @@ pub fn find_E_2_elec_at_pt(psi_joint: Cplx, psi_pp_0: Cplx, psi_pp_1: Cplx, posi
 
     const C: f64 = K_C * Q_ELEC * Q_PROT;
 
-    let V = C * -1. / r0_nuc - 1. / r1_nuc + 1. / r0_1;
+    let V = C * (-1. / r0_nuc - 1. / r1_nuc + 1. / r0_1);
 
-    KE_COEFF * (psi_pp_0 + psi_pp_1) / psi_joint + V;
+    ((psi_pp_0 + psi_pp_1) / psi_joint * KE_COEFF + V.into()).real
 }
 
-pub fn find_E_2_elec(psi_joint: &WaveFunctionMultiElec, psi_pp_0: &Arr3d, psi_pp_0: &Arr3d, grid_posits: &Arr3dVec, grid_n: usize) {
+pub fn find_E_2_elec(
+    psi_joint: &WaveFunctionMultiElec,
+    psi_pp_0: &Arr3d,
+    psi_pp_1: &Arr3d,
+    grid_posits: &Arr3dVec,
+    grid_n: usize,
+) {
     // Note: This uses a factor of 4 due to m = 2.
-    const KE_COEFF_2_ELEC_INV: f64 = - (ħ * ħ) / (4. * wf_ops::M_ELEC);
+    const KE_COEFF_2_ELEC_INV: f64 = -(ħ * ħ) / (4. * wf_ops::M_ELEC);
 
     for i0 in 0..grid_n {
         for j0 in 0..grid_n {

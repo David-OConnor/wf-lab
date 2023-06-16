@@ -55,7 +55,6 @@ pub fn update_V_combined(
     //     }
     // }
 
-
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {

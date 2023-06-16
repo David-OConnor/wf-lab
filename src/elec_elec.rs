@@ -1,7 +1,7 @@
 //! This module contains code for electron-electron interactions, including EM repulsion,
 //! and exchange forces.
 
-use std::f64::consts::FRAC_1_SQRT_2;
+use std::{collections::HashMap, f64::consts::FRAC_1_SQRT_2};
 
 use crate::{
     complex_nums::Cplx,
@@ -14,7 +14,7 @@ use crate::{
 use lin_alg2::f64::Vec3;
 
 /// This struct helps keep syntax more readable
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PositIndex {
     pub x: usize,
     pub y: usize,
@@ -56,7 +56,10 @@ pub struct WaveFunctionMultiElec {
     /// Maps permutations of position index to wave function value.
     /// The outer vec has a value for each permutation of spacial coordinates, with length
     /// `num_elecs`. So, its length is (n_grid^3)^num_elecs
-    psi_joint: Vec<(Vec<PositIndex>, CplxWDiffs)>,
+    /// todo: Consdier moving to something other than HashMap for performacne reasons
+    // psi_joint: Vec<(Vec<PositIndex>, CplxWDiffs)>,
+    // todo: Hard-coded for 2-elecs
+    pub psi_joint: HashMap<(PositIndex, PositIndex), CplxWDiffs>,
     /// This is the combined probability, created from `psi_joint`.
     pub psi_marginal: PsiWDiffs,
     /// Maybe temp; experimenting;
@@ -72,7 +75,8 @@ impl WaveFunctionMultiElec {
         let data = new_data(n_grid);
         Self {
             num_elecs,
-            psi_joint: Vec::new(),
+            // psi_joint: Vec::new(),
+            psi_joint: HashMap::new(),
             psi_marginal: PsiWDiffs::init(&data),
             individual_elec_wfs: Vec::new(),
         }
@@ -121,40 +125,40 @@ impl WaveFunctionMultiElec {
         println!("Complete");
         return;
 
-        for (posits, wf_val) in &self.psi_joint {
-            for posit in posits {
-                // posit.index_mut(&mut self.psi_marginal.on_pt) += *wf_val;
-                // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val;
-                // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val / n_components_per_posit;
-
-                // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val;
-
-                // todo: Experimenting with treating the abs_square as what we combine, vice making a "marginal"
-                // todo combined WF we square to find charge density
-                // Note: We are hijacking psi_marginal to be this squared value. (Noting that
-                // we are still storing it as a complex value)
-
-                // todo: This produces a visible result (as opposed to when we don't square it...), but
-                // todo: how do we score this using psi''s?
-                // todo: (The impliciation here is perhaps the various values are variously positive and negative,
-                // todo, so they cancel if not squared)
-                self.psi_marginal.on_pt[posit.x][posit.y][posit.z] +=
-                    Cplx::from_real(wf_val.on_pt.abs_sq());
-
-                self.psi_marginal.x_prev[posit.x][posit.y][posit.z] +=
-                    Cplx::from_real(wf_val.x_prev.abs_sq());
-                self.psi_marginal.x_next[posit.x][posit.y][posit.z] +=
-                    Cplx::from_real(wf_val.x_next.abs_sq());
-                self.psi_marginal.y_prev[posit.x][posit.y][posit.z] +=
-                    Cplx::from_real(wf_val.y_prev.abs_sq());
-                self.psi_marginal.y_next[posit.x][posit.y][posit.z] +=
-                    Cplx::from_real(wf_val.y_next.abs_sq());
-                self.psi_marginal.z_prev[posit.x][posit.y][posit.z] +=
-                    Cplx::from_real(wf_val.z_prev.abs_sq());
-                self.psi_marginal.z_next[posit.x][posit.y][posit.z] +=
-                    Cplx::from_real(wf_val.z_next.abs_sq());
-            }
-        }
+        // for (posits, wf_val) in &self.psi_joint {
+        //     for posit in posits {
+        //         // posit.index_mut(&mut self.psi_marginal.on_pt) += *wf_val;
+        //         // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val;
+        //         // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val / n_components_per_posit;
+        //
+        //         // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val;
+        //
+        //         // todo: Experimenting with treating the abs_square as what we combine, vice making a "marginal"
+        //         // todo combined WF we square to find charge density
+        //         // Note: We are hijacking psi_marginal to be this squared value. (Noting that
+        //         // we are still storing it as a complex value)
+        //
+        //         // todo: This produces a visible result (as opposed to when we don't square it...), but
+        //         // todo: how do we score this using psi''s?
+        //         // todo: (The impliciation here is perhaps the various values are variously positive and negative,
+        //         // todo, so they cancel if not squared)
+        //         self.psi_marginal.on_pt[posit.x][posit.y][posit.z] +=
+        //             Cplx::from_real(wf_val.on_pt.abs_sq());
+        //
+        //         self.psi_marginal.x_prev[posit.x][posit.y][posit.z] +=
+        //             Cplx::from_real(wf_val.x_prev.abs_sq());
+        //         self.psi_marginal.x_next[posit.x][posit.y][posit.z] +=
+        //             Cplx::from_real(wf_val.x_next.abs_sq());
+        //         self.psi_marginal.y_prev[posit.x][posit.y][posit.z] +=
+        //             Cplx::from_real(wf_val.y_prev.abs_sq());
+        //         self.psi_marginal.y_next[posit.x][posit.y][posit.z] +=
+        //             Cplx::from_real(wf_val.y_next.abs_sq());
+        //         self.psi_marginal.z_prev[posit.x][posit.y][posit.z] +=
+        //             Cplx::from_real(wf_val.z_prev.abs_sq());
+        //         self.psi_marginal.z_next[posit.x][posit.y][posit.z] +=
+        //             Cplx::from_real(wf_val.z_next.abs_sq());
+        //     }
+        // }
 
         // Normalize the wave function.
         let mut norm = 0.;
@@ -217,7 +221,7 @@ impl WaveFunctionMultiElec {
         for wf in wfs {
             self.individual_elec_wfs.push((*wf).clone());
         }
-        return;
+        // return;
 
         // todo: If you run this function more often than generating the posits
         // todo store them somewhere;
@@ -231,7 +235,8 @@ impl WaveFunctionMultiElec {
             }
         }
 
-        self.psi_joint = Vec::new();
+        // self.psi_joint = Vec::new();
+        self.psi_joint = HashMap::new();
 
         let mut posit_permutations = Vec::new();
         // for 2 elecs:
@@ -268,47 +273,62 @@ impl WaveFunctionMultiElec {
         }
 
         for permutation in posit_permutations {
-            // println!("j{}", self.joint_wf_at_permutation(wfs, &permutation));
-            self.psi_joint.push((
-                permutation.clone(),
-                CplxWDiffs {
-                    // on_pt: self.joint_wf_at_permutation(wfs.on_pt, &permutation),
-                    // x_prev:self.joint_wf_at_permutation(wfs.x_prev, &permutation),
-                    // x_next:self.joint_wf_at_permutation(wfs.x_next, &permutation),
-                    // y_prev:self.joint_wf_at_permutation(wfs.y_prev, &permutation),
-                    // y_next:self.joint_wf_at_permutation(wfs.y_next, &permutation),
-                    // z_prev:self.joint_wf_at_permutation(wfs.z_prev, &permutation),
-                    // z_next:self.joint_wf_at_permutation(wfs.z_next, &permutation),
+            // Trying HM
 
-                    // todo: Temp approach to mitigate our API. Hard-coded for 2-elecs.
+            // todo: Hard-coded for 2 elecs.
+            self.psi_joint.insert(
+                (permutation[0], permutation[1]),
+                // Trying a HashMap
+                CplxWDiffs {
                     on_pt: self
                         .joint_wf_at_permutation(&vec![&wfs[0].on_pt, &wfs[1].on_pt], &permutation),
-                    x_prev: self.joint_wf_at_permutation(
-                        &vec![&wfs[0].x_prev, &wfs[1].x_prev],
-                        &permutation,
-                    ),
-                    x_next: self.joint_wf_at_permutation(
-                        &vec![&wfs[0].x_next, &wfs[1].x_next],
-                        &permutation,
-                    ),
-                    y_prev: self.joint_wf_at_permutation(
-                        &vec![&wfs[0].y_prev, &wfs[1].y_prev],
-                        &permutation,
-                    ),
-                    y_next: self.joint_wf_at_permutation(
-                        &vec![&wfs[0].y_next, &wfs[1].y_next],
-                        &permutation,
-                    ),
-                    z_prev: self.joint_wf_at_permutation(
-                        &vec![&wfs[0].z_prev, &wfs[1].z_prev],
-                        &permutation,
-                    ),
-                    z_next: self.joint_wf_at_permutation(
-                        &vec![&wfs[0].z_next, &wfs[1].z_next],
-                        &permutation,
-                    ),
+                    ..Default::default()
                 },
-            ));
+            );
+
+            // self.psi_joint.push((
+            //     permutation.clone(),
+            //     CplxWDiffs {
+            //         // on_pt: self.joint_wf_at_permutation(wfs.on_pt, &permutation),
+            //         // x_prev:self.joint_wf_at_permutation(wfs.x_prev, &permutation),
+            //         // x_next:self.joint_wf_at_permutation(wfs.x_next, &permutation),
+            //         // y_prev:self.joint_wf_at_permutation(wfs.y_prev, &permutation),
+            //         // y_next:self.joint_wf_at_permutation(wfs.y_next, &permutation),
+            //         // z_prev:self.joint_wf_at_permutation(wfs.z_prev, &permutation),
+            //         // z_next:self.joint_wf_at_permutation(wfs.z_next, &permutation),
+            //
+            //         // todo: Temp approach to mitigate our API. Hard-coded for 2-elecs.
+            //         on_pt: self
+            //             .joint_wf_at_permutation(&vec![&wfs[0].on_pt, &wfs[1].on_pt], &permutation),
+            //             ..Deafult::default()
+            //         // todo: Come back to this as required
+            //
+            //         // x_prev: self.joint_wf_at_permutation(
+            //         //     &vec![&wfs[0].x_prev, &wfs[1].x_prev],
+            //         //     &permutation,
+            //         // ),
+            //         // x_next: self.joint_wf_at_permutation(
+            //         //     &vec![&wfs[0].x_next, &wfs[1].x_next],
+            //         //     &permutation,
+            //         // ),
+            //         // y_prev: self.joint_wf_at_permutation(
+            //         //     &vec![&wfs[0].y_prev, &wfs[1].y_prev],
+            //         //     &permutation,
+            //         // ),
+            //         // y_next: self.joint_wf_at_permutation(
+            //         //     &vec![&wfs[0].y_next, &wfs[1].y_next],
+            //         //     &permutation,
+            //         // ),
+            //         // z_prev: self.joint_wf_at_permutation(
+            //         //     &vec![&wfs[0].z_prev, &wfs[1].z_prev],
+            //         //     &permutation,
+            //         // ),
+            //         // z_next: self.joint_wf_at_permutation(
+            //         //     &vec![&wfs[0].z_next, &wfs[1].z_next],
+            //         //     &permutation,
+            //         // ),
+            //     },
+            // ));
         }
 
         println!("Complete");
