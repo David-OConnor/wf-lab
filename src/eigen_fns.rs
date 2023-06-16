@@ -36,13 +36,17 @@ pub const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 
 /// Calcualte psi'', calculated from psi, and E. Note that the V term used must include both
 /// electron-electron interactions, and electron-proton interactions.
+/// V here is a potential field from the nucleus, so multiply it by the electron's
+/// charge to find potential energy
 /// At a given i, j, k.
 ///
 /// This solves, analytically, the eigenvalue equation for the Hamiltonian operator.
 ///
 /// Hψ = Eψ. -ħ^2/2m * ψ'' + Vψ = Eψ. ψ'' = [(E - V) / (-ħ^2/2m)] ψ
 pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
-    psi[i][j][k] * (E - V[i][j][k]) * KE_COEFF_INV
+    // Note that V input is potential field; we get potential energy by multiplying it
+    // by the charge being acted on (the electron)
+    psi[i][j][k] * (E - V[i][j][k] * Q_ELEC) * KE_COEFF_INV
 }
 
 // todo: Come back to A/R
@@ -60,11 +64,14 @@ pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k
 //     psi_joint[i][j][k] * (E - V[i][j][k]) * KE_COEFF_INV
 // }
 
-/// Experimental function to calculate E from a 2-electron WF.
+/// Experimental function to calculate E from a 2-electron WF, of Helium.
 /// todo: How to
 pub fn find_E_2_elec_at_pt(
     psi_joint: Cplx,
-    V_combined: f64,
+    // V_acting_on_elec_0: f64,
+    // V_acting_on_elec_1: f64,
+    // These psi''s are calculated by holding the other electron coordinate[s] constant,
+    // and comparing to +/- dx values of the coordinate in question.
     psi_pp_0: Cplx,
     psi_pp_1: Cplx,
     posit_nuc: Vec3,
@@ -74,19 +81,24 @@ pub fn find_E_2_elec_at_pt(
     // Note: This uses a factor of 4 due to m = 2.
     const KE_COEFF_2_ELEC: f64 = -(ħ * ħ) / (4. * wf_ops::M_ELEC);
 
-    let diff_e0_nuc = posit_elec_0 - posit_nuc;
-    let diff_e1_nuc = posit_elec_1 - posit_nuc;
-    let diff_e0_e1 = posit_elec_0 - posit_elec_1;
+    let r0_nuc = (posit_elec_0 - posit_nuc).magnitude();
+    let r1_nuc = (posit_elec_1 - posit_nuc).magnitude();
+    let r0_1 = (posit_elec_0 - posit_elec_1).magnitude();
 
-    let r0_nuc = diff_e0_nuc.magnitude();
-    let r1_nuc = diff_e1_nuc.magnitude();
-    let r0_1 = diff_e0_e1.magnitude();
+    const C_PROT_ELEC: f64 = K_C * Q_PROT * Q_ELEC;
+    const C_ELEC_ELEC: f64 = K_C * Q_ELEC * Q_ELEC;
 
-    const C: f64 = K_C * Q_ELEC * Q_PROT;
+    let V_energy = C_PROT_ELEC * (1. / r0_nuc + 1. / r1_nuc) + C_ELEC_ELEC / r0_1;
 
-    let V = C * (-1. / r0_nuc - 1. / r1_nuc + 1. / r0_1);
+    // Alternative approach that may be more computationally efficience since we've already
+    // calculated this.
+    // todo: Once the above approach works,compare the 2. Or just print them out and confirm
+    // todo they're the same.
+    // todo: Possibly a no-go due to the 3 terms?
+    // let V_energy = Q_ELEC * V_acting_on_this_elec;
 
-    ((psi_pp_0 + psi_pp_1) / psi_joint * KE_COEFF + V.into()).real
+    // Real since it's an eigenvalue of a Hermitian operator.
+    ((psi_pp_0 + psi_pp_1) / psi_joint * KE_COEFF + V_energy.into()).real
 }
 
 pub fn find_E_2_elec(

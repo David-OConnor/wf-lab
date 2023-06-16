@@ -7,7 +7,7 @@ use crate::{
 
 use lin_alg2::f64::Vec3;
 
-/// Computes V from nuclei, by calculating Coulomb potential.
+/// Computes potential field from nuclei, by calculating Coulomb potential.
 /// Run this after changing these charges.
 /// Does not modify per-electron charges; those are updated elsewhere, incorporating the
 /// potential here, as well as from other electrons.
@@ -75,7 +75,8 @@ pub fn update_V_combined(
     }
 }
 
-/// Update the V acting on a given electron. Run this after changing V nuclei, or V from another electron.
+/// Update the potential field acting on a given electron. Run this after changing V nuclei,
+/// or V from another electron.
 pub(crate) fn update_V_acting_on_elec(
     V_on_this_elec: &mut Arr3dReal,
     V_from_nuclei: &Arr3dReal,

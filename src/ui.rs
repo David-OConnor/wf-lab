@@ -919,6 +919,23 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                 let i1 = 9;
                                 let j1 = 10;
                                 let k1 = 11;
+
+                                let posit_0 = PositIndex::new(i, j, k);
+                                let posit_1 = PositIndex::new(i1, j1, k1);
+
+                                // code shortener
+                                // let psi = &state
+                                //     .surfaces_shared
+                                //     .psi
+                                //     .psi_joint;
+
+                                // Hold r1 constant, and differentiate r0
+                                let psi_pp_r0 =
+                                    state.surfaces_shared.psi.calc_psi_pp(&posit_0, &posit_1, 0);
+
+                                let psi_pp_r1 =
+                                    state.surfaces_shared.psi.calc_psi_pp(&posit_0, &posit_1, 1);
+
                                 let E = eigen_fns::find_E_2_elec_at_pt(
                                     state
                                         .surfaces_shared
@@ -930,9 +947,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                         ))
                                         .unwrap()
                                         .on_pt,
-                                    state.surfaces_shared.V_total[i][j][k], // currently unused.
-                                    state.surfaces_per_elec[0].psi_pp_measured[i][j][k],
-                                    state.surfaces_per_elec[1].psi_pp_measured[i1][j1][k1],
+                                    // state.surfaces_shared.V_total[i][j][k], // currently unused.
+                                    psi_pp_r0,
+                                    psi_pp_r1,
                                     state.charges_fixed[0].0,
                                     state.surfaces_shared.grid_posits[i][j][k],
                                     state.surfaces_shared.grid_posits[i1][j1][k1],

@@ -171,7 +171,7 @@ pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> 
     let diff = posit_sample - posit_charge;
     let r = diff.magnitude();
 
-    -K_C * charge / r
+    K_C * charge / r
 }
 
 /// Calculate ψ* ψ

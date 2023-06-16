@@ -5,8 +5,8 @@ use std::{collections::HashMap, f64::consts::FRAC_1_SQRT_2};
 
 use crate::{
     complex_nums::Cplx,
-    types::new_data,
-    types::{Arr3d, Arr3dReal, Arr3dVec},
+    num_diff,
+    types::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     util, wf_ops,
     wf_ops::{PsiWDiffs, Q_ELEC},
 };
@@ -373,6 +373,61 @@ impl WaveFunctionMultiElec {
         //         entry *= x[i_x]posits[i_posit]; // todo not quite right. Check the 3x3 example for how it goes.
         //     }
         // }
+    }
+
+    /// Calculate psi_pp, numerically
+    /// todo: Hard-coded for 2 elecs
+    pub fn calc_psi_pp(&self, p0: &PositIndex, p1: &PositIndex, posit_wrt: usize) -> Cplx {
+        let psi = &self.psi_joint;
+        let on_pt = psi.get(&(*p0, *p1)).unwrap();
+
+        // todo: I'm not sure exactly why we stored these as CplxWDiffs internally, hence
+        // todo the trailing "on pt". Maybe remove that upstream?
+        match posit_wrt {
+            0 => num_diff::find_ψ_pp_meas(
+                on_pt.on_pt,
+                psi.get(&(PositIndex::new(p0.x - 1, p0.y, p0.z), *p1))
+                    .unwrap()
+                    .on_pt,
+                psi.get(&(PositIndex::new(p0.x + 1, p0.y, p0.z), *p1))
+                    .unwrap()
+                    .on_pt,
+                psi.get(&(PositIndex::new(p0.x, p0.y - 1, p0.z), *p1))
+                    .unwrap()
+                    .on_pt,
+                psi.get(&(PositIndex::new(p0.x, p0.y + 1, p0.z), *p1))
+                    .unwrap()
+                    .on_pt,
+                psi.get(&(PositIndex::new(p0.x, p0.y, p0.z - 1), *p1))
+                    .unwrap()
+                    .on_pt,
+                psi.get(&(PositIndex::new(p0.x, p0.y, p0.z + 1), *p1))
+                    .unwrap()
+                    .on_pt,
+            ),
+            1 => num_diff::find_ψ_pp_meas(
+                on_pt.on_pt,
+                psi.get(&(*p0, PositIndex::new(p1.x - 1, p1.y, p1.z)))
+                    .unwrap()
+                    .on_pt,
+                psi.get(&(*p0, PositIndex::new(p1.x + 1, p1.y, p1.z)))
+                    .unwrap()
+                    .on_pt,
+                psi.get(&(*p0, PositIndex::new(p1.x, p1.y - 1, p1.z)))
+                    .unwrap()
+                    .on_pt,
+                psi.get(&(*p0, PositIndex::new(p1.x, p1.y + 1, p1.z)))
+                    .unwrap()
+                    .on_pt,
+                psi.get(&(*p0, PositIndex::new(p1.x, p1.y, p1.z - 1)))
+                    .unwrap()
+                    .on_pt,
+                psi.get(&(*p0, PositIndex::new(p1.x, p1.y, p1.z + 1)))
+                    .unwrap()
+                    .on_pt,
+            ),
+            _ => unimplemented!(),
+        }
     }
 
     pub fn calc_charge_density(&self, posit: Vec3) -> f64 {

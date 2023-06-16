@@ -7,7 +7,7 @@ use crate::{
     complex_nums::Cplx,
     interp,
     types::{Arr3d, Arr3dVec},
-    // rbf::Rbf,
+    wf_ops::PsiWDiffs,
 };
 
 // Used for calculating numerical psi''.

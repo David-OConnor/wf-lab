@@ -173,26 +173,6 @@ impl Basis {
     }
 }
 
-// impl PartialEq for Basis {
-//     /// Just compares if the main type is the same.
-//     fn eq(&self, other: &Self) -> bool {
-//         match self {
-//             // Self::Sto(_) => match other {
-//             //     Self::Sto(_) => true,
-//             //     _ => false,
-//             // },
-//             Self::H(_) => match other {
-//                 Self::H(_) => true,
-//                 _ => true,
-//             },
-//             Self::Sto2(_) => match other {
-//                 Self::Sto2(_) => true
-//                 _ => false,
-//             },
-//         }
-//     }
-// }
-
 /// Represents a spherical harmonic, at a given l quantum numbers.
 /// `l` represents the shape of the orbital.
 /// orientation, we use a quaternion.

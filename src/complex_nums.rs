@@ -155,7 +155,6 @@ impl Div<Self> for Cplx {
 
     fn div(self, other: Self) -> Self {
         Self {
-            // toodo: QC this
             real: (self.real * other.real + self.im * other.im)
                 / (other.real.powi(2) + other.im.powi(2)),
             im: self.im * other.real
