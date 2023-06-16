@@ -273,7 +273,7 @@ pub fn init_from_grid(
 }
 
 fn main() {
-    let posit_charge_1 = Vec3::new(-1., 0., 0.);
+    let posit_charge_1 = Vec3::new(0., 0., 0.);
     let posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let charges_fixed = vec![

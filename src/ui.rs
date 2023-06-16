@@ -913,9 +913,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         .setup_joint_wf(&per_elec_wfs, state.grid_n);
 
                     // Experiment to calc E.
-                    for i in 7..8 {
-                        for j in 7..8 {
-                            for k in 7..8 {
+                    for i in 7..9 {
+                        for j in 7..9 {
+                            for k in 7..9 {
                                 let i1 = 9;
                                 let j1 = 10;
                                 let k1 = 11;
