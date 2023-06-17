@@ -4,12 +4,11 @@
 use std::{collections::HashMap, f64::consts::FRAC_1_SQRT_2};
 
 use crate::{
-    basis_wfs::Basis,
     complex_nums::Cplx,
-    num_diff::{self, H},
-    types::{new_data, Arr3d, Arr3dReal, Arr3dVec},
-    util, wf_ops,
-    wf_ops::{BasisWfsUnweighted, PsiWDiffs, Q_ELEC},
+    num_diff,
+    types::{new_data, Arr3d, Arr3dReal},
+    util,
+    wf_ops::{PsiWDiffs, Q_ELEC},
 };
 
 use lin_alg2::f64::Vec3;
@@ -285,7 +284,7 @@ impl WaveFunctionMultiElec {
                 // Trying a HashMap
                 CplxWDiffs {
                     on_pt: self
-                        .joint_wf_at_permutation(&vec![&wfs[0].on_pt, &wfs[1].on_pt], &permutation),
+                        .joint_wf_at_permutation(&[&wfs[0].on_pt, &wfs[1].on_pt], &permutation),
                     ..Default::default()
                 },
             );
@@ -349,7 +348,7 @@ impl WaveFunctionMultiElec {
         // 00 01 10 11
         // x0[0] * x1[0] + x0[0] * x1[1] + x0[1] x1[0] + x0[1] * x1[1]
 
-        return r[0].index(&x[0]) * r[1].index(&x[1]);
+        return r[0].index(x[0]) * r[1].index(x[1]);
 
         // hardcoded 2x2 to test
 

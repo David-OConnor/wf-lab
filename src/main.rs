@@ -178,7 +178,7 @@ pub fn init_from_grid(
     spacing_factor: f64,
     grid_n: usize,
     bases: &[Vec<Basis>],
-    charges_fixed: &Vec<(Vec3, f64)>,
+    charges_fixed: &[(Vec3, f64)],
     num_electrons: usize,
 ) -> (
     Vec<Arr3dReal>,
@@ -272,7 +272,7 @@ pub fn init_from_grid(
 
 fn main() {
     let posit_charge_1 = Vec3::new(0., 0., 0.);
-    let posit_charge_2 = Vec3::new(1., 0., 0.);
+    let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let charges_fixed = vec![
         (posit_charge_1, Q_PROT * 2.), // helium

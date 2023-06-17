@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 //! Code for interpolation. Includes 1D interpolation functions that are linear
 //! and of 2nd and 3rd order polynomials, and extensions of these to 2D and 3D.
 

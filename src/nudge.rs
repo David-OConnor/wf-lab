@@ -40,7 +40,7 @@ pub fn nudge_wf(
     // todo: Cheap lowpass for now on diff: Average it with its neighbors?
 
     // Find E before and after the nudge.
-    sfcs.E = wf_ops::find_E(&sfcs, grid_n);
+    sfcs.E = wf_ops::find_E(sfcs, grid_n);
 
     // Really, the outliers are generally spiked very very high. (much higher than this)
     // This probably occurs near the nucleus.

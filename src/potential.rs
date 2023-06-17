@@ -1,7 +1,7 @@
 //! Contains code related to creating and combining potentials.
 
 use crate::{
-    types::{self, Arr3dReal, Arr3dVec},
+    types::{Arr3dReal, Arr3dVec},
     util,
 };
 

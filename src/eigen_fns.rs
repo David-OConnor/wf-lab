@@ -135,34 +135,3 @@ pub fn find_E_2_elec(
         }
     }
 }
-
-/// Todo WIP/probably wrong approach
-/// L^2 ψ = ħ^2 l(l+1)ψ
-pub fn find_spin(psi: &Arr3d, l: f64, L: f64, i: usize, j: usize, k: usize) -> Cplx {
-    Cplx::new_zero()
-}
-
-// /// Calcualte dψ/dx, from ψ and L_x.
-// /// L_y = z p_x - p_z x = -iħ(z d/dx - d/dz x)
-// /// L_z = x p_y - p_x y = -iħ(x d/dy - d/dx y)
-// ///
-// /// dψ/dx = ((L_y / -iħ) + x dψ/dz)) / z
-// ///
-// /// dψ/dx = ((L_z / -iħ) - x dψ/dy)) / y
-// ///
-// /// L^2 = d_psi_d_x^2 + d_psi_d_y^2 + d_psi_d_z^2
-// pub fn find_dψ_dx_calc(psi: &Arr3d, L_y: f64, i: usize, j: usize, k: usize) -> Cplx {
-//     const COEFF: Cplx = Cplx { real: 0., im: -ħ };
-//
-//     // todo: This is tricky due to L being a vector quantity, with inter-dependent components.
-//     // let val_a = ((L_y / COEFF) + x * d_psi_d_z) / z;
-//     // let val_b = ((L_z / COEFF) - x * d_psi_d_y) / y;
-//
-//     psi[i][j][k] * p * COEFF
-// }
-
-// todo: $$
-// -i \hbar \int  \psi^* \left( y \frac{\partial \psi}{\partial z} -  \frac{\partial (z \psi)}{\partial y} \right)dx dy dz
-// $$
-
-// ?

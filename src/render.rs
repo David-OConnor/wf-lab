@@ -147,12 +147,10 @@ fn prepare_2d_mesh(
                 } else {
                     vals[i][j][z_i].im
                 }
+            } else if mag_phase {
+                vals[i][j][z_i].mag()
             } else {
-                if mag_phase {
-                    vals[i][j][z_i].mag()
-                } else {
-                    vals[i][j][z_i].real
-                }
+                vals[i][j][z_i].real
             };
 
             result[i][j] = Vec3::new(

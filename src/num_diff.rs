@@ -7,7 +7,6 @@ use crate::{
     complex_nums::Cplx,
     interp,
     types::{Arr3d, Arr3dVec},
-    wf_ops::PsiWDiffs,
 };
 
 // Used for calculating numerical psi''.
@@ -320,7 +319,7 @@ pub(crate) fn find_ψ_pp_meas_fm_grid_irreg(
 /// Calcualte ψ'' measured, using a discrete function, interpolated.
 /// Calculate ψ'' based on a numerical derivative of psi
 /// in 3D.
-pub(crate) fn find_ψ_pp_meas_from_interp(
+pub(crate) fn _find_ψ_pp_meas_from_interp(
     posit_sample: Vec3,
     psi: &Arr3d,
     grid_min: f64,

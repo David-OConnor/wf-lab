@@ -77,8 +77,6 @@ pub fn psi_from_pt_charges(
 
     // todo: grids that aren't centered at 0? Non-cube grids?
 
-    let spacing_factor = 1.;
-
     let arr_real = types::new_data_real(grid_n);
 
     let mut V_shared = arr_real.clone();
@@ -89,7 +87,7 @@ pub fn psi_from_pt_charges(
     let ui_active_elec = 0;
 
     // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
-    potential::update_V_from_nuclei(&mut V_shared, &charges_fixed, &grid_posits, grid_n);
+    potential::update_V_from_nuclei(&mut V_shared, charges_fixed, &grid_posits, grid_n);
 
     let bases_unweighted = wf_ops::BasisWfsUnweighted::new(bases, &grid_posits, grid_n);
 

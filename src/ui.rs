@@ -101,8 +101,8 @@ fn charge_editor(
     for (i, (posit, val)) in charges.iter_mut().enumerate() {
         // We store prev posit so we can know to update entities
         // when charge posit changes.
-        let prev_posit = posit.clone();
-        let prev_charge = val.clone();
+        let prev_posit = *posit;
+        let prev_charge = *val;
 
         ui.horizontal(|ui| {
             text_edit_float(&mut posit.x, 0., ui);
@@ -536,7 +536,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 for elec_i in 0..state.surfaces_per_elec.len() {
                     wf_ops::initialize_bases(
-                        &mut state.charges_fixed,
+                        &state.charges_fixed,
                         &mut state.bases[elec_i],
                         &mut state.bases_visible[elec_i],
                         2,
@@ -785,7 +785,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // Note: An alternative would be to add the new bases without 0ing the existing ones.
                     for elec_i in 0..state.surfaces_per_elec.len() {
                         wf_ops::initialize_bases(
-                            &mut state.charges_fixed,
+                            &state.charges_fixed,
                             &mut state.bases[elec_i],
                             &mut state.bases_visible[elec_i],
                             2,

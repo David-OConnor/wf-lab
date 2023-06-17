@@ -25,7 +25,7 @@ pub fn find_weights(
 ) {
     wf_ops::initialize_bases(charges_fixed, bases, bases_visible, max_n);
 
-    *basis_wfs_unweighted = BasisWfsUnweighted::new(&bases, &surfaces_shared.grid_posits, grid_n);
+    *basis_wfs_unweighted = BasisWfsUnweighted::new(bases, &surfaces_shared.grid_posits, grid_n);
 
     // Infinitessimal weight change, used for assessing derivatives.
     const D_WEIGHT: f64 = 0.01;
@@ -116,7 +116,7 @@ pub fn find_weights(
                     bases,
                     surfaces_per_elec,
                     grid_n,
-                    &basis_wfs_unweighted,
+                    basis_wfs_unweighted,
                     &point_shifted_left,
                 );
 
@@ -164,7 +164,7 @@ pub fn find_weights(
 
     wf_ops::update_wf_fm_bases(
         bases,
-        &basis_wfs_unweighted,
+        basis_wfs_unweighted,
         surfaces_per_elec,
         grid_n,
         None,
@@ -193,7 +193,7 @@ pub fn score_weight_set(
     // todo: Likely, update_wf_fm_bases will need to take E explicilty instead of pulling form sfcs.
     wf_ops::update_wf_fm_bases(
         bases,
-        &basis_wfs_unweighted,
+        basis_wfs_unweighted,
         &mut surfaces,
         grid_n,
         Some(weights),

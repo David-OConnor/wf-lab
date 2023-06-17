@@ -196,7 +196,7 @@ pub struct SphericalHarmonic {
 
 impl SphericalHarmonic {
     pub fn new(l: u16, m: i16, orientation: Quaternion) -> Self {
-        assert!(m.abs() as u16 <= l);
+        assert!(m.unsigned_abs() as u16 <= l);
 
         Self { l, m, orientation }
     }
@@ -312,7 +312,7 @@ impl Default for SphericalHarmonic {
 /// charge slater exponent (ζ) may be used to simulate "effective charge", which
 /// can represent "electron shielding".(?)
 #[derive(Clone, Debug)]
-pub struct _Sto {
+pub struct Sto1 {
     pub posit: Vec3,
     pub n: u16,
     pub harmonic: SphericalHarmonic,
@@ -322,7 +322,7 @@ pub struct _Sto {
     pub charge_id: usize,
 }
 
-impl _Sto {
+impl Sto1 {
     pub fn new(
         posit: Vec3,
         n: u16,

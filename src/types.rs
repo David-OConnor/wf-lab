@@ -1,7 +1,6 @@
 use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
-    num_diff,
     wf_ops::{self, PsiWDiffs, NUDGE_DEFAULT},
 };
 

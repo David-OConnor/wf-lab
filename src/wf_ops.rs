@@ -26,10 +26,10 @@
 use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto2},
     complex_nums::Cplx,
-    eigen_fns, elec_elec, eval,
-    num_diff::{self, H, H_SQ},
+    eigen_fns, eval,
+    num_diff::{self, H},
     types,
-    types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec, SurfacesShared},
+    types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec},
     util,
 };
 
@@ -163,7 +163,7 @@ pub fn update_wf_fm_bases(
 }
 
 /// Run this after update E.
-pub fn update_psi_pp_calc(
+pub fn _update_psi_pp_calc(
     // We split these arguments up instead of using surfaces to control mutability.
     psi: &Arr3d,
     V: &Arr3dReal,

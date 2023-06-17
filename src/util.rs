@@ -85,7 +85,7 @@ pub(crate) fn _make_laguerre(n: u16, alhpa: f64) -> impl Fn(f64) -> f64 {
         x + 1.
     }
 
-    return result;
+    result
 
     // match n {
     //     0 => 1.,
