@@ -71,8 +71,6 @@ pub struct State {
     /// data including the grid spacing, psi, psi'', V etc.
     /// Vec iterates over the different electrons.
     pub surfaces_per_elec: Vec<SurfacesPerElec>,
-    /// todo: Combine bases and nuclei in into single tuple etc to enforce index pairing?
-    /// todo: Or a sub struct?
     /// Wave functions, with weights. Per-electron. (Outer Vec iterates over electrons; inner over
     /// bases per-electron)
     pub bases: Vec<Vec<Basis>>,
@@ -179,7 +177,7 @@ pub fn init_from_grid(
     grid_max: f64,
     spacing_factor: f64,
     grid_n: usize,
-    bases: &Vec<Vec<Basis>>,
+    bases: &[Vec<Basis>],
     charges_fixed: &Vec<(Vec3, f64)>,
     num_electrons: usize,
 ) -> (
@@ -210,7 +208,7 @@ pub fn init_from_grid(
 
     potential::update_V_from_nuclei(
         &mut surfaces_shared.V_from_nuclei,
-        &charges_fixed,
+        charges_fixed,
         &surfaces_shared.grid_posits,
         grid_n,
     );

@@ -174,7 +174,7 @@ pub fn update_psi_pp_calc(
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
-                psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(&psi, V, E, i, j, k);
+                psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(psi, V, E, i, j, k);
             }
         }
     }
@@ -303,7 +303,7 @@ pub fn update_grid_posits(
 /// [re]Create a set of basis functions, given fixed-charges representing nuclei.
 /// Use this in main and lib inits, and when you add or remove charges.
 pub fn initialize_bases(
-    charges_fixed: &Vec<(Vec3, f64)>,
+    charges_fixed: &[(Vec3, f64)],
     bases: &mut Vec<Basis>,
     bases_visible: &mut Vec<bool>,
     max_n: u16, // quantum number n
@@ -461,13 +461,13 @@ impl BasisWfsUnweighted {
         let mut z_next = Vec::new();
 
         for _ in 0..bases.len() {
-            on_pt.push(crate::types::new_data(grid_n));
-            x_prev.push(crate::types::new_data(grid_n));
-            x_next.push(crate::types::new_data(grid_n));
-            y_prev.push(crate::types::new_data(grid_n));
-            y_next.push(crate::types::new_data(grid_n));
-            z_prev.push(crate::types::new_data(grid_n));
-            z_next.push(crate::types::new_data(grid_n));
+            on_pt.push(new_data(grid_n));
+            x_prev.push(new_data(grid_n));
+            x_next.push(new_data(grid_n));
+            y_prev.push(new_data(grid_n));
+            y_next.push(new_data(grid_n));
+            z_prev.push(new_data(grid_n));
+            z_next.push(new_data(grid_n));
         }
 
         for (basis_i, basis) in bases.iter().enumerate() {

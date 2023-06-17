@@ -149,7 +149,7 @@ pub fn nudge_wf(
             psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
             psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
             current_score = score;
-            sfcs.E = wf_ops::find_E(&sfcs, grid_n);
+            sfcs.E = wf_ops::find_E(sfcs, grid_n);
 
             for i in 0..grid_n {
                 for j in 0..grid_n {

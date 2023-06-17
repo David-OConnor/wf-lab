@@ -75,10 +75,14 @@ pub fn score_wf(psi_pp_calc: &Arr3d, psi_pp_meas: &Arr3d, n: usize) -> f64 {
     // Attempting to prevent 0ed solutions from being favored.
     // Note that this has a performance cost.
     let mut norm_calc = 0.;
+
     for i in 0..n {
         for j in 0..n {
             for k in 0..n {
-                norm_calc += psi_pp_calc[i][j][k].abs_sq();
+                let psi_pp = psi_pp_calc[i][j][k].abs_sq();
+                if psi_pp > 0.0000000001 {
+                    norm_calc += psi_pp
+                }
             }
         }
     }
@@ -88,6 +92,7 @@ pub fn score_wf(psi_pp_calc: &Arr3d, psi_pp_meas: &Arr3d, n: usize) -> f64 {
             for k in 0..n {
                 // todo: Check if either individual is outside a thresh?
                 let diff = psi_pp_calc[i][j][k] - psi_pp_meas[i][j][k];
+                // println!("DIFF: {} {}", diff.real, diff.im);
                 // let val = diff.real + diff.im; // todo: Do you want this, mag_sq, or something else?
                 let val = diff.abs_sq();
                 if val < SCORE_THRESH {
@@ -98,5 +103,4 @@ pub fn score_wf(psi_pp_calc: &Arr3d, psi_pp_meas: &Arr3d, n: usize) -> f64 {
     }
 
     result / norm_calc
-    // result
 }

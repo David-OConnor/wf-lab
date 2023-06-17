@@ -70,7 +70,7 @@ pub fn find_weights(
         // todo: Still not sur ewhy
         wf_ops::update_wf_fm_bases(
             bases,
-            &basis_wfs_unweighted,
+            basis_wfs_unweighted,
             surfaces_per_elec,
             grid_n,
             Some(&current_point),
@@ -114,7 +114,7 @@ pub fn find_weights(
 
                 let score_prev = score_weight_set(
                     bases,
-                    &surfaces_per_elec,
+                    surfaces_per_elec,
                     grid_n,
                     &basis_wfs_unweighted,
                     &point_shifted_left,
@@ -122,9 +122,9 @@ pub fn find_weights(
 
                 let score_next = score_weight_set(
                     bases,
-                    &surfaces_per_elec,
+                    surfaces_per_elec,
                     grid_n,
-                    &basis_wfs_unweighted,
+                    basis_wfs_unweighted,
                     &point_shifted_right,
                 );
 

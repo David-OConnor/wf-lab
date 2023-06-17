@@ -4,11 +4,12 @@
 use std::{collections::HashMap, f64::consts::FRAC_1_SQRT_2};
 
 use crate::{
+    basis_wfs::Basis,
     complex_nums::Cplx,
-    num_diff,
+    num_diff::{self, H},
     types::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     util, wf_ops,
-    wf_ops::{PsiWDiffs, Q_ELEC},
+    wf_ops::{BasisWfsUnweighted, PsiWDiffs, Q_ELEC},
 };
 
 use lin_alg2::f64::Vec3;
@@ -59,6 +60,9 @@ pub struct WaveFunctionMultiElec {
     /// todo: Consdier moving to something other than HashMap for performacne reasons
     // psi_joint: Vec<(Vec<PositIndex>, CplxWDiffs)>,
     // todo: Hard-coded for 2-elecs
+    // todo: Perhaps a faster way: A vec that is split up based on number of electrons,
+    // todo wherin you index it much like your posits,but flattened. (Would need to be 1d) so
+    // todo as to avoid hard-coding a specific num of elecs
     pub psi_joint: HashMap<(PositIndex, PositIndex), CplxWDiffs>,
     /// This is the combined probability, created from `psi_joint`.
     pub psi_marginal: PsiWDiffs,
@@ -349,13 +353,13 @@ impl WaveFunctionMultiElec {
 
         // hardcoded 2x2 to test
 
-        // println!("a {}", r[0].index(&x[0]));
-        // println!("b {}", r[1].index(&x[1]));
-        // println!("c {}", r[1].index(&x[0]));
-        // println!("d {}", r[0].index(&x[1]));
+        // println!("a {}", r[0].index(x[0]));
+        // println!("b {}", r[1].index(x[1]));
+        // println!("c {}", r[1].index(x[0]));
+        // println!("d {}", r[0].index(x[1]));
         // todo: Incorporate spin.
         return Cplx::from_real(FRAC_1_SQRT_2)
-            * (r[0].index(&x[0]) * r[1].index(&x[1]) - r[1].index(&x[0]) * r[0].index(&x[1]));
+            * (r[0].index(x[0]) * r[1].index(x[1]) - r[1].index(x[0]) * r[0].index(x[1]));
 
         // hardcoded 3x3 to test. // todo: QC norm const
         // 1. / 3.0.sqrt() * (
@@ -377,57 +381,156 @@ impl WaveFunctionMultiElec {
 
     /// Calculate psi_pp, numerically
     /// todo: Hard-coded for 2 elecs
-    pub fn calc_psi_pp(&self, p0: &PositIndex, p1: &PositIndex, posit_wrt: usize) -> Cplx {
-        let psi = &self.psi_joint;
-        let on_pt = psi.get(&(*p0, *p1)).unwrap();
+    /// todo: DRY from num_diff.
+    // pub fn calc_psi_pp(&self, p0: &PositIndex, p1: &PositIndex, posit_wrt: usize) -> Cplx {
+    // pub fn calc_psi_pp(&self, p0: Vec3, p1: Vec3, bases: &[&[Basis]], bases_unweighted: &BasisWfsUnweighted,
+    //     //                    grid_n: usize, posit_wrt: usize) -> Cplx {
 
-        // todo: I'm not sure exactly why we stored these as CplxWDiffs internally, hence
-        // todo the trailing "on pt". Maybe remove that upstream?
-        match posit_wrt {
-            0 => num_diff::find_ψ_pp_meas(
-                on_pt.on_pt,
-                psi.get(&(PositIndex::new(p0.x - 1, p0.y, p0.z), *p1))
-                    .unwrap()
-                    .on_pt,
-                psi.get(&(PositIndex::new(p0.x + 1, p0.y, p0.z), *p1))
-                    .unwrap()
-                    .on_pt,
-                psi.get(&(PositIndex::new(p0.x, p0.y - 1, p0.z), *p1))
-                    .unwrap()
-                    .on_pt,
-                psi.get(&(PositIndex::new(p0.x, p0.y + 1, p0.z), *p1))
-                    .unwrap()
-                    .on_pt,
-                psi.get(&(PositIndex::new(p0.x, p0.y, p0.z - 1), *p1))
-                    .unwrap()
-                    .on_pt,
-                psi.get(&(PositIndex::new(p0.x, p0.y, p0.z + 1), *p1))
-                    .unwrap()
-                    .on_pt,
-            ),
+    pub fn calc_psi_pp(
+        p0: &PositIndex,
+        p1: &PositIndex,
+        psi0: &PsiWDiffs,
+        psi1: &PsiWDiffs,
+        posit_wrt: usize,
+    ) -> Cplx {
+        // This new approach doesn't use the build psi_pp_joint; it calculates on the fly.
+        // let psi = &self.psi_joint;
+        // let on_pt = psi.get(&(*p0, *p1)).unwrap();
+
+        // todo: Naive Hartree product.
+        // let mix_on_pt = wf_ops::mix_bases(
+        //     bases[0],
+        //     basis_wfs: &BasisWfsUnweighted,
+        //     psi: &mut PsiWDiffs,
+        //     grid_n,
+        //     None,
+        // ) *
+        //     wf_ops::mix_bases(
+        //         bases[0],
+        //         basis_wfs: &BasisWfsUnweighted,
+        //         psi: &mut PsiWDiffs,
+        //         grid_n,
+        //         None,
+        //     );
+
+        // todo: STrike here next (17 june)
+
+        // todo: Currently a standalone method...
+
+        // Naive Hartree product
+        let on_pt = p0.index(&psi0.on_pt) * p1.index(&psi1.on_pt);
+
+        return match posit_wrt {
+            0 => {
+                // let p_x_prev = PositIndex::new(p0.x - 1, p0.y, p0.z);
+                // let p_x_next = PositIndex::new(p0.x + 1, p0.y, p0.z);
+                // let p_y_prev = PositIndex::new(p0.x, p0.y - 1, p0.z);
+                // let p_y_next = PositIndex::new(p0.x, p0.y + 1, p0.z);
+                // let p_z_prev = PositIndex::new(p0.x, p0.y, p0.z - 1);
+                // let p_z_next = PositIndex::new(p0.x, p0.y, p0.z + 1);
+
+                num_diff::find_ψ_pp_meas(
+                    on_pt,
+                    p0.index(&psi0.x_prev) * p1.index(&psi1.on_pt),
+                    p0.index(&psi0.x_next) * p1.index(&psi1.on_pt),
+                    p0.index(&psi0.y_prev) * p1.index(&psi1.on_pt),
+                    p0.index(&psi0.y_next) * p1.index(&psi1.on_pt),
+                    p0.index(&psi0.z_prev) * p1.index(&psi1.on_pt),
+                    p0.index(&psi0.z_next) * p1.index(&psi1.on_pt),
+                )
+            }
             1 => num_diff::find_ψ_pp_meas(
-                on_pt.on_pt,
-                psi.get(&(*p0, PositIndex::new(p1.x - 1, p1.y, p1.z)))
-                    .unwrap()
-                    .on_pt,
-                psi.get(&(*p0, PositIndex::new(p1.x + 1, p1.y, p1.z)))
-                    .unwrap()
-                    .on_pt,
-                psi.get(&(*p0, PositIndex::new(p1.x, p1.y - 1, p1.z)))
-                    .unwrap()
-                    .on_pt,
-                psi.get(&(*p0, PositIndex::new(p1.x, p1.y + 1, p1.z)))
-                    .unwrap()
-                    .on_pt,
-                psi.get(&(*p0, PositIndex::new(p1.x, p1.y, p1.z - 1)))
-                    .unwrap()
-                    .on_pt,
-                psi.get(&(*p0, PositIndex::new(p1.x, p1.y, p1.z + 1)))
-                    .unwrap()
-                    .on_pt,
+                on_pt,
+                p0.index(&psi0.on_pt) * p1.index(&psi1.x_prev),
+                p0.index(&psi0.on_pt) * p1.index(&psi1.x_next),
+                p0.index(&psi0.on_pt) * p1.index(&psi1.y_prev),
+                p0.index(&psi0.on_pt) * p1.index(&psi1.y_next),
+                p0.index(&psi0.on_pt) * p1.index(&psi1.z_prev),
+                p0.index(&psi0.on_pt) * p1.index(&psi1.z_next),
             ),
             _ => unimplemented!(),
-        }
+        };
+
+        //
+        // match posit_wrt {
+        //     0 => {
+        //         let mix_on_
+        //
+        //
+        //         let x_prev = Vec3::new(bases[0]. - H, p0.y, p0.z);
+        //
+        //
+        //
+        //         let x_next = Vec3::new(p0.x + H, p0.y, p0.z);
+        //         let y_prev = Vec3::new(p0.x, p0.y - H, p0.z);
+        //         let y_next = Vec3::new(p0.x, p0.y + H, p0.z);
+        //         let z_prev = Vec3::new(p0.x, p0.y, p0.z - H);
+        //         let z_next = Vec3::new(p0.x, p0.y, p0.z + H);
+        //
+        //         num_diff::find_ψ_pp_meas(
+        //             on_pt.on_pt,
+        //
+        //         )
+        //     },
+        //     1 => {
+        //         let x_prev = Vec3::new(p1.x - H, p1.y, p1.z);
+        //         let x_next = Vec3::new(p1.x + H, p1.y, p1.z);
+        //         let y_prev = Vec3::new(p1.x, p1.y - H, p1.z);
+        //         let y_next = Vec3::new(p1.x, p1.y + H, p1.z);
+        //         let z_prev = Vec3::new(p1.x, p1.y, p1.z - H);
+        //         let z_next = Vec3::new(p1.x, p1.y, p1.z + H);
+        //
+        //         num_diff::find_ψ_pp_meas()
+        //     },
+        //     _ => unimplemented!(),
+        // }
+        // todo: I'm not sure exactly why we stored these as CplxWDiffs internally, hence
+        // todo the trailing "on pt". Maybe remove that upstream?
+        // match posit_wrt {
+        //     0 => num_diff::find_ψ_pp_meas(
+        //         on_pt.on_pt,
+        //         psi.get(&(PositIndex::new(p0.x - 1, p0.y, p0.z), *p1))
+        //             .unwrap()
+        //             .on_pt,
+        //         psi.get(&(PositIndex::new(p0.x + 1, p0.y, p0.z), *p1))
+        //             .unwrap()
+        //             .on_pt,
+        //         psi.get(&(PositIndex::new(p0.x, p0.y - 1, p0.z), *p1))
+        //             .unwrap()
+        //             .on_pt,
+        //         psi.get(&(PositIndex::new(p0.x, p0.y + 1, p0.z), *p1))
+        //             .unwrap()
+        //             .on_pt,
+        //         psi.get(&(PositIndex::new(p0.x, p0.y, p0.z - 1), *p1))
+        //             .unwrap()
+        //             .on_pt,
+        //         psi.get(&(PositIndex::new(p0.x, p0.y, p0.z + 1), *p1))
+        //             .unwrap()
+        //             .on_pt,
+        //     ),
+        //     1 => num_diff::find_ψ_pp_meas(
+        //         on_pt.on_pt,
+        //         psi.get(&(*p0, PositIndex::new(p1.x - 1, p1.y, p1.z)))
+        //             .unwrap()
+        //             .on_pt,
+        //         psi.get(&(*p0, PositIndex::new(p1.x + 1, p1.y, p1.z)))
+        //             .unwrap()
+        //             .on_pt,
+        //         psi.get(&(*p0, PositIndex::new(p1.x, p1.y - 1, p1.z)))
+        //             .unwrap()
+        //             .on_pt,
+        //         psi.get(&(*p0, PositIndex::new(p1.x, p1.y + 1, p1.z)))
+        //             .unwrap()
+        //             .on_pt,
+        //         psi.get(&(*p0, PositIndex::new(p1.x, p1.y, p1.z - 1)))
+        //             .unwrap()
+        //             .on_pt,
+        //         psi.get(&(*p0, PositIndex::new(p1.x, p1.y, p1.z + 1)))
+        //             .unwrap()
+        //             .on_pt,
+        //     ),
+        //     _ => unimplemented!(),
+        // }
     }
 
     pub fn calc_charge_density(&self, posit: Vec3) -> f64 {

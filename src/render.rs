@@ -50,7 +50,6 @@ const CHARGE_SHINYNESS: f32 = 3.;
 // To make the WF and other surfaces more visually significant.
 const PSI_SCALER: f32 = 120.;
 const PSI_SQ_SCALER: f32 = 12_000.;
-const PSI_P_SCALER: f32 = 15.;
 const PSI_PP_SCALER: f32 = 20.;
 
 const ELEC_CHARGE_SCALER: f32 = 600.; // to make WF more visually significant.
@@ -495,6 +494,6 @@ pub fn render(state: State) {
         render_handler,
         event_handler,
         crate::ui::ui_handler,
-        include_str!("shader_compute.wgsl").into(),
+        include_str!("shader_compute.wgsl"),
     );
 }

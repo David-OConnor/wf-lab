@@ -7,11 +7,11 @@ use lin_alg2::f64::Vec3;
 use crate::{
     basis_weight_finder,
     basis_wfs::Basis,
-    eigen_fns, elec_elec,
+    eigen_fns, elec_elec::{self, WaveFunctionMultiElec},
     elec_elec::PositIndex,
-    eval, potential, render, types,
+    eval, potential, render,
     types::{Arr3d, Arr3dReal},
-    wf_ops, ActiveElec, State, SurfaceData,
+    wf_ops, ActiveElec, State,
 };
 
 const UI_WIDTH: f32 = 300.;
@@ -35,7 +35,7 @@ const FLOAT_EDIT_WIDTH: f32 = 24.;
 const NUDGE_MIN: f64 = 0.;
 const NUDGE_MAX: f64 = 0.2;
 
-fn text_edit_float(val: &mut f64, default: f64, ui: &mut Ui) {
+fn text_edit_float(val: &mut f64, _default: f64, ui: &mut Ui) {
     let mut entry = val.to_string();
 
     let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
@@ -72,7 +72,7 @@ fn _E_slider(
                     }
                 }
 
-                *score = eval::score_wf(psi_pp_calc, &psi_pp_meas, grid_n);
+                *score = eval::score_wf(psi_pp_calc, psi_pp_meas, grid_n);
 
                 // state.psi_p_score[active_elec] = 0.; // todo!
 
@@ -89,7 +89,7 @@ fn _E_slider(
 /// charges that form our potential.
 fn charge_editor(
     charges: &mut Vec<(Vec3, f64)>,
-    basis_fns: &mut Vec<Basis>,
+    basis_fns: &mut [Basis],
     updated_unweighted_basis_wfs: &mut bool,
     updated_basis_weights: &mut bool,
     updated_charges: &mut bool,
@@ -421,15 +421,15 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             state.surfaces_per_elec[active_elec].E =
                 wf_ops::find_E(&state.surfaces_per_elec[active_elec], state.grid_n);
 
-            let E = state.surfaces_per_elec[active_elec].E; // avoids mutable/immutable borrow issues.
-                                                            // wf_ops::update_psi_pp_calc(
-                                                            //     // clone is due to an API hiccup.
-                                                            //     &state.surfaces_per_elec[active_elec].psi.on_pt.clone(),
-                                                            //     &state.surfaces_per_elec[active_elec].V_acting_on_this,
-                                                            //     &mut state.surfaces_per_elec[active_elec].psi_pp_calculated,
-                                                            //     E,
-                                                            //     state.grid_n,
-                                                            // );
+            // let E = state.surfaces_per_elec[active_elec].E; // avoids mutable/immutable borrow issues.
+            // wf_ops::update_psi_pp_calc(
+            //     // clone is due to an API hiccup.
+            //     &state.surfaces_per_elec[active_elec].psi.on_pt.clone(),
+            //     &state.surfaces_per_elec[active_elec].V_acting_on_this,
+            //     &mut state.surfaces_per_elec[active_elec].psi_pp_calculated,
+            //     E,
+            //     state.grid_n,
+            // );
 
             // todo: We use this instead of the above method due to mutable/immutable borrow conflicts.
             for i in 0..state.grid_n {
@@ -558,7 +558,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             egui::ComboBox::from_id_source(0)
                 .width(30.)
-                .selected_text(&active_elec_text)
+                .selected_text(active_elec_text)
                 .show_ui(ui, |ui| {
                     // A value to select the composite wave function.
                     ui.selectable_value(&mut state.ui_active_elec, ActiveElec::Combined, "C");
@@ -907,10 +907,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         per_elec_wfs.push(&sfc.psi);
                     }
 
-                    state
-                        .surfaces_shared
-                        .psi
-                        .setup_joint_wf(&per_elec_wfs, state.grid_n);
+                    // todo: Temp (?) removed
+                    // state
+                    //     .surfaces_shared
+                    //     .psi
+                    //     .setup_joint_wf(&per_elec_wfs, state.grid_n);
 
                     // Experiment to calc E.
                     for i in 7..9 {
@@ -930,23 +931,36 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                 //     .psi_joint;
 
                                 // Hold r1 constant, and differentiate r0
-                                let psi_pp_r0 =
-                                    state.surfaces_shared.psi.calc_psi_pp(&posit_0, &posit_1, 0);
+                                let psi_pp_r0 = WaveFunctionMultiElec::calc_psi_pp(
+                                    &posit_0,
+                                    &posit_1,
+                                    &state.surfaces_per_elec[0].psi,
+                                    &state.surfaces_per_elec[1].psi,
+                                    0,
+                                );
 
-                                let psi_pp_r1 =
-                                    state.surfaces_shared.psi.calc_psi_pp(&posit_0, &posit_1, 1);
+                                let psi_pp_r1 = WaveFunctionMultiElec::calc_psi_pp(
+                                    &posit_0,
+                                    &posit_1,
+                                    &state.surfaces_per_elec[0].psi,
+                                    &state.surfaces_per_elec[1].psi,
+                                    1,
+                                );
+
+                                // let psi = state
+                                //     .surfaces_shared
+                                //     .psi
+                                //     .psi_joint
+                                //     .get(&(PositIndex::new(i, j, k), PositIndex::new(i1, j1, k1)))
+                                //     .unwrap()
+                                //     .on_pt;
+
+                                // Naive HT product
+                                let psi = posit_0.index(&state.surfaces_per_elec[0].psi.on_pt)
+                                    * posit_1.index(&state.surfaces_per_elec[1].psi.on_pt);
 
                                 let E = eigen_fns::find_E_2_elec_at_pt(
-                                    state
-                                        .surfaces_shared
-                                        .psi
-                                        .psi_joint
-                                        .get(&(
-                                            PositIndex::new(i, j, k),
-                                            PositIndex::new(i1, j1, k1),
-                                        ))
-                                        .unwrap()
-                                        .on_pt,
+                                    psi,
                                     // state.surfaces_shared.V_total[i][j][k], // currently unused.
                                     psi_pp_r0,
                                     psi_pp_r1,
