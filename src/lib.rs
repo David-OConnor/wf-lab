@@ -4,6 +4,7 @@
 #![allow(confusable_idents)]
 #![allow(non_upper_case_globals)]
 #![allow(clippy::needless_range_loop)]
+#![allow(clippy::too_many_arguments)]
 
 //! We use this module to define exports for when
 /// using this package as a library.

@@ -4,6 +4,7 @@
 #![allow(confusable_idents)]
 #![allow(non_upper_case_globals)]
 #![allow(clippy::needless_range_loop)]
+#![allow(clippy::too_many_arguments)]
 
 //! This program explores solving the wave equation for
 //! arbitrary potentials. It visualizes the wave function in 3d, with user interaction.
@@ -137,16 +138,17 @@ fn choose_grid_limits(charges_fixed: &[(Vec3, f64)]) -> (f64, f64) {
         }
     }
 
-    // const RANGE_PAD: f64 = 5.8;
-    const RANGE_PAD: f64 = 2.5;
+    const RANGE_PAD: f64 = 5.8;
+    // const RANGE_PAD: f64 = 14.;
 
     let grid_max = max_abs_val + RANGE_PAD;
+
+        // todo: temp
+    let grid_max = 14.0;
+
     let grid_min = -grid_max;
 
-    // update_grid_posits(grid_posits, *grid_min, *grid_max, spacing_factor, n);
-    //
-    // let mut grid_min = -5.; // todo ts
-    // let mut grid_max = 5.; // todo t
+
 
     (grid_min, grid_max)
 }
@@ -319,7 +321,8 @@ fn main() {
 
     let (grid_min, grid_max) = choose_grid_limits(&charges_fixed);
     // let spacing_factor = 1.6;
-    let spacing_factor = 1.6;
+    // Currently, must be one as long as used with elec-elec charge.
+    let spacing_factor = 1.0;
     let grid_n = GRID_N_DEFAULT;
 
     let (charges_electron, V_from_elecs, bases_unweighted, surfaces_shared, surfaces_per_elec) =

@@ -31,7 +31,7 @@ pub fn find_weights(
     const D_WEIGHT: f64 = 0.01;
 
     const NUM_DESCENTS: usize = 5; // todo
-    let mut descent_rate = 2.; // todo? Factor for gradient descent based on the vector.
+    let descent_rate = 2.; // todo? Factor for gradient descent based on the vector.
 
     // todo: Consider again using unweighted bases in your main logic. YOu removed it before
     // todo because it was bugged when you attempted it.

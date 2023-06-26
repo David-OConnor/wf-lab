@@ -113,6 +113,10 @@ pub(crate) fn create_V_from_an_elec(
 ) {
     println!("Creating V from an electron...");
 
+    // todo: Are there any tricks or approximations we can use to make this less computationally-intense?
+    // todo: Perhaps you could create an approximate analytic function of charge density over space,
+    // todo then shoot rays or something out at evenly spaced angles from the sample pt??
+
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {

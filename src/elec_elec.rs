@@ -102,7 +102,7 @@ impl WaveFunctionMultiElec {
 
         // Todo: What is this? Likely a function of n_electrons and n_points. Maybe multiply them,
         // todo then subtract one?
-        let n_components_per_posit = (grid_n.pow(3) * self.num_elecs) as f64;
+        // let n_components_per_posit = (grid_n.pow(3) * self.num_elecs) as f64;
 
         // Start clean
         let data = new_data(grid_n);
@@ -113,6 +113,7 @@ impl WaveFunctionMultiElec {
             for i in 0..grid_n {
                 for j in 0..grid_n {
                     for k in 0..grid_n {
+
                         self.psi_marginal.on_pt[i][j][k] += wf.on_pt[i][j][k];
 
                         self.psi_marginal.x_prev[i][j][k] += wf.x_prev[i][j][k];
@@ -392,42 +393,11 @@ impl WaveFunctionMultiElec {
         psi1: &PsiWDiffs,
         posit_wrt: usize,
     ) -> Cplx {
-        // This new approach doesn't use the build psi_pp_joint; it calculates on the fly.
-        // let psi = &self.psi_joint;
-        // let on_pt = psi.get(&(*p0, *p1)).unwrap();
-
-        // todo: Naive Hartree product.
-        // let mix_on_pt = wf_ops::mix_bases(
-        //     bases[0],
-        //     basis_wfs: &BasisWfsUnweighted,
-        //     psi: &mut PsiWDiffs,
-        //     grid_n,
-        //     None,
-        // ) *
-        //     wf_ops::mix_bases(
-        //         bases[0],
-        //         basis_wfs: &BasisWfsUnweighted,
-        //         psi: &mut PsiWDiffs,
-        //         grid_n,
-        //         None,
-        //     );
-
-        // todo: STrike here next (17 june)
-
-        // todo: Currently a standalone method...
-
-        // Naive Hartree product
+             // Naive Hartree product
         let on_pt = p0.index(&psi0.on_pt) * p1.index(&psi1.on_pt);
 
         return match posit_wrt {
             0 => {
-                // let p_x_prev = PositIndex::new(p0.x - 1, p0.y, p0.z);
-                // let p_x_next = PositIndex::new(p0.x + 1, p0.y, p0.z);
-                // let p_y_prev = PositIndex::new(p0.x, p0.y - 1, p0.z);
-                // let p_y_next = PositIndex::new(p0.x, p0.y + 1, p0.z);
-                // let p_z_prev = PositIndex::new(p0.x, p0.y, p0.z - 1);
-                // let p_z_next = PositIndex::new(p0.x, p0.y, p0.z + 1);
-
                 num_diff::find_ψ_pp_meas(
                     on_pt,
                     p0.index(&psi0.x_prev) * p1.index(&psi1.on_pt),
@@ -449,87 +419,6 @@ impl WaveFunctionMultiElec {
             ),
             _ => unimplemented!(),
         };
-
-        //
-        // match posit_wrt {
-        //     0 => {
-        //         let mix_on_
-        //
-        //
-        //         let x_prev = Vec3::new(bases[0]. - H, p0.y, p0.z);
-        //
-        //
-        //
-        //         let x_next = Vec3::new(p0.x + H, p0.y, p0.z);
-        //         let y_prev = Vec3::new(p0.x, p0.y - H, p0.z);
-        //         let y_next = Vec3::new(p0.x, p0.y + H, p0.z);
-        //         let z_prev = Vec3::new(p0.x, p0.y, p0.z - H);
-        //         let z_next = Vec3::new(p0.x, p0.y, p0.z + H);
-        //
-        //         num_diff::find_ψ_pp_meas(
-        //             on_pt.on_pt,
-        //
-        //         )
-        //     },
-        //     1 => {
-        //         let x_prev = Vec3::new(p1.x - H, p1.y, p1.z);
-        //         let x_next = Vec3::new(p1.x + H, p1.y, p1.z);
-        //         let y_prev = Vec3::new(p1.x, p1.y - H, p1.z);
-        //         let y_next = Vec3::new(p1.x, p1.y + H, p1.z);
-        //         let z_prev = Vec3::new(p1.x, p1.y, p1.z - H);
-        //         let z_next = Vec3::new(p1.x, p1.y, p1.z + H);
-        //
-        //         num_diff::find_ψ_pp_meas()
-        //     },
-        //     _ => unimplemented!(),
-        // }
-        // todo: I'm not sure exactly why we stored these as CplxWDiffs internally, hence
-        // todo the trailing "on pt". Maybe remove that upstream?
-        // match posit_wrt {
-        //     0 => num_diff::find_ψ_pp_meas(
-        //         on_pt.on_pt,
-        //         psi.get(&(PositIndex::new(p0.x - 1, p0.y, p0.z), *p1))
-        //             .unwrap()
-        //             .on_pt,
-        //         psi.get(&(PositIndex::new(p0.x + 1, p0.y, p0.z), *p1))
-        //             .unwrap()
-        //             .on_pt,
-        //         psi.get(&(PositIndex::new(p0.x, p0.y - 1, p0.z), *p1))
-        //             .unwrap()
-        //             .on_pt,
-        //         psi.get(&(PositIndex::new(p0.x, p0.y + 1, p0.z), *p1))
-        //             .unwrap()
-        //             .on_pt,
-        //         psi.get(&(PositIndex::new(p0.x, p0.y, p0.z - 1), *p1))
-        //             .unwrap()
-        //             .on_pt,
-        //         psi.get(&(PositIndex::new(p0.x, p0.y, p0.z + 1), *p1))
-        //             .unwrap()
-        //             .on_pt,
-        //     ),
-        //     1 => num_diff::find_ψ_pp_meas(
-        //         on_pt.on_pt,
-        //         psi.get(&(*p0, PositIndex::new(p1.x - 1, p1.y, p1.z)))
-        //             .unwrap()
-        //             .on_pt,
-        //         psi.get(&(*p0, PositIndex::new(p1.x + 1, p1.y, p1.z)))
-        //             .unwrap()
-        //             .on_pt,
-        //         psi.get(&(*p0, PositIndex::new(p1.x, p1.y - 1, p1.z)))
-        //             .unwrap()
-        //             .on_pt,
-        //         psi.get(&(*p0, PositIndex::new(p1.x, p1.y + 1, p1.z)))
-        //             .unwrap()
-        //             .on_pt,
-        //         psi.get(&(*p0, PositIndex::new(p1.x, p1.y, p1.z - 1)))
-        //             .unwrap()
-        //             .on_pt,
-        //         psi.get(&(*p0, PositIndex::new(p1.x, p1.y, p1.z + 1)))
-        //             .unwrap()
-        //             .on_pt,
-        //     ),
-        //     _ => unimplemented!(),
-        // }
     }
 
     pub fn calc_charge_density(&self, posit: Vec3) -> f64 {
@@ -537,7 +426,8 @@ impl WaveFunctionMultiElec {
     }
 }
 
-/// Convert an array of ψ to one of electron charge, through space. Modifies in place
+/// Convert an array of ψ to one of electron charge, through space. This is used to calculate potential
+/// from an electron. (And potential energy between electrons) Modifies in place
 /// to avoid unecessary allocations.
 pub(crate) fn update_charge_density_fm_psi(
     charge_density: &mut Arr3dReal,
@@ -546,30 +436,35 @@ pub(crate) fn update_charge_density_fm_psi(
 ) {
     println!("Creating electron charge for the active e- ...");
 
-    // todo: Problem? Needs to sum to 1 over *all space*, not just in the grid.
-    // todo: We can mitigate this by using a sufficiently large grid bounds, since the WF
-    // todo goes to 0 at distance.
+    // Note: We need to sum to 1 over *all space*, not just in the grid.
+    // We can mitigate this by using a sufficiently large grid bounds, since the WF
+    // goes to 0 at distance.
 
-    // todo: Consequence of your irregular grid: Is this normalization process correct?
+    // todo: YOu may need to model in terms of areas vice points; this is likely
+    // todo a factor on irregular grids.
 
-    // Normalize <ψ|ψ>
+
+    let num_elecs = 1;
+    // Save computation on this constant factor.
+    let c = Q_ELEC * num_elecs as f64;
+
     let mut psi_sq_size = 0.;
+
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
-                psi_sq_size += psi[i][j][k].abs_sq();
+                let mag = psi[i][j][k].abs_sq();
+                psi_sq_size += mag;
+                charge_density[i][j][k] = mag * c;
             }
         }
     }
 
-    let num_elecs = 1;
-    // Save computation on this constant factor.
-    let c = Q_ELEC * num_elecs as f64 / psi_sq_size;
-
+    // Normalize <ψ|ψ>
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
-                charge_density[i][j][k] = psi[i][j][k].abs_sq() * c;
+                charge_density[i][j][k] /= psi_sq_size;
             }
         }
     }

@@ -24,7 +24,7 @@
 // todo potential.
 
 use crate::{
-    basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto2},
+    basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto2, Sto1},
     complex_nums::Cplx,
     eigen_fns, eval,
     num_diff::{self, H},
@@ -322,51 +322,72 @@ pub fn initialize_bases(
         // See Sebens, for weights under equation 24; this is for Helium.
         bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
-            // c: 0.76837,
             xi: 1.41714,
-            // weight: 1.,
             weight: 0.76837,
             charge_id,
             harmonic: Default::default(),
         }));
         bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
-            // c: 0.22346,
             xi: 2.37682,
-            // weight: 1.,
             weight: 0.22346,
             charge_id,
             harmonic: Default::default(),
         }));
         bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
-            // c: 0.04082,
             xi: 4.39628,
-            // weight: 1.,
             weight: 0.04082,
             charge_id,
             harmonic: Default::default(),
         }));
         bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
-            // c: -0.00994,
             xi: 6.52699,
-            // weight: 1.,
             weight: -0.00994,
             charge_id,
             harmonic: Default::default(),
         }));
         bases.push(Basis::Sto2(Sto2 {
             posit: *nuc_posit,
-            // c: 0.00230,
             xi: 7.94252,
-            // weight: 1.,
             weight: 0.00230,
             charge_id,
             harmonic: Default::default(),
         }));
 
-        for _ in 0..5 {
+        // // T+J, below equation 4.16.
+        // bases.push(Basis::Sto1(Sto1 {
+        //     posit: *nuc_posit,
+        //     alpha: 0.298073,
+        //     weight: 1.,
+        //     charge_id,
+        //     harmonic: Default::default(),
+        // }));
+        // bases.push(Basis::Sto1(Sto1 {
+        //     posit: *nuc_posit,
+        //     alpha: 1.242567,
+        //     weight: 1.,
+        //     charge_id,
+        //     harmonic: Default::default(),
+        // }));
+        // bases.push(Basis::Sto1(Sto1 {
+        //     posit: *nuc_posit,
+        //     alpha: 5.782948,
+        //     weight: 1.,
+        //     charge_id,
+        //     harmonic: Default::default(),
+        // }));
+        // bases.push(Basis::Sto1(Sto1 {
+        //     posit: *nuc_posit,
+        //     alpha: 38.474970,
+        //     weight: 1.,
+        //     charge_id,
+        //     harmonic: Default::default(),
+        // }));
+
+
+        for _ in 0..bases.len() {
             bases_visible.push(true);
         }
     }

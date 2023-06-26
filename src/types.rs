@@ -157,7 +157,7 @@ impl SurfacesPerElec {
 
         Self {
             // V_from_this: data_real.clone(),
-            V_acting_on_this: data_real.clone(),
+            V_acting_on_this: data_real,
             psi,
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),

@@ -6,6 +6,7 @@ use lin_alg2::f64::Vec3;
 
 use crate::{
     basis_weight_finder,
+    complex_nums::Cplx,
     basis_wfs::Basis,
     eigen_fns, elec_elec::{self, WaveFunctionMultiElec},
     elec_elec::PositIndex,
@@ -81,7 +82,7 @@ fn _E_slider(
 
             *E
         })
-        .text("E"),
+            .text("E"),
     );
 }
 
@@ -196,7 +197,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                                state.charges_fixed.iter().enumerate()
+                            state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -216,7 +217,7 @@ fn basis_fn_mixer(
                     // todo chi and c, and make GO's implementation of n(), l() etc unimplemented!.
 
                     match basis {
-                        Basis::H(b) => {
+                        Basis::H(_b) => {
                             // todo: Intead of the getter methods, maybe call the params directly?
                             let n_prev = basis.n();
                             let l_prev = basis.l();
@@ -252,8 +253,8 @@ fn basis_fn_mixer(
                                 if basis.l() >= basis.n() {
                                     *basis.l_mut() = basis.n() - 1;
                                 }
-                                if basis.m() < -1 * basis.l() as i16 {
-                                    *basis.m_mut() = -1 * basis.l() as i16
+                                if basis.m() < -(basis.l() as i16) {
+                                    *basis.m_mut() = -(basis.l() as i16)
                                 } else if basis.m() > basis.l() as i16 {
                                     *basis.m_mut() = basis.l() as i16
                                 }
@@ -262,6 +263,15 @@ fn basis_fn_mixer(
                                 *updated_basis_weights = true;
                             }
                         }
+                        Basis::Sto1(b) => {
+                            ui.heading("α:");
+                            let mut entry = b.alpha.to_string(); // angle
+                            let response =
+                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            if response.changed() {
+                                b.alpha = entry.parse().unwrap_or(1.);
+                            }
+                        } // Basis::Sto(_b) => (),
                         Basis::Sto2(b) => {
                             // ui.heading("c:");
                             // let mut entry = b.c.to_string(); // angle
@@ -339,7 +349,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                    .text("Wt"),
+                        .text("Wt"),
                 );
             }
         });
@@ -391,6 +401,17 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
                 &state.surfaces_per_elec[active_elec].psi.on_pt,
                 state.grid_n,
             );
+
+            // todo: Temp sum to confirm normalization
+            let mut charge = 0.;
+            for i in 0..state.grid_n {
+                for j in 0..state.grid_n {
+                    for k in 0..state.grid_n {
+                        charge += state.charges_electron[active_elec][i][j][k];
+                    }
+                }
+            }
+            // println!("Charge from this elec: {}", charge);
 
             potential::create_V_from_an_elec(
                 &mut state.V_from_elecs[active_elec],
@@ -638,7 +659,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui_z_displayed
             })
-            .text("Z slice"),
+                .text("Z slice"),
         );
 
         ui.add(
@@ -650,7 +671,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-            .text("Visual rotation"),
+                .text("Visual rotation"),
         );
 
         ui.add(
@@ -670,7 +691,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_max
             })
-            .text("Grid range"),
+                .text("Grid range"),
         );
 
         match state.ui_active_elec {
@@ -724,7 +745,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_per_elec[active_elec].E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 ui.add(
@@ -736,8 +757,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.nudge_amount[active_elec]
                     })
-                    .text("Nudge amount")
-                    .logarithmic(true),
+                        .text("Nudge amount")
+                        .logarithmic(true),
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -889,7 +910,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 // Multiply wave functions together, and stores in Shared surfaces.
@@ -907,16 +928,86 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         per_elec_wfs.push(&sfc.psi);
                     }
 
-                    // todo: Temp (?) removed
-                    // state
-                    //     .surfaces_shared
-                    //     .psi
-                    //     .setup_joint_wf(&per_elec_wfs, state.grid_n);
+                    state
+                        .surfaces_shared
+                        .psi
+                        .setup_joint_wf(&per_elec_wfs, state.grid_n);
+
+
+                    // todo: COnsider a more DFT-like approach: Instead of reducing a WF to
+                    // todo individual electrons, consider varying E like you do for a single elec.
+                    // todo: Immediate obstacle: How to deal with V? Sum from all??
+                    // todo: Try retrofitting your single-electron setup with a modified V
+                    // todo that includes all elecs...
+
+                    // todo: This is perhaps what `populate_psi_marginal` should be:
+                    // todo: Experimenting with using our single-electron approach here, slightly modified
+                    for i in 0..state.grid_n {
+                        for j in 0..state.grid_n {
+                            for k in 0..state.grid_n {
+                                let posit_0 = PositIndex::new(i, j, k);
+
+                                state.surfaces_shared.psi.psi_marginal.on_pt[i][j][k] = Cplx::new_zero();
+                                state.surfaces_shared.psi.psi_marginal.x_prev[i][j][k] = Cplx::new_zero();
+                                state.surfaces_shared.psi.psi_marginal.x_next[i][j][k] = Cplx::new_zero();
+                                state.surfaces_shared.psi.psi_marginal.y_prev[i][j][k] = Cplx::new_zero();
+                                state.surfaces_shared.psi.psi_marginal.y_next[i][j][k] = Cplx::new_zero();
+                                state.surfaces_shared.psi.psi_marginal.z_prev[i][j][k] = Cplx::new_zero();
+                                state.surfaces_shared.psi.psi_marginal.z_next[i][j][k] = Cplx::new_zero();
+
+                                for i1 in 0..state.grid_n {
+                                    for j1 in 0..state.grid_n {
+                                        for k1 in 0..state.grid_n {
+
+                                            let posit_1 = PositIndex::new(i1, j1, k1);
+
+                                            // todo: Hard-coded for 2 elec.
+                                            state.surfaces_shared.psi.psi_marginal.on_pt[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.on_pt)
+                                                * posit_1.index(&state.surfaces_per_elec[1].psi.on_pt);
+
+                                            state.surfaces_shared.psi.psi_marginal.x_prev[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.x_prev)
+                                                * posit_1.index(&state.surfaces_per_elec[1].psi.x_prev);
+                                            state.surfaces_shared.psi.psi_marginal.x_next[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.x_next)
+                                                * posit_1.index(&state.surfaces_per_elec[1].psi.x_next);
+                                            state.surfaces_shared.psi.psi_marginal.y_prev[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.y_prev)
+                                                * posit_1.index(&state.surfaces_per_elec[1].psi.y_prev);
+                                            state.surfaces_shared.psi.psi_marginal.y_next[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.y_next)
+                                                * posit_1.index(&state.surfaces_per_elec[1].psi.y_next);
+                                            state.surfaces_shared.psi.psi_marginal.z_prev[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.z_prev)
+                                                * posit_1.index(&state.surfaces_per_elec[1].psi.z_prev);
+                                            state.surfaces_shared.psi.psi_marginal.z_next[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.z_next)
+                                                * posit_1.index(&state.surfaces_per_elec[1].psi.z_next);
+
+
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    wf_ops::update_psi_pps(
+                        &state.surfaces_shared.psi.psi_marginal,
+                        &state.surfaces_shared.V_total,
+                        &mut state.surfaces_shared.psi_pp_calculated,
+                        &mut state.surfaces_shared.psi_pp_measured,
+                        state.surfaces_shared.E,
+                        state.grid_n,
+                    );
+
+
+                    // for i in 0..state.grid_n {
+                    //     for j in 0..state.grid_n {
+                    //         for k in 0..state.grid_n {
+                    //             wf_ops::find_psi_pp_calc(;)
+                    //         }
+                    //     }
+                    // }
 
                     // Experiment to calc E.
-                    for i in 7..9 {
-                        for j in 7..9 {
-                            for k in 7..9 {
+                    for i in 7..10 {
+                        for j in 7..10 {
+                            for k in 7..10 {
                                 let i1 = 9;
                                 let j1 = 10;
                                 let k1 = 11;
@@ -959,9 +1050,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                 let psi = posit_0.index(&state.surfaces_per_elec[0].psi.on_pt)
                                     * posit_1.index(&state.surfaces_per_elec[1].psi.on_pt);
 
+                                // todo: The neighboring vals as well.
+                                state.surfaces_shared.psi.psi_marginal.on_pt[i][j][k] = psi;
+
                                 let E = eigen_fns::find_E_2_elec_at_pt(
                                     psi,
-                                    // state.surfaces_shared.V_total[i][j][k], // currently unused.
                                     psi_pp_r0,
                                     psi_pp_r1,
                                     state.charges_fixed[0].0,
@@ -974,19 +1067,20 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         }
                     }
 
-                    state
-                        .surfaces_shared
-                        .psi
-                        .populate_psi_marginal(state.grid_n);
+                    // state
+                    //     .surfaces_shared
+                    //     .psi
+                    //     .populate_psi_marginal(state.grid_n);
+                    //
 
-                    wf_ops::update_psi_pps(
-                        &state.surfaces_shared.psi.psi_marginal,
-                        &state.surfaces_shared.V_total,
-                        &mut state.surfaces_shared.psi_pp_calculated,
-                        &mut state.surfaces_shared.psi_pp_measured,
-                        state.surfaces_shared.E,
-                        state.grid_n,
-                    );
+                    // // todo: June 25, 2023: Trying a diff approach, more like single-elec approach.
+                    // for i in 0..state.grid_n {
+                    //     for j in 0..state.grid_n {
+                    //         for k in 0..state.grid_n {
+                    //
+                    //         }
+                    //     }
+                    // }
 
                     updated_meshes = true;
                     engine_updates.entities = true;

@@ -49,27 +49,27 @@ pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k
     psi[i][j][k] * (E - V[i][j][k] * Q_ELEC) * KE_COEFF_INV
 }
 
-// todo: Come back to A/R
-// /// Returns the *sum of psi'' from the 2 electrons*.
-// /// Note: V must be calculatd appropriately from the 3 relevant terms.
-// /// todo: MOre general one, not limited to to elecs
-// pub fn find_ψ_pp_calc_2_elec(
-//     psi_joint: &WaveFunctionMultiElec,
-//     V: &Arr3dReal,
-//     E: f64,
-//     i: usize,
-//     j: usize,
-//     k: usize,
-// ) -> Cplx {
-//     psi_joint[i][j][k] * (E - V[i][j][k]) * KE_COEFF_INV
-// }
+/// Returns the *sum of psi'' from the 2 electrons*.
+/// Note: V must be calculatd appropriately from the 3 relevant terms.
+/// todo: MOre general one, not limited to to elecs
+pub fn find_ψ_pp_calc_2_elec(
+    // psi_joint: &WaveFunctionMultiElec,
+    psi_joint: Cplx,
+    // V: &Arr3dReal,
+    V: f64,
+    // todo: Try with a single V here. If not working, try with V from parts, eg posits as below.
+    E: f64,
+    // i: usize,
+    // j: usize,
+    // k: usize,
+) -> Cplx {
+    psi_joint * (E - V * Q_ELEC) * KE_COEFF_INV
+}
 
 /// Experimental function to calculate E from a 2-electron WF, of Helium.
 /// todo: How to
 pub fn find_E_2_elec_at_pt(
     psi_joint: Cplx,
-    // V_acting_on_elec_0: f64,
-    // V_acting_on_elec_1: f64,
     // These psi''s are calculated by holding the other electron coordinate[s] constant,
     // and comparing to +/- dx values of the coordinate in question.
     psi_pp_0: Cplx,
@@ -98,10 +98,10 @@ pub fn find_E_2_elec_at_pt(
     // let V_energy = Q_ELEC * V_acting_on_this_elec;
 
     // Real since it's an eigenvalue of a Hermitian operator.
-    ((psi_pp_0 + psi_pp_1) / psi_joint * KE_COEFF + V_energy.into()).real
+    ((psi_pp_0 + psi_pp_1) / psi_joint * KE_COEFF_2_ELEC + V_energy.into()).real
 }
 
-pub fn find_E_2_elec(
+pub fn _find_E_2_elec(
     psi_joint: &WaveFunctionMultiElec,
     psi_pp_0: &Arr3d,
     psi_pp_1: &Arr3d,
