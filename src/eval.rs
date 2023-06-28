@@ -80,7 +80,8 @@ pub fn score_wf(psi_pp_calc: &Arr3d, psi_pp_meas: &Arr3d, n: usize) -> f64 {
         for j in 0..n {
             for k in 0..n {
                 let psi_pp = psi_pp_calc[i][j][k].abs_sq();
-                if psi_pp > 0.0000000001 && psi_pp < 9999. { // todo: Not sure on teh last one.
+                if psi_pp > 0.0000000001 && psi_pp < 9999. {
+                    // todo: Not sure on teh last one.
                     norm_calc += psi_pp;
                     // println!("pp: {}", psi_pp);
                     // println!("nc: {}", norm_calc);

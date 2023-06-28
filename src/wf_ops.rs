@@ -24,7 +24,7 @@
 // todo potential.
 
 use crate::{
-    basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto2, Sto1},
+    basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto1, Sto2},
     complex_nums::Cplx,
     eigen_fns, eval,
     num_diff::{self, H},
@@ -385,7 +385,6 @@ pub fn initialize_bases(
         //     charge_id,
         //     harmonic: Default::default(),
         // }));
-
 
         for _ in 0..bases.len() {
             bases_visible.push(true);

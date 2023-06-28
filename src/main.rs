@@ -45,7 +45,10 @@ use wf_lab::types::new_data_real;
 use wf_ops::Q_PROT;
 
 const NUM_SURFACES: usize = 10;
-const GRID_N_DEFAULT: usize = 20;
+
+const SPACING_FACTOR_DEFAULT: f64 = 1.;
+const GRID_N_DEFAULT: usize = 16;
+const GRID_N_CHARGE_DEFAULT: usize = 30;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -89,10 +92,15 @@ pub struct State {
     // pub psi_pp_score: Vec<f64>,
     pub surface_data: [SurfaceData; NUM_SURFACES],
     pub grid_n: usize,
+    /// This charge grid is generally denser than the main grid. This allows more fidelity for
+    /// modelling electron charge, without evaluating the wave function at too many points.
+    pub grid_n_charge: usize,
     pub grid_min: f64,
     pub grid_max: f64,
     /// 1.0 is an evenly-spaced grid. A higher value spreads out the grid; high values
     /// mean increased non-linearity, with higher spacing farther from the center.
+    /// This only (currently) applies to the main grid, with a uniform grid set for
+    /// charge density.
     pub spacing_factor: f64,
     /// When visualizing a 2d wave function over X and Y, this is the fixed Z value rendered.
     /// We only display a slice, since we are viewing a 4d object as a 3d rendering.
@@ -110,16 +118,6 @@ pub struct State {
     /// When finding and initializing basis, this is the maximum n quantum number.
     pub max_basis_n: u16,
     pub num_elecs: usize,
-    //
-    // Below this are mainly experimental/WIP items
-    //
-    // /// Unused for now
-    // pub psi_p_score: f64,
-    // /// Angular momentum (L) of the system (eigenvalue)
-    // pub L_2: f64,// todo: These l values are currently unused.
-    // pub L_x: f64,
-    // pub L_y: f64,
-    // pub L_z: f64,
 }
 
 /// Set up the grid so that it smartly encompasses the charges, letting the WF go to 0
@@ -143,12 +141,10 @@ fn choose_grid_limits(charges_fixed: &[(Vec3, f64)]) -> (f64, f64) {
 
     let grid_max = max_abs_val + RANGE_PAD;
 
-        // todo: temp
+    // todo: temp
     let grid_max = 14.0;
 
     let grid_min = -grid_max;
-
-
 
     (grid_min, grid_max)
 }
@@ -179,6 +175,7 @@ pub fn init_from_grid(
     grid_max: f64,
     spacing_factor: f64,
     grid_n: usize,
+    grid_n_charge: usize,
     bases: &[Vec<Basis>],
     charges_fixed: &[(Vec3, f64)],
     num_electrons: usize,
@@ -238,7 +235,7 @@ pub fn init_from_grid(
     // let mut psi_pp_score = Vec::new();
 
     for i_elec in 0..num_electrons {
-        charges_electron.push(arr_real.clone());
+        charges_electron.push(new_data_real(grid_n_charge));
         V_from_elecs.push(arr_real.clone());
         bases_unweighted.push(basis_wfs_unweighted.clone());
 
@@ -322,8 +319,10 @@ fn main() {
     let (grid_min, grid_max) = choose_grid_limits(&charges_fixed);
     // let spacing_factor = 1.6;
     // Currently, must be one as long as used with elec-elec charge.
-    let spacing_factor = 1.0;
+    let spacing_factor = SPACING_FACTOR_DEFAULT;
+
     let grid_n = GRID_N_DEFAULT;
+    let grid_n_charge = GRID_N_CHARGE_DEFAULT;
 
     let (charges_electron, V_from_elecs, bases_unweighted, surfaces_shared, surfaces_per_elec) =
         init_from_grid(
@@ -331,6 +330,7 @@ fn main() {
             grid_max,
             spacing_factor,
             grid_n,
+            grid_n_charge,
             // ui_active_elec,
             &bases,
             &charges_fixed,
@@ -362,6 +362,7 @@ fn main() {
         nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],
         surface_data,
         grid_n,
+        grid_n_charge,
         grid_min,
         grid_max,
         spacing_factor,

@@ -6,10 +6,11 @@ use lin_alg2::f64::Vec3;
 
 use crate::{
     basis_weight_finder,
-    complex_nums::Cplx,
     basis_wfs::Basis,
-    eigen_fns, elec_elec::{self, WaveFunctionMultiElec},
+    complex_nums::Cplx,
+    eigen_fns,
     elec_elec::PositIndex,
+    elec_elec::{self, WaveFunctionMultiElec},
     eval, potential, render,
     types::{Arr3d, Arr3dReal},
     wf_ops, ActiveElec, State,
@@ -82,7 +83,7 @@ fn _E_slider(
 
             *E
         })
-            .text("E"),
+        .text("E"),
     );
 }
 
@@ -197,7 +198,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                            state.charges_fixed.iter().enumerate()
+                                state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -349,7 +350,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                        .text("Wt"),
+                    .text("Wt"),
                 );
             }
         });
@@ -380,7 +381,7 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
         //     elec_elec::update_charge_density_fm_psi(
         //         &state.surfaces_per_elec[active_elec].psi.on_pt,
         //         &mut state.charges_electron[active_elec],
-        //         state.grid_n,
+        //         state.grid_n_charge,
         //     );
         //
         //     *updated_meshes = true;
@@ -399,7 +400,7 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             elec_elec::update_charge_density_fm_psi(
                 &mut state.charges_electron[active_elec],
                 &state.surfaces_per_elec[active_elec].psi.on_pt,
-                state.grid_n,
+                state.grid_n_charge,
             );
 
             // todo: Temp sum to confirm normalization
@@ -418,6 +419,7 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
                 &state.charges_electron[active_elec],
                 &state.surfaces_shared.grid_posits,
                 state.grid_n,
+                state.grid_n_charge,
             );
 
             *updated_meshes = true;
@@ -543,7 +545,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.grid_max,
                     state.spacing_factor,
                     state.grid_n,
-                    // state.ui_active_elec,
+                    state.grid_n_charge,
                     &state.bases,
                     &state.charges_fixed,
                     state.num_elecs,
@@ -659,7 +661,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui_z_displayed
             })
-                .text("Z slice"),
+            .text("Z slice"),
         );
 
         ui.add(
@@ -671,7 +673,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-                .text("Visual rotation"),
+            .text("Visual rotation"),
         );
 
         ui.add(
@@ -691,7 +693,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_max
             })
-                .text("Grid range"),
+            .text("Grid range"),
         );
 
         match state.ui_active_elec {
@@ -745,7 +747,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_per_elec[active_elec].E
                     })
-                        .text("E"),
+                    .text("E"),
                 );
 
                 ui.add(
@@ -757,8 +759,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.nudge_amount[active_elec]
                     })
-                        .text("Nudge amount")
-                        .logarithmic(true),
+                    .text("Nudge amount")
+                    .logarithmic(true),
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -910,7 +912,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                        .text("E"),
+                    .text("E"),
                 );
 
                 // Multiply wave functions together, and stores in Shared surfaces.
@@ -933,58 +935,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         .psi
                         .setup_joint_wf(&per_elec_wfs, state.grid_n);
 
-
                     // todo: COnsider a more DFT-like approach: Instead of reducing a WF to
                     // todo individual electrons, consider varying E like you do for a single elec.
                     // todo: Immediate obstacle: How to deal with V? Sum from all??
                     // todo: Try retrofitting your single-electron setup with a modified V
                     // todo that includes all elecs...
-
-                    // todo: This is perhaps what `populate_psi_marginal` should be:
-                    // todo: Experimenting with using our single-electron approach here, slightly modified
-                    for i in 0..state.grid_n {
-                        for j in 0..state.grid_n {
-                            for k in 0..state.grid_n {
-                                let posit_0 = PositIndex::new(i, j, k);
-
-                                state.surfaces_shared.psi.psi_marginal.on_pt[i][j][k] = Cplx::new_zero();
-                                state.surfaces_shared.psi.psi_marginal.x_prev[i][j][k] = Cplx::new_zero();
-                                state.surfaces_shared.psi.psi_marginal.x_next[i][j][k] = Cplx::new_zero();
-                                state.surfaces_shared.psi.psi_marginal.y_prev[i][j][k] = Cplx::new_zero();
-                                state.surfaces_shared.psi.psi_marginal.y_next[i][j][k] = Cplx::new_zero();
-                                state.surfaces_shared.psi.psi_marginal.z_prev[i][j][k] = Cplx::new_zero();
-                                state.surfaces_shared.psi.psi_marginal.z_next[i][j][k] = Cplx::new_zero();
-
-                                for i1 in 0..state.grid_n {
-                                    for j1 in 0..state.grid_n {
-                                        for k1 in 0..state.grid_n {
-
-                                            let posit_1 = PositIndex::new(i1, j1, k1);
-
-                                            // todo: Hard-coded for 2 elec.
-                                            state.surfaces_shared.psi.psi_marginal.on_pt[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.on_pt)
-                                                * posit_1.index(&state.surfaces_per_elec[1].psi.on_pt);
-
-                                            state.surfaces_shared.psi.psi_marginal.x_prev[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.x_prev)
-                                                * posit_1.index(&state.surfaces_per_elec[1].psi.x_prev);
-                                            state.surfaces_shared.psi.psi_marginal.x_next[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.x_next)
-                                                * posit_1.index(&state.surfaces_per_elec[1].psi.x_next);
-                                            state.surfaces_shared.psi.psi_marginal.y_prev[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.y_prev)
-                                                * posit_1.index(&state.surfaces_per_elec[1].psi.y_prev);
-                                            state.surfaces_shared.psi.psi_marginal.y_next[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.y_next)
-                                                * posit_1.index(&state.surfaces_per_elec[1].psi.y_next);
-                                            state.surfaces_shared.psi.psi_marginal.z_prev[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.z_prev)
-                                                * posit_1.index(&state.surfaces_per_elec[1].psi.z_prev);
-                                            state.surfaces_shared.psi.psi_marginal.z_next[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.z_next)
-                                                * posit_1.index(&state.surfaces_per_elec[1].psi.z_next);
-
-
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     wf_ops::update_psi_pps(
                         &state.surfaces_shared.psi.psi_marginal,
@@ -994,15 +949,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         state.surfaces_shared.E,
                         state.grid_n,
                     );
-
-
-                    // for i in 0..state.grid_n {
-                    //     for j in 0..state.grid_n {
-                    //         for k in 0..state.grid_n {
-                    //             wf_ops::find_psi_pp_calc(;)
-                    //         }
-                    //     }
-                    // }
 
                     // Experiment to calc E.
                     for i in 7..10 {

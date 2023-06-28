@@ -344,10 +344,7 @@ impl Sto1 {
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
-
-        Cplx::from_real(
-            (-self.alpha * r.powi(2)).exp(),
-        )
+        Cplx::from_real((-self.alpha * r.powi(2)).exp())
     }
 }
 

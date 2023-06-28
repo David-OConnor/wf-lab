@@ -89,122 +89,61 @@ impl WaveFunctionMultiElec {
     /// This is constructed by integrating out the electrons over position space.
     /// todo: Fix this description, and code A/R.
     pub fn populate_psi_marginal(&mut self, grid_n: usize) {
-        println!("Populating psi marginal...");
-        // for i in 0..grid_n {
-        //     for j in 0..grid_n {
-        //         for k in 0..grid_n {
-        //             self.psi_marginal.on_pt = 1.;
-        //         }
-        //     }
-        // }
+        // todo: This is perhaps what `populate_psi_marginal` should be:
+        // todo: Experimenting with using our single-electron approach here, slightly modified
+        for i in 0..grid_n {
+            for j in 0..grid_n {
+                for k in 0..grid_n {
+                    let posit_0 = PositIndex::new(i, j, k);
 
-        // todo: Maybe there's no wf, but there is a wf squared?
+                    self.psi_marginal.on_pt[i][j][k] = Cplx::new_zero();
+                    self.psi_marginal.x_prev[i][j][k] = Cplx::new_zero();
+                    self.psi_marginal.x_next[i][j][k] = Cplx::new_zero();
+                    self.psi_marginal.y_prev[i][j][k] = Cplx::new_zero();
+                    self.psi_marginal.y_next[i][j][k] = Cplx::new_zero();
+                    self.psi_marginal.z_prev[i][j][k] = Cplx::new_zero();
+                    self.psi_marginal.z_next[i][j][k] = Cplx::new_zero();
 
-        // Todo: What is this? Likely a function of n_electrons and n_points. Maybe multiply them,
-        // todo then subtract one?
-        // let n_components_per_posit = (grid_n.pow(3) * self.num_elecs) as f64;
+                    for i1 in 0..grid_n {
+                        for j1 in 0..grid_n {
+                            for k1 in 0..grid_n {
+                                let posit_1 = PositIndex::new(i1, j1, k1);
 
-        // Start clean
-        let data = new_data(grid_n);
-        self.psi_marginal = PsiWDiffs::init(&data);
+                                // todo: Hard-coded for 2 elec.
+                                let entry = self.psi_joint.get(&(posit_0, posit_1)).unwrap();
 
-        // todo: trying something
-        for wf in &self.individual_elec_wfs {
-            for i in 0..grid_n {
-                for j in 0..grid_n {
-                    for k in 0..grid_n {
+                                self.psi_marginal.on_pt[i][j][k] += entry.on_pt;
 
-                        self.psi_marginal.on_pt[i][j][k] += wf.on_pt[i][j][k];
+                                self.psi_marginal.x_prev[i][j][k] += entry.x_prev;
+                                self.psi_marginal.x_next[i][j][k] += entry.x_next;
+                                self.psi_marginal.y_prev[i][j][k] += entry.y_prev;
+                                self.psi_marginal.y_next[i][j][k] += entry.y_next;
+                                self.psi_marginal.z_prev[i][j][k] += entry.z_prev;
+                                self.psi_marginal.z_next[i][j][k] += entry.z_next;
 
-                        self.psi_marginal.x_prev[i][j][k] += wf.x_prev[i][j][k];
-                        self.psi_marginal.x_next[i][j][k] += wf.x_next[i][j][k];
-                        self.psi_marginal.y_prev[i][j][k] += wf.y_prev[i][j][k];
-                        self.psi_marginal.y_next[i][j][k] += wf.y_next[i][j][k];
-                        self.psi_marginal.z_prev[i][j][k] += wf.z_prev[i][j][k];
-                        self.psi_marginal.z_next[i][j][k] += wf.z_next[i][j][k];
+                                // self.psi_marginal.on_pt[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.on_pt)
+                                //     * posit_1.index(&state.surfaces_per_elec[1].psi.on_pt);
+                                //
+                                // self.psi_marginal.x_prev[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.x_prev)
+                                //     * posit_1.index(&state.surfaces_per_elec[1].psi.x_prev);
+                                // self.psi_marginal.x_next[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.x_next)
+                                //     * posit_1.index(&state.surfaces_per_elec[1].psi.x_next);
+                                // self.psi_marginal.y_prev[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.y_prev)
+                                //     * posit_1.index(&state.surfaces_per_elec[1].psi.y_prev);
+                                // self.psi_marginal.y_next[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.y_next)
+                                //     * posit_1.index(&state.surfaces_per_elec[1].psi.y_next);
+                                // self.psi_marginal.z_prev[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.z_prev)
+                                //     * posit_1.index(&state.surfaces_per_elec[1].psi.z_prev);
+                                // self.psi_marginal.z_next[i][j][k] += posit_0.index(&state.surfaces_per_elec[0].psi.z_next)
+                                //     * posit_1.index(&state.surfaces_per_elec[1].psi.z_next);
+                            }
+                        }
                     }
                 }
             }
         }
-        println!("Complete");
-        return;
-
-        // for (posits, wf_val) in &self.psi_joint {
-        //     for posit in posits {
-        //         // posit.index_mut(&mut self.psi_marginal.on_pt) += *wf_val;
-        //         // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val;
-        //         // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val / n_components_per_posit;
-        //
-        //         // self.psi_marginal.on_pt[posit.x][posit.y][posit.z] += *wf_val;
-        //
-        //         // todo: Experimenting with treating the abs_square as what we combine, vice making a "marginal"
-        //         // todo combined WF we square to find charge density
-        //         // Note: We are hijacking psi_marginal to be this squared value. (Noting that
-        //         // we are still storing it as a complex value)
-        //
-        //         // todo: This produces a visible result (as opposed to when we don't square it...), but
-        //         // todo: how do we score this using psi''s?
-        //         // todo: (The impliciation here is perhaps the various values are variously positive and negative,
-        //         // todo, so they cancel if not squared)
-        //         self.psi_marginal.on_pt[posit.x][posit.y][posit.z] +=
-        //             Cplx::from_real(wf_val.on_pt.abs_sq());
-        //
-        //         self.psi_marginal.x_prev[posit.x][posit.y][posit.z] +=
-        //             Cplx::from_real(wf_val.x_prev.abs_sq());
-        //         self.psi_marginal.x_next[posit.x][posit.y][posit.z] +=
-        //             Cplx::from_real(wf_val.x_next.abs_sq());
-        //         self.psi_marginal.y_prev[posit.x][posit.y][posit.z] +=
-        //             Cplx::from_real(wf_val.y_prev.abs_sq());
-        //         self.psi_marginal.y_next[posit.x][posit.y][posit.z] +=
-        //             Cplx::from_real(wf_val.y_next.abs_sq());
-        //         self.psi_marginal.z_prev[posit.x][posit.y][posit.z] +=
-        //             Cplx::from_real(wf_val.z_prev.abs_sq());
-        //         self.psi_marginal.z_next[posit.x][posit.y][posit.z] +=
-        //             Cplx::from_real(wf_val.z_next.abs_sq());
-        //     }
-        // }
-
-        // Normalize the wave function.
-        let mut norm = 0.;
-
-        for i in 0..grid_n {
-            for j in 0..grid_n {
-                for k in 0..grid_n {
-                    norm += self.psi_marginal.on_pt[i][j][k].abs_sq();
-                }
-            }
-        }
-
-        util::normalize_wf(&mut self.psi_marginal.on_pt, norm, grid_n);
-
-        util::normalize_wf(&mut self.psi_marginal.x_prev, norm, grid_n);
-        util::normalize_wf(&mut self.psi_marginal.x_next, norm, grid_n);
-        util::normalize_wf(&mut self.psi_marginal.y_prev, norm, grid_n);
-        util::normalize_wf(&mut self.psi_marginal.y_next, norm, grid_n);
-        util::normalize_wf(&mut self.psi_marginal.z_prev, norm, grid_n);
-        util::normalize_wf(&mut self.psi_marginal.z_next, norm, grid_n);
-
-        // println!("Some vals: {:?}", self.psi_marginal.on_pt[5][6][4]);
-        // println!("Some vals: {:?}", self.psi_marginal.on_pt[1][3][6]);
-        // // println!("Some vals: {:?}", self.psi_marginal.on_pt[7][10][2]);
-        // println!("Some vals: {:?}", self.psi_marginal.on_pt[6][4][3]);
-
-        // todo: set up diffs. This is a relatively coarse numerical diff vice the analytic ones we use
-        // todo for the individual electrons.
-        for i in 0..grid_n {}
-        // self.psi_marginal.x_prev =
-
-        // todo: Set up prevs and nexts.
-
-        //             psi: &PsiWDiffs,
-        // V: &Arr3dReal,
-        // psi_pp_calc: &mut Arr3d,
-        // psi_pp_meas: &mut Arr3d,
-        // E: f64,
-        // grid_n: usize,
-
-        println!("Complete");
     }
+
     // let's say n = 2, and r spans 0, 1, 2, 3
     // we want to calc electron density at 2, or collect all relevant parts
     // val([x0, x1], [r0, r0, r0]),
@@ -393,21 +332,19 @@ impl WaveFunctionMultiElec {
         psi1: &PsiWDiffs,
         posit_wrt: usize,
     ) -> Cplx {
-             // Naive Hartree product
+        // Naive Hartree product
         let on_pt = p0.index(&psi0.on_pt) * p1.index(&psi1.on_pt);
 
         return match posit_wrt {
-            0 => {
-                num_diff::find_ψ_pp_meas(
-                    on_pt,
-                    p0.index(&psi0.x_prev) * p1.index(&psi1.on_pt),
-                    p0.index(&psi0.x_next) * p1.index(&psi1.on_pt),
-                    p0.index(&psi0.y_prev) * p1.index(&psi1.on_pt),
-                    p0.index(&psi0.y_next) * p1.index(&psi1.on_pt),
-                    p0.index(&psi0.z_prev) * p1.index(&psi1.on_pt),
-                    p0.index(&psi0.z_next) * p1.index(&psi1.on_pt),
-                )
-            }
+            0 => num_diff::find_ψ_pp_meas(
+                on_pt,
+                p0.index(&psi0.x_prev) * p1.index(&psi1.on_pt),
+                p0.index(&psi0.x_next) * p1.index(&psi1.on_pt),
+                p0.index(&psi0.y_prev) * p1.index(&psi1.on_pt),
+                p0.index(&psi0.y_next) * p1.index(&psi1.on_pt),
+                p0.index(&psi0.z_prev) * p1.index(&psi1.on_pt),
+                p0.index(&psi0.z_next) * p1.index(&psi1.on_pt),
+            ),
             1 => num_diff::find_ψ_pp_meas(
                 on_pt,
                 p0.index(&psi0.on_pt) * p1.index(&psi1.x_prev),
@@ -431,8 +368,9 @@ impl WaveFunctionMultiElec {
 /// to avoid unecessary allocations.
 pub(crate) fn update_charge_density_fm_psi(
     charge_density: &mut Arr3dReal,
-    psi: &Arr3d,
+    bases: &[Basis],
     grid_n: usize,
+    grid_n_charge: usize,
 ) {
     println!("Creating electron charge for the active e- ...");
 
@@ -443,16 +381,15 @@ pub(crate) fn update_charge_density_fm_psi(
     // todo: YOu may need to model in terms of areas vice points; this is likely
     // todo a factor on irregular grids.
 
-
     let num_elecs = 1;
     // Save computation on this constant factor.
     let c = Q_ELEC * num_elecs as f64;
 
     let mut psi_sq_size = 0.;
 
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
+    for i in 0..grid_n_charge {
+        for j in 0..grid_n_charge {
+            for k in 0..grid_n_charge {
                 let mag = psi[i][j][k].abs_sq();
                 psi_sq_size += mag;
                 charge_density[i][j][k] = mag * c;
@@ -461,9 +398,9 @@ pub(crate) fn update_charge_density_fm_psi(
     }
 
     // Normalize <ψ|ψ>
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
+    for i in 0..grid_n_charge {
+        for j in 0..grid_n_charge {
+            for k in 0..grid_n_charge {
                 charge_density[i][j][k] /= psi_sq_size;
             }
         }

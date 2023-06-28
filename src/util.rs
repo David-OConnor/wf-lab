@@ -171,6 +171,8 @@ pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> 
     let diff = posit_sample - posit_charge;
     let r = diff.magnitude();
 
+    // todo: Verification r > 0.?
+
     K_C * charge / r
 }
 

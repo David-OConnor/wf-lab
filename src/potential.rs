@@ -105,11 +105,13 @@ pub(crate) fn update_V_acting_on_elec(
 
 /// Update the V associated with a single electron's charge.
 /// This must be run after the charge from this electron is created from the wave function square.
+/// We expect the loop over charge positions to be larger than the one over V positions.
 pub(crate) fn create_V_from_an_elec(
     V_from_this_elec: &mut Arr3dReal,
     charge_this_elec: &Arr3dReal,
     grid_posits: &Arr3dVec,
     grid_n: usize,
+    grid_n_charge: usize,
 ) {
     println!("Creating V from an electron...");
 
@@ -127,13 +129,15 @@ pub(crate) fn create_V_from_an_elec(
 
                 V_from_this_elec[i][j][k] = 0.;
 
-                for i_charge in 0..grid_n {
-                    for j_charge in 0..grid_n {
-                        for k_charge in 0..grid_n {
+                for i_charge in 0..grid_n_charge {
+                    for j_charge in 0..grid_n_charge {
+                        for k_charge in 0..grid_n_charge {
                             // This will produce infinities due to 0 r.
-                            if i == i_charge && j == j_charge && k == k_charge {
-                                continue;
-                            }
+
+                            // todo: You may still need a check here to prevent infinities.
+                            // if i == i_charge && j == j_charge && k == k_charge {
+                            //     continue;
+                            // }
 
                             let posit_charge = grid_posits[i_charge][j_charge][k_charge];
                             let charge = charge_this_elec[i_charge][j_charge][k_charge];

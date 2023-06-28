@@ -162,13 +162,7 @@ pub fn find_weights(
         *basis.weight_mut() = current_point[i];
     }
 
-    wf_ops::update_wf_fm_bases(
-        bases,
-        basis_wfs_unweighted,
-        surfaces_per_elec,
-        grid_n,
-        None,
-    );
+    wf_ops::update_wf_fm_bases(bases, basis_wfs_unweighted, surfaces_per_elec, grid_n, None);
 
     surfaces_per_elec.psi_pp_score = eval::score_wf(
         &surfaces_per_elec.psi_pp_calculated,
