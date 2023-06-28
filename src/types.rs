@@ -9,6 +9,7 @@ use lin_alg2::f64::Vec3;
 pub struct SurfacesShared {
     /// Represents points on a grid, for our non-uniform grid.
     pub grid_posits: Arr3dVec,
+    pub grid_posits_charge: Arr3dVec,
     /// Potential from nuclei, and all electrons
     pub V_total: Arr3dReal,
     /// Potential from nuclei only. We use this as a baseline for individual electron
@@ -31,6 +32,7 @@ impl SurfacesShared {
         grid_max: f64,
         spacing_factor: f64,
         n_grid: usize,
+        n_grid_charge: usize,
         num_elecs: usize,
     ) -> Self {
         let data = new_data(n_grid);
@@ -39,8 +41,19 @@ impl SurfacesShared {
         let mut grid_posits = new_data_vec(n_grid);
         wf_ops::update_grid_posits(&mut grid_posits, grid_min, grid_max, spacing_factor, n_grid);
 
+        let mut grid_posits_charge = new_data_vec(n_grid_charge);
+        // spacing factor is always 1 for charge grid. (for now at least)
+        wf_ops::update_grid_posits(
+            &mut grid_posits_charge,
+            grid_min,
+            grid_max,
+            1.,
+            n_grid_charge,
+        );
+
         Self {
             grid_posits,
+            grid_posits_charge,
             V_total: data_real.clone(),
             V_from_nuclei: data_real,
             // psi: data.clone(),

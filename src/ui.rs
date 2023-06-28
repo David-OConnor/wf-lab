@@ -377,10 +377,11 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             );
         }
 
-        // if ui.add(egui::Button::new("Create e- charge")).clicked() {
+        // // if ui.add(egui::Button::new("Create e- charge")).clicked() {
         //     elec_elec::update_charge_density_fm_psi(
-        //         &state.surfaces_per_elec[active_elec].psi.on_pt,
         //         &mut state.charges_electron[active_elec],
+        //         &state.bases[active_elec],
+        //         &state.surfaces_shared.grid_posits_charge,
         //         state.grid_n_charge,
         //     );
         //
@@ -399,7 +400,8 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
         {
             elec_elec::update_charge_density_fm_psi(
                 &mut state.charges_electron[active_elec],
-                &state.surfaces_per_elec[active_elec].psi.on_pt,
+                &state.bases[active_elec],
+                &state.surfaces_shared.grid_posits_charge,
                 state.grid_n_charge,
             );
 

@@ -4,6 +4,7 @@
 use std::{collections::HashMap, f64::consts::FRAC_1_SQRT_2};
 
 use crate::{
+    basis_wfs::Basis,
     complex_nums::Cplx,
     num_diff,
     types::{new_data, Arr3d, Arr3dReal},
@@ -11,6 +12,7 @@ use crate::{
     wf_ops::{PsiWDiffs, Q_ELEC},
 };
 
+use crate::types::Arr3dVec;
 use lin_alg2::f64::Vec3;
 
 /// This struct helps keep syntax more readable
@@ -369,7 +371,7 @@ impl WaveFunctionMultiElec {
 pub(crate) fn update_charge_density_fm_psi(
     charge_density: &mut Arr3dReal,
     bases: &[Basis],
-    grid_n: usize,
+    grid_posits_charge: &Arr3dVec,
     grid_n_charge: usize,
 ) {
     println!("Creating electron charge for the active e- ...");
@@ -390,7 +392,14 @@ pub(crate) fn update_charge_density_fm_psi(
     for i in 0..grid_n_charge {
         for j in 0..grid_n_charge {
             for k in 0..grid_n_charge {
-                let mag = psi[i][j][k].abs_sq();
+                let posit_sample = grid_posits[i][j][k];
+
+                let mut psi = Cplx::new_zero();
+                for basis in bases {
+                    psi += basis.value(posit_sample) * basis.weight();
+                }
+
+                let mag = psi.abs_sq();
                 psi_sq_size += mag;
                 charge_density[i][j][k] = mag * c;
             }
