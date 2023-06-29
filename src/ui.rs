@@ -273,7 +273,7 @@ fn basis_fn_mixer(
                                 b.alpha = entry.parse().unwrap_or(1.);
                             }
                         } // Basis::Sto(_b) => (),
-                        Basis::Sto2(b) => {
+                        Basis::Sto(b) => {
                             // ui.heading("c:");
                             // let mut entry = b.c.to_string(); // angle
                             // let response =
@@ -380,8 +380,8 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
         // // if ui.add(egui::Button::new("Create e- charge")).clicked() {
         //     elec_elec::update_charge_density_fm_psi(
         //         &mut state.charges_electron[active_elec],
-        //         &state.bases[active_elec],
-        //         &state.surfaces_shared.grid_posits_charge,
+        //         &state.bases_unweighted_charge,
+        //         &weights,
         //         state.grid_n_charge,
         //     );
         //
@@ -398,10 +398,16 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             .add(egui::Button::new("Create V from this elec"))
             .clicked()
         {
+            // todo: Better appraoch?
+            let mut weights = Vec::new();
+            for basis in &state.bases[active_elec] {
+                weights.push(basis.weight());
+            }
+
             elec_elec::update_charge_density_fm_psi(
                 &mut state.charges_electron[active_elec],
-                &state.bases[active_elec],
-                &state.surfaces_shared.grid_posits_charge,
+                &state.bases_evaluated_charge[active_elec],
+                &weights,
                 state.grid_n_charge,
             );
 
@@ -420,6 +426,7 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
                 &mut state.V_from_elecs[active_elec],
                 &state.charges_electron[active_elec],
                 &state.surfaces_shared.grid_posits,
+                &state.surfaces_shared.grid_posits_charge,
                 state.grid_n,
                 state.grid_n_charge,
             );
@@ -488,11 +495,13 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             &state.charges_fixed,
             &mut state.bases[active_elec],
             &mut state.bases_visible[active_elec],
-            &mut state.bases_unweighted[active_elec],
+            &mut state.bases_evaluated[active_elec],
+            &mut state.bases_evaluated_charge[active_elec],
             &state.surfaces_shared,
             &mut state.surfaces_per_elec[active_elec],
             state.max_basis_n,
             state.grid_n,
+            state.grid_n_charge,
         );
 
         *updated_meshes = true;
@@ -522,7 +531,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         // ui.heading("Show surfaces:");
 
         let mut updated_fixed_charges = false;
-        let mut updated_unweighted_basis_wfs = false;
+        let mut updated_evaluated_wfs = false;
         let mut updated_basis_weights = false;
         let mut updated_meshes = false;
 
@@ -539,7 +548,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 let (
                     charges_electron,
                     V_from_elecs,
-                    bases_unweighted,
+                    bases_evaluated,
+                    bases_evaluated_charge,
                     surfaces_shared,
                     surfaces_per_elec,
                 ) = crate::init_from_grid(
@@ -555,7 +565,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.charges_electron = charges_electron;
                 state.V_from_elecs = V_from_elecs;
-                state.bases_unweighted = bases_unweighted;
+                state.bases_evaluated = bases_evaluated;
+                state.bases_evaluated_charge = bases_evaluated_charge;
                 state.surfaces_shared = surfaces_shared;
                 state.surfaces_per_elec = surfaces_per_elec;
 
@@ -568,7 +579,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     );
                 }
 
-                updated_unweighted_basis_wfs = true;
+                updated_evaluated_wfs = true;
                 updated_meshes = true;
             }
 
@@ -688,7 +699,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // state.h_grid_sq = state.h_grid.powi(2);
 
                     updated_basis_weights = true;
-                    updated_unweighted_basis_wfs = true;
+                    updated_evaluated_wfs = true;
                     updated_fixed_charges = true; // Seems to be required.
                     updated_meshes = true;
                 }
@@ -772,7 +783,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 charge_editor(
                     &mut state.charges_fixed,
                     &mut state.bases[active_elec],
-                    &mut updated_unweighted_basis_wfs,
+                    &mut updated_evaluated_wfs,
                     &mut updated_basis_weights,
                     &mut updated_fixed_charges,
                     &mut engine_updates.entities,
@@ -786,7 +797,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 basis_fn_mixer(
                     state,
                     &mut updated_basis_weights,
-                    &mut updated_unweighted_basis_wfs,
+                    &mut updated_evaluated_wfs,
                     ui,
                     active_elec,
                 );
@@ -836,11 +847,17 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // }
                 }
 
-                if updated_unweighted_basis_wfs {
-                    state.bases_unweighted[active_elec] = wf_ops::BasisWfsUnweighted::new(
+                if updated_evaluated_wfs {
+                    state.bases_evaluated[active_elec] = wf_ops::BasesEvaluated::new(
                         &state.bases[active_elec],
                         &state.surfaces_shared.grid_posits,
                         state.grid_n,
+                    );
+
+                    state.bases_evaluated_charge[active_elec] = wf_ops::arr_from_bases(
+                        &state.bases[active_elec],
+                        &state.surfaces_shared.grid_posits_charge,
+                        state.grid_n_charge,
                     );
 
                     updated_meshes = true;
@@ -856,9 +873,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // Set up our basis-function based trial wave function.
                     wf_ops::update_wf_fm_bases(
                         &state.bases[active_elec],
-                        &state.bases_unweighted[active_elec],
+                        &state.bases_evaluated[active_elec],
                         &mut state.surfaces_per_elec[active_elec],
-                        // &mut state.surfaces_shared.grid_posits,
                         state.grid_n,
                         None,
                     );

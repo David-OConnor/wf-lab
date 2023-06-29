@@ -38,7 +38,7 @@ const PI_SQRT_INV: f64 = 0.5641895835477563;
 pub enum Basis {
     H(HOrbital),
     Sto1(Sto1),
-    Sto2(Sto2),
+    Sto(Sto),
 }
 
 impl Basis {
@@ -48,7 +48,7 @@ impl Basis {
             // Self::Sto(v) => v.posit,
             Self::H(v) => v.posit,
             Self::Sto1(v) => v.posit,
-            Self::Sto2(v) => v.posit,
+            Self::Sto(v) => v.posit,
         }
     }
 
@@ -57,7 +57,7 @@ impl Basis {
             // Self::Sto(v) => &mut v.posit,
             Self::H(v) => &mut v.posit,
             Self::Sto1(v) => &mut v.posit,
-            Self::Sto2(v) => &mut v.posit,
+            Self::Sto(v) => &mut v.posit,
         }
     }
 
@@ -66,7 +66,7 @@ impl Basis {
             // Self::Sto(v) => v.n,
             Self::H(v) => v.n,
             Self::Sto1(v) => unimplemented!(),
-            Self::Sto2(v) => unimplemented!(),
+            Self::Sto(v) => unimplemented!(),
         }
     }
 
@@ -75,7 +75,7 @@ impl Basis {
             // Self::Sto(v) => &mut v.n,
             Self::H(v) => &mut v.n,
             Self::Sto1(v) => unimplemented!(),
-            Self::Sto2(v) => unimplemented!(),
+            Self::Sto(v) => unimplemented!(),
         }
     }
 
@@ -84,7 +84,7 @@ impl Basis {
             // Self::Sto(v) => v.harmonic.l,
             Self::H(v) => v.harmonic.l,
             Self::Sto1(v) => unimplemented!(),
-            Self::Sto2(v) => unimplemented!(),
+            Self::Sto(v) => unimplemented!(),
         }
     }
 
@@ -93,7 +93,7 @@ impl Basis {
             // Self::Sto(v) => &mut v.harmonic.l,
             Self::H(v) => &mut v.harmonic.l,
             Self::Sto1(v) => unimplemented!(),
-            Self::Sto2(v) => unimplemented!(),
+            Self::Sto(v) => unimplemented!(),
         }
     }
 
@@ -102,7 +102,7 @@ impl Basis {
             // Self::Sto(v) => v.harmonic.m,
             Self::H(v) => v.harmonic.m,
             Self::Sto1(v) => unimplemented!(),
-            Self::Sto2(v) => unimplemented!(),
+            Self::Sto(v) => unimplemented!(),
         }
     }
 
@@ -111,7 +111,7 @@ impl Basis {
             // Self::Sto(v) => &mut v.harmonic.m,
             Self::H(v) => &mut v.harmonic.m,
             Self::Sto1(v) => unimplemented!(),
-            Self::Sto2(v) => unimplemented!(),
+            Self::Sto(v) => unimplemented!(),
         }
     }
 
@@ -120,7 +120,7 @@ impl Basis {
             // Self::Sto(v) => &v.harmonic,
             Self::H(v) => &v.harmonic,
             Self::Sto1(v) => &v.harmonic,
-            Self::Sto2(v) => &v.harmonic,
+            Self::Sto(v) => &v.harmonic,
         }
     }
 
@@ -129,7 +129,7 @@ impl Basis {
             // Self::Sto(v) => &mut v.harmonic,
             Self::H(v) => &mut v.harmonic,
             Self::Sto1(v) => &mut v.harmonic,
-            Self::Sto2(v) => &mut v.harmonic,
+            Self::Sto(v) => &mut v.harmonic,
         }
     }
 
@@ -138,7 +138,7 @@ impl Basis {
             // Self::Sto(v) => v.weight,
             Self::H(v) => v.weight,
             Self::Sto1(v) => v.weight,
-            Self::Sto2(v) => v.weight,
+            Self::Sto(v) => v.weight,
         }
     }
 
@@ -147,7 +147,7 @@ impl Basis {
             // Self::Sto(v) => &mut v.weight,
             Self::H(v) => &mut v.weight,
             Self::Sto1(v) => &mut v.weight,
-            Self::Sto2(v) => &mut v.weight,
+            Self::Sto(v) => &mut v.weight,
         }
     }
 
@@ -156,7 +156,7 @@ impl Basis {
             // Self::Sto(v) => v.value(posit_sample),
             Self::H(v) => v.value(posit_sample),
             Self::Sto1(v) => v.value(posit_sample),
-            Self::Sto2(v) => v.value(posit_sample),
+            Self::Sto(v) => v.value(posit_sample),
         }
     }
 
@@ -165,7 +165,7 @@ impl Basis {
             // Self::Sto(v) => v.charge_id,
             Self::H(v) => v.charge_id,
             Self::Sto1(v) => v.charge_id,
-            Self::Sto2(v) => v.charge_id,
+            Self::Sto(v) => v.charge_id,
         }
     }
 
@@ -174,7 +174,7 @@ impl Basis {
             // Self::Sto(v) => &mut v.charge_id,
             Self::H(v) => &mut v.charge_id,
             Self::Sto1(v) => &mut v.charge_id,
-            Self::Sto2(v) => &mut v.charge_id,
+            Self::Sto(v) => &mut v.charge_id,
         }
     }
 
@@ -183,7 +183,7 @@ impl Basis {
             // Self::Sto(_) => "STO",
             Self::H(_) => "H",
             Self::Sto1(_) => "SO1",
-            Self::Sto2(_) => "SO2",
+            Self::Sto(_) => "SO2",
         }
         .to_owned()
     }
@@ -350,24 +350,35 @@ impl Sto1 {
 
 /// See Sebens: Electric Charge Density, equation 24
 #[derive(Clone, Debug)]
-pub struct Sto2 {
+pub struct Sto {
     pub posit: Vec3,
+    pub n: u16,
     pub xi: f64,
     pub weight: f64,
     pub charge_id: usize,
     pub harmonic: SphericalHarmonic,
 }
 
-impl Sto2 {
+impl Sto {
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
-        Cplx::from_real(
+        // todo: Cross-check this with Horbital::radial; this is perhaps a superset of it.
+
+        // This is the form as described on Wikipedia
+        // todo: What is up with the (xi/a0).powf(1.5) term?? Not part of the Wikipedia def.
+        let N = PI_SQRT_INV * self.xi.powf(1.5);
+
+        let radial = Cplx::from_real(
             // PI_SQRT_INV * (self.xi / A_0).powf(1.5) * (-self.xi * r / A_0).exp(),
             // Shortcut as long as A_0 = 1
-            PI_SQRT_INV * self.xi.powf(1.5) * (-self.xi * r).exp(),
-        )
+            N * r.powi((self.n - 1).into()) * (-self.xi * r).exp(),
+        );
+
+        // todo: Harmonic, and more general normalizing constant.
+
+        radial
     }
 }
 

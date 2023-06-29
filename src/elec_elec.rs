@@ -9,7 +9,7 @@ use crate::{
     num_diff,
     types::{new_data, Arr3d, Arr3dReal},
     util,
-    wf_ops::{PsiWDiffs, Q_ELEC},
+    wf_ops::{BasesEvaluated, PsiWDiffs, Q_ELEC},
 };
 
 use crate::types::Arr3dVec;
@@ -370,8 +370,8 @@ impl WaveFunctionMultiElec {
 /// to avoid unecessary allocations.
 pub(crate) fn update_charge_density_fm_psi(
     charge_density: &mut Arr3dReal,
-    bases: &[Basis],
-    grid_posits_charge: &Arr3dVec,
+    bases_unweighted_charge: &[Arr3d],
+    weights: &[f64],
     grid_n_charge: usize,
 ) {
     println!("Creating electron charge for the active e- ...");
@@ -392,11 +392,9 @@ pub(crate) fn update_charge_density_fm_psi(
     for i in 0..grid_n_charge {
         for j in 0..grid_n_charge {
             for k in 0..grid_n_charge {
-                let posit_sample = grid_posits[i][j][k];
-
                 let mut psi = Cplx::new_zero();
-                for basis in bases {
-                    psi += basis.value(posit_sample) * basis.weight();
+                for (i_basis, basis_val) in bases_unweighted_charge.iter().enumerate() {
+                    psi += basis_val[i][j][k] * weights[i_basis];
                 }
 
                 let mag = psi.abs_sq();

@@ -39,6 +39,7 @@ mod ui;
 mod util;
 mod wf_ops;
 
+use crate::types::Arr3d;
 use basis_wfs::Basis;
 use types::{Arr3dReal, SurfacesPerElec, SurfacesShared};
 use wf_lab::types::new_data_real;
@@ -46,9 +47,9 @@ use wf_ops::Q_PROT;
 
 const NUM_SURFACES: usize = 10;
 
-const SPACING_FACTOR_DEFAULT: f64 = 1.;
+const SPACING_FACTOR_DEFAULT: f64 = 1.5;
 const GRID_N_DEFAULT: usize = 16;
-const GRID_N_CHARGE_DEFAULT: usize = 30;
+const GRID_N_CHARGE_DEFAULT: usize = 28;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -81,7 +82,11 @@ pub struct State {
     /// Basis wave functions. Perhaps faster to cache these (at the cost of more memory use, rather than
     /// compute their value each time we change weights...) Per-electron.
     /// todo: This should probably be in one of the surfaces.
-    pub bases_unweighted: Vec<wf_ops::BasisWfsUnweighted>,
+    pub bases_evaluated: Vec<wf_ops::BasesEvaluated>,
+    /// Similar to `bases_evaluated`, but on the charge grid. We don't need diffs for this.
+    /// Outer is per-electron. Inner is per-basis
+    /// todo: Do we want/need per-electron here?
+    pub bases_evaluated_charge: Vec<Vec<Arr3d>>,
     /// Used to toggle precense of a bases, effectively setting its weight ot 0 without losing the stored
     /// weight value. Per-electron.
     pub bases_visible: Vec<Vec<bool>>,
@@ -182,7 +187,8 @@ pub fn init_from_grid(
 ) -> (
     Vec<Arr3dReal>,
     Vec<Arr3dReal>,
-    Vec<wf_ops::BasisWfsUnweighted>,
+    Vec<wf_ops::BasesEvaluated>,
+    Vec<Vec<Arr3d>>,
     SurfacesShared,
     Vec<SurfacesPerElec>,
     // Vec<f64>,
@@ -193,8 +199,14 @@ pub fn init_from_grid(
 
     let mut surfaces_per_elec = vec![sfcs_one_elec.clone(), sfcs_one_elec];
 
-    let mut surfaces_shared =
-        SurfacesShared::new(grid_min, grid_max, spacing_factor, grid_n, num_electrons);
+    let mut surfaces_shared = SurfacesShared::new(
+        grid_min,
+        grid_max,
+        spacing_factor,
+        grid_n,
+        grid_n_charge,
+        num_electrons,
+    );
     // surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es, grid_n);
 
     wf_ops::update_grid_posits(
@@ -203,6 +215,14 @@ pub fn init_from_grid(
         grid_max,
         spacing_factor,
         grid_n,
+    );
+
+    wf_ops::update_grid_posits(
+        &mut surfaces_shared.grid_posits_charge,
+        grid_min,
+        grid_max,
+        1.,
+        grid_n_charge,
     );
 
     potential::update_V_from_nuclei(
@@ -222,28 +242,37 @@ pub fn init_from_grid(
         );
     }
 
-    let basis_wfs_unweighted = wf_ops::BasisWfsUnweighted::new(
+    let bases_evaluated_one = wf_ops::BasesEvaluated::new(
         &bases[0], // todo: A bit of a kludge
         &surfaces_shared.grid_posits,
         grid_n,
     );
 
+    let bases_evaluated_charge_one = wf_ops::arr_from_bases(
+        &bases[0], // todo: A bit of a kludge
+        &surfaces_shared.grid_posits_charge,
+        grid_n_charge,
+    );
+
     // These must be initialized from wave functions later.
-    let mut bases_unweighted = Vec::new();
+    let mut bases_evaluated = Vec::new();
+    let mut bases_evaluated_charge = Vec::new();
     let mut charges_electron = Vec::new();
     let mut V_from_elecs = Vec::new();
     // let mut psi_pp_score = Vec::new();
 
+    // todo: YOu may not need the "bases_evaluated" per-elec.
     for i_elec in 0..num_electrons {
         charges_electron.push(new_data_real(grid_n_charge));
         V_from_elecs.push(arr_real.clone());
-        bases_unweighted.push(basis_wfs_unweighted.clone());
+        bases_evaluated.push(bases_evaluated_one.clone());
+        bases_evaluated_charge.push(bases_evaluated_charge_one.clone());
 
         // Set up our basis-function based trial wave function.
         wf_ops::update_wf_fm_bases(
             // todo: Handle the multi-electron case instead of hard-coding 0.
             &bases[0],
-            &bases_unweighted[i_elec],
+            &bases_evaluated[i_elec],
             &mut surfaces_per_elec[i_elec],
             // &surfaces_shared.grid_posits,
             grid_n,
@@ -262,7 +291,8 @@ pub fn init_from_grid(
     (
         charges_electron,
         V_from_elecs,
-        bases_unweighted,
+        bases_evaluated,
+        bases_evaluated_charge,
         surfaces_shared,
         surfaces_per_elec,
         // psi_pp_score,
@@ -324,18 +354,24 @@ fn main() {
     let grid_n = GRID_N_DEFAULT;
     let grid_n_charge = GRID_N_CHARGE_DEFAULT;
 
-    let (charges_electron, V_from_elecs, bases_unweighted, surfaces_shared, surfaces_per_elec) =
-        init_from_grid(
-            grid_min,
-            grid_max,
-            spacing_factor,
-            grid_n,
-            grid_n_charge,
-            // ui_active_elec,
-            &bases,
-            &charges_fixed,
-            num_elecs,
-        );
+    let (
+        charges_electron,
+        V_from_elecs,
+        bases_evaluated,
+        bases_evaluated_charge,
+        surfaces_shared,
+        surfaces_per_elec,
+    ) = init_from_grid(
+        grid_min,
+        grid_max,
+        spacing_factor,
+        grid_n,
+        grid_n_charge,
+        // ui_active_elec,
+        &bases,
+        &charges_fixed,
+        num_elecs,
+    );
 
     let surface_data = [
         SurfaceData::new("V", true),
@@ -355,7 +391,8 @@ fn main() {
         charges_electron,
         V_from_elecs,
         bases,
-        bases_unweighted,
+        bases_evaluated,
+        bases_evaluated_charge,
         bases_visible,
         surfaces_shared,
         surfaces_per_elec,

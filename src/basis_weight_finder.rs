@@ -5,7 +5,8 @@ use crate::{
     basis_wfs::Basis,
     eval,
     types::{SurfacesPerElec, SurfacesShared},
-    wf_ops::{self, BasisWfsUnweighted},
+    wf_ops::{self, BasesEvaluated},
+    Arr3d,
 };
 
 use lin_alg2::f64::Vec3;
@@ -17,15 +18,19 @@ pub fn find_weights(
     charges_fixed: &Vec<(Vec3, f64)>,
     bases: &mut Vec<Basis>,
     bases_visible: &mut Vec<bool>,
-    basis_wfs_unweighted: &mut BasisWfsUnweighted,
+    basis_wfs_unweighted: &mut BasesEvaluated,
+    basis_wfs_unweighted_charge: &mut Vec<Arr3d>,
     surfaces_shared: &SurfacesShared,
     surfaces_per_elec: &mut SurfacesPerElec,
     max_n: u16, // quantum number n
     grid_n: usize,
+    grid_n_charge: usize,
 ) {
     wf_ops::initialize_bases(charges_fixed, bases, bases_visible, max_n);
 
-    *basis_wfs_unweighted = BasisWfsUnweighted::new(bases, &surfaces_shared.grid_posits, grid_n);
+    *basis_wfs_unweighted = BasesEvaluated::new(bases, &surfaces_shared.grid_posits, grid_n);
+    *basis_wfs_unweighted_charge =
+        wf_ops::arr_from_bases(bases, &surfaces_shared.grid_posits_charge, grid_n_charge);
 
     // Infinitessimal weight change, used for assessing derivatives.
     const D_WEIGHT: f64 = 0.01;
@@ -177,7 +182,7 @@ pub fn score_weight_set(
     bases: &[Basis],
     surfaces_per_elec: &SurfacesPerElec,
     grid_n: usize,
-    basis_wfs_unweighted: &BasisWfsUnweighted,
+    basis_wfs_unweighted: &BasesEvaluated,
     weights: &[f64],
 ) -> f64 {
     let mut surfaces = surfaces_per_elec.clone();

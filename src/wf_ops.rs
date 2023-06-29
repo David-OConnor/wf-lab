@@ -24,7 +24,7 @@
 // todo potential.
 
 use crate::{
-    basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto1, Sto2},
+    basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto, Sto1},
     complex_nums::Cplx,
     eigen_fns, eval,
     num_diff::{self, H},
@@ -73,7 +73,7 @@ pub enum Spin {
 /// The resulting wave functions are normalized.
 pub fn mix_bases(
     bases: &[Basis],
-    basis_wfs: &BasisWfsUnweighted,
+    basis_wfs: &BasesEvaluated,
     psi: &mut PsiWDiffs,
     grid_n: usize,
     weights: Option<&[f64]>,
@@ -141,7 +141,7 @@ pub fn mix_bases(
 /// - Computes ψ'' calculated, and measured from the trial ψ
 pub fn update_wf_fm_bases(
     bases: &[Basis],
-    basis_wfs: &BasisWfsUnweighted,
+    basis_wfs: &BasesEvaluated,
     sfcs: &mut SurfacesPerElec,
     grid_n: usize,
     weights: Option<&[f64]>,
@@ -320,36 +320,41 @@ pub fn initialize_bases(
     // todo for now as a kludge to preserve weights, we copy the prev weights.
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
         // See Sebens, for weights under equation 24; this is for Helium.
-        bases.push(Basis::Sto2(Sto2 {
+        bases.push(Basis::Sto(Sto {
             posit: *nuc_posit,
+            n: 1,
             xi: 1.41714,
             weight: 0.76837,
             charge_id,
             harmonic: Default::default(),
         }));
-        bases.push(Basis::Sto2(Sto2 {
+        bases.push(Basis::Sto(Sto {
             posit: *nuc_posit,
+            n: 1,
             xi: 2.37682,
             weight: 0.22346,
             charge_id,
             harmonic: Default::default(),
         }));
-        bases.push(Basis::Sto2(Sto2 {
+        bases.push(Basis::Sto(Sto {
             posit: *nuc_posit,
+            n: 1,
             xi: 4.39628,
             weight: 0.04082,
             charge_id,
             harmonic: Default::default(),
         }));
-        bases.push(Basis::Sto2(Sto2 {
+        bases.push(Basis::Sto(Sto {
             posit: *nuc_posit,
+            n: 1,
             xi: 6.52699,
             weight: -0.00994,
             charge_id,
             harmonic: Default::default(),
         }));
-        bases.push(Basis::Sto2(Sto2 {
+        bases.push(Basis::Sto(Sto {
             posit: *nuc_posit,
+            n: 1,
             xi: 7.94252,
             weight: 0.00230,
             charge_id,
@@ -456,7 +461,7 @@ impl PsiWDiffs {
 /// a small amount along each axix, for calculating partial derivatives of psi''.
 /// The `Vec` index corresponds to basis index.
 #[derive(Clone)]
-pub struct BasisWfsUnweighted {
+pub struct BasesEvaluated {
     pub on_pt: Vec<Arr3d>,
     pub x_prev: Vec<Arr3d>,
     pub x_next: Vec<Arr3d>,
@@ -466,7 +471,7 @@ pub struct BasisWfsUnweighted {
     pub z_next: Vec<Arr3d>,
 }
 
-impl BasisWfsUnweighted {
+impl BasesEvaluated {
     /// Create unweighted basis wave functions. Run this whenever we add or remove basis fns,
     /// and when changing the grid. This evaluates the analytic basis functions at
     /// each grid point. Each basis will be normalized in this function.
@@ -575,4 +580,34 @@ impl BasisWfsUnweighted {
             z_next,
         }
     }
+}
+
+/// Similar to `BasisWfs::new` but without the diffs.
+pub fn arr_from_bases(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) -> Vec<Arr3d> {
+    let mut result = Vec::new();
+
+    for _ in 0..bases.len() {
+        result.push(new_data(grid_n));
+    }
+
+    for (basis_i, basis) in bases.iter().enumerate() {
+        let mut norm = 0.;
+
+        for i in 0..grid_n {
+            for j in 0..grid_n {
+                for k in 0..grid_n {
+                    let posit_sample = grid_posits[i][j][k];
+
+                    let val = basis.value(posit_sample);
+
+                    result[basis_i][i][j][k] = val;
+                    norm += val.abs_sq();
+                }
+            }
+        }
+
+        util::normalize_wf(&mut result[basis_i], norm, grid_n);
+    }
+
+    result
 }

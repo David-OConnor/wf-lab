@@ -110,6 +110,7 @@ pub(crate) fn create_V_from_an_elec(
     V_from_this_elec: &mut Arr3dReal,
     charge_this_elec: &Arr3dReal,
     grid_posits: &Arr3dVec,
+    grid_posits_charge: &Arr3dVec,
     grid_n: usize,
     grid_n_charge: usize,
 ) {
@@ -119,15 +120,15 @@ pub(crate) fn create_V_from_an_elec(
     // todo: Perhaps you could create an approximate analytic function of charge density over space,
     // todo then shoot rays or something out at evenly spaced angles from the sample pt??
 
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                let posit_sample = grid_posits[i][j][k];
+    for i_sample in 0..grid_n {
+        for j_sample in 0..grid_n {
+            for k_sample in 0..grid_n {
+                let posit_sample = grid_posits[i_sample][j_sample][k_sample];
 
                 // Iterate through this electron's (already computed) charge at every position in space,
                 // comparing it to this position.
 
-                V_from_this_elec[i][j][k] = 0.;
+                V_from_this_elec[i_sample][j_sample][k_sample] = 0.;
 
                 for i_charge in 0..grid_n_charge {
                     for j_charge in 0..grid_n_charge {
@@ -139,10 +140,10 @@ pub(crate) fn create_V_from_an_elec(
                             //     continue;
                             // }
 
-                            let posit_charge = grid_posits[i_charge][j_charge][k_charge];
+                            let posit_charge = grid_posits_charge[i_charge][j_charge][k_charge];
                             let charge = charge_this_elec[i_charge][j_charge][k_charge];
 
-                            V_from_this_elec[i][j][k] +=
+                            V_from_this_elec[i_sample][j_sample][k_sample] +=
                                 util::V_coulomb(posit_charge, posit_sample, charge);
                         }
                     }

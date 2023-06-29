@@ -90,7 +90,7 @@ pub fn psi_from_pt_charges(
     // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
     potential::update_V_from_nuclei(&mut V_shared, charges_fixed, &grid_posits, grid_n);
 
-    let bases_unweighted = wf_ops::BasisWfsUnweighted::new(bases, &grid_posits, grid_n);
+    let bases_unweighted = wf_ops::BasesEvaluated::new(bases, &grid_posits, grid_n);
 
     // Set up our basis-function based trial wave function.
     wf_ops::update_wf_fm_bases(&wfs, &bases_unweighted, &mut sfcs, grid_n, None);
