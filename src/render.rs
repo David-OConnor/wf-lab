@@ -22,7 +22,7 @@ type Color = (f32, f32, f32);
 const WINDOW_TITLE: &str = "ψ lab";
 const WINDOW_SIZE_X: f32 = 1_600.;
 const WINDOW_SIZE_Y: f32 = 1_200.;
-const RENDER_DIST: f32 = 100.;
+const RENDER_DIST: f32 = 200.;
 const BACKGROUND_COLOR: Color = (0.5, 0.5, 0.5);
 // const SIDE_PANEL_SIZE: f32 = 400.;
 
@@ -256,16 +256,16 @@ pub fn update_meshes(
             ));
         }
 
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(
-                grid_posits,
-                charges_electron,
-                z_i,
-                ELEC_CHARGE_SCALER,
-                grid_n,
-            ),
-            true,
-        ));
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh_real(
+        //         grid_posits,
+        //         charges_electron,
+        //         z_i,
+        //         ELEC_CHARGE_SCALER,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
     } else {
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh_real(
@@ -327,16 +327,16 @@ pub fn update_meshes(
             ));
         }
 
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(
-                grid_posits,
-                charges_electron,
-                z_i,
-                ELEC_CHARGE_SCALER,
-                grid_n,
-            ),
-            true,
-        ));
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh_real(
+        //         grid_posits,
+        //         charges_electron,
+        //         z_i,
+        //         ELEC_CHARGE_SCALER,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
     }
 
     meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 8, 8));
@@ -466,7 +466,7 @@ pub fn render(state: State) {
         &state.surfaces_shared.grid_posits,
         state.mag_phase,
         &state.charges_electron[active_elec_init],
-        state.grid_n,
+        state.grid_n_render,
         false,
     );
 

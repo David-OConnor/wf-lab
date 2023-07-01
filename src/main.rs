@@ -47,9 +47,9 @@ use wf_ops::Q_PROT;
 
 const NUM_SURFACES: usize = 10;
 
-const SPACING_FACTOR_DEFAULT: f64 = 1.5;
-const GRID_N_DEFAULT: usize = 16;
-const GRID_N_CHARGE_DEFAULT: usize = 28;
+const SPACING_FACTOR_DEFAULT: f64 = 1.7;
+const GRID_N_DEFAULT: usize = 6;
+const GRID_N_CHARGE_DEFAULT: usize = 30;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -96,17 +96,20 @@ pub struct State {
     /// from the Schrodinger equation. Per-electron.
     // pub psi_pp_score: Vec<f64>,
     pub surface_data: [SurfaceData; NUM_SURFACES],
-    pub grid_n: usize,
+    pub grid_n_render: usize,
     /// This charge grid is generally denser than the main grid. This allows more fidelity for
     /// modelling electron charge, without evaluating the wave function at too many points.
     pub grid_n_charge: usize,
-    pub grid_min: f64,
-    pub grid_max: f64,
+    pub grid_range_render: (f64, f64),
+    pub grid_range_charge: (f64, f64),
     /// 1.0 is an evenly-spaced grid. A higher value spreads out the grid; high values
     /// mean increased non-linearity, with higher spacing farther from the center.
     /// This only (currently) applies to the main grid, with a uniform grid set for
     /// charge density.
-    pub spacing_factor: f64,
+    pub sample_factor_render: f64,
+    /// These are the points we evaluate our psi'' score at, and where we generate net potential,
+    /// ie from electrons, at.
+    pub sample_points_eval: Vec<Vec3>,
     /// When visualizing a 2d wave function over X and Y, this is the fixed Z value rendered.
     /// We only display a slice, since we are viewing a 4d object as a 3d rendering.
     pub ui_z_displayed: f64,
@@ -147,7 +150,7 @@ fn choose_grid_limits(charges_fixed: &[(Vec3, f64)]) -> (f64, f64) {
     let grid_max = max_abs_val + RANGE_PAD;
 
     // todo: temp
-    let grid_max = 14.0;
+    let grid_max = 10.0;
 
     let grid_min = -grid_max;
 
@@ -176,8 +179,8 @@ impl SurfaceData {
 
 /// Run this whenever n changes. Ie, at init, or when n changes in the GUI.
 pub fn init_from_grid(
-    grid_min: f64,
-    grid_max: f64,
+    grid_range: (f64, f64),
+    grid_range_charge: (f64, f64),
     spacing_factor: f64,
     grid_n: usize,
     grid_n_charge: usize,
@@ -200,8 +203,8 @@ pub fn init_from_grid(
     let mut surfaces_per_elec = vec![sfcs_one_elec.clone(), sfcs_one_elec];
 
     let mut surfaces_shared = SurfacesShared::new(
-        grid_min,
-        grid_max,
+        grid_range,
+        grid_range_charge,
         spacing_factor,
         grid_n,
         grid_n_charge,
@@ -211,16 +214,14 @@ pub fn init_from_grid(
 
     wf_ops::update_grid_posits(
         &mut surfaces_shared.grid_posits,
-        grid_min,
-        grid_max,
+        grid_range,
         spacing_factor,
         grid_n,
     );
 
     wf_ops::update_grid_posits(
         &mut surfaces_shared.grid_posits_charge,
-        grid_min,
-        grid_max,
+        grid_range_charge,
         1.,
         grid_n_charge,
     );
@@ -281,11 +282,9 @@ pub fn init_from_grid(
 
         surfaces_per_elec[i_elec].psi_pp_score = eval::score_wf(
             &surfaces_per_elec[i_elec].psi_pp_calculated,
-            &surfaces_per_elec[i_elec].psi_pp_calculated,
+            &surfaces_per_elec[i_elec].psi_pp_measured,
             grid_n,
         );
-
-        // psi_pp_score.push(psi_pp_score_one);
     }
 
     (
@@ -295,7 +294,6 @@ pub fn init_from_grid(
         bases_evaluated_charge,
         surfaces_shared,
         surfaces_per_elec,
-        // psi_pp_score,
     )
 }
 
@@ -347,6 +345,12 @@ fn main() {
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
 
     let (grid_min, grid_max) = choose_grid_limits(&charges_fixed);
+
+    // todo next up: Figure out why you get incorrect answers if these 2 grids don't line up.
+    // todo: FOr now, you can continue with matching them if you wish.
+    let (grid_min_render, grid_max_render) = (-6., 6.);
+    let (grid_min_charge, grid_max_charge) = (-6., 6.);
+
     // let spacing_factor = 1.6;
     // Currently, must be one as long as used with elec-elec charge.
     let spacing_factor = SPACING_FACTOR_DEFAULT;
@@ -362,8 +366,8 @@ fn main() {
         surfaces_shared,
         surfaces_per_elec,
     ) = init_from_grid(
-        grid_min,
-        grid_max,
+        (grid_min_render, grid_max_render),
+        (grid_min_charge, grid_max_charge),
         spacing_factor,
         grid_n,
         grid_n_charge,
@@ -398,11 +402,11 @@ fn main() {
         surfaces_per_elec,
         nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],
         surface_data,
-        grid_n,
+        grid_n_render: grid_n,
         grid_n_charge,
-        grid_min,
-        grid_max,
-        spacing_factor,
+        grid_range_render: (grid_min_render, grid_max_render),
+        grid_range_charge: (grid_min_charge, grid_max_charge),
+        sample_factor_render: spacing_factor,
         ui_z_displayed: 0.,
         ui_active_elec: ActiveElec::PerElec(ui_active_elec),
         visual_rotation: 0.,

@@ -28,8 +28,8 @@ pub struct SurfacesShared {
 
 impl SurfacesShared {
     pub fn new(
-        grid_min: f64,
-        grid_max: f64,
+        grid_range: (f64, f64),
+        grid_range_charge: (f64, f64),
         spacing_factor: f64,
         n_grid: usize,
         n_grid_charge: usize,
@@ -39,14 +39,14 @@ impl SurfacesShared {
         let data_real = new_data_real(n_grid);
 
         let mut grid_posits = new_data_vec(n_grid);
-        wf_ops::update_grid_posits(&mut grid_posits, grid_min, grid_max, spacing_factor, n_grid);
+        wf_ops::update_grid_posits(&mut grid_posits, grid_range, spacing_factor, n_grid);
 
         let mut grid_posits_charge = new_data_vec(n_grid_charge);
+
         // spacing factor is always 1 for charge grid. (for now at least)
         wf_ops::update_grid_posits(
             &mut grid_posits_charge,
-            grid_min,
-            grid_max,
+            grid_range_charge,
             1.,
             n_grid_charge,
         );

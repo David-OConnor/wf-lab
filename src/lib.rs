@@ -52,7 +52,7 @@ fn create_trial_wfs(charges: &[(Vec3, f64)]) -> Vec<Basis> {
 // pub fn psi_from_V(V: &Arr3dReal, grid_bounds: (f64, f64)) -> Arr3d {
 pub fn psi_from_pt_charges(
     charges_fixed: &[(Vec3, f64)],
-    grid_bounds: &mut (f64, f64),
+    grid_range: &mut (f64, f64),
     spacing_factor: f64,
     bases: &[Basis],
 ) -> Arr3d {
@@ -66,13 +66,7 @@ pub fn psi_from_pt_charges(
 
     let mut grid_posits = types::new_data_vec(grid_n);
 
-    wf_ops::update_grid_posits(
-        &mut grid_posits,
-        grid_bounds.0,
-        grid_bounds.1,
-        spacing_factor,
-        grid_n,
-    );
+    wf_ops::update_grid_posits(&mut grid_posits, *grid_range, spacing_factor, grid_n);
 
     let wfs = create_trial_wfs(charges_fixed);
 

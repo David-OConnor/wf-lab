@@ -273,12 +273,11 @@ pub fn find_E(sfcs: &SurfacesPerElec, grid_n: usize) -> f64 {
 /// Update our grid positions. Run this when we change grid bounds, resolution, or spacing.
 pub fn update_grid_posits(
     grid_posits: &mut Arr3dVec,
-    grid_min: f64,
-    grid_max: f64,
+    grid_range: (f64, f64),
     spacing_factor: f64,
     n: usize,
 ) {
-    let grid_lin = util::linspace((grid_min, grid_max), n);
+    let grid_lin = util::linspace((grid_range.0, grid_range.1), n);
 
     // Set up a grid with values that increase in distance the farther we are from the center.
     let mut grid_1d = vec![0.; n];
