@@ -1,6 +1,7 @@
 use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
+    grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
     wf_ops::{self, PsiWDiffs, NUDGE_DEFAULT},
 };
 
@@ -39,12 +40,12 @@ impl SurfacesShared {
         let data_real = new_data_real(n_grid);
 
         let mut grid_posits = new_data_vec(n_grid);
-        wf_ops::update_grid_posits(&mut grid_posits, grid_range, spacing_factor, n_grid);
+        grid_setup::update_grid_posits(&mut grid_posits, grid_range, spacing_factor, n_grid);
 
         let mut grid_posits_charge = new_data_vec(n_grid_charge);
 
         // spacing factor is always 1 for charge grid. (for now at least)
-        wf_ops::update_grid_posits(
+        grid_setup::update_grid_posits(
             &mut grid_posits_charge,
             grid_range_charge,
             1.,
@@ -187,90 +188,6 @@ impl SurfacesPerElec {
             // psi_px_measured: data.clone(),
             // psi_py_measured: data.clone(),
             // psi_pz_measured: data.clone(),
-        }
-    }
-}
-
-// type Arr3d = Vec<Vec<Vec<f64>>>;
-pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
-
-pub type Arr3d = Vec<Vec<Vec<Cplx>>>;
-// pub type Arr3dBasis = Vec<Vec<Vec<SinExpBasisPt>>>;
-
-pub type Arr3dVec = Vec<Vec<Vec<Vec3>>>;
-
-/// Make a new 3D grid, as a nested Vec
-pub fn new_data(n: usize) -> Arr3d {
-    let mut z = Vec::new();
-    z.resize(n, Cplx::new_zero());
-    // z.resize(N, 0.);
-
-    let mut y = Vec::new();
-    y.resize(n, z);
-
-    let mut x = Vec::new();
-    x.resize(n, y);
-
-    x
-}
-
-/// Make a new 3D grid, as a nested Vec
-pub fn new_data_real(n: usize) -> Arr3dReal {
-    let mut z = Vec::new();
-    z.resize(n, 0.);
-
-    let mut y = Vec::new();
-    y.resize(n, z);
-
-    let mut x = Vec::new();
-    x.resize(n, y);
-
-    x
-}
-
-// pub fn new_data_basis(n: usize) -> Arr3dBasis {
-//     let mut z = Vec::new();
-//     z.resize(n, SinExpBasisPt::default());
-//
-//     let mut y = Vec::new();
-//     y.resize(n, z);
-//
-//     let mut x = Vec::new();
-//     x.resize(n, y);
-//
-//     x
-// }
-
-/// Make a new 3D grid of position vectors, as a nested Vec
-pub fn new_data_vec(n: usize) -> Arr3dVec {
-    let mut z = Vec::new();
-    z.resize(n, Vec3::new_zero());
-
-    let mut y = Vec::new();
-    y.resize(n, z);
-
-    let mut x = Vec::new();
-    x.resize(n, y);
-
-    x
-}
-
-// pub fn copy_array_real(dest: &mut Arr3dReal, source: &Arr3dReal, grid_n: usize) {
-//     for i in 0..grid_n {
-//         for j in 0..grid_n {
-//             for k in 0..grid_n {
-//                 dest[i][j][k] = source[i][j][k];
-//             }
-//         }
-//     }
-// }
-
-pub fn copy_array(dest: &mut Arr3d, source: &Arr3d, grid_n: usize) {
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                dest[i][j][k] = source[i][j][k];
-            }
         }
     }
 }

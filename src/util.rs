@@ -1,7 +1,4 @@
-use crate::{
-    types::{Arr3d, Arr3dReal},
-    wf_ops::K_C,
-};
+use crate::grid_setup::{Arr3d, Arr3dReal};
 
 use lin_alg2::f64::Vec3;
 
@@ -164,16 +161,6 @@ pub(crate) fn factorial(val: u16) -> u64 {
         12 => 479_001_600,
         _ => unimplemented!(),
     }
-}
-
-/// Single-point Coulomb potential, eg a hydrogen nuclei.
-pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
-    let diff = posit_sample - posit_charge;
-    let r = diff.magnitude();
-
-    // todo: Verification r > 0.?
-
-    K_C * charge / r
 }
 
 /// Calculate ψ* ψ

@@ -13,7 +13,8 @@ use lin_alg2::{
 };
 
 use crate::{
-    types::{new_data_real, Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec, SurfacesShared},
+    grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
+    types::{SurfacesPerElec, SurfacesShared},
     util, State, SurfaceData,
 };
 

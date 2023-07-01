@@ -5,8 +5,8 @@ use lin_alg2::f64::Vec3;
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
+    grid_setup::{Arr3d, Arr3dVec},
     interp,
-    types::{Arr3d, Arr3dVec},
 };
 
 // Used for calculating numerical psi''.

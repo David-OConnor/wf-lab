@@ -6,13 +6,11 @@ use std::{collections::HashMap, f64::consts::FRAC_1_SQRT_2};
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    num_diff,
-    types::{new_data, Arr3d, Arr3dReal},
-    util,
+    grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
+    num_diff, util,
     wf_ops::{BasesEvaluated, PsiWDiffs, Q_ELEC},
 };
 
-use crate::types::Arr3dVec;
 use lin_alg2::f64::Vec3;
 
 /// This struct helps keep syntax more readable

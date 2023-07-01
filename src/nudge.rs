@@ -4,8 +4,10 @@
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    eigen_fns, eval, num_diff, types,
-    types::{Arr3d, Arr3dVec, SurfacesPerElec},
+    eigen_fns, eval, grid_setup,
+    grid_setup::{Arr3d, Arr3dVec},
+    num_diff,
+    types::SurfacesPerElec,
     wf_ops,
 };
 
@@ -59,11 +61,11 @@ pub fn nudge_wf(
     let mut current_score = eval::score_wf(&sfcs.psi_pp_calculated, &sfcs.psi_pp_measured, grid_n);
 
     // We use diff map so we can lowpass the entire map before applying corrections.
-    let mut diff_map = types::new_data(grid_n);
+    let mut diff_map = grid_setup::new_data(grid_n);
 
     // `correction_fm_bases` is the difference between our nudged wave function, and what it
     // was from bases alone, without nudging.;
-    let mut correction_fm_bases = types::new_data(grid_n);
+    let mut correction_fm_bases = grid_setup::new_data(grid_n);
 
     for _ in 0..num_nudges {
         // let mut diff_pre_smooth = new_data(N); // todo experimenting

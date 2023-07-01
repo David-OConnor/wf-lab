@@ -1,8 +1,9 @@
 //! Contains code related to creating and combining potentials.
 
 use crate::{
-    types::{Arr3dReal, Arr3dVec},
+    grid_setup::{Arr3dReal, Arr3dVec},
     util,
+    wf_ops::K_C,
 };
 
 use lin_alg2::f64::Vec3;
@@ -26,7 +27,7 @@ pub fn update_V_from_nuclei(
                 V_nuclei[i][j][k] = 0.;
 
                 for (posit_charge, charge_amt) in charges_nuc.iter() {
-                    V_nuclei[i][j][k] += util::V_coulomb(*posit_charge, posit_sample, *charge_amt);
+                    V_nuclei[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
                 }
             }
         }
@@ -44,7 +45,7 @@ pub fn update_V_combined(
 ) {
     // todo: QC this.
     // We combine electron Vs initially; this is required to prevent numerical errors. (??)
-    // let mut V_from_elecs = types::new_data_real(grid_n);
+    // let mut V_from_elecs = grid_setup::new_data_real(grid_n);
     // for i in 0..grid_n {
     //     for j in 0..grid_n {
     //         for k in 0..grid_n {
@@ -144,7 +145,7 @@ pub(crate) fn create_V_from_an_elec(
                             let charge = charge_this_elec[i_charge][j_charge][k_charge];
 
                             V_from_this_elec[i_sample][j_sample][k_sample] +=
-                                util::V_coulomb(posit_charge, posit_sample, charge);
+                                V_coulomb(posit_charge, posit_sample, charge);
                         }
                     }
                 }
@@ -153,4 +154,14 @@ pub(crate) fn create_V_from_an_elec(
     }
 
     println!("V creation complete");
+}
+
+/// Single-point Coulomb potential, eg a hydrogen nuclei.
+pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
+    let diff = posit_sample - posit_charge;
+    let r = diff.magnitude();
+
+    // todo: Verification r > 0.?
+
+    K_C * charge / r
 }

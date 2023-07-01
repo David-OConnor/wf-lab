@@ -13,6 +13,7 @@ pub mod complex_nums;
 mod eigen_fns;
 pub mod elec_elec;
 pub mod eval;
+mod grid_setup;
 pub mod interp;
 pub mod nudge;
 mod num_diff;
@@ -22,7 +23,8 @@ pub mod util;
 pub mod wf_ops;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic};
-use types::{Arr3d, SurfacesPerElec};
+use grid_setup::{Arr3d, Arr3dVec};
+use types::SurfacesPerElec;
 
 use lin_alg2::f64::Vec3;
 
@@ -64,15 +66,15 @@ pub fn psi_from_pt_charges(
 
     let mut sfcs = SurfacesPerElec::new(grid_n);
 
-    let mut grid_posits = types::new_data_vec(grid_n);
+    let mut grid_posits = grid_setup::new_data_vec(grid_n);
 
-    wf_ops::update_grid_posits(&mut grid_posits, *grid_range, spacing_factor, grid_n);
+    grid_setup::update_grid_posits(&mut grid_posits, *grid_range, spacing_factor, grid_n);
 
     let wfs = create_trial_wfs(charges_fixed);
 
     // todo: grids that aren't centered at 0? Non-cube grids?
 
-    let arr_real = types::new_data_real(grid_n);
+    let arr_real = grid_setup::new_data_real(grid_n);
 
     let mut V_shared = arr_real.clone();
 

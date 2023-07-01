@@ -29,6 +29,7 @@ mod complex_nums;
 mod eigen_fns;
 mod elec_elec;
 mod eval;
+mod grid_setup;
 mod interp;
 mod nudge;
 mod num_diff;
@@ -39,11 +40,12 @@ mod ui;
 mod util;
 mod wf_ops;
 
-use crate::types::Arr3d;
-use basis_wfs::Basis;
-use types::{Arr3dReal, SurfacesPerElec, SurfacesShared};
-use wf_lab::types::new_data_real;
-use wf_ops::Q_PROT;
+use crate::{
+    basis_wfs::Basis,
+    grid_setup::{Arr3d, Arr3dReal},
+    types::{SurfacesPerElec, SurfacesShared},
+    wf_ops::Q_PROT,
+};
 
 const NUM_SURFACES: usize = 10;
 
@@ -128,35 +130,6 @@ pub struct State {
     pub num_elecs: usize,
 }
 
-/// Set up the grid so that it smartly encompasses the charges, letting the WF go to 0
-/// towards the edges
-fn choose_grid_limits(charges_fixed: &[(Vec3, f64)]) -> (f64, f64) {
-    let mut max_abs_val = 0.;
-    for (posit, _) in charges_fixed {
-        if posit.x.abs() > max_abs_val {
-            max_abs_val = posit.x.abs();
-        }
-        if posit.y.abs() > max_abs_val {
-            max_abs_val = posit.y.abs();
-        }
-        if posit.z.abs() > max_abs_val {
-            max_abs_val = posit.z.abs();
-        }
-    }
-
-    const RANGE_PAD: f64 = 5.8;
-    // const RANGE_PAD: f64 = 14.;
-
-    let grid_max = max_abs_val + RANGE_PAD;
-
-    // todo: temp
-    let grid_max = 10.0;
-
-    let grid_min = -grid_max;
-
-    (grid_min, grid_max)
-}
-
 // /// Interpolate a value from a discrete wave function, assuming (what about curvature)
 // fn interp_wf(psi: &Arr3d, posit_sample: Vec3) -> Cplx {
 //     // Maybe a polynomial?
@@ -196,7 +169,7 @@ pub fn init_from_grid(
     Vec<SurfacesPerElec>,
     // Vec<f64>,
 ) {
-    let arr_real = new_data_real(grid_n);
+    let arr_real = grid_setup::new_data_real(grid_n);
 
     let sfcs_one_elec = SurfacesPerElec::new(grid_n);
 
@@ -212,14 +185,14 @@ pub fn init_from_grid(
     );
     // surfaces_shared.combine_psi_parts(&surfaces_per_elec, &Es, grid_n);
 
-    wf_ops::update_grid_posits(
+    grid_setup::update_grid_posits(
         &mut surfaces_shared.grid_posits,
         grid_range,
         spacing_factor,
         grid_n,
     );
 
-    wf_ops::update_grid_posits(
+    grid_setup::update_grid_posits(
         &mut surfaces_shared.grid_posits_charge,
         grid_range_charge,
         1.,
@@ -264,7 +237,7 @@ pub fn init_from_grid(
 
     // todo: YOu may not need the "bases_evaluated" per-elec.
     for i_elec in 0..num_electrons {
-        charges_electron.push(new_data_real(grid_n_charge));
+        charges_electron.push(grid_setup::new_data_real(grid_n_charge));
         V_from_elecs.push(arr_real.clone());
         bases_evaluated.push(bases_evaluated_one.clone());
         bases_evaluated_charge.push(bases_evaluated_charge_one.clone());
@@ -301,7 +274,7 @@ fn main() {
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
-    let charges_fixed = vec![
+    let nuclei = vec![
         (posit_charge_1, Q_PROT * 2.), // helium
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
@@ -327,7 +300,7 @@ fn main() {
     }
 
     wf_ops::initialize_bases(
-        &charges_fixed,
+        &nuclei,
         &mut bases[ui_active_elec],
         &mut bases_visible[ui_active_elec],
         max_basis_n,
@@ -344,12 +317,14 @@ fn main() {
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
 
-    let (grid_min, grid_max) = choose_grid_limits(&charges_fixed);
+    let (grid_min, grid_max) = grid_setup::choose_grid_limits(&nuclei);
 
     // todo next up: Figure out why you get incorrect answers if these 2 grids don't line up.
     // todo: FOr now, you can continue with matching them if you wish.
     let (grid_min_render, grid_max_render) = (-6., 6.);
     let (grid_min_charge, grid_max_charge) = (-6., 6.);
+
+    let sample_points_eval = grid_setup::find_sample_points(&nuclei);
 
     // let spacing_factor = 1.6;
     // Currently, must be one as long as used with elec-elec charge.
@@ -373,7 +348,7 @@ fn main() {
         grid_n_charge,
         // ui_active_elec,
         &bases,
-        &charges_fixed,
+        &nuclei,
         num_elecs,
     );
 
@@ -391,7 +366,7 @@ fn main() {
     ];
 
     let state = State {
-        charges_fixed,
+        charges_fixed: nuclei,
         charges_electron,
         V_from_elecs,
         bases,
@@ -406,6 +381,7 @@ fn main() {
         grid_n_charge,
         grid_range_render: (grid_min_render, grid_max_render),
         grid_range_charge: (grid_min_charge, grid_max_charge),
+        sample_points_eval,
         sample_factor_render: spacing_factor,
         ui_z_displayed: 0.,
         ui_active_elec: ActiveElec::PerElec(ui_active_elec),

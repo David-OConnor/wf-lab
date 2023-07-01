@@ -1,6 +1,6 @@
 //! This module contains code related to evlauting a WF's accuracy.
 
-use crate::{complex_nums::Cplx, types::Arr3d};
+use crate::{complex_nums::Cplx, grid_setup::Arr3d};
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
 /// This requires normalizing the wave functions we're comparing.

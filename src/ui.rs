@@ -11,9 +11,9 @@ use crate::{
     eigen_fns,
     elec_elec::PositIndex,
     elec_elec::{self, WaveFunctionMultiElec},
-    eval, potential, render,
-    types::{Arr3d, Arr3dReal},
-    wf_ops, ActiveElec, State,
+    eval,
+    grid_setup::{self, Arr3d, Arr3dReal},
+    potential, render, wf_ops, ActiveElec, State,
 };
 
 const UI_WIDTH: f32 = 300.;
@@ -83,7 +83,7 @@ fn _E_slider(
 
             *E
         })
-            .text("E"),
+        .text("E"),
     );
 }
 
@@ -198,7 +198,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                            state.charges_fixed.iter().enumerate()
+                                state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -350,7 +350,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                        .text("Wt"),
+                    .text("Wt"),
                 );
             }
         });
@@ -389,7 +389,7 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
         // }
 
         // if ui.add(egui::Button::new("Empty e- charge")).clicked() {
-        //     state.charges_electron[active_elec] = types::new_data_real(state.grid_n);
+        //     state.charges_electron[active_elec] = grid_setup::new_data_real(state.grid_n);
         //
         //     *updated_meshes = true;
         // }
@@ -672,15 +672,18 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.add(
             // -0.1 is a kludge.
-            egui::Slider::from_get_set(state.grid_range_render.0..=state.grid_range_render.1 - 0.1, |v| {
-                if let Some(v_) = v {
-                    state.ui_z_displayed = v_;
-                    updated_meshes = true;
-                }
+            egui::Slider::from_get_set(
+                state.grid_range_render.0..=state.grid_range_render.1 - 0.1,
+                |v| {
+                    if let Some(v_) = v {
+                        state.ui_z_displayed = v_;
+                        updated_meshes = true;
+                    }
 
-                state.ui_z_displayed
-            })
-                .text("Z slice"),
+                    state.ui_z_displayed
+                },
+            )
+            .text("Z slice"),
         );
 
         ui.add(
@@ -692,7 +695,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-                .text("Visual rotation"),
+            .text("Visual rotation"),
         );
 
         ui.add(
@@ -711,7 +714,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_range_render.1
             })
-                .text("Grid range"),
+            .text("Grid range"),
         );
 
         match state.ui_active_elec {
@@ -765,7 +768,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_per_elec[active_elec].E
                     })
-                        .text("E"),
+                    .text("E"),
                 );
 
                 ui.add(
@@ -777,8 +780,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.nudge_amount[active_elec]
                     })
-                        .text("Nudge amount")
-                        .logarithmic(true),
+                    .text("Nudge amount")
+                    .logarithmic(true),
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -841,15 +844,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         );
                     }
 
-                    // todo: Come back to if having trouble.
-                    // Replace indiv sfc charges with this. A bit of a kludge, perhaps
-                    // for sfc in &mut state.surfaces_per_elec {
-                    //     types::copy_array_real(
-                    //         &mut state.V_from_elecs[elec_i],
-                    //         &state.surfaces_shared.V_from_nuclei,
-                    //         state.grid_n,
-                    //     );
-                    // }
+                    state.sample_points_eval = grid_setup::find_sample_points(&state.charges_fixed);
                 }
 
                 if updated_evaluated_wfs {
@@ -935,7 +930,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                        .text("E"),
+                    .text("E"),
                 );
 
                 // Multiply wave functions together, and stores in Shared surfaces.

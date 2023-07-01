@@ -26,14 +26,14 @@
 use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto, Sto1},
     complex_nums::Cplx,
-    eigen_fns, eval,
+    eigen_fns, eval, grid_setup,
+    grid_setup::{Arr3d, Arr3dReal, Arr3dVec},
     num_diff::{self, H},
-    types,
-    types::{Arr3d, Arr3dReal, Arr3dVec, SurfacesPerElec},
+    types::SurfacesPerElec,
     util,
 };
 
-use crate::types::new_data;
+use crate::grid_setup::new_data;
 use lin_alg2::f64::{Quaternion, Vec3};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
@@ -231,7 +231,7 @@ pub fn find_E(sfcs: &SurfacesPerElec, grid_n: usize) -> f64 {
     let num_iters = 10;
 
     let mut psi_pp_calc = new_data(grid_n);
-    types::copy_array(&mut psi_pp_calc, &sfcs.psi_pp_calculated, grid_n);
+    grid_setup::copy_array(&mut psi_pp_calc, &sfcs.psi_pp_calculated, grid_n);
 
     for _ in 0..num_iters {
         let E_vals = util::linspace((E_min, E_max), vals_per_iter);
@@ -268,35 +268,6 @@ pub fn find_E(sfcs: &SurfacesPerElec, grid_n: usize) -> f64 {
     }
 
     result
-}
-
-/// Update our grid positions. Run this when we change grid bounds, resolution, or spacing.
-pub fn update_grid_posits(
-    grid_posits: &mut Arr3dVec,
-    grid_range: (f64, f64),
-    spacing_factor: f64,
-    n: usize,
-) {
-    let grid_lin = util::linspace((grid_range.0, grid_range.1), n);
-
-    // Set up a grid with values that increase in distance the farther we are from the center.
-    let mut grid_1d = vec![0.; n];
-
-    for i in 0..n {
-        let mut val = grid_lin[i].abs().powf(spacing_factor);
-        if grid_lin[i] < 0. {
-            val *= -1.; // square the magnitude only.
-        }
-        grid_1d[i] = val;
-    }
-
-    for (i, x) in grid_1d.iter().enumerate() {
-        for (j, y) in grid_1d.iter().enumerate() {
-            for (k, z) in grid_1d.iter().enumerate() {
-                grid_posits[i][j][k] = Vec3::new(*x, *y, *z);
-            }
-        }
-    }
 }
 
 /// [re]Create a set of basis functions, given fixed-charges representing nuclei.
