@@ -42,10 +42,10 @@ pub const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 /// This solves, analytically, the eigenvalue equation for the Hamiltonian operator.
 ///
 /// Hψ = Eψ. -ħ^2/2m * ψ'' + Vψ = Eψ. ψ'' = [(E - V) / (-ħ^2/2m)] ψ
-pub fn find_ψ_pp_calc(psi: &Arr3d, V: &Arr3dReal, E: f64, i: usize, j: usize, k: usize) -> Cplx {
+pub fn find_ψ_pp_calc(psi: Cplx, V: f64, E: f64) -> Cplx {
     // Note that V input is potential field; we get potential energy by multiplying it
     // by the charge being acted on (the electron)
-    psi[i][j][k] * (E - V[i][j][k] * Q_ELEC) * KE_COEFF_INV
+    psi * (E - V * Q_ELEC) * KE_COEFF_INV
 }
 
 /// Returns the *sum of psi'' from the 2 electrons*.

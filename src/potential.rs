@@ -107,7 +107,7 @@ pub(crate) fn update_V_acting_on_elec(
 /// Update the V associated with a single electron's charge.
 /// This must be run after the charge from this electron is created from the wave function square.
 /// We expect the loop over charge positions to be larger than the one over V positions.
-pub(crate) fn create_V_from_an_elec(
+pub(crate) fn _create_V_from_an_elec_grid(
     V_from_this_elec: &mut Arr3dReal,
     charge_this_elec: &Arr3dReal,
     grid_posits: &Arr3dVec,
@@ -148,6 +148,52 @@ pub(crate) fn create_V_from_an_elec(
                                 V_coulomb(posit_charge, posit_sample, charge);
                         }
                     }
+                }
+            }
+        }
+    }
+
+    println!("V creation complete");
+}
+
+/// Update the V associated with a single electron's charge.
+/// This must be run after the charge from this electron is created from the wave function square.
+/// We expect the loop over charge positions to be larger than the one over V positions.
+pub(crate) fn _create_V_from_an_elec(
+    V_from_this_elec: &mut [f64],
+    charge_this_elec: &Arr3dReal,
+    grid_posits: &[Vec3],
+    grid_posits_charge: &Arr3dVec,
+    grid_n_charge: usize,
+) {
+    println!("Creating V from an electron...");
+
+    // todo: Are there any tricks or approximations we can use to make this less computationally-intense?
+    // todo: Perhaps you could create an approximate analytic function of charge density over space,
+    // todo then shoot rays or something out at evenly spaced angles from the sample pt??
+
+    for i_sample in 0..V_from_this_elec.len() {
+        let posit_sample = grid_posits[i_sample];
+
+        // Iterate through this electron's (already computed) charge at every position in space,
+        // comparing it to this position.
+
+        V_from_this_elec[i_sample] = 0.;
+
+        for i_charge in 0..grid_n_charge {
+            for j_charge in 0..grid_n_charge {
+                for k_charge in 0..grid_n_charge {
+                    // This will produce infinities due to 0 r.
+
+                    // todo: You may still need a check here to prevent infinities.
+                    // if i == i_charge && j == j_charge && k == k_charge {
+                    //     continue;
+                    // }
+
+                    let posit_charge = grid_posits_charge[i_charge][j_charge][k_charge];
+                    let charge = charge_this_elec[i_charge][j_charge][k_charge];
+
+                    V_from_this_elec[i_sample] += V_coulomb(posit_charge, posit_sample, charge);
                 }
             }
         }

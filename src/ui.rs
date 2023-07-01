@@ -4,6 +4,7 @@ use egui::{self, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::Vec3;
 
+use crate::grid_setup::EvalData;
 use crate::{
     basis_weight_finder,
     basis_wfs::Basis,
@@ -12,7 +13,7 @@ use crate::{
     elec_elec::PositIndex,
     elec_elec::{self, WaveFunctionMultiElec},
     eval,
-    grid_setup::{self, Arr3d, Arr3dReal},
+    grid_setup::{self, Arr3d, Arr3dReal, EvalData},
     potential, render, wf_ops, ActiveElec, State,
 };
 
@@ -458,12 +459,9 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
                     for k in 0..state.grid_n_render {
                         state.surfaces_per_elec[active_elec].psi_pp_calculated[i][j][k] =
                             eigen_fns::find_ψ_pp_calc(
-                                &state.surfaces_per_elec[active_elec].psi.on_pt,
-                                &state.surfaces_per_elec[active_elec].V_acting_on_this,
+                                state.surfaces_per_elec[active_elec].psi.on_pt[i][j][k],
+                                state.surfaces_per_elec[active_elec].V_acting_on_this[i][j][k],
                                 state.surfaces_per_elec[active_elec].E,
-                                i,
-                                j,
-                                k,
                             );
                     }
                 }
@@ -746,12 +744,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                     for k in 0..state.grid_n_render {
                                         state.surfaces_per_elec[active_elec].psi_pp_calculated[i]
                                             [j][k] = eigen_fns::find_ψ_pp_calc(
-                                            &state.surfaces_per_elec[active_elec].psi.on_pt,
-                                            &state.surfaces_per_elec[active_elec].V_acting_on_this,
+                                            state.surfaces_per_elec[active_elec].psi.on_pt[i][j][k],
+                                            state.surfaces_per_elec[active_elec].V_acting_on_this
+                                                [i][j][k],
                                             state.surfaces_per_elec[active_elec].E,
-                                            i,
-                                            j,
-                                            k,
                                         );
                                     }
                                 }
@@ -844,7 +840,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         );
                     }
 
-                    state.sample_points_eval = grid_setup::find_sample_points(&state.charges_fixed);
+                    let eval_data_one = EvalData::new(&state.charges_fixed);
+                    state.eval_data = Vec::new();
+                    // todo: Populate this instead of leaving empty (?)
+                    for _ in 0..num_elecs {
+                        eval_data.push(eval_data_one.clone());
+                    }
                 }
 
                 if updated_evaluated_wfs {
@@ -879,10 +880,15 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         None,
                     );
 
-                    state.surfaces_per_elec[active_elec].psi_pp_score = eval::score_wf(
-                        &state.surfaces_per_elec[active_elec].psi_pp_calculated,
-                        &state.surfaces_per_elec[active_elec].psi_pp_measured,
-                        state.grid_n_render,
+                    // state.surfaces_per_elec[active_elec].psi_pp_score = eval::score_wf(
+                    //     &state.surfaces_per_elec[active_elec].psi_pp_calculated,
+                    //     &state.surfaces_per_elec[active_elec].psi_pp_measured,
+                    //     state.grid_n_render,
+                    // );
+
+                    state.eval_data[active_elec].score = eval::score_wf(
+                        &state.eval_data[active_elec].psi_pp_calc,
+                        &state.eval_data[active_elec].psi_pp_meas,
                     );
 
                     updated_meshes = true;
@@ -893,10 +899,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // DRY with per-elec E slider, but unable to delegate to our function due to
                 // borrow-checker issues.
 
-                ui.heading(format!(
-                    "ψ'' score: {:.10}",
-                    state.surfaces_shared.psi_pp_score
-                ));
+                // ui.heading(format!(
+                //     "ψ'' score: {:.10}",
+                //     state.surfaces_shared.psi_pp_score
+                // ));
 
                 ui.add(
                     egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
@@ -908,22 +914,20 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                     for k in 0..state.grid_n_render {
                                         state.surfaces_shared.psi_pp_calculated[i][j][k] =
                                             eigen_fns::find_ψ_pp_calc(
-                                                &state.surfaces_shared.psi.psi_marginal.on_pt,
-                                                &state.surfaces_shared.V_total,
+                                                state.surfaces_shared.psi.psi_marginal.on_pt[i][j]
+                                                    [k],
+                                                state.surfaces_shared.V_total[i][j][k],
                                                 state.surfaces_shared.E,
-                                                i,
-                                                j,
-                                                k,
                                             )
                                     }
                                 }
                             }
 
-                            state.surfaces_shared.psi_pp_score = eval::score_wf(
-                                &state.surfaces_shared.psi_pp_calculated,
-                                &state.surfaces_shared.psi_pp_measured,
-                                state.grid_n_render,
-                            );
+                            // state.surfaces_shared.psi_pp_score = eval::score_wf(
+                            //     &state.surfaces_shared.psi_pp_calculated,
+                            //     &state.surfaces_shared.psi_pp_measured,
+                            //     state.grid_n_render,
+                            // );
 
                             updated_meshes = true;
                         }

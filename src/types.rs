@@ -24,7 +24,7 @@ pub struct SurfacesShared {
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
     pub E: f64,
-    pub psi_pp_score: f64,
+    // pub psi_pp_score: f64,
 }
 
 impl SurfacesShared {
@@ -63,7 +63,7 @@ impl SurfacesShared {
             psi_pp_measured: data.clone(),
             psi_pp_calculated: data,
             E: -0.50,
-            psi_pp_score: 1.,
+            // psi_pp_score: 1.,
         }
     }
     //
@@ -124,7 +124,7 @@ pub struct SurfacesPerElec {
     pub nudge_amounts: Arr3dReal,
     // pub elec_charge: Arr3dReal,
     pub E: f64,
-    pub psi_pp_score: f64,
+    // pub psi_pp_score: f64,
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3d,
     pub aux2: Arr3d,
@@ -176,7 +176,7 @@ impl SurfacesPerElec {
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
             E: -0.50,
-            psi_pp_score: 1.,
+            // psi_pp_score: 1.,
             nudge_amounts: default_nudges,
             aux1: data.clone(),
             aux2: data,

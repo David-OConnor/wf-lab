@@ -108,12 +108,9 @@ pub fn nudge_wf(
                         sfcs.psi.on_pt[i][j][k] -= diff_map[i][j][k] * *nudge_amount;
 
                         sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
-                            &sfcs.psi.on_pt,
-                            &sfcs.V_acting_on_this,
+                            &sfcs.psi.on_pt[i][j][k],
+                            &sfcs.V_acting_on_this[i][j][k],
                             sfcs.E,
-                            i,
-                            j,
-                            k,
                         );
                     }
                 }
@@ -151,7 +148,10 @@ pub fn nudge_wf(
             psi_pp_calc_backup = sfcs.psi_pp_calculated.clone();
             psi_pp_meas_backup = sfcs.psi_pp_measured.clone();
             current_score = score;
-            sfcs.E = wf_ops::find_E(sfcs, grid_n);
+
+            // todo
+            sfcs.E = 0.;
+            // sfcs.E = wf_ops::find_E(sfcs, grid_n);
 
             for i in 0..grid_n {
                 for j in 0..grid_n {

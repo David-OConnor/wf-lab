@@ -31,7 +31,7 @@ mod elec_elec;
 mod eval;
 mod grid_setup;
 mod interp;
-mod nudge;
+// mod nudge;
 mod num_diff;
 mod potential;
 mod render;
@@ -42,7 +42,7 @@ mod wf_ops;
 
 use crate::{
     basis_wfs::Basis,
-    grid_setup::{Arr3d, Arr3dReal},
+    grid_setup::{Arr3d, Arr3dReal, EvalData},
     types::{SurfacesPerElec, SurfacesShared},
     wf_ops::Q_PROT,
 };
@@ -104,14 +104,14 @@ pub struct State {
     pub grid_n_charge: usize,
     pub grid_range_render: (f64, f64),
     pub grid_range_charge: (f64, f64),
+    /// These are the points we evaluate our psi'' score at, and where we generate net potential,
+    /// ie from electrons, at. Per-electron
+    pub eval_data: Vec<EvalData>,
     /// 1.0 is an evenly-spaced grid. A higher value spreads out the grid; high values
     /// mean increased non-linearity, with higher spacing farther from the center.
     /// This only (currently) applies to the main grid, with a uniform grid set for
     /// charge density.
     pub sample_factor_render: f64,
-    /// These are the points we evaluate our psi'' score at, and where we generate net potential,
-    /// ie from electrons, at.
-    pub sample_points_eval: Vec<Vec3>,
     /// When visualizing a 2d wave function over X and Y, this is the fixed Z value rendered.
     /// We only display a slice, since we are viewing a 4d object as a 3d rendering.
     pub ui_z_displayed: f64,
@@ -253,11 +253,11 @@ pub fn init_from_grid(
             None,
         );
 
-        surfaces_per_elec[i_elec].psi_pp_score = eval::score_wf(
-            &surfaces_per_elec[i_elec].psi_pp_calculated,
-            &surfaces_per_elec[i_elec].psi_pp_measured,
-            grid_n,
-        );
+        // surfaces_per_elec[i_elec].psi_pp_score = eval::score_wf(
+        //     &surfaces_per_elec[i_elec].psi_pp_calculated,
+        //     &surfaces_per_elec[i_elec].psi_pp_measured,
+        //     grid_n,
+        // );
     }
 
     (
@@ -324,8 +324,6 @@ fn main() {
     let (grid_min_render, grid_max_render) = (-6., 6.);
     let (grid_min_charge, grid_max_charge) = (-6., 6.);
 
-    let sample_points_eval = grid_setup::find_sample_points(&nuclei);
-
     // let spacing_factor = 1.6;
     // Currently, must be one as long as used with elec-elec charge.
     let spacing_factor = SPACING_FACTOR_DEFAULT;
@@ -351,6 +349,12 @@ fn main() {
         &nuclei,
         num_elecs,
     );
+
+    let eval_data_one = EvalData::new(&nuclei);
+    let mut eval_data = Vec::new();
+    for _ in 0..num_elecs {
+        eval_data.push(eval_data_one.clone());
+    }
 
     let surface_data = [
         SurfaceData::new("V", true),
@@ -381,7 +385,7 @@ fn main() {
         grid_n_charge,
         grid_range_render: (grid_min_render, grid_max_render),
         grid_range_charge: (grid_min_charge, grid_max_charge),
-        sample_points_eval,
+        eval_data,
         sample_factor_render: spacing_factor,
         ui_z_displayed: 0.,
         ui_active_elec: ActiveElec::PerElec(ui_active_elec),

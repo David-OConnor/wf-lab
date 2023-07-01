@@ -27,13 +27,12 @@ use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto, Sto1},
     complex_nums::Cplx,
     eigen_fns, eval, grid_setup,
-    grid_setup::{Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec, EvalData},
     num_diff::{self, H},
     types::SurfacesPerElec,
     util,
 };
 
-use crate::grid_setup::new_data;
 use lin_alg2::f64::{Quaternion, Vec3};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
@@ -73,7 +72,7 @@ pub enum Spin {
 /// The resulting wave functions are normalized.
 pub fn mix_bases(
     bases: &[Basis],
-    basis_wfs: &BasesEvaluated,
+    bases_evaled: &BasesEvaluated,
     psi: &mut PsiWDiffs,
     grid_n: usize,
     weights: Option<&[f64]>,
@@ -120,15 +119,79 @@ pub fn mix_bases(
 
                     weight *= norm_scaler;
 
-                    psi.on_pt[i][j][k] += basis_wfs.on_pt[i_basis][i][j][k] * weight;
-                    psi.x_prev[i][j][k] += basis_wfs.x_prev[i_basis][i][j][k] * weight;
-                    psi.x_next[i][j][k] += basis_wfs.x_next[i_basis][i][j][k] * weight;
-                    psi.y_prev[i][j][k] += basis_wfs.y_prev[i_basis][i][j][k] * weight;
-                    psi.y_next[i][j][k] += basis_wfs.y_next[i_basis][i][j][k] * weight;
-                    psi.z_prev[i][j][k] += basis_wfs.z_prev[i_basis][i][j][k] * weight;
-                    psi.z_next[i][j][k] += basis_wfs.z_next[i_basis][i][j][k] * weight;
+                    psi.on_pt[i][j][k] += bases_evaled.on_pt[i_basis][i][j][k] * weight;
+                    psi.x_prev[i][j][k] += bases_evaled.x_prev[i_basis][i][j][k] * weight;
+                    psi.x_next[i][j][k] += bases_evaled.x_next[i_basis][i][j][k] * weight;
+                    psi.y_prev[i][j][k] += bases_evaled.y_prev[i_basis][i][j][k] * weight;
+                    psi.y_next[i][j][k] += bases_evaled.y_next[i_basis][i][j][k] * weight;
+                    psi.z_prev[i][j][k] += bases_evaled.z_prev[i_basis][i][j][k] * weight;
+                    psi.z_next[i][j][k] += bases_evaled.z_next[i_basis][i][j][k] * weight;
                 }
             }
+        }
+    }
+}
+
+/// Mix bases together into a numerical wave function at each grid point, and at diffs.
+/// This is our mixer from pre-calculated basis fucntions: Create psi, including at
+/// neighboring points (used to numerically differentiate), from summing them with
+/// their weights. Basis wfs must be initialized prior to running this, and weights must
+/// be selected.
+///
+/// The resulting wave functions are normalized.
+pub fn mix_bases_1d(
+    bases: &[Basis],
+    bases_evaled: &BasesEvaluated1d,
+    data: &mut EvalData,
+    weights: Option<&[f64]>,
+) {
+    // We don't need to normalize the result using the full procedure; the basis-wfs are already
+    // normalized, so divide by the cumulative basis weights.
+    let mut weight_total = 0.;
+    match weights {
+        Some(w) => {
+            for weight in w {
+                weight_total += weight.abs();
+            }
+        }
+        None => {
+            for b in bases {
+                weight_total += b.weight().abs();
+            }
+        }
+    }
+
+    let mut norm_scaler = 1. / weight_total;
+
+    // Prevents NaNs and related complications.
+    if weight_total.abs() < 0.000001 {
+        norm_scaler = 0.;
+    }
+
+    for i in 0..data.posits.len() {
+        data.psi.on_pt[i] = Cplx::new_zero();
+        data.psi.x_prev[i] = Cplx::new_zero();
+        data.psi.x_next[i] = Cplx::new_zero();
+        data.psi.y_prev[i] = Cplx::new_zero();
+        data.psi.y_next[i] = Cplx::new_zero();
+        data.psi.z_prev[i] = Cplx::new_zero();
+        data.psi.z_next[i] = Cplx::new_zero();
+
+        for i_basis in 0..bases.len() {
+            let mut weight = match weights {
+                Some(w) => w[i_basis],
+                None => bases[i_basis].weight(),
+            };
+
+            weight *= norm_scaler;
+
+            data.psi.on_pt[i] += bases_evaled.on_pt[i_basis][i] * weight;
+            data.psi.x_prev[i] += bases_evaled.x_prev[i_basis][i] * weight;
+            data.psi.x_next[i] += bases_evaled.x_next[i_basis][i] * weight;
+            data.psi.y_prev[i] += bases_evaled.y_prev[i_basis][i] * weight;
+            data.psi.y_next[i] += bases_evaled.y_next[i_basis][i] * weight;
+            data.psi.z_prev[i] += bases_evaled.z_prev[i_basis][i] * weight;
+            data.psi.z_next[i] += bases_evaled.z_next[i_basis][i] * weight;
         }
     }
 }
@@ -148,7 +211,8 @@ pub fn update_wf_fm_bases(
 ) {
     mix_bases(bases, basis_wfs, &mut sfcs.psi, grid_n, weights);
 
-    sfcs.E = find_E(sfcs, grid_n);
+    // sfcs.E = find_E(sfcs, grid_n);
+    sfcs.E = 0.; // todo
 
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.
@@ -159,6 +223,34 @@ pub fn update_wf_fm_bases(
         &mut sfcs.psi_pp_measured,
         sfcs.E,
         grid_n,
+    );
+}
+
+/// This function combines mixing (pre-computed) numerical basis WFs with updating psi''.
+/// it updates E as well.
+///
+/// - Computes a trial ψ from basis functions. Computes it at each grid point, as well as
+/// the 6 offset ones along the 3 axis used to numerically differentiate.
+/// - Computes ψ'' calculated, and measured from the trial ψ
+pub fn update_wf_fm_bases_1d(
+    bases: &[Basis],
+    basis_wfs: &BasesEvaluated1d,
+    data: &mut EvalData,
+    E: &mut f64,
+    weights: Option<&[f64]>,
+) {
+    mix_bases_1d(bases, basis_wfs, data, weights);
+
+    *E = find_E(data);
+
+    // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
+    // take infinitessimal differences on the analytic basis equations to find psi'' measured.
+    update_psi_pps_1d(
+        &data.psi,
+        &data.V,
+        &mut data.psi_pp_meas,
+        &mut data.psi_pp_calc,
+        *E,
     );
 }
 
@@ -174,7 +266,7 @@ pub fn _update_psi_pp_calc(
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
-                psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(psi, V, E, i, j, k);
+                psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(psi[i][j][k], V[i][j][k], E);
             }
         }
     }
@@ -197,7 +289,8 @@ pub fn update_psi_pps(
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
-                psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(&psi.on_pt, V, E, i, j, k);
+                psi_pp_calc[i][j][k] =
+                    eigen_fns::find_ψ_pp_calc(psi.on_pt[i][j][k], V[i][j][k], E);
 
                 // Calculate psi'' based on a numerical derivative of psi
                 // in 3D.
@@ -217,21 +310,99 @@ pub fn update_psi_pps(
     }
 }
 
+pub fn update_psi_pps_1d(
+    // We split these arguments up instead of using surfaces to control mutability.
+    psi: &PsiWDiffs1d,
+    V: &[f64],
+    psi_pp_calc: &mut [Cplx],
+    psi_pp_meas: &mut [Cplx],
+    E: f64,
+) {
+    for i in 0..psi_pp_calc.len() {
+        psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(psi.on_pt[i], V[i], E);
+
+        // Calculate psi'' based on a numerical derivative of psi
+        // in 3D.
+        // We can compute ψ'' measured this in the same loop here, since we're using an analytic
+        // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
+        psi_pp_meas[i] = num_diff::find_ψ_pp_meas(
+            psi.on_pt[i],
+            psi.x_prev[i],
+            psi.x_next[i],
+            psi.y_prev[i],
+            psi.y_next[i],
+            psi.z_prev[i],
+            psi.z_next[i],
+        );
+    }
+}
+
+// /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
+// /// between E and psi'' score isn't straightforward, this will converge on a local minimum.
+// pub fn find_E(sfcs: &SurfacesPerElec, grid_n: usize) -> f64 {
+//     // todo: WHere to configure these mins and maxes
+//     let mut result = 0.;
+//
+//     let mut E_min = -2.;
+//     let mut E_max = 2.;
+//     let mut E_range_div2 = 2.;
+//     let vals_per_iter = 8;
+//
+//     let num_iters = 10;
+//
+//     let mut psi_pp_calc = new_data(grid_n);
+//     grid_setup::copy_array(&mut psi_pp_calc, &sfcs.psi_pp_calculated, grid_n);
+//
+//     for _ in 0..num_iters {
+//         let E_vals = util::linspace((E_min, E_max), vals_per_iter);
+//         let mut best_score = 100_000_000.;
+//         let mut best_E = 0.;
+//
+//         for E_trial in E_vals {
+//             for i in 0..grid_n {
+//                 for j in 0..grid_n {
+//                     for k in 0..grid_n {
+//                         psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(
+//                             &sfcs.psi.on_pt,
+//                             &sfcs.V_acting_on_this,
+//                             E_trial,
+//                             i,
+//                             j,
+//                             k,
+//                         );
+//                     }
+//                 }
+//             }
+//
+//             let score = eval::score_wf(&psi_pp_calc, &sfcs.psi_pp_measured, grid_n);
+//             if score < best_score {
+//                 best_score = score;
+//                 best_E = E_trial;
+//                 result = E_trial;
+//             }
+//         }
+//
+//         E_min = best_E - E_range_div2;
+//         E_max = best_E + E_range_div2;
+//         E_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
+//     }
+//
+//     result
+// }
+
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
 /// between E and psi'' score isn't straightforward, this will converge on a local minimum.
-pub fn find_E(sfcs: &SurfacesPerElec, grid_n: usize) -> f64 {
+/// Note: The only part of `eval_data` we mutate is psi'' calc.
+pub fn find_E(data: &mut EvalData) -> f64 {
     // todo: WHere to configure these mins and maxes
     let mut result = 0.;
 
-    let mut E_min = -2.;
-    let mut E_max = 2.;
+    let mut E_min = -4.;
+    let mut E_max = 4.;
     let mut E_range_div2 = 2.;
     let vals_per_iter = 8;
 
     let num_iters = 10;
-
-    let mut psi_pp_calc = new_data(grid_n);
-    grid_setup::copy_array(&mut psi_pp_calc, &sfcs.psi_pp_calculated, grid_n);
 
     for _ in 0..num_iters {
         let E_vals = util::linspace((E_min, E_max), vals_per_iter);
@@ -239,22 +410,13 @@ pub fn find_E(sfcs: &SurfacesPerElec, grid_n: usize) -> f64 {
         let mut best_E = 0.;
 
         for E_trial in E_vals {
-            for i in 0..grid_n {
-                for j in 0..grid_n {
-                    for k in 0..grid_n {
-                        psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(
-                            &sfcs.psi.on_pt,
-                            &sfcs.V_acting_on_this,
-                            E_trial,
-                            i,
-                            j,
-                            k,
-                        );
-                    }
-                }
+            for i in 0..data.posits.len() {
+                data.psi_pp_calc[i] =
+                    eigen_fns::find_ψ_pp_calc(data.psi.on_pt[i], data.V[i], E_trial);
             }
 
-            let score = eval::score_wf(&psi_pp_calc, &sfcs.psi_pp_measured, grid_n);
+            let score = eval::score_wf(&data.psi_pp_calc, &data.psi_pp_meas);
+
             if score < best_score {
                 best_score = score;
                 best_E = E_trial;
@@ -427,6 +589,33 @@ impl PsiWDiffs {
     }
 }
 
+/// Group that includes psi at a point, and at points surrounding it, an infinetesimal difference
+/// in both directions along each spacial axis.
+#[derive(Clone)]
+pub struct PsiWDiffs1d {
+    pub on_pt: Vec<Cplx>,
+    pub x_prev: Vec<Cplx>,
+    pub x_next: Vec<Cplx>,
+    pub y_prev: Vec<Cplx>,
+    pub y_next: Vec<Cplx>,
+    pub z_prev: Vec<Cplx>,
+    pub z_next: Vec<Cplx>,
+}
+
+impl PsiWDiffs1d {
+    pub fn init(data: &Vec<Cplx>) -> Self {
+        Self {
+            on_pt: data.clone(),
+            x_prev: data.clone(),
+            x_next: data.clone(),
+            y_prev: data.clone(),
+            y_next: data.clone(),
+            z_prev: data.clone(),
+            z_next: data.clone(),
+        }
+    }
+}
+
 /// We use this to store numerical wave functions for each basis, both at sample points, and
 /// a small amount along each axix, for calculating partial derivatives of psi''.
 /// The `Vec` index corresponds to basis index.
@@ -538,6 +727,89 @@ impl BasesEvaluated {
             util::normalize_wf(&mut y_next[basis_i], norm_pt, grid_n);
             util::normalize_wf(&mut z_prev[basis_i], norm_pt, grid_n);
             util::normalize_wf(&mut z_next[basis_i], norm_pt, grid_n);
+        }
+
+        Self {
+            on_pt,
+            x_prev,
+            x_next,
+            y_prev,
+            y_next,
+            z_prev,
+            z_next,
+        }
+    }
+}
+
+/// We use this to store numerical wave functions for each basis, both at sample points, and
+/// a small amount along each axix, for calculating partial derivatives of psi''.
+/// The outer `Vec` index corresponds to basis index. Inner corresponds to position.
+#[derive(Clone)]
+pub struct BasesEvaluated1d {
+    pub on_pt: Vec<Vec<Cplx>>,
+    pub x_prev: Vec<Vec<Cplx>>,
+    pub x_next: Vec<Vec<Cplx>>,
+    pub y_prev: Vec<Vec<Cplx>>,
+    pub y_next: Vec<Vec<Cplx>>,
+    pub z_prev: Vec<Vec<Cplx>>,
+    pub z_next: Vec<Vec<Cplx>>,
+}
+
+impl BasesEvaluated1d {
+    /// Create unweighted basis wave functions. Run this whenever we add or remove basis fns,
+    /// and when changing the grid. This evaluates the analytic basis functions at
+    /// each grid point. Each basis will be normalized in this function.
+    /// Relatively computationally intensive.
+    ///
+    /// `norm` should be calculated either numerically from a full grid, or analytically
+    /// from the basis functions.
+    pub fn new(bases: &[Basis], grid_posits: &[Vec3], norm: f64) -> Self {
+        let mut on_pt = Vec::new();
+        let mut x_prev = Vec::new();
+        let mut x_next = Vec::new();
+        let mut y_prev = Vec::new();
+        let mut y_next = Vec::new();
+        let mut z_prev = Vec::new();
+        let mut z_next = Vec::new();
+
+        for _ in 0..bases.len() {
+            on_pt.push(vec![Cplx::new_zero(); grid_posits.len()]);
+            x_prev.push(vec![Cplx::new_zero(); grid_posits.len()]);
+            x_next.push(vec![Cplx::new_zero(); grid_posits.len()]);
+            y_prev.push(vec![Cplx::new_zero(); grid_posits.len()]);
+            y_next.push(vec![Cplx::new_zero(); grid_posits.len()]);
+            z_prev.push(vec![Cplx::new_zero(); grid_posits.len()]);
+            z_next.push(vec![Cplx::new_zero(); grid_posits.len()]);
+        }
+
+        for (basis_i, basis) in bases.iter().enumerate() {
+            for i in 0..grid_posits.len() {
+                let posit_sample = grid_posits[i];
+
+                let posit_x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
+                let posit_x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
+                let posit_y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
+                let posit_y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
+                let posit_z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
+                let posit_z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+
+                let val_pt = basis.value(posit_sample);
+
+                let val_x_prev = basis.value(posit_x_prev);
+                let val_x_next = basis.value(posit_x_next);
+                let val_y_prev = basis.value(posit_y_prev);
+                let val_y_next = basis.value(posit_y_next);
+                let val_z_prev = basis.value(posit_z_prev);
+                let val_z_next = basis.value(posit_z_next);
+
+                on_pt[basis_i][i] = val_pt / norm;
+                x_prev[basis_i][i] = val_x_prev / norm;
+                x_next[basis_i][i] = val_x_next / norm;
+                y_prev[basis_i][i] = val_y_prev / norm;
+                y_next[basis_i][i] = val_y_next / norm;
+                z_prev[basis_i][i] = val_z_prev / norm;
+                z_next[basis_i][i] = val_z_next / norm;
+            }
         }
 
         Self {
