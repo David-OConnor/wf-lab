@@ -5,6 +5,7 @@ use crate::{
     wf_ops::{self, PsiWDiffs, NUDGE_DEFAULT},
 };
 
+use crate::wf_ops::PsiWDiffs1d;
 use lin_alg2::f64::Vec3;
 
 pub struct SurfacesShared {
@@ -151,14 +152,14 @@ pub struct SurfacesPerElec {
 
 impl SurfacesPerElec {
     /// Fills with 0.s
-    pub fn new(n: usize) -> Self {
-        let data = new_data(n);
-        let data_real = new_data_real(n);
+    pub fn new(n_grid: usize) -> Self {
+        let data = new_data(n_grid);
+        let data_real = new_data_real(n_grid);
 
         let mut default_nudges = data_real.clone();
-        for i in 0..n {
-            for j in 0..n {
-                for k in 0..n {
+        for i in 0..n_grid {
+            for j in 0..n_grid {
+                for k in 0..n_grid {
                     default_nudges[i][j][k] = NUDGE_DEFAULT;
                 }
             }
@@ -188,6 +189,71 @@ impl SurfacesPerElec {
             // psi_px_measured: data.clone(),
             // psi_py_measured: data.clone(),
             // psi_pz_measured: data.clone(),
+        }
+    }
+}
+
+pub struct EvalDataShared {
+    pub posits: Vec<Vec3>,
+    pub V_from_nuclei: Vec<f64>,
+    pub n: usize, // len of data here and in associated per-elec data.
+}
+
+impl EvalDataShared {
+    pub fn new(nuclei: &[(Vec3, f64)]) -> Self {
+        let posits = grid_setup::find_sample_points(nuclei);
+        let n = posits.len();
+
+        let mut V_from_nuclei = Vec::new();
+        for _ in 0..n {
+            V_from_nuclei.push(0.);
+        }
+
+        Self {
+            posits,
+            V_from_nuclei,
+            n,
+        }
+    }
+}
+
+/// Stores information used to evaluate a wave function at specific points.
+#[derive(Clone)]
+pub struct EvalDataPerElec {
+    /// Posits are the 3D-space positions the other values are sampled at.
+    /// V acting on
+    pub V_acting_on_this: Vec<f64>,
+    pub V_from_this: Vec<f64>,
+    // pub psi: Vec<Cplx>,
+    pub psi: PsiWDiffs1d,
+    pub psi_pp_calc: Vec<Cplx>,
+    pub psi_pp_meas: Vec<Cplx>,
+    pub E: f64, // todo: Is this a good place?
+    pub score: f64,
+}
+
+impl EvalDataPerElec {
+    pub fn new(n: usize) -> Self {
+        let mut V_acting_on_this = Vec::new();
+        let mut V_from_this = Vec::new();
+        let mut psi_pp_calc = Vec::new();
+        let mut psi_pp_meas = Vec::new();
+
+        for _ in 0..n {
+            V_acting_on_this.push(0.);
+            V_from_this.push(0.);
+            psi_pp_calc.push(Cplx::new_zero());
+            psi_pp_meas.push(Cplx::new_zero());
+        }
+
+        Self {
+            V_acting_on_this,
+            V_from_this,
+            psi: PsiWDiffs1d::init(&psi_pp_calc), // 0 Vec.
+            psi_pp_calc,
+            psi_pp_meas,
+            E: 0.,
+            score: 0.,
         }
     }
 }

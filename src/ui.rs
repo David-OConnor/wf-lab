@@ -12,8 +12,10 @@ use crate::{
     elec_elec::PositIndex,
     elec_elec::{self, WaveFunctionMultiElec},
     eval,
-    grid_setup::{self, Arr3d, Arr3dReal, EvalData},
-    potential, render, wf_ops, ActiveElec, State,
+    grid_setup::{self, Arr3d, Arr3dReal},
+    potential, render,
+    types::EvalDataPerElec,
+    wf_ops, ActiveElec, State,
 };
 
 const UI_WIDTH: f32 = 300.;
@@ -381,9 +383,9 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             //     state.grid_n_render,
             // );
 
-            state.eval_data[active_elec].score = eval::score_wf(
-                &state.eval_data[active_elec].psi_pp_calc,
-                &state.eval_data[active_elec].psi_pp_meas,
+            state.eval_data_per_elec[active_elec].score = eval::score_wf(
+                &state.eval_data_per_elec[active_elec].psi_pp_calc,
+                &state.eval_data_per_elec[active_elec].psi_pp_meas,
             );
         }
 
@@ -422,9 +424,9 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             );
 
             // todo: Workaround tue to mut/non-mut borrow issues.
-            let posits = state.eval_data[active_elec].posits.clone();
+            let posits = state.eval_data_per_elec[active_elec].posits.clone();
             potential::create_V_from_an_elec(
-                &mut state.eval_data[active_elec].V_from_this,
+                &mut state.eval_data_per_elec[active_elec].V_from_this,
                 &state.charges_electron[active_elec],
                 &posits,
                 &state.surfaces_shared.grid_posits_charge,
@@ -454,7 +456,7 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             //     wf_ops::find_E(&state.surfaces_per_elec[active_elec], state.grid_n_render);
 
             state.surfaces_per_elec[active_elec].E =
-                wf_ops::find_E(&mut state.eval_data[active_elec]);
+                wf_ops::find_E(&mut state.eval_data_per_elec[active_elec]);
 
             // let E = state.surfaces_per_elec[active_elec].E; // avoids mutable/immutable borrow issues.
             // wf_ops::update_psi_pp_calc(
@@ -486,9 +488,9 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             //     state.grid_n_render,
             // );
 
-            state.eval_data[active_elec].score = eval::score_wf(
-                &state.eval_data[active_elec].psi_pp_calc,
-                &state.eval_data[active_elec].psi_pp_meas,
+            state.eval_data_per_elec[active_elec].score = eval::score_wf(
+                &state.eval_data_per_elec[active_elec].psi_pp_calc,
+                &state.eval_data_per_elec[active_elec].psi_pp_meas,
             );
 
             *updated_meshes = true;
@@ -498,7 +500,7 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
     if ui.add(egui::Button::new("Find weights")).clicked() {
         basis_weight_finder::find_weights(
             &state.charges_fixed,
-            &mut state.eval_data[active_elec],
+            &mut state.eval_data_per_elec[active_elec],
             &mut state.bases[active_elec],
             &mut state.bases_evaluated_1d[active_elec],
             &mut state.bases_evaluated_charge[active_elec],
@@ -735,7 +737,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             ActiveElec::PerElec(active_elec) => {
                 ui.heading(format!(
                     "ψ'' score: {:.10}",
-                    state.eval_data[active_elec].score
+                    state.eval_data_per_elec[active_elec].score
                 ));
 
                 // E_slider(
@@ -775,9 +777,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             //     state.grid_n_render,
                             // );
 
-                            state.eval_data[active_elec].score = eval::score_wf(
-                                &state.eval_data[active_elec].psi_pp_calc,
-                                &state.eval_data[active_elec].psi_pp_meas,
+                            state.eval_data_per_elec[active_elec].score = eval::score_wf(
+                                &state.eval_data_per_elec[active_elec].psi_pp_calc,
+                                &state.eval_data_per_elec[active_elec].psi_pp_meas,
                             );
 
                             updated_meshes = true;
@@ -859,13 +861,14 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             elec_i,
                             state.grid_n_render,
                         );
-                    }
 
-                    let eval_data_one = EvalData::new(&state.charges_fixed);
-                    state.eval_data = Vec::new();
-                    // todo: Populate this instead of leaving empty (?)
-                    for _ in 0..state.num_elecs {
-                        state.eval_data.push(eval_data_one.clone());
+                        potential::update_V_acting_on_elec_1d(
+                            &mut state.eval_data_per_elec[elec_i].V_acting_on_this,
+                            &state.eval_data_shared.V_from_nuclei,
+                            &state.V_from_elecs, // todo
+                            elec_i,
+                            state.eval_data_shared.n,
+                        );
                     }
                 }
 
@@ -907,9 +910,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     //     state.grid_n_render,
                     // );
 
-                    state.eval_data[active_elec].score = eval::score_wf(
-                        &state.eval_data[active_elec].psi_pp_calc,
-                        &state.eval_data[active_elec].psi_pp_meas,
+                    state.eval_data_per_elec[active_elec].score = eval::score_wf(
+                        &state.eval_data_per_elec[active_elec].psi_pp_calc,
+                        &state.eval_data_per_elec[active_elec].psi_pp_meas,
                     );
 
                     updated_meshes = true;

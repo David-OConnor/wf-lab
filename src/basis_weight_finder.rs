@@ -4,7 +4,6 @@
 use crate::{
     basis_wfs::Basis,
     eval,
-    grid_setup::EvalData,
     types::{SurfacesPerElec, SurfacesShared},
     wf_ops::{self, BasesEvaluated, BasesEvaluated1d},
     Arr3d,
@@ -12,13 +11,14 @@ use crate::{
 
 use crate::grid_setup::Arr3dVec;
 use lin_alg2::f64::Vec3;
+use wf_lab::types::EvalDataPerElec;
 
 /// Adjust weights of coefficiants until score is minimized.
 /// We use a gradient-descent approach to find local *score* minimum. (fidelity?)
 /// We choose several start points to help find a global solution.
 pub fn find_weights(
     charges_fixed: &Vec<(Vec3, f64)>,
-    eval_data: &mut EvalData,
+    eval_data: &mut EvalDataPerElec,
     bases: &mut Vec<Basis>,
     bases_evaled: &mut BasesEvaluated1d,
     bases_evaled_charge: &mut Vec<Arr3d>,
@@ -162,7 +162,7 @@ pub fn find_weights(
 /// This function doesn't mutate any of the data.
 pub fn score_weight_set(
     bases: &[Basis],
-    eval_data: &mut EvalData,
+    eval_data: &mut EvalDataPerElec,
     basis_wfs_unweighted: &BasesEvaluated1d,
     weights: &[f64],
 ) -> f64 {

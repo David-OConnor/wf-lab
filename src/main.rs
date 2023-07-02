@@ -42,15 +42,15 @@ mod wf_ops;
 
 use crate::{
     basis_wfs::Basis,
-    grid_setup::{Arr3d, Arr3dReal, EvalData},
-    types::{SurfacesPerElec, SurfacesShared},
+    grid_setup::{Arr3d, Arr3dReal},
+    types::{EvalDataPerElec, EvalDataShared, SurfacesPerElec, SurfacesShared},
     wf_ops::Q_PROT,
 };
 
 const NUM_SURFACES: usize = 10;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.7;
-const GRID_N_DEFAULT: usize = 6;
+const GRID_N_DEFAULT: usize = 20;
 const GRID_N_CHARGE_DEFAULT: usize = 30;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
@@ -86,10 +86,6 @@ pub struct State {
     /// todo: This should probably be in one of the surfaces.
     pub bases_evaluated: Vec<wf_ops::BasesEvaluated>,
     pub bases_evaluated_1d: Vec<wf_ops::BasesEvaluated1d>,
-    /// Nuclei for charges, for our 1d smplem points
-    /// todo: QC if this is what you want.
-    /// todo: Posits
-    pub V_nuclei_1d: Vec<f64>,
     /// Similar to `bases_evaluated`, but on the charge grid. We don't need diffs for this.
     /// Outer is per-electron. Inner is per-basis
     /// todo: Do we want/need per-electron here?
@@ -111,7 +107,8 @@ pub struct State {
     pub grid_range_charge: (f64, f64),
     /// These are the points we evaluate our psi'' score at, and where we generate net potential,
     /// ie from electrons, at. Per-electron
-    pub eval_data: Vec<EvalData>,
+    pub eval_data_per_elec: Vec<EvalDataPerElec>,
+    pub eval_data_shared: EvalDataShared,
     /// 1.0 is an evenly-spaced grid. A higher value spreads out the grid; high values
     /// mean increased non-linearity, with higher spacing farther from the center.
     /// This only (currently) applies to the main grid, with a uniform grid set for
@@ -273,19 +270,26 @@ pub fn init_1d(
     bases: &[Vec<Basis>],
     charges_fixed: &[(Vec3, f64)],
     num_electrons: usize,
-) -> (Vec<EvalData>, Vec<f64>, Vec<wf_ops::BasesEvaluated1d>) {
-    let eval_data_one = EvalData::new(&charges_fixed);
+) -> (
+    EvalDataShared,
+    Vec<EvalDataPerElec>,
+    Vec<f64>,
+    Vec<wf_ops::BasesEvaluated1d>,
+) {
+    let eval_data_shared = EvalDataShared::new(&charges_fixed);
+    let eval_data_one = EvalDataPerElec::new(eval_data_shared.n);
 
     let mut eval_data = Vec::new();
-    let mut V_from_nuclei = Vec::new();
     for _ in 0..num_electrons {
         eval_data.push(eval_data_one.clone());
+    }
+
+    let mut V_from_nuclei = Vec::new();
+    for _ in 0..eval_data_shared.n {
         V_from_nuclei.push(0.);
     }
 
-    // todo: Kludge for mutability rules.
-    let posits = eval_data[0].posits.clone();
-    potential::update_V_from_nuclei_1d(&mut V_from_nuclei, charges_fixed, &posits);
+    potential::update_V_from_nuclei_1d(&mut V_from_nuclei, charges_fixed, &eval_data_shared.posits);
 
     // for (elec_i, _electron) in surfaces_per_elec.iter_mut().enumerate() {
     for elec_i in 0..num_electrons {
@@ -294,13 +298,14 @@ pub fn init_1d(
             &V_from_nuclei,
             &[], // Not ready to apply V from other elecs yet.
             elec_i,
+            eval_data_shared.n,
         );
     }
 
     let norm = 1.; // todo: Figure this out!
     let bases_evaluated_one = wf_ops::BasesEvaluated1d::new(
         &bases[0], // todo: A bit of a kludge
-        &eval_data[0].posits,
+        &eval_data_shared.posits,
         norm,
     );
 
@@ -320,11 +325,17 @@ pub fn init_1d(
             &bases[0],
             &bases_evaluated[i_elec],
             &mut eval_data[i_elec],
+            eval_data_shared.n,
             None,
         );
     }
 
-    (eval_data, V_from_nuclei, bases_evaluated)
+    (
+        eval_data_shared,
+        eval_data_per_elec,
+        V_from_nuclei,
+        bases_evaluated,
+    )
 }
 
 fn main() {
@@ -332,7 +343,8 @@ fn main() {
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let nuclei = vec![
-        (posit_charge_1, Q_PROT * 2.), // helium
+        // (posit_charge_1, Q_PROT * 2.), // helium
+        (posit_charge_1, Q_PROT * 1.), // Hydrogen
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
@@ -341,7 +353,8 @@ fn main() {
 
     let ui_active_elec = 0;
 
-    let num_elecs = 2;
+    // let num_elecs = 2;
+    let num_elecs = 1;
 
     // Outer of these is per-elec.
     let mut bases = Vec::new();
@@ -407,7 +420,8 @@ fn main() {
         num_elecs,
     );
 
-    let (eval_data, V_nuclei_1d, bases_evaluated_1d) = init_1d(&bases, &nuclei, num_elecs);
+    let (eval_data_shared, eval_data_per_elec, V_nuclei_1d, bases_evaluated_1d) =
+        init_1d(&bases, &nuclei, num_elecs);
 
     let surface_data = [
         SurfaceData::new("V", true),
@@ -429,7 +443,6 @@ fn main() {
         bases,
         bases_evaluated,
         bases_evaluated_1d,
-        V_nuclei_1d,
         bases_evaluated_charge,
         bases_visible,
         surfaces_shared,
@@ -440,7 +453,8 @@ fn main() {
         grid_n_charge,
         grid_range_render: (grid_min_render, grid_max_render),
         grid_range_charge: (grid_min_charge, grid_max_charge),
-        eval_data,
+        eval_data_shared,
+        eval_data_per_elec,
         sample_factor_render: spacing_factor,
         ui_z_displayed: 0.,
         ui_active_elec: ActiveElec::PerElec(ui_active_elec),

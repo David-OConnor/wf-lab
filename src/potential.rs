@@ -35,7 +35,7 @@ pub fn update_V_from_nuclei(
 }
 
 pub fn update_V_from_nuclei_1d(
-    V_from_nuclei: &mut [f64],
+    V_from_nuclei: &mut [f64], // by posit
     charges_nuc: &[(Vec3, f64)],
     posits: &[Vec3],
     // Wave functions from other electrons, for calculating the Hartree potential.
@@ -128,9 +128,10 @@ pub(crate) fn update_V_acting_on_elec_1d(
     V_from_nuclei: &[f64],
     V_from_elecs: &[Vec<f64>],
     i_this_elec: usize,
+    grid_n: usize,
 ) {
     println!("Updating V on this elec (1d)...");
-    for i in 0..V_from_elecs.len() {
+    for i in 0..grid_n {
         V_on_this_elec[i] = V_from_nuclei[i];
 
         for (i_other_elec, V_other_elec) in V_from_elecs.iter().enumerate() {

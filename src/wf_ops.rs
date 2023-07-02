@@ -27,12 +27,13 @@ use crate::{
     basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto, Sto1},
     complex_nums::Cplx,
     eigen_fns, eval, grid_setup,
-    grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec, EvalData},
+    grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     num_diff::{self, H},
     types::SurfacesPerElec,
     util,
 };
 
+use crate::types::EvalDataPerElec;
 use lin_alg2::f64::{Quaternion, Vec3};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
@@ -142,7 +143,8 @@ pub fn mix_bases(
 pub fn mix_bases_1d(
     bases: &[Basis],
     bases_evaled: &BasesEvaluated1d,
-    data: &mut EvalData,
+    data: &mut EvalDataPerElec,
+    grid_n: usize,
     weights: Option<&[f64]>,
 ) {
     // We don't need to normalize the result using the full procedure; the basis-wfs are already
@@ -168,7 +170,7 @@ pub fn mix_bases_1d(
         norm_scaler = 0.;
     }
 
-    for i in 0..data.posits.len() {
+    for i in 0..grid_n {
         data.psi.on_pt[i] = Cplx::new_zero();
         data.psi.x_prev[i] = Cplx::new_zero();
         data.psi.x_next[i] = Cplx::new_zero();
@@ -229,12 +231,13 @@ pub fn update_wf_fm_bases(
 pub fn update_wf_fm_bases_1d(
     bases: &[Basis],
     basis_wfs: &BasesEvaluated1d,
-    eval_data: &mut EvalData,
+    eval_data: &mut EvalDataPerElec,
+    grid_n: usize,
     weights: Option<&[f64]>,
 ) {
-    mix_bases_1d(bases, basis_wfs, eval_data, weights);
+    mix_bases_1d(bases, basis_wfs, eval_data, grid_n, weights);
 
-    eval_data.E = find_E(eval_data);
+    eval_data.E = find_E(eval_data, grid_n);
 
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.
@@ -244,6 +247,7 @@ pub fn update_wf_fm_bases_1d(
         &mut eval_data.psi_pp_calc,
         &mut eval_data.psi_pp_meas,
         eval_data.E,
+        grid_n,
     );
 }
 
@@ -310,8 +314,9 @@ pub fn update_psi_pps_1d(
     psi_pp_calc: &mut [Cplx],
     psi_pp_meas: &mut [Cplx],
     E: f64,
+    grid_n: usize,
 ) {
-    for i in 0..psi_pp_calc.len() {
+    for i in 0..grid_n {
         psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(psi.on_pt[i], V[i], E);
 
         // Calculate psi'' based on a numerical derivative of psi
@@ -386,7 +391,7 @@ pub fn update_psi_pps_1d(
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
 /// between E and psi'' score isn't straightforward, this will converge on a local minimum.
 /// Note: The only part of `eval_data` we mutate is psi'' calc.
-pub fn find_E(data: &mut EvalData) -> f64 {
+pub fn find_E(data: &mut EvalDataPerElec, grid_n: usize) -> f64 {
     // todo: WHere to configure these mins and maxes
     let mut result = 0.;
 
@@ -403,7 +408,7 @@ pub fn find_E(data: &mut EvalData) -> f64 {
         let mut best_E = 0.;
 
         for E_trial in E_vals {
-            for i in 0..data.posits.len() {
+            for i in 0..grid_n {
                 data.psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
                     data.psi.on_pt[i],
                     data.V_acting_on_this[i],
@@ -450,73 +455,43 @@ pub fn initialize_bases(
     // todo for now as a kludge to preserve weights, we copy the prev weights.
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
         // See Sebens, for weights under equation 24; this is for Helium.
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 1.41714,
-            weight: 0.76837,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 2.37682,
-            weight: 0.22346,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 4.39628,
-            weight: 0.04082,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 6.52699,
-            weight: -0.00994,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 7.94252,
-            weight: 0.00230,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-
-        // // T+J, below equation 4.16.
-        // bases.push(Basis::Sto1(Sto1 {
+        // bases.push(Basis::Sto(Sto {
         //     posit: *nuc_posit,
-        //     alpha: 0.298073,
-        //     weight: 1.,
+        //     n: 1,
+        //     xi: 1.41714,
+        //     weight: 0.76837,
         //     charge_id,
         //     harmonic: Default::default(),
         // }));
-        // bases.push(Basis::Sto1(Sto1 {
+        // bases.push(Basis::Sto(Sto {
         //     posit: *nuc_posit,
-        //     alpha: 1.242567,
-        //     weight: 1.,
+        //     n: 1,
+        //     xi: 2.37682,
+        //     weight: 0.22346,
         //     charge_id,
         //     harmonic: Default::default(),
         // }));
-        // bases.push(Basis::Sto1(Sto1 {
+        // bases.push(Basis::Sto(Sto {
         //     posit: *nuc_posit,
-        //     alpha: 5.782948,
-        //     weight: 1.,
+        //     n: 1,
+        //     xi: 4.39628,
+        //     weight: 0.04082,
         //     charge_id,
         //     harmonic: Default::default(),
         // }));
-        // bases.push(Basis::Sto1(Sto1 {
+        // bases.push(Basis::Sto(Sto {
         //     posit: *nuc_posit,
-        //     alpha: 38.474970,
-        //     weight: 1.,
+        //     n: 1,
+        //     xi: 6.52699,
+        //     weight: -0.00994,
+        //     charge_id,
+        //     harmonic: Default::default(),
+        // }));
+        // bases.push(Basis::Sto(Sto {
+        //     posit: *nuc_posit,
+        //     n: 1,
+        //     xi: 7.94252,
+        //     weight: 0.00230,
         //     charge_id,
         //     harmonic: Default::default(),
         // }));
@@ -525,10 +500,10 @@ pub fn initialize_bases(
             visible.push(true);
         }
     }
-    if let Some(mut vis) = bases_visible {
-        *vis = visible;
-    }
-    return; // todo temp
+    // if let Some(mut vis) = bases_visible {
+    //     *vis = visible;
+    // }
+    // return; // todo temp
 
     // for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
     for n in 1..max_n + 1 {
