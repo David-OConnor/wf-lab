@@ -13,7 +13,7 @@ use lin_alg2::f64::Vec3;
 /// Does not modify per-electron charges; those are updated elsewhere, incorporating the
 /// potential here, as well as from other electrons.
 pub fn update_V_from_nuclei(
-    V_nuclei: &mut Arr3dReal,
+    V_from_nuclei: &mut Arr3dReal,
     charges_nuc: &[(Vec3, f64)],
     grid_posits: &Arr3dVec,
     grid_n: usize,
@@ -24,12 +24,29 @@ pub fn update_V_from_nuclei(
             for k in 0..grid_n {
                 let posit_sample = grid_posits[i][j][k];
 
-                V_nuclei[i][j][k] = 0.;
+                V_from_nuclei[i][j][k] = 0.;
 
                 for (posit_charge, charge_amt) in charges_nuc.iter() {
-                    V_nuclei[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
+                    V_from_nuclei[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
                 }
             }
+        }
+    }
+}
+
+pub fn update_V_from_nuclei_1d(
+    V_from_nuclei: &mut [f64],
+    charges_nuc: &[(Vec3, f64)],
+    posits: &[Vec3],
+    // Wave functions from other electrons, for calculating the Hartree potential.
+) {
+    for i in 0..posits.len() {
+        let posit_sample = posits[i];
+
+        V_from_nuclei[i] = 0.;
+
+        for (posit_charge, charge_amt) in charges_nuc.iter() {
+            V_from_nuclei[i] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
         }
     }
 }
@@ -101,7 +118,30 @@ pub(crate) fn update_V_acting_on_elec(
             }
         }
     }
-    println!("Complete")
+    println!("Complete");
+}
+
+/// Update the potential field acting on a given electron. Run this after changing V nuclei,
+/// or V from another electron.
+pub(crate) fn update_V_acting_on_elec_1d(
+    V_on_this_elec: &mut [f64],
+    V_from_nuclei: &[f64],
+    V_from_elecs: &[Vec<f64>],
+    i_this_elec: usize,
+) {
+    println!("Updating V on this elec (1d)...");
+    for i in 0..V_from_elecs.len() {
+        V_on_this_elec[i] = V_from_nuclei[i];
+
+        for (i_other_elec, V_other_elec) in V_from_elecs.iter().enumerate() {
+            // Don't apply this own electron's charge to the V on it.
+            if i_this_elec == i_other_elec {
+                continue;
+            }
+            V_on_this_elec[i] += V_other_elec[i];
+        }
+    }
+    println!("Complete");
 }
 
 /// Update the V associated with a single electron's charge.

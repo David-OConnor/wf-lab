@@ -8,7 +8,7 @@ use lin_alg2::f64::Vec3;
 #[derive(Clone)]
 pub struct EvalData {
     /// Posits are the 3D-space positions the other values are sampled at.
-    pub posits: Vec<Vec3>,
+    pub posits: Vec<Vec3>, // todo: Consider making posits outside this, since it's not per-elec.
     /// V acting on
     pub V_acting_on_this: Vec<f64>,
     pub V_from_this: Vec<f64>,

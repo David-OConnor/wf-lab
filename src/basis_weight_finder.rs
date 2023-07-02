@@ -28,7 +28,7 @@ pub fn find_weights(
 ) {
     wf_ops::initialize_bases(charges_fixed, bases, None, max_n);
 
-    let norm = 0.; // todo temp! Figure this out.
+    let norm = 1.; // todo temp! Figure this out.
 
     *bases_evaled = BasesEvaluated1d::new(bases, &eval_data.posits, norm);
 

@@ -86,6 +86,10 @@ pub struct State {
     /// todo: This should probably be in one of the surfaces.
     pub bases_evaluated: Vec<wf_ops::BasesEvaluated>,
     pub bases_evaluated_1d: Vec<wf_ops::BasesEvaluated1d>,
+    /// Nuclei for charges, for our 1d smplem points
+    /// todo: QC if this is what you want.
+    /// todo: Posits
+    pub V_nuclei_1d: Vec<f64>,
     /// Similar to `bases_evaluated`, but on the charge grid. We don't need diffs for this.
     /// Outer is per-electron. Inner is per-basis
     /// todo: Do we want/need per-electron here?
@@ -253,12 +257,6 @@ pub fn init_from_grid(
             grid_n,
             None,
         );
-
-        // surfaces_per_elec[i_elec].psi_pp_score = eval::score_wf(
-        //     &surfaces_per_elec[i_elec].psi_pp_calculated,
-        //     &surfaces_per_elec[i_elec].psi_pp_measured,
-        //     grid_n,
-        // );
     }
 
     (
@@ -269,6 +267,64 @@ pub fn init_from_grid(
         surfaces_shared,
         surfaces_per_elec,
     )
+}
+
+pub fn init_1d(
+    bases: &[Vec<Basis>],
+    charges_fixed: &[(Vec3, f64)],
+    num_electrons: usize,
+) -> (Vec<EvalData>, Vec<f64>, Vec<wf_ops::BasesEvaluated1d>) {
+    let eval_data_one = EvalData::new(&charges_fixed);
+
+    let mut eval_data = Vec::new();
+    let mut V_from_nuclei = Vec::new();
+    for _ in 0..num_electrons {
+        eval_data.push(eval_data_one.clone());
+        V_from_nuclei.push(0.);
+    }
+
+    // todo: Kludge for mutability rules.
+    let posits = eval_data[0].posits.clone();
+    potential::update_V_from_nuclei_1d(&mut V_from_nuclei, charges_fixed, &posits);
+
+    // for (elec_i, _electron) in surfaces_per_elec.iter_mut().enumerate() {
+    for elec_i in 0..num_electrons {
+        potential::update_V_acting_on_elec_1d(
+            &mut eval_data[elec_i].V_acting_on_this,
+            &V_from_nuclei,
+            &[], // Not ready to apply V from other elecs yet.
+            elec_i,
+        );
+    }
+
+    let norm = 1.; // todo: Figure this out!
+    let bases_evaluated_one = wf_ops::BasesEvaluated1d::new(
+        &bases[0], // todo: A bit of a kludge
+        &eval_data[0].posits,
+        norm,
+    );
+
+    // These must be initialized from wave functions later.
+    let mut bases_evaluated = Vec::new();
+    let mut V_from_elecs = Vec::new();
+    // let mut psi_pp_score = Vec::new();
+
+    // todo: YOu may not need the "bases_evaluated" per-elec.
+    for i_elec in 0..num_electrons {
+        V_from_elecs.push(0.);
+        bases_evaluated.push(bases_evaluated_one.clone());
+
+        // Set up our basis-function based trial wave function.
+        wf_ops::update_wf_fm_bases_1d(
+            // todo: Handle the multi-electron case instead of hard-coding 0.
+            &bases[0],
+            &bases_evaluated[i_elec],
+            &mut eval_data[i_elec],
+            None,
+        );
+    }
+
+    (eval_data, V_from_nuclei, bases_evaluated)
 }
 
 fn main() {
@@ -351,13 +407,7 @@ fn main() {
         num_elecs,
     );
 
-    let mut bases_evaluated_1d = Vec::new();
-
-    let eval_data_one = EvalData::new(&nuclei);
-    let mut eval_data = Vec::new();
-    for _ in 0..num_elecs {
-        eval_data.push(eval_data_one.clone());
-    }
+    let (eval_data, V_nuclei_1d, bases_evaluated_1d) = init_1d(&bases, &nuclei, num_elecs);
 
     let surface_data = [
         SurfaceData::new("V", true),
@@ -379,6 +429,7 @@ fn main() {
         bases,
         bases_evaluated,
         bases_evaluated_1d,
+        V_nuclei_1d,
         bases_evaluated_charge,
         bases_visible,
         surfaces_shared,
