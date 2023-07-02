@@ -4,11 +4,13 @@
 use crate::{
     basis_wfs::Basis,
     eval,
+    grid_setup::EvalData,
     types::{SurfacesPerElec, SurfacesShared},
-    wf_ops::{self, BasesEvaluated},
+    wf_ops::{self, BasesEvaluated, BasesEvaluated1d},
     Arr3d,
 };
 
+use crate::grid_setup::Arr3dVec;
 use lin_alg2::f64::Vec3;
 
 /// Adjust weights of coefficiants until score is minimized.
@@ -16,21 +18,21 @@ use lin_alg2::f64::Vec3;
 /// We choose several start points to help find a global solution.
 pub fn find_weights(
     charges_fixed: &Vec<(Vec3, f64)>,
+    eval_data: &mut EvalData,
     bases: &mut Vec<Basis>,
-    bases_visible: &mut Vec<bool>,
-    basis_wfs_unweighted: &mut BasesEvaluated,
-    basis_wfs_unweighted_charge: &mut Vec<Arr3d>,
-    surfaces_shared: &SurfacesShared,
-    surfaces_per_elec: &mut SurfacesPerElec,
+    bases_evaled: &mut BasesEvaluated1d,
+    bases_evaled_charge: &mut Vec<Arr3d>,
     max_n: u16, // quantum number n
-    grid_n: usize,
     grid_n_charge: usize,
+    grid_posits_charge: &Arr3dVec,
 ) {
-    wf_ops::initialize_bases(charges_fixed, bases, bases_visible, max_n);
+    wf_ops::initialize_bases(charges_fixed, bases, None, max_n);
 
-    *basis_wfs_unweighted = BasesEvaluated::new(bases, &surfaces_shared.grid_posits, grid_n);
-    *basis_wfs_unweighted_charge =
-        wf_ops::arr_from_bases(bases, &surfaces_shared.grid_posits_charge, grid_n_charge);
+    let norm = 0.; // todo temp! Figure this out.
+
+    *bases_evaled = BasesEvaluated1d::new(bases, &eval_data.posits, norm);
+
+    *bases_evaled_charge = wf_ops::arr_from_bases(bases, grid_posits_charge, grid_n_charge);
 
     // Infinitessimal weight change, used for assessing derivatives.
     const D_WEIGHT: f64 = 0.01;
@@ -73,13 +75,7 @@ pub fn find_weights(
     for _descent_num in 0..NUM_DESCENTS {
         // todo: This appears to be required, even though we set it in scores.
         // todo: Still not sur ewhy
-        wf_ops::update_wf_fm_bases(
-            bases,
-            basis_wfs_unweighted,
-            surfaces_per_elec,
-            grid_n,
-            Some(&current_point),
-        );
+        wf_ops::update_wf_fm_bases_1d(bases, bases_evaled, eval_data, Some(&current_point));
 
         // println!("Psi Before: {} {} {}", surfaces_per_elec.psi.on_pt[10][10][10],
         //          surfaces_per_elec.psi.on_pt[1][10][15],
@@ -117,21 +113,11 @@ pub fn find_weights(
                 point_shifted_left[i_basis] -= D_WEIGHT;
                 point_shifted_right[i_basis] += D_WEIGHT;
 
-                let score_prev = score_weight_set(
-                    bases,
-                    surfaces_per_elec,
-                    grid_n,
-                    basis_wfs_unweighted,
-                    &point_shifted_left,
-                );
+                let score_prev =
+                    score_weight_set(bases, eval_data, bases_evaled, &point_shifted_left);
 
-                let score_next = score_weight_set(
-                    bases,
-                    surfaces_per_elec,
-                    grid_n,
-                    basis_wfs_unweighted,
-                    &point_shifted_right,
-                );
+                let score_next =
+                    score_weight_set(bases, eval_data, bases_evaled, &point_shifted_right);
 
                 // println!("Score prev: {:?}", score_prev);
 
@@ -167,40 +153,20 @@ pub fn find_weights(
         *basis.weight_mut() = current_point[i];
     }
 
-    wf_ops::update_wf_fm_bases(bases, basis_wfs_unweighted, surfaces_per_elec, grid_n, None);
+    wf_ops::update_wf_fm_bases_1d(bases, bases_evaled, eval_data, None);
 
-    surfaces_per_elec.psi_pp_score = eval::score_wf(
-        &surfaces_per_elec.psi_pp_calculated,
-        &surfaces_per_elec.psi_pp_measured,
-        grid_n,
-    )
+    eval_data.score = eval::score_wf(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas)
 }
 
 /// Helper for finding weight gradient descent. Updates psi and psi'', calculate E, and score.
 /// This function doesn't mutate any of the data.
 pub fn score_weight_set(
     bases: &[Basis],
-    surfaces_per_elec: &SurfacesPerElec,
-    grid_n: usize,
-    basis_wfs_unweighted: &BasesEvaluated,
+    eval_data: &mut EvalData,
+    basis_wfs_unweighted: &BasesEvaluated1d,
     weights: &[f64],
 ) -> f64 {
-    let mut surfaces = surfaces_per_elec.clone();
+    wf_ops::update_wf_fm_bases_1d(bases, basis_wfs_unweighted, eval_data, Some(weights));
 
-    // todo: Previously, you decoupled E from this so it wouldn't change the overall E.
-    // todo, if, 3 June 2023, there are problems, look to this, and figure out how to handle.
-    // todo: Likely, update_wf_fm_bases will need to take E explicilty instead of pulling form sfcs.
-    wf_ops::update_wf_fm_bases(
-        bases,
-        basis_wfs_unweighted,
-        &mut surfaces,
-        grid_n,
-        Some(weights),
-    );
-
-    eval::score_wf(
-        &surfaces.psi_pp_calculated,
-        &surfaces.psi_pp_measured,
-        grid_n,
-    )
+    eval::score_wf(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas)
 }

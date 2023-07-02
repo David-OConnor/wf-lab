@@ -4,7 +4,6 @@ use egui::{self, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::Vec3;
 
-use crate::grid_setup::EvalData;
 use crate::{
     basis_weight_finder,
     basis_wfs::Basis,
@@ -58,6 +57,8 @@ fn _E_slider(
     V: &Arr3dReal,
     psi_pp_calc: &mut Arr3d,
     psi_pp_meas: &Arr3d,
+    // psi_pp_calc: &mut [Cplx],
+    // psi_pp_meas: &mut [Cplx],
     score: &mut f64,
     grid_n: usize,
     updated_meshes: &mut bool,
@@ -70,12 +71,15 @@ fn _E_slider(
                 for i in 0..grid_n {
                     for j in 0..grid_n {
                         for k in 0..grid_n {
-                            psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(psi, V, *E, i, j, k)
+                            psi_pp_calc[i][j][k] =
+                                eigen_fns::find_ψ_pp_calc(psi[i][j][k], V[i][j][k], *E)
                         }
                     }
                 }
 
-                *score = eval::score_wf(psi_pp_calc, psi_pp_meas, grid_n);
+                // *score = eval::score_wf(psi_pp_calc, psi_pp_meas, grid_n);
+                // *score = eval::score_wf(psi_pp_calc, psi_pp_meas);
+                *score = 0.; // todo t
 
                 // state.psi_p_score[active_elec] = 0.; // todo!
 
@@ -361,20 +365,25 @@ fn basis_fn_mixer(
 fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_meshes: &mut bool) {
     ui.horizontal(|ui| {
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
-            crate::nudge::nudge_wf(
-                &mut state.surfaces_per_elec[active_elec],
-                &mut state.nudge_amount[active_elec],
-                &state.bases[active_elec],
-                &state.surfaces_shared.grid_posits,
-                state.grid_n_render,
-            );
+            // crate::nudge::nudge_wf(
+            //     &mut state.surfaces_per_elec[active_elec],
+            //     &mut state.nudge_amount[active_elec],
+            //     &state.bases[active_elec],
+            //     &state.surfaces_shared.grid_posits,
+            //     state.grid_n_render,
+            // );
 
             *updated_meshes = true;
 
-            state.surfaces_per_elec[active_elec].psi_pp_score = eval::score_wf(
-                &state.surfaces_per_elec[active_elec].psi_pp_calculated,
-                &state.surfaces_per_elec[active_elec].psi_pp_measured,
-                state.grid_n_render,
+            // state.surfaces_per_elec[active_elec].psi_pp_score = eval::score_wf(
+            //     &state.surfaces_per_elec[active_elec].psi_pp_calculated,
+            //     &state.surfaces_per_elec[active_elec].psi_pp_measured,
+            //     state.grid_n_render,
+            // );
+
+            state.eval_data[active_elec].score = eval::score_wf(
+                &state.eval_data[active_elec].psi_pp_calc,
+                &state.eval_data[active_elec].psi_pp_meas,
             );
         }
 
@@ -412,12 +421,13 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
                 state.grid_n_charge,
             );
 
+            // todo: Workaround tue to mut/non-mut borrow issues.
+            let posits = state.eval_data[active_elec].posits.clone();
             potential::create_V_from_an_elec(
-                &mut state.V_from_elecs[active_elec],
+                &mut state.eval_data[active_elec].V_from_this,
                 &state.charges_electron[active_elec],
-                &state.surfaces_shared.grid_posits,
+                &posits,
                 &state.surfaces_shared.grid_posits_charge,
-                state.grid_n_render,
                 state.grid_n_charge,
             );
 
@@ -440,8 +450,11 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
         }
 
         if ui.add(egui::Button::new("Find E")).clicked() {
+            // state.surfaces_per_elec[active_elec].E =
+            //     wf_ops::find_E(&state.surfaces_per_elec[active_elec], state.grid_n_render);
+
             state.surfaces_per_elec[active_elec].E =
-                wf_ops::find_E(&state.surfaces_per_elec[active_elec], state.grid_n_render);
+                wf_ops::find_E(&mut state.eval_data[active_elec]);
 
             // let E = state.surfaces_per_elec[active_elec].E; // avoids mutable/immutable borrow issues.
             // wf_ops::update_psi_pp_calc(
@@ -467,10 +480,15 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
                 }
             }
 
-            state.surfaces_per_elec[active_elec].psi_pp_score = eval::score_wf(
-                &state.surfaces_per_elec[active_elec].psi_pp_calculated,
-                &state.surfaces_per_elec[active_elec].psi_pp_measured,
-                state.grid_n_render,
+            // state.surfaces_per_elec[active_elec].psi_pp_score = eval::score_wf(
+            //     &state.surfaces_per_elec[active_elec].psi_pp_calculated,
+            //     &state.surfaces_per_elec[active_elec].psi_pp_measured,
+            //     state.grid_n_render,
+            // );
+
+            state.eval_data[active_elec].score = eval::score_wf(
+                &state.eval_data[active_elec].psi_pp_calc,
+                &state.eval_data[active_elec].psi_pp_meas,
             );
 
             *updated_meshes = true;
@@ -480,15 +498,13 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
     if ui.add(egui::Button::new("Find weights")).clicked() {
         basis_weight_finder::find_weights(
             &state.charges_fixed,
+            &mut state.eval_data[active_elec],
             &mut state.bases[active_elec],
-            &mut state.bases_visible[active_elec],
-            &mut state.bases_evaluated[active_elec],
+            &mut state.bases_evaluated_1d[active_elec],
             &mut state.bases_evaluated_charge[active_elec],
-            &state.surfaces_shared,
-            &mut state.surfaces_per_elec[active_elec],
             state.max_basis_n,
-            state.grid_n_render,
             state.grid_n_charge,
+            &state.surfaces_shared.grid_posits_charge,
         );
 
         *updated_meshes = true;
@@ -561,7 +577,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     wf_ops::initialize_bases(
                         &state.charges_fixed,
                         &mut state.bases[elec_i],
-                        &mut state.bases_visible[elec_i],
+                        Some(&mut state.bases_visible[elec_i]),
                         2,
                     );
                 }
@@ -719,7 +735,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             ActiveElec::PerElec(active_elec) => {
                 ui.heading(format!(
                     "ψ'' score: {:.10}",
-                    state.surfaces_per_elec[active_elec].psi_pp_score
+                    state.eval_data[active_elec].score
                 ));
 
                 // E_slider(
@@ -753,10 +769,15 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                 }
                             }
 
-                            state.surfaces_per_elec[active_elec].psi_pp_score = eval::score_wf(
-                                &state.surfaces_per_elec[active_elec].psi_pp_calculated,
-                                &state.surfaces_per_elec[active_elec].psi_pp_measured,
-                                state.grid_n_render,
+                            // state.surfaces_per_elec[active_elec].psi_pp_score = eval::score_wf(
+                            //     &state.surfaces_per_elec[active_elec].psi_pp_calculated,
+                            //     &state.surfaces_per_elec[active_elec].psi_pp_measured,
+                            //     state.grid_n_render,
+                            // );
+
+                            state.eval_data[active_elec].score = eval::score_wf(
+                                &state.eval_data[active_elec].psi_pp_calc,
+                                &state.eval_data[active_elec].psi_pp_meas,
                             );
 
                             updated_meshes = true;
@@ -827,7 +848,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         wf_ops::initialize_bases(
                             &state.charges_fixed,
                             &mut state.bases[elec_i],
-                            &mut state.bases_visible[elec_i],
+                            Some(&mut state.bases_visible[elec_i]),
                             2,
                         );
 
@@ -843,8 +864,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     let eval_data_one = EvalData::new(&state.charges_fixed);
                     state.eval_data = Vec::new();
                     // todo: Populate this instead of leaving empty (?)
-                    for _ in 0..num_elecs {
-                        eval_data.push(eval_data_one.clone());
+                    for _ in 0..state.num_elecs {
+                        state.eval_data.push(eval_data_one.clone());
                     }
                 }
 

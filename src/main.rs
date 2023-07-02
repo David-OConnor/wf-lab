@@ -85,6 +85,7 @@ pub struct State {
     /// compute their value each time we change weights...) Per-electron.
     /// todo: This should probably be in one of the surfaces.
     pub bases_evaluated: Vec<wf_ops::BasesEvaluated>,
+    pub bases_evaluated_1d: Vec<wf_ops::BasesEvaluated1d>,
     /// Similar to `bases_evaluated`, but on the charge grid. We don't need diffs for this.
     /// Outer is per-electron. Inner is per-basis
     /// todo: Do we want/need per-electron here?
@@ -302,7 +303,7 @@ fn main() {
     wf_ops::initialize_bases(
         &nuclei,
         &mut bases[ui_active_elec],
-        &mut bases_visible[ui_active_elec],
+        Some(&mut bases_visible[ui_active_elec]),
         max_basis_n,
     );
 
@@ -350,6 +351,8 @@ fn main() {
         num_elecs,
     );
 
+    let mut bases_evaluated_1d = Vec::new();
+
     let eval_data_one = EvalData::new(&nuclei);
     let mut eval_data = Vec::new();
     for _ in 0..num_elecs {
@@ -375,6 +378,7 @@ fn main() {
         V_from_elecs,
         bases,
         bases_evaluated,
+        bases_evaluated_1d,
         bases_evaluated_charge,
         bases_visible,
         surfaces_shared,

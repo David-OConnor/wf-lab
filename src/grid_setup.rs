@@ -10,24 +10,28 @@ pub struct EvalData {
     /// Posits are the 3D-space positions the other values are sampled at.
     pub posits: Vec<Vec3>,
     /// V acting on
-    pub V: Vec<f64>,
+    pub V_acting_on_this: Vec<f64>,
+    pub V_from_this: Vec<f64>,
     // pub psi: Vec<Cplx>,
     pub psi: PsiWDiffs1d,
     pub psi_pp_calc: Vec<Cplx>,
     pub psi_pp_meas: Vec<Cplx>,
     pub score: f64,
+    pub E: f64, // todo: Is this a good place?
 }
 
 impl EvalData {
     pub fn new(nuclei: &[(Vec3, f64)]) -> Self {
         let posits = find_sample_points(nuclei);
 
-        let mut V = Vec::new();
+        let mut V_acting_on_this = Vec::new();
+        let mut V_from_this = Vec::new();
         let mut psi_pp_calc = Vec::new();
         let mut psi_pp_meas = Vec::new();
 
         for _ in 0..posits.len() {
-            V.push(0.);
+            V_acting_on_this.push(0.);
+            V_from_this.push(0.);
             // result.psi.push(Cplx::new_zero());
             psi_pp_calc.push(Cplx::new_zero());
             psi_pp_meas.push(Cplx::new_zero());
@@ -35,11 +39,13 @@ impl EvalData {
 
         Self {
             posits,
-            V,
+            V_acting_on_this,
+            V_from_this,
             psi: PsiWDiffs1d::init(&psi_pp_calc), // 0 Vec.
             psi_pp_calc,
             psi_pp_meas,
             score: 0.,
+            E: 0.,
         }
     }
 }

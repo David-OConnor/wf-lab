@@ -226,31 +226,24 @@ pub fn update_wf_fm_bases(
     );
 }
 
-/// This function combines mixing (pre-computed) numerical basis WFs with updating psi''.
-/// it updates E as well.
-///
-/// - Computes a trial ψ from basis functions. Computes it at each grid point, as well as
-/// the 6 offset ones along the 3 axis used to numerically differentiate.
-/// - Computes ψ'' calculated, and measured from the trial ψ
 pub fn update_wf_fm_bases_1d(
     bases: &[Basis],
     basis_wfs: &BasesEvaluated1d,
-    data: &mut EvalData,
-    E: &mut f64,
+    eval_data: &mut EvalData,
     weights: Option<&[f64]>,
 ) {
-    mix_bases_1d(bases, basis_wfs, data, weights);
+    mix_bases_1d(bases, basis_wfs, eval_data, weights);
 
-    *E = find_E(data);
+    eval_data.E = find_E(eval_data);
 
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.
     update_psi_pps_1d(
-        &data.psi,
-        &data.V,
-        &mut data.psi_pp_meas,
-        &mut data.psi_pp_calc,
-        *E,
+        &eval_data.psi,
+        &eval_data.V_acting_on_this,
+        &mut eval_data.psi_pp_calc,
+        &mut eval_data.psi_pp_meas,
+        eval_data.E,
     );
 }
 
@@ -411,8 +404,11 @@ pub fn find_E(data: &mut EvalData) -> f64 {
 
         for E_trial in E_vals {
             for i in 0..data.posits.len() {
-                data.psi_pp_calc[i] =
-                    eigen_fns::find_ψ_pp_calc(data.psi.on_pt[i], data.V[i], E_trial);
+                data.psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
+                    data.psi.on_pt[i],
+                    data.V_acting_on_this[i],
+                    E_trial,
+                );
             }
 
             let score = eval::score_wf(&data.psi_pp_calc, &data.psi_pp_meas);
@@ -437,7 +433,7 @@ pub fn find_E(data: &mut EvalData) -> f64 {
 pub fn initialize_bases(
     charges_fixed: &[(Vec3, f64)],
     bases: &mut Vec<Basis>,
-    bases_visible: &mut Vec<bool>,
+    bases_visible: Option<&mut Vec<bool>>,
     max_n: u16, // quantum number n
 ) {
     // let mut prev_weights = Vec::new();
@@ -447,6 +443,8 @@ pub fn initialize_bases(
 
     *bases = Vec::new();
     println!("Initializing bases");
+
+    let mut visible = Vec::new();
 
     // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
     // todo for now as a kludge to preserve weights, we copy the prev weights.
@@ -524,8 +522,11 @@ pub fn initialize_bases(
         // }));
 
         for _ in 0..bases.len() {
-            bases_visible.push(true);
+            visible.push(true);
         }
+    }
+    if let Some(mut vis) = bases_visible {
+        *vis = visible;
     }
     return; // todo temp
 
@@ -556,9 +557,13 @@ pub fn initialize_bases(
                         charge_id,
                     }));
                 }
-                bases_visible.push(true);
+                visible.push(true);
             }
         }
+    }
+
+    if let Some(mut vis) = bases_visible {
+        *vis = visible;
     }
 }
 

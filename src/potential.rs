@@ -159,7 +159,7 @@ pub(crate) fn _create_V_from_an_elec_grid(
 /// Update the V associated with a single electron's charge.
 /// This must be run after the charge from this electron is created from the wave function square.
 /// We expect the loop over charge positions to be larger than the one over V positions.
-pub(crate) fn _create_V_from_an_elec(
+pub(crate) fn create_V_from_an_elec(
     V_from_this_elec: &mut [f64],
     charge_this_elec: &Arr3dReal,
     grid_posits: &[Vec3],
