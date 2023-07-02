@@ -64,6 +64,8 @@ pub fn psi_from_pt_charges(
 
     let grid_n = 30;
 
+    let E = -0.5;
+
     let mut sfcs = SurfacesPerElec::new(grid_n);
 
     let mut grid_posits = grid_setup::new_data_vec(grid_n);
@@ -89,7 +91,7 @@ pub fn psi_from_pt_charges(
     let bases_unweighted = wf_ops::BasesEvaluated::new(bases, &grid_posits, grid_n);
 
     // Set up our basis-function based trial wave function.
-    wf_ops::update_wf_fm_bases(&wfs, &bases_unweighted, &mut sfcs, grid_n, None);
+    wf_ops::update_wf_fm_bases(&wfs, &bases_unweighted, &mut sfcs, E, grid_n, None);
 
     sfcs.psi.on_pt.clone()
 }

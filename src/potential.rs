@@ -249,6 +249,10 @@ pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> 
     let r = diff.magnitude();
 
     if r < 0.0000000000001 {
+        println!(
+            "\nR lim. Charge: {:?}, sample: {:?}",
+            posit_charge, posit_sample
+        );
         return 0.; // todo: Is this the way to handle?
     }
 

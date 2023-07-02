@@ -124,7 +124,7 @@ pub struct SurfacesPerElec {
     /// between psi'' measured and calcualted, which is complex.
     pub nudge_amounts: Arr3dReal,
     // pub elec_charge: Arr3dReal,
-    pub E: f64,
+    // pub E: f64,
     // pub psi_pp_score: f64,
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3d,
@@ -176,7 +176,7 @@ impl SurfacesPerElec {
             psi,
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
-            E: -0.50,
+            // E: -0.50,
             // psi_pp_score: 1.,
             nudge_amounts: default_nudges,
             aux1: data.clone(),
