@@ -37,7 +37,7 @@ const PI_SQRT_INV: f64 = 0.5641895835477563;
 #[derive(Clone, Debug)]
 pub enum Basis {
     H(HOrbital),
-    Sto1(Sto1),
+    Gto(Gto),
     Sto(Sto),
 }
 
@@ -47,7 +47,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.posit,
             Self::H(v) => v.posit,
-            Self::Sto1(v) => v.posit,
+            Self::Gto(v) => v.posit,
             Self::Sto(v) => v.posit,
         }
     }
@@ -56,7 +56,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.posit,
             Self::H(v) => &mut v.posit,
-            Self::Sto1(v) => &mut v.posit,
+            Self::Gto(v) => &mut v.posit,
             Self::Sto(v) => &mut v.posit,
         }
     }
@@ -65,7 +65,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.n,
             Self::H(v) => v.n,
-            Self::Sto1(v) => unimplemented!(),
+            Self::Gto(v) => unimplemented!(),
             Self::Sto(v) => unimplemented!(),
         }
     }
@@ -74,7 +74,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.n,
             Self::H(v) => &mut v.n,
-            Self::Sto1(v) => unimplemented!(),
+            Self::Gto(v) => unimplemented!(),
             Self::Sto(v) => unimplemented!(),
         }
     }
@@ -83,7 +83,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.harmonic.l,
             Self::H(v) => v.harmonic.l,
-            Self::Sto1(v) => unimplemented!(),
+            Self::Gto(v) => unimplemented!(),
             Self::Sto(v) => unimplemented!(),
         }
     }
@@ -92,7 +92,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.harmonic.l,
             Self::H(v) => &mut v.harmonic.l,
-            Self::Sto1(v) => unimplemented!(),
+            Self::Gto(v) => unimplemented!(),
             Self::Sto(v) => unimplemented!(),
         }
     }
@@ -101,7 +101,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.harmonic.m,
             Self::H(v) => v.harmonic.m,
-            Self::Sto1(v) => unimplemented!(),
+            Self::Gto(v) => unimplemented!(),
             Self::Sto(v) => unimplemented!(),
         }
     }
@@ -110,7 +110,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.harmonic.m,
             Self::H(v) => &mut v.harmonic.m,
-            Self::Sto1(v) => unimplemented!(),
+            Self::Gto(v) => unimplemented!(),
             Self::Sto(v) => unimplemented!(),
         }
     }
@@ -119,7 +119,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &v.harmonic,
             Self::H(v) => &v.harmonic,
-            Self::Sto1(v) => &v.harmonic,
+            Self::Gto(v) => &v.harmonic,
             Self::Sto(v) => &v.harmonic,
         }
     }
@@ -128,7 +128,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.harmonic,
             Self::H(v) => &mut v.harmonic,
-            Self::Sto1(v) => &mut v.harmonic,
+            Self::Gto(v) => &mut v.harmonic,
             Self::Sto(v) => &mut v.harmonic,
         }
     }
@@ -137,7 +137,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.weight,
             Self::H(v) => v.weight,
-            Self::Sto1(v) => v.weight,
+            Self::Gto(v) => v.weight,
             Self::Sto(v) => v.weight,
         }
     }
@@ -146,7 +146,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.weight,
             Self::H(v) => &mut v.weight,
-            Self::Sto1(v) => &mut v.weight,
+            Self::Gto(v) => &mut v.weight,
             Self::Sto(v) => &mut v.weight,
         }
     }
@@ -155,7 +155,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.value(posit_sample),
             Self::H(v) => v.value(posit_sample),
-            Self::Sto1(v) => v.value(posit_sample),
+            Self::Gto(v) => v.value(posit_sample),
             Self::Sto(v) => v.value(posit_sample),
         }
     }
@@ -164,7 +164,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.charge_id,
             Self::H(v) => v.charge_id,
-            Self::Sto1(v) => v.charge_id,
+            Self::Gto(v) => v.charge_id,
             Self::Sto(v) => v.charge_id,
         }
     }
@@ -173,7 +173,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.charge_id,
             Self::H(v) => &mut v.charge_id,
-            Self::Sto1(v) => &mut v.charge_id,
+            Self::Gto(v) => &mut v.charge_id,
             Self::Sto(v) => &mut v.charge_id,
         }
     }
@@ -182,7 +182,7 @@ impl Basis {
         match self {
             // Self::Sto(_) => "STO",
             Self::H(_) => "H",
-            Self::Sto1(_) => "SO1",
+            Self::Gto(_) => "SO1",
             Self::Sto(_) => "SO2",
         }
         .to_owned()
@@ -329,7 +329,7 @@ impl Default for SphericalHarmonic {
 /// can represent "electron shielding".(?)
 /// At described in *Computational Physics* by T+J.
 #[derive(Clone, Debug)]
-pub struct Sto1 {
+pub struct Gto {
     pub posit: Vec3,
     pub alpha: f64,
     pub weight: f64,
@@ -337,7 +337,7 @@ pub struct Sto1 {
     pub harmonic: SphericalHarmonic,
 }
 
-impl Sto1 {
+impl Gto {
     /// Calculate this basis function's value at a given point.
     /// Does not include weight.
     pub fn value(&self, posit_sample: Vec3) -> Cplx {

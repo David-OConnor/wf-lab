@@ -24,7 +24,7 @@
 // todo potential.
 
 use crate::{
-    basis_wfs::{Basis, HOrbital, SphericalHarmonic, Sto, Sto1},
+    basis_wfs::{Basis, Gto, HOrbital, SphericalHarmonic, Sto},
     complex_nums::Cplx,
     eigen_fns, eval, grid_setup,
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
@@ -455,55 +455,55 @@ pub fn initialize_bases(
     // todo for now as a kludge to preserve weights, we copy the prev weights.
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
         // See Sebens, for weights under equation 24; this is for Helium.
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 1.41714,
-        //     weight: 0.76837,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 2.37682,
-        //     weight: 0.22346,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 4.39628,
-        //     weight: 0.04082,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 6.52699,
-        //     weight: -0.00994,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 7.94252,
-        //     weight: 0.00230,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 1.41714,
+            weight: 0.76837,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 2.37682,
+            weight: 0.22346,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 4.39628,
+            weight: 0.04082,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 6.52699,
+            weight: -0.00994,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 7.94252,
+            weight: 0.00230,
+            charge_id,
+            harmonic: Default::default(),
+        }));
 
         for _ in 0..bases.len() {
             visible.push(true);
         }
     }
-    // if let Some(mut vis) = bases_visible {
-    //     *vis = visible;
-    // }
-    // return; // todo temp
+    if let Some(mut vis) = bases_visible {
+        *vis = visible;
+    }
+    return; // todo temp
 
     // for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
     for n in 1..max_n + 1 {
@@ -517,7 +517,7 @@ pub fn initialize_bases(
                     //     0.
                     // };
 
-                    let weight = 0.;
+                    let weight = if n == 1 { 1. } else { 0. };
 
                     bases.push(Basis::H(HOrbital {
                         posit: *nuc_posit,
@@ -537,9 +537,9 @@ pub fn initialize_bases(
         }
     }
 
-    if let Some(mut vis) = bases_visible {
-        *vis = visible;
-    }
+    // if let Some(mut vis) = bases_visible {
+    //     *vis = visible;
+    // }
 }
 
 /// Group that includes psi at a point, and at points surrounding it, an infinetesimal difference

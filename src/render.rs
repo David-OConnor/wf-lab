@@ -402,7 +402,7 @@ pub fn render(state: State) {
         entities: Vec::new(), // updated beloCw.
         camera: Camera {
             fov_y: TAU / 8.,
-            position: Vec3::new(0., 10., -35.),
+            position: Vec3::new(0., 10., -40.),
             far: RENDER_DIST,
             orientation: Quaternion::from_axis_angle(Vec3::new(1., 0., 0.), TAU / 16.),
             ..Default::default()
