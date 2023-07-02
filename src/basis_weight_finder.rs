@@ -4,14 +4,12 @@
 use crate::{
     basis_wfs::Basis,
     eval,
-    types::{SurfacesPerElec, SurfacesShared},
+    grid_setup::{Arr3d, Arr3dVec},
+    types::{EvalDataPerElec, SurfacesPerElec, SurfacesShared},
     wf_ops::{self, BasesEvaluated, BasesEvaluated1d},
-    Arr3d,
 };
 
-use crate::grid_setup::Arr3dVec;
 use lin_alg2::f64::Vec3;
-use wf_lab::types::EvalDataPerElec;
 
 /// Adjust weights of coefficiants until score is minimized.
 /// We use a gradient-descent approach to find local *score* minimum. (fidelity?)
@@ -19,18 +17,20 @@ use wf_lab::types::EvalDataPerElec;
 pub fn find_weights(
     charges_fixed: &Vec<(Vec3, f64)>,
     eval_data: &mut EvalDataPerElec,
+    posits: &[Vec3],
     bases: &mut Vec<Basis>,
     bases_evaled: &mut BasesEvaluated1d,
     bases_evaled_charge: &mut Vec<Arr3d>,
     max_n: u16, // quantum number n
     grid_n_charge: usize,
     grid_posits_charge: &Arr3dVec,
+    grid_n: usize,
 ) {
     wf_ops::initialize_bases(charges_fixed, bases, None, max_n);
 
     let norm = 1.; // todo temp! Figure this out.
 
-    *bases_evaled = BasesEvaluated1d::new(bases, &eval_data.posits, norm);
+    *bases_evaled = BasesEvaluated1d::new(bases, posits, norm);
 
     *bases_evaled_charge = wf_ops::arr_from_bases(bases, grid_posits_charge, grid_n_charge);
 
@@ -75,7 +75,7 @@ pub fn find_weights(
     for _descent_num in 0..NUM_DESCENTS {
         // todo: This appears to be required, even though we set it in scores.
         // todo: Still not sur ewhy
-        wf_ops::update_wf_fm_bases_1d(bases, bases_evaled, eval_data, Some(&current_point));
+        wf_ops::update_wf_fm_bases_1d(bases, bases_evaled, eval_data, grid_n, Some(&current_point));
 
         // println!("Psi Before: {} {} {}", surfaces_per_elec.psi.on_pt[10][10][10],
         //          surfaces_per_elec.psi.on_pt[1][10][15],
@@ -114,10 +114,10 @@ pub fn find_weights(
                 point_shifted_right[i_basis] += D_WEIGHT;
 
                 let score_prev =
-                    score_weight_set(bases, eval_data, bases_evaled, &point_shifted_left);
+                    score_weight_set(bases, eval_data, bases_evaled, &point_shifted_left, grid_n);
 
                 let score_next =
-                    score_weight_set(bases, eval_data, bases_evaled, &point_shifted_right);
+                    score_weight_set(bases, eval_data, bases_evaled, &point_shifted_right, grid_n);
 
                 // println!("Score prev: {:?}", score_prev);
 
@@ -153,7 +153,7 @@ pub fn find_weights(
         *basis.weight_mut() = current_point[i];
     }
 
-    wf_ops::update_wf_fm_bases_1d(bases, bases_evaled, eval_data, None);
+    wf_ops::update_wf_fm_bases_1d(bases, bases_evaled, eval_data, grid_n, None);
 
     eval_data.score = eval::score_wf(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas)
 }
@@ -165,8 +165,15 @@ pub fn score_weight_set(
     eval_data: &mut EvalDataPerElec,
     basis_wfs_unweighted: &BasesEvaluated1d,
     weights: &[f64],
+    grid_n: usize,
 ) -> f64 {
-    wf_ops::update_wf_fm_bases_1d(bases, basis_wfs_unweighted, eval_data, Some(weights));
+    wf_ops::update_wf_fm_bases_1d(
+        bases,
+        basis_wfs_unweighted,
+        eval_data,
+        grid_n,
+        Some(weights),
+    );
 
     eval::score_wf(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas)
 }

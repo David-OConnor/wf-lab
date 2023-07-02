@@ -423,12 +423,10 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
                 state.grid_n_charge,
             );
 
-            // todo: Workaround tue to mut/non-mut borrow issues.
-            let posits = state.eval_data_per_elec[active_elec].posits.clone();
             potential::create_V_from_an_elec(
                 &mut state.eval_data_per_elec[active_elec].V_from_this,
                 &state.charges_electron[active_elec],
-                &posits,
+                &state.eval_data_shared.posits,
                 &state.surfaces_shared.grid_posits_charge,
                 state.grid_n_charge,
             );
@@ -455,8 +453,10 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
             // state.surfaces_per_elec[active_elec].E =
             //     wf_ops::find_E(&state.surfaces_per_elec[active_elec], state.grid_n_render);
 
-            state.surfaces_per_elec[active_elec].E =
-                wf_ops::find_E(&mut state.eval_data_per_elec[active_elec]);
+            state.surfaces_per_elec[active_elec].E = wf_ops::find_E(
+                &mut state.eval_data_per_elec[active_elec],
+                state.eval_data_shared.n,
+            );
 
             // let E = state.surfaces_per_elec[active_elec].E; // avoids mutable/immutable borrow issues.
             // wf_ops::update_psi_pp_calc(
@@ -501,12 +501,14 @@ fn bottom_items(ui: &mut Ui, state: &mut State, active_elec: usize, updated_mesh
         basis_weight_finder::find_weights(
             &state.charges_fixed,
             &mut state.eval_data_per_elec[active_elec],
+            &state.eval_data_shared.posits,
             &mut state.bases[active_elec],
             &mut state.bases_evaluated_1d[active_elec],
             &mut state.bases_evaluated_charge[active_elec],
             state.max_basis_n,
             state.grid_n_charge,
             &state.surfaces_shared.grid_posits_charge,
+            state.eval_data_shared.n,
         );
 
         *updated_meshes = true;
@@ -783,6 +785,30 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             );
 
                             updated_meshes = true;
+
+                            // todo: Temp debugging
+                            println!("\n\n\nV nuc: {:?}", state.eval_data_shared.V_from_nuclei);
+
+                            println!(
+                                "\nPsi: {:?}",
+                                state.eval_data_per_elec[active_elec].psi.on_pt
+                            );
+                            println!(
+                                "\nCalc: {:?}",
+                                state.eval_data_per_elec[active_elec].psi_pp_calc
+                            );
+                            println!(
+                                "\nMeas: {:?}",
+                                state.eval_data_per_elec[active_elec].psi_pp_meas
+                            );
+                            println!(
+                                "\nV from: {:?}",
+                                state.eval_data_per_elec[active_elec].V_from_this
+                            );
+                            println!(
+                                "\nV on: {:?}",
+                                state.eval_data_per_elec[active_elec].V_acting_on_this
+                            );
                         }
 
                         state.surfaces_per_elec[active_elec].E
@@ -865,7 +891,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         potential::update_V_acting_on_elec_1d(
                             &mut state.eval_data_per_elec[elec_i].V_acting_on_this,
                             &state.eval_data_shared.V_from_nuclei,
-                            &state.V_from_elecs, // todo
+                            &state.V_from_elecs_1d,
                             elec_i,
                             state.eval_data_shared.n,
                         );

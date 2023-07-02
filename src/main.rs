@@ -72,6 +72,7 @@ pub struct State {
     pub charges_electron: Vec<Arr3dReal>,
     /// Also stored here vice part of per-elec structs due to borrow-limiting on struct fields.
     pub V_from_elecs: Vec<Arr3dReal>,
+    pub V_from_elecs_1d: Vec<Vec<f64>>,
     /// Surfaces that are not electron-specific.
     pub surfaces_shared: SurfacesShared,
     /// Computed surfaces, per electron. These span 3D space, are are quite large in memory. Contains various
@@ -273,29 +274,28 @@ pub fn init_1d(
 ) -> (
     EvalDataShared,
     Vec<EvalDataPerElec>,
-    Vec<f64>,
+    Vec<Vec<f64>>,
     Vec<wf_ops::BasesEvaluated1d>,
 ) {
-    let eval_data_shared = EvalDataShared::new(&charges_fixed);
+    let mut eval_data_shared = EvalDataShared::new(&charges_fixed);
     let eval_data_one = EvalDataPerElec::new(eval_data_shared.n);
 
-    let mut eval_data = Vec::new();
+    let mut eval_data_per_elec = Vec::new();
     for _ in 0..num_electrons {
-        eval_data.push(eval_data_one.clone());
+        eval_data_per_elec.push(eval_data_one.clone());
     }
 
-    let mut V_from_nuclei = Vec::new();
-    for _ in 0..eval_data_shared.n {
-        V_from_nuclei.push(0.);
-    }
-
-    potential::update_V_from_nuclei_1d(&mut V_from_nuclei, charges_fixed, &eval_data_shared.posits);
+    potential::update_V_from_nuclei_1d(
+        &mut eval_data_shared.V_from_nuclei,
+        charges_fixed,
+        &eval_data_shared.posits,
+    );
 
     // for (elec_i, _electron) in surfaces_per_elec.iter_mut().enumerate() {
     for elec_i in 0..num_electrons {
         potential::update_V_acting_on_elec_1d(
-            &mut eval_data[elec_i].V_acting_on_this,
-            &V_from_nuclei,
+            &mut eval_data_per_elec[elec_i].V_acting_on_this,
+            &eval_data_shared.V_from_nuclei,
             &[], // Not ready to apply V from other elecs yet.
             elec_i,
             eval_data_shared.n,
@@ -316,7 +316,7 @@ pub fn init_1d(
 
     // todo: YOu may not need the "bases_evaluated" per-elec.
     for i_elec in 0..num_electrons {
-        V_from_elecs.push(0.);
+        V_from_elecs.push(vec![0.; eval_data_shared.n]);
         bases_evaluated.push(bases_evaluated_one.clone());
 
         // Set up our basis-function based trial wave function.
@@ -324,7 +324,7 @@ pub fn init_1d(
             // todo: Handle the multi-electron case instead of hard-coding 0.
             &bases[0],
             &bases_evaluated[i_elec],
-            &mut eval_data[i_elec],
+            &mut eval_data_per_elec[i_elec],
             eval_data_shared.n,
             None,
         );
@@ -333,7 +333,7 @@ pub fn init_1d(
     (
         eval_data_shared,
         eval_data_per_elec,
-        V_from_nuclei,
+        V_from_elecs,
         bases_evaluated,
     )
 }
@@ -420,7 +420,7 @@ fn main() {
         num_elecs,
     );
 
-    let (eval_data_shared, eval_data_per_elec, V_nuclei_1d, bases_evaluated_1d) =
+    let (eval_data_shared, eval_data_per_elec, V_from_elecs_1d, bases_evaluated_1d) =
         init_1d(&bases, &nuclei, num_elecs);
 
     let surface_data = [
@@ -440,6 +440,7 @@ fn main() {
         charges_fixed: nuclei,
         charges_electron,
         V_from_elecs,
+        V_from_elecs_1d,
         bases,
         bases_evaluated,
         bases_evaluated_1d,
