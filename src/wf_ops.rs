@@ -535,19 +535,42 @@ pub fn initialize_bases(
 
                     let weight = if n == 1 { 1. } else { 0. };
 
-                    bases.push(Basis::H(HOrbital {
-                        posit: *nuc_posit,
-                        n,
-                        harmonic: SphericalHarmonic {
-                            l,
-                            m,
-                            orientation: Quaternion::new_identity(),
-                        },
+                    // bases.push(Basis::H(HOrbital {
+                    //     posit: *nuc_posit,
+                    //     n,
+                    //     harmonic: SphericalHarmonic {
+                    //         l,
+                    //         m,
+                    //         orientation: Quaternion::new_identity(),
+                    //     },
+                    //
+                    //     weight,
+                    //     charge_id,
+                    // }));
 
-                        weight,
-                        charge_id,
-                    }));
+                    //    pub posit: Vec3,
+                    //     pub n: u16,
+                    //     pub xi: f64,
+                    //     pub weight: f64,
+                    //     pub charge_id: usize,
+                    //     pub harmonic: SphericalHarmonic,
+
+                    for xi in &[1., 2., 3., 4.] {
+                        bases.push(Basis::Sto(Sto {
+                            posit: *nuc_posit,
+                            n,
+                            xi: *xi,
+                            harmonic: SphericalHarmonic {
+                                l,
+                                m,
+                                orientation: Quaternion::new_identity(),
+                            },
+                            weight,
+                            charge_id,
+                        }));
+                    }
                 }
+
                 visible.push(true);
             }
         }

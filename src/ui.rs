@@ -186,12 +186,12 @@ fn basis_fn_mixer(
                 ui.horizontal(|ui| {
                     // Checkbox to immediately hide or show the basis.
 
-                    if ui
-                        .checkbox(&mut state.bases_visible[active_elec][id], "")
-                        .clicked()
-                    {
-                        *updated_basis_weights = true;
-                    }
+                    // if ui
+                    //     .checkbox(&mut state.bases_visible[active_elec][id], "")
+                    //     .clicked()
+                    // {
+                    //     *updated_basis_weights = true;
+                    // }
 
                     ui.spacing_mut().slider_width = SLIDER_WIDTH_ORIENTATION; // Only affects sliders in this section.
 
@@ -204,7 +204,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                                state.charges_fixed.iter().enumerate()
+                            state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -280,6 +280,10 @@ fn basis_fn_mixer(
                             }
                         } // Basis::Sto(_b) => (),
                         Basis::Sto(b) => {
+
+                            let n_prev = b.n;
+                            let l_prev = b.harmonic.l;
+                            let m_prev = b.harmonic.m;
                             // ui.heading("c:");
                             // let mut entry = b.c.to_string(); // angle
                             // let response =
@@ -287,6 +291,29 @@ fn basis_fn_mixer(
                             // if response.changed() {
                             //     b.c = entry.parse().unwrap_or(1.);
                             // }
+                            ui.heading("n:");
+                            let mut entry = b.n.to_string(); // angle
+                            let response =
+                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            if response.changed() {
+                                b.n = entry.parse().unwrap_or(1);
+                            }
+
+                            ui.heading("l:");
+                            let mut entry = b.harmonic.l.to_string(); // angle
+                            let response =
+                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            if response.changed() {
+                                b.harmonic.l = entry.parse().unwrap_or(0);
+                            }
+
+                            ui.heading("m:");
+                            let mut entry = b.harmonic.m.to_string(); // angle
+                            let response =
+                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            if response.changed() {
+                                b.harmonic.m = entry.parse().unwrap_or(0);
+                            }
 
                             ui.heading("ξ:");
                             let mut entry = b.xi.to_string(); // angle
@@ -295,7 +322,23 @@ fn basis_fn_mixer(
                             if response.changed() {
                                 b.xi = entry.parse().unwrap_or(1.);
                             }
-                        } // Basis::Sto(_b) => (),
+
+                            // todo: DRY with H
+                            if b.n != n_prev || b.harmonic.l != l_prev || b.harmonic.m != m_prev {
+                                // Enforce quantum number constraints.
+                                if b.harmonic.l >= b.n {
+                                    b.harmonic.l = b.n - 1;
+                                }
+                                if b.harmonic.m < -(b.harmonic.l as i16) {
+                                    b.harmonic.m = -(b.harmonic.l as i16)
+                                } else if b.harmonic.m > b.harmonic.l as i16 {
+                                    b.harmonic.m = b.harmonic.l as i16
+                                }
+
+                                *updated_unweighted_basis_wfs = true;
+                                *updated_basis_weights = true;
+                            }
+                        }
                     }
 
                     // Note: We've replaced the below rotation-slider code with just using combinations of
@@ -356,7 +399,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                    .text("Wt"),
+                        .text("Wt"),
                 );
             }
         });
@@ -478,11 +521,6 @@ fn bottom_items(
             // Update the grid for visualization.
             // todo: We use this instead of the above method due to mutable/immutable borrow conflicts.
 
-            state.eval_data_per_elec[ae].score = eval::score_wf(
-                &state.eval_data_per_elec[ae].psi_pp_calc,
-                &state.eval_data_per_elec[ae].psi_pp_meas,
-            );
-
             *updated_E = true;
             *updated_meshes = true;
         }
@@ -502,8 +540,8 @@ fn bottom_items(
             state.eval_data_shared.n,
         );
 
-        state.eval_data_per_elec[ae].E =
-            wf_ops::find_E(&mut state.eval_data_per_elec[ae], state.eval_data_shared.n);
+        println!("E in UI code after weight finder: {:?}", state.eval_data_per_elec[ae].E);
+
 
         *updated_E = true;
         *updated_basis_weights = true;
@@ -698,7 +736,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.ui_z_displayed
                 },
             )
-            .text("Z slice"),
+                .text("Z slice"),
         );
 
         ui.add(
@@ -710,7 +748,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-            .text("Visual rotation"),
+                .text("Visual rotation"),
         );
 
         ui.add(
@@ -729,7 +767,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_range_render.1
             })
-            .text("Grid range"),
+                .text("Grid range"),
         );
 
         match state.ui_active_elec {
@@ -742,7 +780,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 ui.add(
                     egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
                         if let Some(v_) = v {
-                            // state.surfaces_per_elec[ae].E = v_;
                             state.eval_data_per_elec[ae].E = v_;
 
                             // Update psi'' calc for evaluation
@@ -754,11 +791,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                                         state.eval_data_per_elec[ae].E,
                                     );
                             }
-
-                            state.eval_data_per_elec[ae].score = eval::score_wf(
-                                &state.eval_data_per_elec[ae].psi_pp_calc,
-                                &state.eval_data_per_elec[ae].psi_pp_meas,
-                            );
 
                             updated_meshes = true;
                             updated_E = true;
@@ -782,7 +814,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.eval_data_per_elec[ae].E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 ui.add(
@@ -794,8 +826,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.nudge_amount[ae]
                     })
-                    .text("Nudge amount")
-                    .logarithmic(true),
+                        .text("Nudge amount")
+                        .logarithmic(true),
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -943,6 +975,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         state.eval_data_per_elec[ae].E,
                         state.grid_n_render,
                     );
+
+                    state.eval_data_per_elec[ae].score = eval::score_wf(
+                        &state.eval_data_per_elec[ae].psi_pp_calc,
+                        &state.eval_data_per_elec[ae].psi_pp_meas,
+                    );
                 }
             }
 
@@ -966,7 +1003,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 // Multiply wave functions together, and stores in Shared surfaces.

@@ -185,7 +185,7 @@ impl Basis {
             Self::Gto(_) => "SO1",
             Self::Sto(_) => "SO2",
         }
-        .to_owned()
+            .to_owned()
     }
 }
 
@@ -354,9 +354,9 @@ pub struct Sto {
     pub posit: Vec3,
     pub n: u16,
     pub xi: f64,
+    pub harmonic: SphericalHarmonic,
     pub weight: f64,
     pub charge_id: usize,
-    pub harmonic: SphericalHarmonic,
 }
 
 impl Sto {
@@ -379,6 +379,28 @@ impl Sto {
         // todo: Harmonic, and more general normalizing constant.
 
         radial
+    }
+
+    /// Calculate the (analytic) second derivative. See OneNote: `Exploring the WF, part 6`.
+    /// todo: This currently does not include N; or any coefficient.Unclear if we can
+    /// todo mix it with `val()`, which does use n.
+    pub fn second_deriv(&self, posit_sample: Vec3) -> f64 {
+        let diff = posit_sample - self.posit;
+        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+        let mut result = 0.;
+
+        let a = (-self.xi * r).exp();
+        // Each part is the second deriv WRT to an orthogonal axis.
+        for coord in &[diff.x, diff.y, diff.z] {
+            result += self.xi.powi(2) * coord.powi(2) * a / r.powi(2);
+
+            result += self.xi * coord.powi(2) * a / r.powi(3);
+
+            result -= self.xi * a / r;
+        }
+
+        result
     }
 }
 

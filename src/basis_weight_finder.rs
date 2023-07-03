@@ -35,9 +35,9 @@ pub fn find_weights(
     *bases_evaled_charge = wf_ops::arr_from_bases(bases, grid_posits_charge, grid_n_charge);
 
     // Infinitessimal weight change, used for assessing derivatives.
-    const D_WEIGHT: f64 = 0.01;
+    const D_WEIGHT: f64 = 0.001;
 
-    const NUM_DESCENTS: usize = 30; // todo
+    const NUM_DESCENTS: usize = 10; // todo
     let descent_rate = 2.; // todo? Factor for gradient descent based on the vector.
 
     // todo: Consider again using unweighted bases in your main logic. YOu removed it before
@@ -68,53 +68,49 @@ pub fn find_weights(
     }
 
     for _descent_num in 0..NUM_DESCENTS {
-        // This is our gradient.
+        // This is our gradient. d_score / d_weight
         let mut diffs = vec![0.; bases.len()];
 
-        for n in 1..max_n + 1 {
-            // Iterate through each basis; calcualate a score using the same parameters as above,
-            // with the exception of a slightly small weight for the basis.
-            for (i_basis, _basis) in bases.iter().enumerate() {
-                if _basis.n() != n {
-                    continue;
-                }
+        // Iterate through each basis; calcualate a score using the same parameters as above,
+        // with the exception of a slightly small weight for the basis.
+        for (i_basis, _basis) in bases.iter().enumerate() {
 
-                // Scores from a small change along this dimension. basis = dimension
-                // Midpoint.
-                let mut point_shifted_left = current_point.clone();
-                let mut point_shifted_right = current_point.clone();
+            // Scores from a small change along this dimension. basis = dimension
+            // Midpoint.
+            let mut point_shifted_left = current_point.clone();
+            let mut point_shifted_right = current_point.clone();
 
-                point_shifted_left[i_basis] -= D_WEIGHT;
-                point_shifted_right[i_basis] += D_WEIGHT;
+            point_shifted_left[i_basis] -= D_WEIGHT;
+            point_shifted_right[i_basis] += D_WEIGHT;
 
-                let score_prev =
-                    score_weight_set(bases, eval_data, bases_evaled, &point_shifted_left, grid_n);
+            let score_prev =
+                score_weight_set(bases, eval_data, bases_evaled, &point_shifted_left, grid_n);
 
-                let score_next =
-                    score_weight_set(bases, eval_data, bases_evaled, &point_shifted_right, grid_n);
+            let score_next =
+                score_weight_set(bases, eval_data, bases_evaled, &point_shifted_right, grid_n);
 
-                diffs[i_basis] = (score_next - score_prev) / (2. * D_WEIGHT);
-            }
-
-            // Now that we've computed our gradient, shift down it to the next point.
-            for i in 0..bases.len() {
-                // Direction: Diff is current pt score minus score from a slightly
-                // lower value of a given basis. If it's positive, it means the score gets better
-                // (lower) with a smaller weight, so *reduce* weight accordingly.
-
-                // Leave the n=1 weight for one of the fixed-charges fixed to a value of 1.
-                // Note that this may preclude solutions other than the ground state.
-                // This should help avoid the system seeking 0 on all weights.
-                if i == 0 {
-                    continue;
-                }
-
-                current_point[i] -= diffs[i] * descent_rate;
-            }
+            diffs[i_basis] = (score_next - score_prev) / (2. * D_WEIGHT);
         }
 
-        println!("\nDiffs: {:?}\n", diffs);
-        // println!("current pt: {:?}", current_point);
+        // Now that we've computed our gradient, shift down it to the next point.
+        for i in 0..bases.len() {
+            // Direction: Diff is current pt score minus score from a slightly
+            // lower value of a given basis. If it's positive, it means the score gets better
+            // (lower) with a smaller weight, so *reduce* weight accordingly.
+
+            // Leave the n=1 weight for one of the fixed-charges fixed to a value of 1.
+            // Note that this may preclude solutions other than the ground state.
+            // This should help avoid the system seeking 0 on all weights.
+            if i == 0 {
+                continue;
+            }
+
+            current_point[i] -= diffs[i] * descent_rate;
+        }
+
+        println!("\n\nDiffs: {:?}\n", diffs);
+        println!("Score: {:?}", eval_data.score);
+        println!("current pt: {:?}", current_point);
     }
 
     println!("\n\nResult: {:?}", current_point);
@@ -135,17 +131,33 @@ pub fn find_weights(
 pub fn score_weight_set(
     bases: &[Basis],
     eval_data: &mut EvalDataPerElec,
-    basis_wfs_unweighted: &BasesEvaluated1d,
+    bases_evaled: &BasesEvaluated1d,
     weights: &[f64],
     grid_n: usize,
 ) -> f64 {
     wf_ops::update_wf_fm_bases_1d(
         bases,
-        basis_wfs_unweighted,
+        bases_evaled,
         eval_data,
         grid_n,
         Some(weights),
     );
 
-    eval::score_wf(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas)
+    // println!("E: {:?}", eval_data.E);
+
+    eval_data.score = eval::score_wf(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas);
+
+    eval_data.score
 }
+
+// todo: Experimental; here be dragons. See onenote.
+use crate::eigen_fns::{KE_COEFF, KE_COEFF_INV};
+// /// todo: We are likely looking at solving a linear system of equations, eg with a matrix.
+// pub fn find_coeffs(
+//     xi: &[f64],
+//     V: f64,
+//     E: f64,
+//
+// ) -> Vec<f64> {
+//
+// }
