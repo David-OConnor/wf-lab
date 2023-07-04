@@ -211,7 +211,6 @@ pub(crate) fn create_V_from_an_elec(
     grid_posits_charge: &Arr3dVec,
     grid_n: usize,
     grid_n_charge: usize,
-
 ) {
     println!("Creating V from an electron...");
 

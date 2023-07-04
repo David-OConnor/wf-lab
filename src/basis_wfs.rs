@@ -185,7 +185,7 @@ impl Basis {
             Self::Gto(_) => "SO1",
             Self::Sto(_) => "SO2",
         }
-            .to_owned()
+        .to_owned()
     }
 }
 

@@ -346,7 +346,7 @@ fn main() {
 
     let nuclei = vec![
         (posit_charge_1, Q_PROT * 2.), // helium
-        // (posit_charge_1, Q_PROT * 1.), // Hydrogen
+                                       // (posit_charge_1, Q_PROT * 1.), // Hydrogen
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
@@ -394,7 +394,7 @@ fn main() {
     // todo next up: Figure out why you get incorrect answers if these 2 grids don't line up.
     // todo: FOr now, you can continue with matching them if you wish.
     let (grid_min_render, grid_max_render) = (-4., 4.);
-    let (grid_min_charge, grid_max_charge) = (-8., 8.);
+    let (grid_min_charge, grid_max_charge) = (-9., 9.);
 
     // let spacing_factor = 1.6;
     // Currently, must be one as long as used with elec-elec charge.

@@ -46,8 +46,8 @@ pub const ħ: f64 = 1.;
 pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Wave fn weights
-pub const WEIGHT_MIN: f64 = -4.;
-pub const WEIGHT_MAX: f64 = 4.;
+pub const WEIGHT_MIN: f64 = -1.;
+pub const WEIGHT_MAX: f64 = 2.;
 
 // Compute these statically, to avoid continuous calls during excecution.
 
@@ -252,23 +252,23 @@ pub fn update_wf_fm_bases_1d(
     );
 }
 
-/// Run this after update E.
-pub fn _update_psi_pp_calc(
-    // We split these arguments up instead of using surfaces to control mutability.
-    psi: &Arr3d,
-    V: &Arr3dReal,
-    psi_pp_calc: &mut Arr3d,
-    E: f64,
-    grid_n: usize,
-) {
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(psi[i][j][k], V[i][j][k], E);
-            }
-        }
-    }
-}
+// /// Run this after update E.
+// pub fn _update_psi_pp_calc(
+//     // We split these arguments up instead of using surfaces to control mutability.
+//     psi: &Arr3d,
+//     V: &Arr3dReal,
+//     psi_pp_calc: &mut Arr3d,
+//     E: f64,
+//     grid_n: usize,
+// ) {
+//     for i in 0..grid_n {
+//         for j in 0..grid_n {
+//             for k in 0..grid_n {
+//                 psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(psi[i][j][k], V[i][j][k], E);
+//             }
+//         }
+//     }
+// }
 
 /// Update psi_pp from grid. Called after several types of operation
 pub fn update_psi_pp_calc_grid(surfaces: &mut SurfacesPerElec, E: f64, grid_n: usize) {

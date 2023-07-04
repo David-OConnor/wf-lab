@@ -3,8 +3,9 @@
 
 use crate::{
     basis_wfs::Basis,
-    eval,
+    eigen_fns, eval,
     grid_setup::{Arr3d, Arr3dVec},
+    potential,
     types::{EvalDataPerElec, SurfacesPerElec, SurfacesShared},
     wf_ops::{self, BasesEvaluated, BasesEvaluated1d},
 };
@@ -74,7 +75,6 @@ pub fn find_weights(
         // Iterate through each basis; calcualate a score using the same parameters as above,
         // with the exception of a slightly small weight for the basis.
         for (i_basis, _basis) in bases.iter().enumerate() {
-
             // Scores from a small change along this dimension. basis = dimension
             // Midpoint.
             let mut point_shifted_left = current_point.clone();
@@ -128,26 +128,51 @@ pub fn find_weights(
 
 /// Helper for finding weight gradient descent. Updates psi and psi'', calculate E, and score.
 /// This function doesn't mutate any of the data.
-pub fn score_weight_set(
+fn score_weight_set(
     bases: &[Basis],
     eval_data: &mut EvalDataPerElec,
     bases_evaled: &BasesEvaluated1d,
     weights: &[f64],
     grid_n: usize,
 ) -> f64 {
-    wf_ops::update_wf_fm_bases_1d(
-        bases,
-        bases_evaled,
-        eval_data,
-        grid_n,
-        Some(weights),
-    );
+    wf_ops::update_wf_fm_bases_1d(bases, bases_evaled, eval_data, grid_n, Some(weights));
 
     // println!("E: {:?}", eval_data.E);
 
     eval_data.score = eval::score_wf(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas);
 
     eval_data.score
+}
+
+/// Update electron data.
+/// todo: hard-coded for 2 identical (opposite-spin) electrons, for now
+fn update_elec_V(eval_data: &mut EvalDataPerElec, bases_evaled: &BasesEvaluated1d) {
+    potential::create_V_from_an_elec(
+        &mut state.V_from_elecs_1d[ae],
+        &state.charges_electron[ae],
+        &state.eval_data_shared.posits,
+        &state.surfaces_shared.grid_posits_charge,
+        state.eval_data_shared.n,
+        state.grid_n_charge,
+    );
+
+    state.eval_data_per_elec[ae].V_from_this = state.V_from_elecs_1d[ae].clone();
+
+    potential::update_V_acting_on_elec_1d(
+        &mut state.eval_data_per_elec[ae].V_acting_on_this,
+        &state.eval_data_shared.V_from_nuclei,
+        &state.V_from_elecs_1d,
+        ae,
+        state.eval_data_shared.n,
+    );
+
+    for i in 0..state.eval_data_shared.n {
+        state.eval_data_per_elec[ae].psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
+            state.eval_data_per_elec[ae].psi.on_pt[i],
+            state.eval_data_per_elec[ae].V_acting_on_this[i],
+            state.eval_data_per_elec[ae].E,
+        );
+    }
 }
 
 // todo: Experimental; here be dragons. See onenote.

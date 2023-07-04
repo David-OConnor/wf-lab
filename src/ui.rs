@@ -204,7 +204,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                            state.charges_fixed.iter().enumerate()
+                                state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -280,7 +280,6 @@ fn basis_fn_mixer(
                             }
                         } // Basis::Sto(_b) => (),
                         Basis::Sto(b) => {
-
                             let n_prev = b.n;
                             let l_prev = b.harmonic.l;
                             let m_prev = b.harmonic.m;
@@ -399,7 +398,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                        .text("Wt"),
+                    .text("Wt"),
                 );
             }
         });
@@ -479,13 +478,10 @@ fn bottom_items(
                 &state.surfaces_shared.grid_posits_charge,
                 state.eval_data_shared.n,
                 state.grid_n_charge,
-
             );
 
-            // todo: How did we handle this before? note that
-            // todo we are currently duplicating this data.
-            // todo: Maybe deprecate one or the other.
             state.eval_data_per_elec[ae].V_from_this = state.V_from_elecs_1d[ae].clone();
+            *updated_E = true;
 
             *updated_meshes = true;
         }
@@ -494,7 +490,6 @@ fn bottom_items(
             .add(egui::Button::new("Update V acting on this elec"))
             .clicked()
         {
-
             // todo: Slow; temp for TS.
             // potential::update_V_acting_on_elec(
             //     &mut state.surfaces_per_elec[ae].V_acting_on_this,
@@ -511,6 +506,9 @@ fn bottom_items(
                 ae,
                 state.eval_data_shared.n,
             );
+
+            state.eval_data_per_elec[ae].E =
+                wf_ops::find_E(&mut state.eval_data_per_elec[ae], state.eval_data_shared.n);
 
             *updated_meshes = true;
         }
@@ -554,8 +552,10 @@ fn bottom_items(
             state.eval_data_shared.n,
         );
 
-        println!("E in UI code after weight finder: {:?}", state.eval_data_per_elec[ae].E);
-
+        println!(
+            "E in UI code after weight finder: {:?}",
+            state.eval_data_per_elec[ae].E
+        );
 
         *updated_E = true;
         *updated_basis_weights = true;
@@ -750,7 +750,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.ui_z_displayed
                 },
             )
-                .text("Z slice"),
+            .text("Z slice"),
         );
 
         ui.add(
@@ -762,7 +762,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-                .text("Visual rotation"),
+            .text("Visual rotation"),
         );
 
         ui.add(
@@ -781,7 +781,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_range_render.1
             })
-                .text("Grid range"),
+            .text("Grid range"),
         );
 
         match state.ui_active_elec {
@@ -828,7 +828,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.eval_data_per_elec[ae].E
                     })
-                        .text("E"),
+                    .text("E"),
                 );
 
                 ui.add(
@@ -840,8 +840,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.nudge_amount[ae]
                     })
-                        .text("Nudge amount")
-                        .logarithmic(true),
+                    .text("Nudge amount")
+                    .logarithmic(true),
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -990,6 +990,15 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         state.grid_n_render,
                     );
 
+                    for i in 0..state.eval_data_shared.n {
+                        state.eval_data_per_elec[ae].psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
+                            state.eval_data_per_elec[ae].psi.on_pt[i],
+                            state.eval_data_per_elec[ae].V_acting_on_this[i],
+                            state.eval_data_per_elec[ae].E,
+                        );
+                    }
+
+                    // todo: Not working for some things lik eV?
                     state.eval_data_per_elec[ae].score = eval::score_wf(
                         &state.eval_data_per_elec[ae].psi_pp_calc,
                         &state.eval_data_per_elec[ae].psi_pp_meas,
@@ -1017,7 +1026,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                        .text("E"),
+                    .text("E"),
                 );
 
                 // Multiply wave functions together, and stores in Shared surfaces.
