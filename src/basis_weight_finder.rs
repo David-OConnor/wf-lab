@@ -3,8 +3,8 @@
 
 use crate::{
     basis_wfs::Basis,
-    eigen_fns, eval,
-    grid_setup::{Arr3d, Arr3dVec},
+    eigen_fns, elec_elec, eval,
+    grid_setup::{Arr3d, Arr3dReal, Arr3dVec},
     potential,
     types::{EvalDataPerElec, SurfacesPerElec, SurfacesShared},
     wf_ops::{self, BasesEvaluated, BasesEvaluated1d},
@@ -145,32 +145,63 @@ fn score_weight_set(
 }
 
 /// Update electron data.
-/// todo: hard-coded for 2 identical (opposite-spin) electrons, for now
-fn update_elec_V(eval_data: &mut EvalDataPerElec, bases_evaled: &BasesEvaluated1d) {
+/// todo: hard-coded for 2 identical (opposite-spin) electrons, for now.
+/// Note that we are using a single electron here, and using it
+/// for both the charge and acted-on roles.
+fn update_elec_V(
+    eval_data0: &mut EvalDataPerElec,
+    // eval_data1: &mut EvalDataPerElec,
+    V_from_elec0: &mut [f64],
+    // V_from_elec1: &mut [f64],
+    charges_elec0: &mut Arr3dReal,
+    // charges_elec1: &mut Arr3dreal,
+    bases_evaled_charge: &BasesEvaluated,
+    V_from_nuclei: &[f64],
+    weights: &[f64],
+    grid_posits_1d: &[Vec3],
+    grid_posits_charge: &Arr3dVec,
+    grid_n: usize,
+    grid_n_charge: usize,
+) {
+    // Create charge using the trial weights.
+    elec_elec::update_charge_density_fm_psi(
+        charges_elec0,
+        &bases_evaled_charge.on_pt,
+        weights,
+        grid_n_charge,
+    );
+
+    // Create a potential from this charge.
     potential::create_V_from_an_elec(
-        &mut state.V_from_elecs_1d[ae],
-        &state.charges_electron[ae],
-        &state.eval_data_shared.posits,
-        &state.surfaces_shared.grid_posits_charge,
-        state.eval_data_shared.n,
-        state.grid_n_charge,
+        V_from_elec0,
+        charges_elec0,
+        grid_posits_1d,
+        grid_posits_charge,
+        grid_n,
+        grid_n_charge,
     );
 
-    state.eval_data_per_elec[ae].V_from_this = state.V_from_elecs_1d[ae].clone();
+    // let elec_v = V_from_elec0.clone();
 
-    potential::update_V_acting_on_elec_1d(
-        &mut state.eval_data_per_elec[ae].V_acting_on_this,
-        &state.eval_data_shared.V_from_nuclei,
-        &state.V_from_elecs_1d,
-        ae,
-        state.eval_data_shared.n,
-    );
+    // This step is a variant on `update_V_acting_on_elec`, for our specialized
+    // 2-identical-electrons setup here.
+    for i in 0..grid_n {
+        eval_data0.V_acting_on_this[i] = V_from_nuclei[i] + V_from_elec0[i];
+    }
 
-    for i in 0..state.eval_data_shared.n {
-        state.eval_data_per_elec[ae].psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
-            state.eval_data_per_elec[ae].psi.on_pt[i],
-            state.eval_data_per_elec[ae].V_acting_on_this[i],
-            state.eval_data_per_elec[ae].E,
+    // potential::update_V_acting_on_elec_1d(
+    //     &mut eval_data0.V_acting_on_this,
+    //     V_nuc,
+    //     &[V_from_elec0],
+    //     0,
+    //     grid_n,
+    // );
+
+    for i in 0..grid_n {
+        eval_data0.psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
+            eval_data0.psi.on_pt[i],
+            eval_data0.V_acting_on_this[i],
+            eval_data0.E,
         );
     }
 }
