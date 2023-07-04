@@ -50,8 +50,8 @@ use crate::{
 const NUM_SURFACES: usize = 10;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.7;
-const GRID_N_DEFAULT: usize = 30;
-const GRID_N_CHARGE_DEFAULT: usize = 20;
+const GRID_N_DEFAULT: usize = 40;
+const GRID_N_CHARGE_DEFAULT: usize = 40;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -345,18 +345,18 @@ fn main() {
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let nuclei = vec![
-        // (posit_charge_1, Q_PROT * 2.), // helium
-        (posit_charge_1, Q_PROT * 1.), // Hydrogen
+        (posit_charge_1, Q_PROT * 2.), // helium
+        // (posit_charge_1, Q_PROT * 1.), // Hydrogen
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
-    let max_basis_n = 2;
+    let max_basis_n = 1;
 
     let ui_active_elec = 0;
 
-    // let num_elecs = 2;
-    let num_elecs = 1;
+    let num_elecs = 2;
+    // let num_elecs = 1;
 
     // Outer of these is per-elec.
     let mut bases = Vec::new();
@@ -393,8 +393,8 @@ fn main() {
 
     // todo next up: Figure out why you get incorrect answers if these 2 grids don't line up.
     // todo: FOr now, you can continue with matching them if you wish.
-    let (grid_min_render, grid_max_render) = (-5., 5.);
-    let (grid_min_charge, grid_max_charge) = (-6., 6.);
+    let (grid_min_render, grid_max_render) = (-4., 4.);
+    let (grid_min_charge, grid_max_charge) = (-8., 8.);
 
     // let spacing_factor = 1.6;
     // Currently, must be one as long as used with elec-elec charge.

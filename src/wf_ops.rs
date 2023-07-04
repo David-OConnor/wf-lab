@@ -471,55 +471,55 @@ pub fn initialize_bases(
     // todo for now as a kludge to preserve weights, we copy the prev weights.
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
         // See Sebens, for weights under equation 24; this is for Helium.
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 1.41714,
-        //     weight: 0.76837,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 2.37682,
-        //     weight: 0.22346,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 4.39628,
-        //     weight: 0.04082,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 6.52699,
-        //     weight: -0.00994,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 7.94252,
-        //     weight: 0.00230,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        //
-        // for _ in 0..bases.len() {
-        //     visible.push(true);
-        // }
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 1.41714,
+            weight: 0.76837,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 2.37682,
+            weight: 0.22346,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 4.39628,
+            weight: 0.04082,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 6.52699,
+            weight: -0.00994,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 7.94252,
+            weight: 0.00230,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+
+        for _ in 0..bases.len() {
+            visible.push(true);
+        }
     }
     // if let Some(mut vis) = bases_visible {
     //     *vis = visible;
     // }
-    // return; // todo temp
+    return; // todo temp
 
     // for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
     for n in 1..max_n + 1 {
@@ -555,7 +555,8 @@ pub fn initialize_bases(
                     //     pub charge_id: usize,
                     //     pub harmonic: SphericalHarmonic,
 
-                    for xi in &[1., 2., 3., 4.] {
+                    // for xi in &[1., 2., 3., 4.] {
+                    for xi in &[1.41714, 2.37682, 4.39628, 6.52699, 7.94252] {
                         bases.push(Basis::Sto(Sto {
                             posit: *nuc_posit,
                             n,
@@ -571,14 +572,14 @@ pub fn initialize_bases(
                     }
                 }
 
-                visible.push(true);
+                // visible.push(true);
             }
         }
     }
 
-    if let Some(mut vis) = bases_visible {
-        *vis = visible;
-    }
+    // if let Some(mut vis) = bases_visible {
+    //     *vis = visible;
+    // }
 }
 
 /// Group that includes psi at a point, and at points surrounding it, an infinetesimal difference

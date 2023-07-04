@@ -461,13 +461,25 @@ fn bottom_items(
                 state.grid_n_charge,
             );
 
+            // todo: Temp. This is slow, but troubleshooting.
+            // potential::create_V_from_an_elec_grid(
+            //     &mut state.V_from_elecs[ae],
+            //     &state.charges_electron[ae],
+            //     &state.surfaces_shared.grid_posits,
+            //     &state.surfaces_shared.grid_posits_charge,
+            //     state.grid_n_render,
+            //     state.grid_n_charge,
+            //
+            // );
+
             potential::create_V_from_an_elec(
                 &mut state.V_from_elecs_1d[ae],
                 &state.charges_electron[ae],
                 &state.eval_data_shared.posits,
                 &state.surfaces_shared.grid_posits_charge,
-                state.grid_n_charge,
                 state.eval_data_shared.n,
+                state.grid_n_charge,
+
             );
 
             // todo: How did we handle this before? note that
@@ -482,11 +494,13 @@ fn bottom_items(
             .add(egui::Button::new("Update V acting on this elec"))
             .clicked()
         {
+
+            // todo: Slow; temp for TS.
             // potential::update_V_acting_on_elec(
-            //     &mut state.surfaces_per_elec[active_elec].V_acting_on_this,
+            //     &mut state.surfaces_per_elec[ae].V_acting_on_this,
             //     &state.surfaces_shared.V_from_nuclei,
             //     &state.V_from_elecs,
-            //     active_elec,
+            //     ae,
             //     state.grid_n_render,
             // );
 

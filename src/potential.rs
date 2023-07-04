@@ -149,7 +149,7 @@ pub(crate) fn update_V_acting_on_elec_1d(
 /// Update the V associated with a single electron's charge.
 /// This must be run after the charge from this electron is created from the wave function square.
 /// We expect the loop over charge positions to be larger than the one over V positions.
-pub(crate) fn _create_V_from_an_elec_grid(
+pub(crate) fn create_V_from_an_elec_grid(
     V_from_this_elec: &mut Arr3dReal,
     charge_this_elec: &Arr3dReal,
     grid_posits: &Arr3dVec,
@@ -209,8 +209,9 @@ pub(crate) fn create_V_from_an_elec(
     charge_this_elec: &Arr3dReal,
     grid_posits: &[Vec3],
     grid_posits_charge: &Arr3dVec,
+    grid_n: usize,
     grid_n_charge: usize,
-    grid_n_1d: usize,
+
 ) {
     println!("Creating V from an electron...");
 
@@ -218,7 +219,7 @@ pub(crate) fn create_V_from_an_elec(
     // todo: Perhaps you could create an approximate analytic function of charge density over space,
     // todo then shoot rays or something out at evenly spaced angles from the sample pt??
 
-    for i_sample in 0..grid_n_1d {
+    for i_sample in 0..grid_n {
         let posit_sample = grid_posits[i_sample];
 
         // Iterate through this electron's (already computed) charge at every position in space,
