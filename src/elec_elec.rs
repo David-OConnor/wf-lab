@@ -368,7 +368,7 @@ impl WaveFunctionMultiElec {
 /// to avoid unecessary allocations.
 pub(crate) fn update_charge_density_fm_psi(
     charge_density: &mut Arr3dReal,
-    bases_unweighted_charge: &[Arr3d],
+    bases_evaled_charge: &[Arr3d],
     weights: &[f64],
     grid_n_charge: usize,
 ) {
@@ -391,7 +391,7 @@ pub(crate) fn update_charge_density_fm_psi(
         for j in 0..grid_n_charge {
             for k in 0..grid_n_charge {
                 let mut psi = Cplx::new_zero();
-                for (i_basis, basis_val) in bases_unweighted_charge.iter().enumerate() {
+                for (i_basis, basis_val) in bases_evaled_charge.iter().enumerate() {
                     psi += basis_val[i][j][k] * weights[i_basis];
                 }
 

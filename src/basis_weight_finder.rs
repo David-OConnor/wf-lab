@@ -17,12 +17,15 @@ use lin_alg2::f64::Vec3;
 /// We choose several start points to help find a global solution.
 pub fn find_weights(
     charges_fixed: &Vec<(Vec3, f64)>,
+    charges_elec: &mut [Arr3dReal],
     eval_data: &mut EvalDataPerElec,
     posits: &[Vec3],
     bases: &mut Vec<Basis>,
     bases_evaled: &mut BasesEvaluated1d,
     bases_evaled_charge: &mut Vec<Arr3d>,
     max_n: u16, // quantum number n
+    V_from_nuclei: &[f64],
+    V_from_elec: &mut [f64],
     grid_n_charge: usize,
     grid_posits_charge: &Arr3dVec,
     grid_n: usize,
@@ -83,11 +86,35 @@ pub fn find_weights(
             point_shifted_left[i_basis] -= D_WEIGHT;
             point_shifted_right[i_basis] += D_WEIGHT;
 
-            let score_prev =
-                score_weight_set(bases, eval_data, bases_evaled, &point_shifted_left, grid_n);
+            let score_prev = score_weight_set(
+                bases,
+                bases_evaled,
+                eval_data,
+                V_from_elec,
+                &mut charges_elec[0],
+                &bases_evaled_charge,
+                V_from_nuclei,
+                &point_shifted_left,
+                posits,
+                grid_posits_charge,
+                grid_n,
+                grid_n_charge,
+            );
 
-            let score_next =
-                score_weight_set(bases, eval_data, bases_evaled, &point_shifted_right, grid_n);
+            let score_next = score_weight_set(
+                bases,
+                bases_evaled,
+                eval_data,
+                V_from_elec,
+                &mut charges_elec[0],
+                &bases_evaled_charge,
+                V_from_nuclei,
+                &point_shifted_right,
+                posits,
+                grid_posits_charge,
+                grid_n,
+                grid_n_charge,
+            );
 
             diffs[i_basis] = (score_next - score_prev) / (2. * D_WEIGHT);
         }
@@ -130,12 +157,32 @@ pub fn find_weights(
 /// This function doesn't mutate any of the data.
 fn score_weight_set(
     bases: &[Basis],
-    eval_data: &mut EvalDataPerElec,
     bases_evaled: &BasesEvaluated1d,
+    eval_data: &mut EvalDataPerElec,
+    V_from_elec: &mut [f64],
+    charges_elec: &mut Arr3dReal,
+    bases_evaled_charge: &[Arr3d],
+    V_from_nuclei: &[f64],
     weights: &[f64],
+    grid_posits_1d: &[Vec3],
+    grid_posits_charge: &Arr3dVec,
     grid_n: usize,
+    grid_n_charge: usize,
 ) -> f64 {
     wf_ops::update_wf_fm_bases_1d(bases, bases_evaled, eval_data, grid_n, Some(weights));
+
+    update_elec_V(
+        eval_data,
+        V_from_elec,
+        charges_elec,
+        bases_evaled_charge,
+        V_from_nuclei,
+        weights,
+        grid_posits_1d,
+        grid_posits_charge,
+        grid_n,
+        grid_n_charge,
+    );
 
     // println!("E: {:?}", eval_data.E);
 
@@ -149,13 +196,10 @@ fn score_weight_set(
 /// Note that we are using a single electron here, and using it
 /// for both the charge and acted-on roles.
 fn update_elec_V(
-    eval_data0: &mut EvalDataPerElec,
-    // eval_data1: &mut EvalDataPerElec,
-    V_from_elec0: &mut [f64],
-    // V_from_elec1: &mut [f64],
-    charges_elec0: &mut Arr3dReal,
-    // charges_elec1: &mut Arr3dreal,
-    bases_evaled_charge: &BasesEvaluated,
+    eval_data: &mut EvalDataPerElec,
+    V_from_elec: &mut [f64],
+    charges_elec: &mut Arr3dReal,
+    bases_evaled_charge: &[Arr3d],
     V_from_nuclei: &[f64],
     weights: &[f64],
     grid_posits_1d: &[Vec3],
@@ -165,16 +209,16 @@ fn update_elec_V(
 ) {
     // Create charge using the trial weights.
     elec_elec::update_charge_density_fm_psi(
-        charges_elec0,
-        &bases_evaled_charge.on_pt,
+        charges_elec,
+        bases_evaled_charge,
         weights,
         grid_n_charge,
     );
 
     // Create a potential from this charge.
     potential::create_V_from_an_elec(
-        V_from_elec0,
-        charges_elec0,
+        V_from_elec,
+        charges_elec,
         grid_posits_1d,
         grid_posits_charge,
         grid_n,
@@ -186,7 +230,7 @@ fn update_elec_V(
     // This step is a variant on `update_V_acting_on_elec`, for our specialized
     // 2-identical-electrons setup here.
     for i in 0..grid_n {
-        eval_data0.V_acting_on_this[i] = V_from_nuclei[i] + V_from_elec0[i];
+        eval_data.V_acting_on_this[i] = V_from_nuclei[i] + V_from_elec[i];
     }
 
     // potential::update_V_acting_on_elec_1d(
@@ -198,10 +242,10 @@ fn update_elec_V(
     // );
 
     for i in 0..grid_n {
-        eval_data0.psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
-            eval_data0.psi.on_pt[i],
-            eval_data0.V_acting_on_this[i],
-            eval_data0.E,
+        eval_data.psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
+            eval_data.psi.on_pt[i],
+            eval_data.V_acting_on_this[i],
+            eval_data.E,
         );
     }
 }

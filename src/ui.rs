@@ -541,12 +541,15 @@ fn bottom_items(
     if ui.add(egui::Button::new("Find weights")).clicked() {
         basis_weight_finder::find_weights(
             &state.charges_fixed,
+            &mut state.charges_electron,
             &mut state.eval_data_per_elec[ae],
             &state.eval_data_shared.posits,
             &mut state.bases[ae],
             &mut state.bases_evaluated_1d[ae],
             &mut state.bases_evaluated_charge[ae],
             state.max_basis_n,
+            &state.eval_data_shared.V_from_nuclei,
+            &mut state.V_from_elecs_1d[ae],
             state.grid_n_charge,
             &state.surfaces_shared.grid_posits_charge,
             state.eval_data_shared.n,
