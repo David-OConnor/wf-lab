@@ -223,7 +223,7 @@ pub struct EvalDataPerElec {
     /// Posits are the 3D-space positions the other values are sampled at.
     /// V acting on
     pub V_acting_on_this: Vec<f64>,
-    pub V_from_this: Vec<f64>,
+    // pub V_from_this: Vec<f64>,
     // pub psi: Vec<Cplx>,
     pub psi: PsiWDiffs1d,
     pub psi_pp_calc: Vec<Cplx>,
@@ -235,20 +235,20 @@ pub struct EvalDataPerElec {
 impl EvalDataPerElec {
     pub fn new(n: usize) -> Self {
         let mut V_acting_on_this = Vec::new();
-        let mut V_from_this = Vec::new();
+        // let mut V_from_this = Vec::new();
         let mut psi_pp_calc = Vec::new();
         let mut psi_pp_meas = Vec::new();
 
         for _ in 0..n {
             V_acting_on_this.push(0.);
-            V_from_this.push(0.);
+            // V_from_this.push(0.);
             psi_pp_calc.push(Cplx::new_zero());
             psi_pp_meas.push(Cplx::new_zero());
         }
 
         Self {
             V_acting_on_this,
-            V_from_this,
+            // V_from_this,
             psi: PsiWDiffs1d::init(&psi_pp_calc), // 0 Vec.
             psi_pp_calc,
             psi_pp_meas,

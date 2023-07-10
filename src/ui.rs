@@ -26,6 +26,10 @@ const SLIDER_WIDTH_ORIENTATION: f32 = 100.;
 const E_MIN: f64 = -4.5;
 const E_MAX: f64 = 0.2;
 
+// Wave fn weights
+pub const WEIGHT_MIN: f64 = -1.;
+pub const WEIGHT_MAX: f64 = 2.;
+
 const _L_MIN: f64 = -3.;
 const _L_MAX: f64 = 3.;
 
@@ -179,10 +183,14 @@ fn basis_fn_mixer(
     active_elec: usize,
 ) {
     // Select with charge (and its position) this basis fn is associated with.
+
     egui::containers::ScrollArea::vertical()
         .max_height(400.)
         .show(ui, |ui| {
-            for (id, basis) in state.bases[active_elec].iter_mut().enumerate() {
+            // We use this Vec to avoid double-mutable borrow issues.
+            let mut bases_modified = Vec::new();
+
+            for (basis_i, basis) in state.bases[active_elec].iter_mut().enumerate() {
                 ui.horizontal(|ui| {
                     // Checkbox to immediately hide or show the basis.
 
@@ -199,7 +207,7 @@ fn basis_fn_mixer(
                     let prev_charge_id = basis.charge_id();
 
                     // Pair WFs with charge positions.
-                    egui::ComboBox::from_id_source(id + 1_000)
+                    egui::ComboBox::from_id_source(basis_i + 1_000)
                         .width(30.)
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
@@ -390,16 +398,37 @@ fn basis_fn_mixer(
                 // todo: Text edit or dropdown for n.
 
                 ui.add(
-                    egui::Slider::from_get_set(wf_ops::WEIGHT_MIN..=wf_ops::WEIGHT_MAX, |v| {
+                    egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
                         if let Some(v_) = v {
                             *basis.weight_mut() = v_;
                             *updated_basis_weights = true;
+
+                            bases_modified.push(basis_i);
+                            // if state.weight_symmetry {
+                            //     for elec_i in 0..state.num_elecs {
+                            //         *state.bases[elec_i][basis_i].weight_mut() = v_;
+                            //     //     // todo: This currently affects *all* electrons
+                            //     }
+                            // }
                         }
 
                         basis.weight()
                     })
                     .text("Wt"),
                 );
+            }
+
+            if state.weight_symmetry {
+                for elec_i in 0..state.num_elecs {
+                    if elec_i == active_elec {
+                        continue;
+                    }
+                    for basis_i in &bases_modified {
+                        *state.bases[elec_i][*basis_i].weight_mut() =
+                            state.bases[active_elec][*basis_i].weight();
+                        *updated_basis_weights = true; // Make this update for all!
+                    }
+                }
             }
         });
 }
@@ -447,18 +476,24 @@ fn bottom_items(
             .add(egui::Button::new("Create V from this elec"))
             .clicked()
         {
-            // todo: Better appraoch?
-            let mut weights = Vec::new();
-            for basis in &state.bases[ae] {
-                weights.push(basis.weight());
-            }
-
             elec_elec::update_charge_density_fm_psi(
                 &mut state.charges_electron[ae],
-                &state.bases_evaluated_charge[ae],
-                &weights,
+                &state.surfaces_per_elec[ae].psi.on_pt,
                 state.grid_n_charge,
             );
+
+            // todo: Better appraoch?
+            /*            let mut weights = Vec::new();
+            for basis in &state.bases[ae] {
+                weights.push(basis.weight());
+            }*/
+
+            // elec_elec::update_charge_density_fm_psi(
+            //     &mut state.charges_electron[ae],
+            //     &state.bases_evaluated_charge[ae],
+            //     &weights,
+            //     state.grid_n_charge,
+            // );
 
             // todo: Temp. This is slow, but troubleshooting.
             // potential::create_V_from_an_elec_grid(
@@ -480,7 +515,7 @@ fn bottom_items(
                 state.grid_n_charge,
             );
 
-            state.eval_data_per_elec[ae].V_from_this = state.V_from_elecs_1d[ae].clone();
+            // state.eval_data_per_elec[ae].V_from_this = state.V_from_elecs_1d[ae].clone();
             *updated_E = true;
 
             *updated_meshes = true;
@@ -703,6 +738,21 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             {
                 updated_meshes = true;
             }
+
+            if ui
+                .checkbox(&mut state.adjust_E_with_weights, "Auto adjust E")
+                .clicked()
+            {}
+
+            if ui
+                .checkbox(&mut state.auto_gen_elec_V, "Auto elec V")
+                .clicked()
+            {}
+
+            if ui
+                .checkbox(&mut state.weight_symmetry, "Weight sym")
+                .clicked()
+            {}
         });
 
         ui.horizontal(|ui| {
@@ -818,7 +868,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             println!("\nPsi: {:?}", state.eval_data_per_elec[ae].psi.on_pt);
                             println!("\nCalc: {:?}", state.eval_data_per_elec[ae].psi_pp_calc);
                             println!("\nMeas: {:?}", state.eval_data_per_elec[ae].psi_pp_meas);
-                            println!("\nV from: {:?}", state.eval_data_per_elec[ae].V_from_this);
+                            println!("\nV from: {:?}", state.V_from_elecs_1d[ae]);
                             println!(
                                 "\nV on: {:?}",
                                 state.eval_data_per_elec[ae].V_acting_on_this
@@ -827,6 +877,22 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             println!("\nV_ from elecs global {:?}", state.V_from_elecs_1d[ae]);
 
                             println!("\nBasess eval {:?}", state.eval_data_per_elec[ae].psi.on_pt);
+
+                            // todo: Experimental diagnostic
+                            let mut sum_pos = 0.;
+                            for i in 0..state.grid_n_render {
+                                for j in 0..state.grid_n_render {
+                                    for k in 0..state.grid_n_render {
+                                        let psi_pp =
+                                            state.surfaces_per_elec[ae].psi_pp_calculated[i][j][k];
+                                        if psi_pp.real > 0. {
+                                            // todo im part??
+                                            sum_pos += psi_pp.real;
+                                        }
+                                    }
+                                }
+                            }
+                            println!("Sum of pos psi'': {:?}", sum_pos);
                         }
 
                         state.eval_data_per_elec[ae].E
@@ -962,20 +1028,26 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                     // Set up our basis-function based trial wave function.
                     wf_ops::update_wf_fm_bases(
+                        &mut state.surfaces_per_elec[ae],
                         &state.bases[ae],
                         &state.bases_evaluated[ae],
-                        &mut state.surfaces_per_elec[ae],
                         state.eval_data_per_elec[ae].E,
                         state.grid_n_render,
                         None,
                     );
 
+                    let E = if state.adjust_E_with_weights {
+                        None
+                    } else {
+                        Some(state.eval_data_per_elec[ae].E)
+                    };
                     wf_ops::update_wf_fm_bases_1d(
+                        &mut state.eval_data_per_elec[ae],
                         &state.bases[ae],
                         &state.bases_evaluated_1d[ae],
-                        &mut state.eval_data_per_elec[ae],
                         state.eval_data_shared.n,
                         None,
+                        E,
                     );
 
                     state.eval_data_per_elec[ae].score = eval::score_wf(

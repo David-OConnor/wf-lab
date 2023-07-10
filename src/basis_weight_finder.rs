@@ -4,13 +4,18 @@
 use crate::{
     basis_wfs::Basis,
     eigen_fns, elec_elec, eval,
-    grid_setup::{Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     potential,
     types::{EvalDataPerElec, SurfacesPerElec, SurfacesShared},
+    util,
     wf_ops::{self, BasesEvaluated, BasesEvaluated1d},
 };
 
 use lin_alg2::f64::Vec3;
+
+// Observation to explore: For Helium (what else?) Energy seems to be the value
+// where psi'' calc has no part above 0, but barely. todo Can we use this?
+// Is it a least-dampening phenomenon?
 
 /// Adjust weights of coefficiants until score is minimized.
 /// We use a gradient-descent approach to find local *score* minimum. (fidelity?)
@@ -35,14 +40,16 @@ pub fn find_weights(
     let norm = 1.; // todo temp! Figure this out.
 
     *bases_evaled = BasesEvaluated1d::new(bases, posits, norm);
-
     *bases_evaled_charge = wf_ops::arr_from_bases(bases, grid_posits_charge, grid_n_charge);
 
-    // Infinitessimal weight change, used for assessing derivatives.
-    const D_WEIGHT: f64 = 0.001;
+    // We use this 3D psi for calculating charge density.
+    let mut psi_grid = new_data(grid_n_charge);
 
-    const NUM_DESCENTS: usize = 10; // todo
-    let descent_rate = 2.; // todo? Factor for gradient descent based on the vector.
+    // Infinitessimal weight change, used for assessing derivatives.
+    const D_WEIGHT: f64 = 0.0001;
+
+    const NUM_DESCENTS: usize = 3; // todo
+    let descent_rate = 0.1; // todo? Factor for gradient descent based on the vector.
 
     // todo: Consider again using unweighted bases in your main logic. YOu removed it before
     // todo because it was bugged when you attempted it.
@@ -67,8 +74,17 @@ pub fn find_weights(
 
     // For now, let's use a single starting point, and gradient-descent from it.
     let mut current_point = vec![0.; bases.len()];
-    for i in 0..charges_fixed.len() {
+    // for i in 0..charges_fixed.len() {
+    for i in 0..1 {
         current_point[i] = 1.;
+    }
+
+    // todo: Trying sampling a grid approach.
+
+    let vals = util::linspace((-0.5, 0.5), 10);
+
+    for (i_basis, _basis) in bases.iter().enumerate() {
+        for val in &vals {}
     }
 
     for _descent_num in 0..NUM_DESCENTS {
@@ -86,35 +102,29 @@ pub fn find_weights(
             point_shifted_left[i_basis] -= D_WEIGHT;
             point_shifted_right[i_basis] += D_WEIGHT;
 
-            let score_prev = score_weight_set(
-                bases,
-                bases_evaled,
-                eval_data,
-                V_from_elec,
-                &mut charges_elec[0],
-                &bases_evaled_charge,
-                V_from_nuclei,
-                &point_shifted_left,
-                posits,
-                grid_posits_charge,
-                grid_n,
-                grid_n_charge,
-            );
+            let scores: Vec<f64> = [point_shifted_left, point_shifted_right]
+                .iter()
+                .map(|weights| {
+                    score_weight_set(
+                        bases,
+                        bases_evaled,
+                        bases_evaled_charge,
+                        eval_data,
+                        &mut psi_grid,
+                        V_from_elec,
+                        &mut charges_elec[0],
+                        V_from_nuclei,
+                        weights,
+                        posits,
+                        grid_posits_charge,
+                        grid_n,
+                        grid_n_charge,
+                    )
+                })
+                .collect();
 
-            let score_next = score_weight_set(
-                bases,
-                bases_evaled,
-                eval_data,
-                V_from_elec,
-                &mut charges_elec[0],
-                &bases_evaled_charge,
-                V_from_nuclei,
-                &point_shifted_right,
-                posits,
-                grid_posits_charge,
-                grid_n,
-                grid_n_charge,
-            );
+            let score_prev = scores[0];
+            let score_next = scores[1];
 
             diffs[i_basis] = (score_next - score_prev) / (2. * D_WEIGHT);
         }
@@ -158,10 +168,11 @@ pub fn find_weights(
 fn score_weight_set(
     bases: &[Basis],
     bases_evaled: &BasesEvaluated1d,
+    bases_evaled_charge: &[Arr3d],
     eval_data: &mut EvalDataPerElec,
+    psi_grid: &mut Arr3d,
     V_from_elec: &mut [f64],
     charges_elec: &mut Arr3dReal,
-    bases_evaled_charge: &[Arr3d],
     V_from_nuclei: &[f64],
     weights: &[f64],
     grid_posits_1d: &[Vec3],
@@ -169,15 +180,18 @@ fn score_weight_set(
     grid_n: usize,
     grid_n_charge: usize,
 ) -> f64 {
-    wf_ops::update_wf_fm_bases_1d(bases, bases_evaled, eval_data, grid_n, Some(weights));
+    // This updates psi, E, and both psi''s
+    wf_ops::update_wf_fm_bases_1d(eval_data, bases, bases_evaled, grid_n, Some(weights), None);
+
+    // Update psi on the grid
+    wf_ops::mix_bases_no_diffs(psi_grid, bases, bases_evaled_charge, grid_n, Some(weights));
 
     update_elec_V(
         eval_data,
         V_from_elec,
         charges_elec,
-        bases_evaled_charge,
+        psi_grid,
         V_from_nuclei,
-        weights,
         grid_posits_1d,
         grid_posits_charge,
         grid_n,
@@ -199,21 +213,22 @@ fn update_elec_V(
     eval_data: &mut EvalDataPerElec,
     V_from_elec: &mut [f64],
     charges_elec: &mut Arr3dReal,
-    bases_evaled_charge: &[Arr3d],
+    psi_grid: &Arr3d,
     V_from_nuclei: &[f64],
-    weights: &[f64],
     grid_posits_1d: &[Vec3],
     grid_posits_charge: &Arr3dVec,
     grid_n: usize,
     grid_n_charge: usize,
 ) {
     // Create charge using the trial weights.
-    elec_elec::update_charge_density_fm_psi(
-        charges_elec,
-        bases_evaled_charge,
-        weights,
-        grid_n_charge,
-    );
+    elec_elec::update_charge_density_fm_psi(charges_elec, psi_grid, grid_n_charge);
+
+    // elec_elec::update_charge_density_fm_psi(
+    //     charges_elec,
+    //     bases_evaled_charge,
+    //     weights,
+    //     grid_n_charge,
+    // );
 
     // Create a potential from this charge.
     potential::create_V_from_an_elec(

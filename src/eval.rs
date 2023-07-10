@@ -108,17 +108,6 @@ fn _fidelity(psi_pp_calc: &Arr3d, psi_pp_meas: &Arr3d, n: usize) -> f64 {
 pub fn score_wf(psi_pp_calc: &[Cplx], psi_pp_meas: &[Cplx]) -> f64 {
     let mut result = 0.;
 
-    // Normalize so score is invariant to number of points.
-    let mut norm_calc = 0.;
-
-    // for i in 0..psi_pp_calc.len() {
-    //     let psi_pp = psi_pp_calc[i].abs_sq();
-    //     if psi_pp > 0.0000000001 && psi_pp < 9999. {
-    //         // todo: Not sure on teh last one.
-    //         norm_calc += psi_pp;
-    //     }
-    // }
-
     for i in 0..psi_pp_calc.len() {
         // todo: Check if either individual is outside a thresh?
         let diff = psi_pp_calc[i] - psi_pp_meas[i];

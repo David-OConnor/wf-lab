@@ -9,8 +9,8 @@ use lin_alg2::f64::Vec3;
 /// to assess trial wave functions, without introducing numerical instabilities.
 pub(crate) fn find_sample_points(nuclei: &[(Vec3, f64)]) -> Vec<Vec3> {
     const SAMPLE_DIST_0: f64 = 0.2; // todo: Mass-dependent?
-    const SAMPLE_DIST_1: f64 = 1.; // todo: Mass-dependent?
-    const SAMPLE_DIST_2: f64 = 6.; // todo: Mass-dependent?
+    const SAMPLE_DIST_1: f64 = 0.5; // todo: Mass-dependent?
+    const SAMPLE_DIST_2: f64 = 2.; // todo: Mass-dependent?
 
     const X_PLUS: Vec3 = Vec3::new(1., 0., 0.);
     const Y_PLUS: Vec3 = Vec3::new(0., 1., 0.);

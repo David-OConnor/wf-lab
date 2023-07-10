@@ -131,6 +131,13 @@ pub struct State {
     /// When finding and initializing basis, this is the maximum n quantum number.
     pub max_basis_n: u16,
     pub num_elecs: usize,
+    /// If set, E is automatically optimized after manually adjusting basis weights.
+    pub adjust_E_with_weights: bool,
+    /// Automatically generate the (1d) V (And acted on V?) when changing bases.
+    pub auto_gen_elec_V: bool,
+    /// When updating the weight of basis for an electron, update that weight
+    /// for all electrons that share the same n. (When applicable?)
+    pub weight_symmetry: bool,
 }
 
 // /// Interpolate a value from a discrete wave function, assuming (what about curvature)
@@ -247,10 +254,10 @@ pub fn init_from_grid(
 
         // Set up our basis-function based trial wave function.
         wf_ops::update_wf_fm_bases(
+            &mut surfaces_per_elec[i_elec],
             // todo: Handle the multi-electron case instead of hard-coding 0.
             &bases[0],
             &bases_evaluated[i_elec],
-            &mut surfaces_per_elec[i_elec],
             // &surfaces_shared.grid_posits,
             -0.5,
             grid_n,
@@ -323,11 +330,12 @@ pub fn init_1d(
 
         // Set up our basis-function based trial wave function.
         wf_ops::update_wf_fm_bases_1d(
+            &mut eval_data_per_elec[i_elec],
             // todo: Handle the multi-electron case instead of hard-coding 0.
             &bases[0],
             &bases_evaluated[i_elec],
-            &mut eval_data_per_elec[i_elec],
             eval_data_shared.n,
+            None,
             None,
         );
     }
@@ -465,6 +473,9 @@ fn main() {
         mag_phase: false,
         max_basis_n,
         num_elecs,
+        adjust_E_with_weights: true,
+        auto_gen_elec_V: false,
+        weight_symmetry: true,
     };
 
     render::render(state);
