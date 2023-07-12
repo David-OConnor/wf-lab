@@ -196,7 +196,7 @@ impl SurfacesPerElec {
 pub struct EvalDataShared {
     pub posits: Vec<Vec3>,
     pub V_from_nuclei: Vec<f64>,
-    pub n: usize, // len of data here and in associated per-elec data.
+    pub grid_n: usize, // len of data here and in associated per-elec data.
 }
 
 impl EvalDataShared {
@@ -212,7 +212,7 @@ impl EvalDataShared {
         Self {
             posits,
             V_from_nuclei,
-            n,
+            grid_n: n,
         }
     }
 }

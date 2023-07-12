@@ -321,21 +321,6 @@ pub fn update_wf_fm_bases_1d(
 //     }
 // }
 
-/// Update psi_pp from grid. Called after several types of operation
-pub fn update_psi_pp_calc_grid(surfaces: &mut SurfacesPerElec, E: f64, grid_n: usize) {
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                surfaces.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
-                    surfaces.psi.on_pt[i][j][k],
-                    surfaces.V_acting_on_this[i][j][k],
-                    E,
-                )
-            }
-        }
-    }
-}
-
 /// Update psi'' calc and psi'' measured, assuming we are using basis WFs. This is done
 /// after the wave function is contructed and normalized, including at neighboring points.
 ///

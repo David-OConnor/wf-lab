@@ -5,18 +5,11 @@ use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::Vec3;
 
 use crate::{
-    basis_weight_finder,
-    basis_wfs::Basis,
-    complex_nums::Cplx,
-    eigen_fns,
-    elec_elec::PositIndex,
-    elec_elec::{self, WaveFunctionMultiElec},
-    eval,
-    grid_setup::{self, Arr3d, Arr3dReal},
-    potential, render,
-    types::EvalDataPerElec,
-    wf_ops, ActiveElec, State,
+    basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval, potential, render, wf_ops,
+    ActiveElec, State,
 };
+
+pub(crate) mod procedures;
 
 const UI_WIDTH: f32 = 300.;
 const SIDE_PANEL_SIZE: f32 = 400.;
@@ -404,12 +397,26 @@ fn basis_fn_mixer(
                             *updated_basis_weights = true;
 
                             bases_modified.push(basis_i);
-                            // if state.weight_symmetry {
-                            //     for elec_i in 0..state.num_elecs {
-                            //         *state.bases[elec_i][basis_i].weight_mut() = v_;
-                            //     //     // todo: This currently affects *all* electrons
-                            //     }
-                            // }
+
+                            if state.auto_gen_elec_V {
+                                // todo: DRY (C+P) from the button., ideally use this:
+                                // todo procedures::create_V_from_elec(state, active_elec);
+                                // todo, but borrow checker issues.
+                                elec_elec::update_charge_density_fm_psi(
+                                    &mut state.charges_electron[active_elec],
+                                    &state.surfaces_per_elec[active_elec].psi.on_pt,
+                                    state.grid_n_charge,
+                                );
+
+                                potential::create_V_from_an_elec(
+                                    &mut state.V_from_elecs_1d[active_elec],
+                                    &state.charges_electron[active_elec],
+                                    &state.eval_data_shared.posits,
+                                    &state.surfaces_shared.grid_posits_charge,
+                                    state.eval_data_shared.grid_n,
+                                    state.grid_n_charge,
+                                );
+                            }
                         }
 
                         basis.weight()
@@ -426,7 +433,41 @@ fn basis_fn_mixer(
                     for basis_i in &bases_modified {
                         *state.bases[elec_i][*basis_i].weight_mut() =
                             state.bases[active_elec][*basis_i].weight();
-                        *updated_basis_weights = true; // Make this update for all!
+                        // *updated_basis_weights = true; // Make this update for all!
+
+                        // todo: DRY-filled C+P from `if updated_basis_weights` below! Fix this with
+                        // todo a better API
+
+                        let ae = elec_i;
+                        wf_ops::update_wf_fm_bases(
+                            &mut state.surfaces_per_elec[ae],
+                            &state.bases[ae],
+                            &state.bases_evaluated[ae],
+                            state.eval_data_per_elec[ae].E,
+                            state.grid_n_render,
+                            None,
+                        );
+
+                        let E = if state.adjust_E_with_weights {
+                            None
+                        } else {
+                            Some(state.eval_data_per_elec[ae].E)
+                        };
+                        wf_ops::update_wf_fm_bases_1d(
+                            &mut state.eval_data_per_elec[ae],
+                            &state.bases[ae],
+                            &state.bases_evaluated_1d[ae],
+                            state.eval_data_shared.grid_n,
+                            None,
+                            E,
+                        );
+
+                        state.eval_data_per_elec[ae].score = eval::score_wf(
+                            &state.eval_data_per_elec[ae].psi_pp_calc,
+                            &state.eval_data_per_elec[ae].psi_pp_meas,
+                        );
+
+                        // updated_meshes = true;
                     }
                 }
             }
@@ -440,7 +481,7 @@ fn bottom_items(
     ae: usize,
     updated_meshes: &mut bool,
     updated_basis_weights: &mut bool,
-    updated_E: &mut bool,
+    updated_E_or_V: &mut bool,
 ) {
     ui.horizontal(|ui| {
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
@@ -476,84 +517,27 @@ fn bottom_items(
             .add(egui::Button::new("Create V from this elec"))
             .clicked()
         {
-            elec_elec::update_charge_density_fm_psi(
-                &mut state.charges_electron[ae],
-                &state.surfaces_per_elec[ae].psi.on_pt,
-                state.grid_n_charge,
-            );
-
-            // todo: Better appraoch?
-            /*            let mut weights = Vec::new();
-            for basis in &state.bases[ae] {
-                weights.push(basis.weight());
-            }*/
-
-            // elec_elec::update_charge_density_fm_psi(
-            //     &mut state.charges_electron[ae],
-            //     &state.bases_evaluated_charge[ae],
-            //     &weights,
-            //     state.grid_n_charge,
-            // );
-
-            // todo: Temp. This is slow, but troubleshooting.
-            // potential::create_V_from_an_elec_grid(
-            //     &mut state.V_from_elecs[ae],
-            //     &state.charges_electron[ae],
-            //     &state.surfaces_shared.grid_posits,
-            //     &state.surfaces_shared.grid_posits_charge,
-            //     state.grid_n_render,
-            //     state.grid_n_charge,
-            //
-            // );
-
-            potential::create_V_from_an_elec(
-                &mut state.V_from_elecs_1d[ae],
-                &state.charges_electron[ae],
-                &state.eval_data_shared.posits,
-                &state.surfaces_shared.grid_posits_charge,
-                state.eval_data_shared.n,
-                state.grid_n_charge,
-            );
-
-            // state.eval_data_per_elec[ae].V_from_this = state.V_from_elecs_1d[ae].clone();
-            *updated_E = true;
-
-            *updated_meshes = true;
+            procedures::create_V_from_elec(state, ae);
         }
 
         if ui
             .add(egui::Button::new("Update V acting on this elec"))
             .clicked()
         {
-            // todo: Slow; temp for TS.
-            // potential::update_V_acting_on_elec(
-            //     &mut state.surfaces_per_elec[ae].V_acting_on_this,
-            //     &state.surfaces_shared.V_from_nuclei,
-            //     &state.V_from_elecs,
-            //     ae,
-            //     state.grid_n_render,
-            // );
-
-            potential::update_V_acting_on_elec_1d(
-                &mut state.eval_data_per_elec[ae].V_acting_on_this,
-                &state.eval_data_shared.V_from_nuclei,
-                &state.V_from_elecs_1d,
-                ae,
-                state.eval_data_shared.n,
-            );
-
-            state.eval_data_per_elec[ae].E =
-                wf_ops::find_E(&mut state.eval_data_per_elec[ae], state.eval_data_shared.n);
+            procedures::update_V_acting_on_elec(state, ae);
 
             *updated_meshes = true;
+            *updated_E_or_V = true;
         }
 
         if ui.add(egui::Button::new("Find E")).clicked() {
             // state.surfaces_per_elec[ae].E =
             //     wf_ops::find_E(&mut state.eval_data_per_elec[ae], state.eval_data_shared.n);
 
-            state.eval_data_per_elec[ae].E =
-                wf_ops::find_E(&mut state.eval_data_per_elec[ae], state.eval_data_shared.n);
+            state.eval_data_per_elec[ae].E = wf_ops::find_E(
+                &mut state.eval_data_per_elec[ae],
+                state.eval_data_shared.grid_n,
+            );
 
             // let E = state.surfaces_per_elec[active_elec].E; // avoids mutable/immutable borrow issues.
             // wf_ops::update_psi_pp_calc(
@@ -568,7 +552,7 @@ fn bottom_items(
             // Update the grid for visualization.
             // todo: We use this instead of the above method due to mutable/immutable borrow conflicts.
 
-            *updated_E = true;
+            *updated_E_or_V = true;
             *updated_meshes = true;
         }
     });
@@ -587,7 +571,7 @@ fn bottom_items(
             &mut state.V_from_elecs_1d[ae],
             state.grid_n_charge,
             &state.surfaces_shared.grid_posits_charge,
-            state.eval_data_shared.n,
+            state.eval_data_shared.grid_n,
         );
 
         println!(
@@ -595,7 +579,7 @@ fn bottom_items(
             state.eval_data_per_elec[ae].E
         );
 
-        *updated_E = true;
+        *updated_E_or_V = true;
         *updated_basis_weights = true;
         *updated_meshes = true;
     }
@@ -626,7 +610,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         let mut updated_fixed_charges = false;
         let mut updated_evaluated_wfs = false;
         let mut updated_basis_weights = false;
-        let mut updated_E = false;
+        let mut updated_E_or_V = false;
         let mut updated_meshes = false;
 
         ui.horizontal(|ui| {
@@ -743,7 +727,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 .checkbox(&mut state.adjust_E_with_weights, "Auto adjust E")
                 .clicked()
             {}
+        });
 
+        ui.horizontal(|ui| {
             if ui
                 .checkbox(&mut state.auto_gen_elec_V, "Auto elec V")
                 .clicked()
@@ -753,7 +739,14 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 .checkbox(&mut state.weight_symmetry, "Weight sym")
                 .clicked()
             {}
+
+            if ui
+                .checkbox(&mut state.create_3d_electron_V, "3D elec V")
+                .clicked()
+            {}
         });
+
+        ui.add_space(ITEM_SPACING);
 
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
@@ -850,7 +843,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             state.eval_data_per_elec[ae].E = v_;
 
                             // Update psi'' calc for evaluation
-                            for i in 0..state.eval_data_shared.n {
+                            for i in 0..state.eval_data_shared.grid_n {
                                 state.eval_data_per_elec[ae].psi_pp_calc[i] =
                                     eigen_fns::find_ψ_pp_calc(
                                         state.eval_data_per_elec[ae].psi.on_pt[i],
@@ -860,7 +853,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             }
 
                             updated_meshes = true;
-                            updated_E = true;
+                            updated_E_or_V = true;
 
                             // todo: Temp debugging
                             println!("\n\n\nV nuc: {:?}", state.eval_data_shared.V_from_nuclei);
@@ -947,136 +940,31 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     ae,
                     &mut updated_meshes,
                     &mut updated_basis_weights,
-                    &mut updated_E,
+                    &mut updated_E_or_V,
                 );
 
                 // Code below handles various updates that were flagged above.
 
                 if updated_fixed_charges {
-                    potential::update_V_from_nuclei(
-                        &mut state.surfaces_shared.V_from_nuclei,
-                        &state.charges_fixed,
-                        &state.surfaces_shared.grid_posits,
-                        state.grid_n_render,
-                    );
-
-                    potential::update_V_from_nuclei_1d(
-                        &mut state.eval_data_shared.V_from_nuclei,
-                        &state.charges_fixed,
-                        &state.eval_data_shared.posits,
-                        state.eval_data_shared.n,
-                    );
-
-                    // Reinintialize bases due to the added charges, since we initialize bases centered
-                    // on the charges.
-                    // Note: An alternative would be to add the new bases without 0ing the existing ones.
-                    for elec_i in 0..state.surfaces_per_elec.len() {
-                        wf_ops::initialize_bases(
-                            &state.charges_fixed,
-                            &mut state.bases[elec_i],
-                            Some(&mut state.bases_visible[elec_i]),
-                            2,
-                        );
-
-                        potential::update_V_acting_on_elec(
-                            &mut state.surfaces_per_elec[elec_i].V_acting_on_this,
-                            &state.surfaces_shared.V_from_nuclei,
-                            &state.V_from_elecs,
-                            elec_i,
-                            state.grid_n_render,
-                        );
-
-                        potential::update_V_acting_on_elec_1d(
-                            &mut state.eval_data_per_elec[elec_i].V_acting_on_this,
-                            &state.eval_data_shared.V_from_nuclei,
-                            &state.V_from_elecs_1d,
-                            elec_i,
-                            state.eval_data_shared.n,
-                        );
-                    }
+                    procedures::update_fixed_charges(state);
                 }
 
                 if updated_evaluated_wfs {
-                    state.bases_evaluated[ae] = wf_ops::BasesEvaluated::new(
-                        &state.bases[ae],
-                        &state.surfaces_shared.grid_posits,
-                        state.grid_n_render,
-                    );
-
-                    let norm = 1.; // todo temp!!!
-                    state.bases_evaluated_1d[ae] = wf_ops::BasesEvaluated1d::new(
-                        &state.bases[ae],
-                        &state.eval_data_shared.posits,
-                        norm,
-                    );
-
-                    state.bases_evaluated_charge[ae] = wf_ops::arr_from_bases(
-                        &state.bases[ae],
-                        &state.surfaces_shared.grid_posits_charge,
-                        state.grid_n_charge,
-                    );
-
+                    procedures::update_evaluated_wfs(state, ae);
                     updated_meshes = true;
                 }
 
                 if updated_basis_weights {
-                    // let mut weights = vec![0.; state.bases[ae].len()];
-                    // // Syncing procedure pending a better API.
-                    // for (i, basis) in state.bases[ae].iter().enumerate() {
-                    //     weights[i] = basis.weight();
-                    // }
-
-                    // Set up our basis-function based trial wave function.
-                    wf_ops::update_wf_fm_bases(
-                        &mut state.surfaces_per_elec[ae],
-                        &state.bases[ae],
-                        &state.bases_evaluated[ae],
-                        state.eval_data_per_elec[ae].E,
-                        state.grid_n_render,
-                        None,
-                    );
-
-                    let E = if state.adjust_E_with_weights {
-                        None
-                    } else {
-                        Some(state.eval_data_per_elec[ae].E)
-                    };
-                    wf_ops::update_wf_fm_bases_1d(
-                        &mut state.eval_data_per_elec[ae],
-                        &state.bases[ae],
-                        &state.bases_evaluated_1d[ae],
-                        state.eval_data_shared.n,
-                        None,
-                        E,
-                    );
-
-                    state.eval_data_per_elec[ae].score = eval::score_wf(
-                        &state.eval_data_per_elec[ae].psi_pp_calc,
-                        &state.eval_data_per_elec[ae].psi_pp_meas,
-                    );
-
+                    procedures::update_basis_weights(state, ae);
                     updated_meshes = true;
                 }
 
-                if updated_E {
-                    wf_ops::update_psi_pp_calc_grid(
+                if updated_E_or_V {
+                    procedures::update_E_or_V(
+                        &mut state.eval_data_per_elec[ae],
                         &mut state.surfaces_per_elec[ae],
-                        state.eval_data_per_elec[ae].E,
+                        state.eval_data_shared.grid_n,
                         state.grid_n_render,
-                    );
-
-                    for i in 0..state.eval_data_shared.n {
-                        state.eval_data_per_elec[ae].psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
-                            state.eval_data_per_elec[ae].psi.on_pt[i],
-                            state.eval_data_per_elec[ae].V_acting_on_this[i],
-                            state.eval_data_per_elec[ae].E,
-                        );
-                    }
-
-                    // todo: Not working for some things lik eV?
-                    state.eval_data_per_elec[ae].score = eval::score_wf(
-                        &state.eval_data_per_elec[ae].psi_pp_calc,
-                        &state.eval_data_per_elec[ae].psi_pp_meas,
                     );
                 }
             }
@@ -1095,7 +983,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         if let Some(v_) = v {
                             state.surfaces_shared.E = v_;
 
-                            updated_E = true;
+                            updated_E_or_V = true;
                             updated_meshes = true;
                         }
 
@@ -1107,116 +995,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Multiply wave functions together, and stores in Shared surfaces.
                 // todo: This is an approximation
                 if ui.add(egui::Button::new("Combine wavefunctions")).clicked() {
-                    potential::update_V_combined(
-                        &mut state.surfaces_shared.V_total,
-                        &state.surfaces_shared.V_from_nuclei,
-                        &state.V_from_elecs,
-                        state.grid_n_render,
-                    );
-
-                    let mut per_elec_wfs = Vec::new();
-                    for sfc in &state.surfaces_per_elec {
-                        per_elec_wfs.push(&sfc.psi);
-                    }
-
-                    state
-                        .surfaces_shared
-                        .psi
-                        .setup_joint_wf(&per_elec_wfs, state.grid_n_render);
-
-                    // todo: COnsider a more DFT-like approach: Instead of reducing a WF to
-                    // todo individual electrons, consider varying E like you do for a single elec.
-                    // todo: Immediate obstacle: How to deal with V? Sum from all??
-                    // todo: Try retrofitting your single-electron setup with a modified V
-                    // todo that includes all elecs...
-
-                    wf_ops::update_psi_pps(
-                        &state.surfaces_shared.psi.psi_marginal,
-                        &state.surfaces_shared.V_total,
-                        &mut state.surfaces_shared.psi_pp_calculated,
-                        &mut state.surfaces_shared.psi_pp_measured,
-                        state.surfaces_shared.E,
-                        state.grid_n_render,
-                    );
-
-                    // Experiment to calc E.
-                    for i in 7..10 {
-                        for j in 7..10 {
-                            for k in 7..10 {
-                                let i1 = 9;
-                                let j1 = 10;
-                                let k1 = 11;
-
-                                let posit_0 = PositIndex::new(i, j, k);
-                                let posit_1 = PositIndex::new(i1, j1, k1);
-
-                                // code shortener
-                                // let psi = &state
-                                //     .surfaces_shared
-                                //     .psi
-                                //     .psi_joint;
-
-                                // Hold r1 constant, and differentiate r0
-                                let psi_pp_r0 = WaveFunctionMultiElec::calc_psi_pp(
-                                    &posit_0,
-                                    &posit_1,
-                                    &state.surfaces_per_elec[0].psi,
-                                    &state.surfaces_per_elec[1].psi,
-                                    0,
-                                );
-
-                                let psi_pp_r1 = WaveFunctionMultiElec::calc_psi_pp(
-                                    &posit_0,
-                                    &posit_1,
-                                    &state.surfaces_per_elec[0].psi,
-                                    &state.surfaces_per_elec[1].psi,
-                                    1,
-                                );
-
-                                // let psi = state
-                                //     .surfaces_shared
-                                //     .psi
-                                //     .psi_joint
-                                //     .get(&(PositIndex::new(i, j, k), PositIndex::new(i1, j1, k1)))
-                                //     .unwrap()
-                                //     .on_pt;
-
-                                // Naive HT product
-                                let psi = posit_0.index(&state.surfaces_per_elec[0].psi.on_pt)
-                                    * posit_1.index(&state.surfaces_per_elec[1].psi.on_pt);
-
-                                // todo: The neighboring vals as well.
-                                state.surfaces_shared.psi.psi_marginal.on_pt[i][j][k] = psi;
-
-                                let E = eigen_fns::find_E_2_elec_at_pt(
-                                    psi,
-                                    psi_pp_r0,
-                                    psi_pp_r1,
-                                    state.charges_fixed[0].0,
-                                    state.surfaces_shared.grid_posits[i][j][k],
-                                    state.surfaces_shared.grid_posits[i1][j1][k1],
-                                );
-
-                                println!("E: {:?}", E);
-                            }
-                        }
-                    }
-
-                    // state
-                    //     .surfaces_shared
-                    //     .psi
-                    //     .populate_psi_marginal(state.grid_n);
-                    //
-
-                    // // todo: June 25, 2023: Trying a diff approach, more like single-elec approach.
-                    // for i in 0..state.grid_n {
-                    //     for j in 0..state.grid_n {
-                    //         for k in 0..state.grid_n {
-                    //
-                    //         }
-                    //     }
-                    // }
-
+                    procedures::combine_wfs(state);
                     updated_meshes = true;
                     engine_updates.entities = true;
                 }
@@ -1231,29 +1010,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         }
 
         if updated_meshes {
-            engine_updates.meshes = true;
-
-            let render_multi_elec = match state.ui_active_elec {
-                ActiveElec::PerElec(_) => false,
-                ActiveElec::Combined => true,
-            };
-
-            let active_elec = match state.ui_active_elec {
-                ActiveElec::Combined => 0,
-                ActiveElec::PerElec(v) => v,
-            };
-
-            render::update_meshes(
-                &state.surfaces_shared,
-                &state.surfaces_per_elec[active_elec],
-                state.ui_z_displayed,
-                scene,
-                &state.surfaces_shared.grid_posits,
-                state.mag_phase,
-                &state.charges_electron[active_elec],
-                state.grid_n_render,
-                render_multi_elec,
-            );
+            procedures::update_meshes(state, scene, &mut engine_updates);
         }
     });
 

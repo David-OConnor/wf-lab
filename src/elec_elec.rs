@@ -422,8 +422,6 @@ pub(crate) fn update_charge_density_fm_psi(
     psi: &Arr3d,
     grid_n_charge: usize,
 ) {
-    // println!("Creating electron charge for the active e- ...");
-
     // Note: We need to sum to 1 over *all space*, not just in the grid.
     // We can mitigate this by using a sufficiently large grid bounds, since the WF
     // goes to 0 at distance.
@@ -431,17 +429,11 @@ pub(crate) fn update_charge_density_fm_psi(
     // todo: YOu may need to model in terms of areas vice points; this is likely
     // todo a factor on irregular grids.
 
-    let num_elecs = 1;
-    // Save computation on this constant factor.
-    let c = Q_ELEC * num_elecs as f64;
-
     for i in 0..grid_n_charge {
         for j in 0..grid_n_charge {
             for k in 0..grid_n_charge {
-                charge_density[i][j][k] = psi[i][j][k].abs_sq() * c;
+                charge_density[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
             }
         }
     }
-
-    // println!("Complete");
 }

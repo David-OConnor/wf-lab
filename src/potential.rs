@@ -176,13 +176,6 @@ pub(crate) fn create_V_from_an_elec_grid(
                 for i_charge in 0..grid_n_charge {
                     for j_charge in 0..grid_n_charge {
                         for k_charge in 0..grid_n_charge {
-                            // This will produce infinities due to 0 r.
-
-                            // todo: You may still need a check here to prevent infinities.
-                            // if i == i_charge && j == j_charge && k == k_charge {
-                            //     continue;
-                            // }
-
                             let posit_charge = grid_posits_charge[i_charge][j_charge][k_charge];
                             let charge = charge_this_elec[i_charge][j_charge][k_charge];
 

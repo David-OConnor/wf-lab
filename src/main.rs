@@ -138,6 +138,9 @@ pub struct State {
     /// When updating the weight of basis for an electron, update that weight
     /// for all electrons that share the same n. (When applicable?)
     pub weight_symmetry: bool,
+    /// This is very computationally intensive, but can help visualize and debug electron-electron
+    /// repulsion.
+    pub create_3d_electron_V: bool,
 }
 
 // /// Interpolate a value from a discrete wave function, assuming (what about curvature)
@@ -286,7 +289,7 @@ pub fn init_1d(
     Vec<wf_ops::BasesEvaluated1d>,
 ) {
     let mut eval_data_shared = EvalDataShared::new(&charges_fixed);
-    let eval_data_one = EvalDataPerElec::new(eval_data_shared.n);
+    let eval_data_one = EvalDataPerElec::new(eval_data_shared.grid_n);
 
     let mut eval_data_per_elec = Vec::new();
     for _ in 0..num_electrons {
@@ -297,7 +300,7 @@ pub fn init_1d(
         &mut eval_data_shared.V_from_nuclei,
         charges_fixed,
         &eval_data_shared.posits,
-        eval_data_shared.n,
+        eval_data_shared.grid_n,
     );
 
     // for (elec_i, _electron) in surfaces_per_elec.iter_mut().enumerate() {
@@ -307,7 +310,7 @@ pub fn init_1d(
             &eval_data_shared.V_from_nuclei,
             &[], // Not ready to apply V from other elecs yet.
             elec_i,
-            eval_data_shared.n,
+            eval_data_shared.grid_n,
         );
     }
 
@@ -325,7 +328,7 @@ pub fn init_1d(
 
     // todo: YOu may not need the "bases_evaluated" per-elec.
     for i_elec in 0..num_electrons {
-        V_from_elecs.push(vec![0.; eval_data_shared.n]);
+        V_from_elecs.push(vec![0.; eval_data_shared.grid_n]);
         bases_evaluated.push(bases_evaluated_one.clone());
 
         // Set up our basis-function based trial wave function.
@@ -334,7 +337,7 @@ pub fn init_1d(
             // todo: Handle the multi-electron case instead of hard-coding 0.
             &bases[0],
             &bases_evaluated[i_elec],
-            eval_data_shared.n,
+            eval_data_shared.grid_n,
             None,
             None,
         );
@@ -473,9 +476,10 @@ fn main() {
         mag_phase: false,
         max_basis_n,
         num_elecs,
-        adjust_E_with_weights: true,
+        adjust_E_with_weights: false,
         auto_gen_elec_V: false,
         weight_symmetry: true,
+        create_3d_electron_V: false,
     };
 
     render::render(state);
