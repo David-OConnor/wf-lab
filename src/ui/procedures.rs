@@ -4,7 +4,9 @@
 use crate::{
     eigen_fns,
     elec_elec::{self, PositIndex, WaveFunctionMultiElec},
-    eval, potential, render,
+    eval,
+    grid_setup::new_data,
+    potential, render,
     types::{EvalDataPerElec, SurfacesPerElec},
     wf_ops, ActiveElec, State,
 };
@@ -49,13 +51,13 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     // }
 
     // Set up our basis-function based trial wave function.
+    let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
     wf_ops::update_wf_fm_bases(
         &mut state.surfaces_per_elec[ae],
-        &state.bases[ae],
         &state.bases_evaluated[ae],
         state.eval_data_per_elec[ae].E,
         state.grid_n_render,
-        None,
+        &weights,
     );
 
     let E = if state.adjust_E_with_weights {
@@ -63,12 +65,13 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     } else {
         Some(state.eval_data_per_elec[ae].E)
     };
+
+    let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
     wf_ops::update_wf_fm_bases_1d(
         &mut state.eval_data_per_elec[ae],
-        &state.bases[ae],
         &state.bases_evaluated_1d[ae],
         state.eval_data_shared.grid_n,
-        None,
+        &weights,
         E,
     );
 
@@ -141,9 +144,19 @@ pub fn update_fixed_charges(state: &mut State) {
 }
 
 pub fn create_V_from_elec(state: &mut State, ae: usize) {
+    let mut psi_charge_grid = new_data(state.grid_n_charge);
+
+    let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
+    wf_ops::mix_bases_no_diffs(
+        &mut psi_charge_grid,
+        &state.bases_evaluated_charge[ae],
+        state.grid_n_charge,
+        &weights,
+    );
+
     elec_elec::update_charge_density_fm_psi(
         &mut state.charges_electron[ae],
-        &state.surfaces_per_elec[ae].psi.on_pt,
+        &psi_charge_grid,
         state.grid_n_charge,
     );
 

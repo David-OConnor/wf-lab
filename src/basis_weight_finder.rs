@@ -181,10 +181,10 @@ fn score_weight_set(
     grid_n_charge: usize,
 ) -> f64 {
     // This updates psi, E, and both psi''s
-    wf_ops::update_wf_fm_bases_1d(eval_data, bases, bases_evaled, grid_n, Some(weights), None);
+    wf_ops::update_wf_fm_bases_1d(eval_data, bases_evaled, grid_n, weights, None);
 
     // Update psi on the grid
-    wf_ops::mix_bases_no_diffs(psi_grid, bases, bases_evaled_charge, grid_n, Some(weights));
+    wf_ops::mix_bases_no_diffs(psi_grid, bases_evaled_charge, grid_n, weights);
 
     update_elec_V(
         eval_data,
@@ -213,22 +213,25 @@ fn update_elec_V(
     eval_data: &mut EvalDataPerElec,
     V_from_elec: &mut [f64],
     charges_elec: &mut Arr3dReal,
-    psi_grid: &Arr3d,
+    psi_grid_charge: &Arr3d,
     V_from_nuclei: &[f64],
     grid_posits_1d: &[Vec3],
     grid_posits_charge: &Arr3dVec,
     grid_n: usize,
     grid_n_charge: usize,
 ) {
-    // Create charge using the trial weights.
-    elec_elec::update_charge_density_fm_psi(charges_elec, psi_grid, grid_n_charge);
-
-    // elec_elec::update_charge_density_fm_psi(
-    //     charges_elec,
-    //     bases_evaled_charge,
-    //     weights,
-    //     grid_n_charge,
+    // todo: Confirm that the psi etc used by this fn are on the charge grid.
+    // let mut psi_charge_grid = new_data(grid_n_charge);
+    // wf_ops::mix_bases_no_diffs(
+    //     psi: &mut psi_charge_grid,
+    //     &state.bases[ae],
+    //     &state.bases_evaluated_charge[ae],
+    //     state.grid_n_charge,
+    //     None,
     // );
+
+    // Create charge using the trial weights.
+    elec_elec::update_charge_density_fm_psi(charges_elec, psi_grid_charge, grid_n_charge);
 
     // Create a potential from this charge.
     potential::create_V_from_an_elec(
@@ -247,14 +250,6 @@ fn update_elec_V(
     for i in 0..grid_n {
         eval_data.V_acting_on_this[i] = V_from_nuclei[i] + V_from_elec[i];
     }
-
-    // potential::update_V_acting_on_elec_1d(
-    //     &mut eval_data0.V_acting_on_this,
-    //     V_nuc,
-    //     &[V_from_elec0],
-    //     0,
-    //     grid_n,
-    // );
 
     for i in 0..grid_n {
         eval_data.psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(

@@ -4,6 +4,7 @@ use egui::{self, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::Vec3;
 
+use crate::grid_setup::new_data;
 use crate::{
     basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval, potential, render, wf_ops,
     ActiveElec, State,
@@ -182,6 +183,11 @@ fn basis_fn_mixer(
         .show(ui, |ui| {
             // We use this Vec to avoid double-mutable borrow issues.
             let mut bases_modified = Vec::new();
+
+            let weights: Vec<f64> = state.bases[active_elec]
+                .iter()
+                .map(|b| b.weight())
+                .collect();
 
             for (basis_i, basis) in state.bases[active_elec].iter_mut().enumerate() {
                 ui.horizontal(|ui| {
@@ -399,12 +405,24 @@ fn basis_fn_mixer(
                             bases_modified.push(basis_i);
 
                             if state.auto_gen_elec_V {
-                                // todo: DRY (C+P) from the button., ideally use this:
+                                // todo: DRY (C+P) from `procedures` ideally use this:
                                 // todo procedures::create_V_from_elec(state, active_elec);
-                                // todo, but borrow checker issues.
+                                // todo, but borrow checker issues when borrowing all of state
+
+                                // todo: It may be advantagerous to cache `psi_charge_grid` somewwhere,
+                                // todo eg in SurfacesPerElec.
+                                let mut psi_charge_grid = new_data(state.grid_n_charge);
+
+                                wf_ops::mix_bases_no_diffs(
+                                    &mut psi_charge_grid,
+                                    &state.bases_evaluated_charge[active_elec],
+                                    state.grid_n_charge,
+                                    &weights,
+                                );
+
                                 elec_elec::update_charge_density_fm_psi(
                                     &mut state.charges_electron[active_elec],
-                                    &state.surfaces_per_elec[active_elec].psi.on_pt,
+                                    &psi_charge_grid,
                                     state.grid_n_charge,
                                 );
 
@@ -439,13 +457,13 @@ fn basis_fn_mixer(
                         // todo a better API
 
                         let ae = elec_i;
+
                         wf_ops::update_wf_fm_bases(
                             &mut state.surfaces_per_elec[ae],
-                            &state.bases[ae],
                             &state.bases_evaluated[ae],
                             state.eval_data_per_elec[ae].E,
                             state.grid_n_render,
-                            None,
+                            &weights,
                         );
 
                         let E = if state.adjust_E_with_weights {
@@ -453,12 +471,14 @@ fn basis_fn_mixer(
                         } else {
                             Some(state.eval_data_per_elec[ae].E)
                         };
+
+                        let weights: Vec<f64> =
+                            state.bases[ae].iter().map(|b| b.weight()).collect();
                         wf_ops::update_wf_fm_bases_1d(
                             &mut state.eval_data_per_elec[ae],
-                            &state.bases[ae],
                             &state.bases_evaluated_1d[ae],
                             state.eval_data_shared.grid_n,
-                            None,
+                            &weights,
                             E,
                         );
 
@@ -656,23 +676,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         2,
                     );
                 }
-
-                // // todo: Experimenting
-                // let active_elec = match state.ui_active_elec {
-                //     ActiveElec::Combined => 0,
-                //     ActiveElec::PerElec(v) => v,
-                // };
-                // let mut weights = vec![0.; state.bases[active_elec].len()];
-                // // Syncing procedure pending a better API.
-                // for (i, basis) in state.bases[active_elec].iter().enumerate() {
-                //     weights[i] = basis.weight();
-                // }
-                // elec_elec::update_charge_density_fm_psi(
-                //     &mut state.charges_electron[active_elec],
-                //     &state.bases_evaluated_charge[active_elec],
-                //     &weights,
-                //     state.grid_n_charge,
-                // );
 
                 updated_evaluated_wfs = true;
                 updated_meshes = true;

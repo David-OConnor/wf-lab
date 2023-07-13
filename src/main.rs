@@ -51,7 +51,7 @@ const NUM_SURFACES: usize = 10;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.7;
 const GRID_N_DEFAULT: usize = 40;
-const GRID_N_CHARGE_DEFAULT: usize = 40;
+const GRID_N_CHARGE_DEFAULT: usize = 30;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -256,15 +256,15 @@ pub fn init_from_grid(
         bases_evaluated_charge.push(bases_evaluated_charge_one.clone());
 
         // Set up our basis-function based trial wave function.
+        // todo: Handle the multi-electron case instead of hard-coding 0.
+        let weights: Vec<f64> = bases[0].iter().map(|b| b.weight()).collect();
         wf_ops::update_wf_fm_bases(
             &mut surfaces_per_elec[i_elec],
-            // todo: Handle the multi-electron case instead of hard-coding 0.
-            &bases[0],
             &bases_evaluated[i_elec],
             // &surfaces_shared.grid_posits,
             -0.5,
             grid_n,
-            None,
+            &weights,
         );
     }
 
@@ -332,13 +332,14 @@ pub fn init_1d(
         bases_evaluated.push(bases_evaluated_one.clone());
 
         // Set up our basis-function based trial wave function.
+
+        let weights: Vec<f64> = bases[i_elec].iter().map(|b| b.weight()).collect();
         wf_ops::update_wf_fm_bases_1d(
             &mut eval_data_per_elec[i_elec],
             // todo: Handle the multi-electron case instead of hard-coding 0.
-            &bases[0],
             &bases_evaluated[i_elec],
             eval_data_shared.grid_n,
-            None,
+            &weights,
             None,
         );
     }

@@ -69,25 +69,15 @@ pub enum Spin {
 /// The resulting wave functions are normalized.
 pub fn mix_bases(
     psi: &mut PsiWDiffs,
-    bases: &[Basis],
     bases_evaled: &BasesEvaluated,
     grid_n: usize,
-    weights: Option<&[f64]>,
+    weights: &[f64],
 ) {
     // We don't need to normalize the result using the full procedure; the basis-wfs are already
     // normalized, so divide by the cumulative basis weights.
     let mut weight_total = 0.;
-    match weights {
-        Some(w) => {
-            for weight in w {
-                weight_total += weight.abs();
-            }
-        }
-        None => {
-            for b in bases {
-                weight_total += b.weight().abs();
-            }
-        }
+    for weight in weights {
+        weight_total += weight.abs();
     }
 
     let mut norm_scaler = 1. / weight_total;
@@ -108,49 +98,30 @@ pub fn mix_bases(
                 psi.z_prev[i][j][k] = Cplx::new_zero();
                 psi.z_next[i][j][k] = Cplx::new_zero();
 
-                for i_basis in 0..bases.len() {
-                    let mut weight = match weights {
-                        Some(w) => w[i_basis],
-                        None => bases[i_basis].weight(),
-                    };
+                for (i_basis, weight) in weights.iter().enumerate() {
+                    let scaled = weight * norm_scaler;
 
-                    weight *= norm_scaler;
-
-                    psi.on_pt[i][j][k] += bases_evaled.on_pt[i_basis][i][j][k] * weight;
-                    psi.x_prev[i][j][k] += bases_evaled.x_prev[i_basis][i][j][k] * weight;
-                    psi.x_next[i][j][k] += bases_evaled.x_next[i_basis][i][j][k] * weight;
-                    psi.y_prev[i][j][k] += bases_evaled.y_prev[i_basis][i][j][k] * weight;
-                    psi.y_next[i][j][k] += bases_evaled.y_next[i_basis][i][j][k] * weight;
-                    psi.z_prev[i][j][k] += bases_evaled.z_prev[i_basis][i][j][k] * weight;
-                    psi.z_next[i][j][k] += bases_evaled.z_next[i_basis][i][j][k] * weight;
+                    psi.on_pt[i][j][k] += bases_evaled.on_pt[i_basis][i][j][k] * scaled;
+                    psi.x_prev[i][j][k] += bases_evaled.x_prev[i_basis][i][j][k] * scaled;
+                    psi.x_next[i][j][k] += bases_evaled.x_next[i_basis][i][j][k] * scaled;
+                    psi.y_prev[i][j][k] += bases_evaled.y_prev[i_basis][i][j][k] * scaled;
+                    psi.y_next[i][j][k] += bases_evaled.y_next[i_basis][i][j][k] * scaled;
+                    psi.z_prev[i][j][k] += bases_evaled.z_prev[i_basis][i][j][k] * scaled;
+                    psi.z_next[i][j][k] += bases_evaled.z_next[i_basis][i][j][k] * scaled;
                 }
             }
         }
     }
 }
 
-// todo: Temp DRY
-pub fn mix_bases_no_diffs(
-    psi: &mut Arr3d,
-    bases: &[Basis],
-    bases_evaled: &[Arr3d],
-    grid_n: usize,
-    weights: Option<&[f64]>,
-) {
+/// Eg for the psi-on-grid for charges, where we don't need to generate psi''.
+// todo: DRY
+pub fn mix_bases_no_diffs(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize, weights: &[f64]) {
     // We don't need to normalize the result using the full procedure; the basis-wfs are already
     // normalized, so divide by the cumulative basis weights.
     let mut weight_total = 0.;
-    match weights {
-        Some(w) => {
-            for weight in w {
-                weight_total += weight.abs();
-            }
-        }
-        None => {
-            for b in bases {
-                weight_total += b.weight().abs();
-            }
-        }
+    for weight in weights {
+        weight_total += weight.abs();
     }
 
     let mut norm_scaler = 1. / weight_total;
@@ -165,15 +136,10 @@ pub fn mix_bases_no_diffs(
             for k in 0..grid_n {
                 psi[i][j][k] = Cplx::new_zero();
 
-                for i_basis in 0..bases.len() {
-                    let mut weight = match weights {
-                        Some(w) => w[i_basis],
-                        None => bases[i_basis].weight(),
-                    };
+                for (i_basis, weight) in weights.iter().enumerate() {
+                    let scaled = weight * norm_scaler;
 
-                    weight *= norm_scaler;
-
-                    psi[i][j][k] += bases_evaled[i_basis][i][j][k] * weight;
+                    psi[i][j][k] += bases_evaled[i_basis][i][j][k] * scaled;
                 }
             }
         }
@@ -189,25 +155,16 @@ pub fn mix_bases_no_diffs(
 /// The resulting wave functions are normalized.
 pub fn mix_bases_1d(
     psi: &mut PsiWDiffs1d,
-    bases: &[Basis],
     bases_evaled: &BasesEvaluated1d,
     grid_n: usize,
-    weights: Option<&[f64]>,
+    weights: &[f64],
 ) {
     // We don't need to normalize the result using the full procedure; the basis-wfs are already
     // normalized, so divide by the cumulative basis weights.
     let mut weight_total = 0.;
-    match weights {
-        Some(w) => {
-            for weight in w {
-                weight_total += weight.abs();
-            }
-        }
-        None => {
-            for b in bases {
-                weight_total += b.weight().abs();
-            }
-        }
+
+    for weight in weights {
+        weight_total += weight.abs();
     }
 
     let mut norm_scaler = 1. / weight_total;
@@ -226,21 +183,16 @@ pub fn mix_bases_1d(
         psi.z_prev[i] = Cplx::new_zero();
         psi.z_next[i] = Cplx::new_zero();
 
-        for i_basis in 0..bases.len() {
-            let mut weight = match weights {
-                Some(w) => w[i_basis],
-                None => bases[i_basis].weight(),
-            };
+        for (i_basis, weight) in weights.iter().enumerate() {
+            let scaled = weight * norm_scaler;
 
-            weight *= norm_scaler;
-
-            psi.on_pt[i] += bases_evaled.on_pt[i_basis][i] * weight;
-            psi.x_prev[i] += bases_evaled.x_prev[i_basis][i] * weight;
-            psi.x_next[i] += bases_evaled.x_next[i_basis][i] * weight;
-            psi.y_prev[i] += bases_evaled.y_prev[i_basis][i] * weight;
-            psi.y_next[i] += bases_evaled.y_next[i_basis][i] * weight;
-            psi.z_prev[i] += bases_evaled.z_prev[i_basis][i] * weight;
-            psi.z_next[i] += bases_evaled.z_next[i_basis][i] * weight;
+            psi.on_pt[i] += bases_evaled.on_pt[i_basis][i] * scaled;
+            psi.x_prev[i] += bases_evaled.x_prev[i_basis][i] * scaled;
+            psi.x_next[i] += bases_evaled.x_next[i_basis][i] * scaled;
+            psi.y_prev[i] += bases_evaled.y_prev[i_basis][i] * scaled;
+            psi.y_next[i] += bases_evaled.y_next[i_basis][i] * scaled;
+            psi.z_prev[i] += bases_evaled.z_prev[i_basis][i] * scaled;
+            psi.z_next[i] += bases_evaled.z_next[i_basis][i] * scaled;
         }
     }
 }
@@ -253,13 +205,12 @@ pub fn mix_bases_1d(
 /// - Computes ψ'' calculated, and measured from the trial ψ
 pub fn update_wf_fm_bases(
     sfcs: &mut SurfacesPerElec,
-    bases: &[Basis],
     basis_wfs: &BasesEvaluated,
     E: f64,
     grid_n: usize,
-    weights: Option<&[f64]>,
+    weights: &[f64],
 ) {
-    mix_bases(&mut sfcs.psi, bases, basis_wfs, grid_n, weights);
+    mix_bases(&mut sfcs.psi, basis_wfs, grid_n, weights);
 
     // sfcs.E = find_E(sfcs, grid_n);
     // sfcs.E = 0.; // todo
@@ -278,13 +229,12 @@ pub fn update_wf_fm_bases(
 
 pub fn update_wf_fm_bases_1d(
     eval_data: &mut EvalDataPerElec,
-    bases: &[Basis],
     basis_wfs: &BasesEvaluated1d,
     grid_n: usize,
-    weights: Option<&[f64]>,
+    weights: &[f64],
     E: Option<f64>,
 ) {
-    mix_bases_1d(&mut eval_data.psi, bases, basis_wfs, grid_n, weights);
+    mix_bases_1d(&mut eval_data.psi, basis_wfs, grid_n, weights);
 
     eval_data.E = match E {
         Some(E_) => E_,

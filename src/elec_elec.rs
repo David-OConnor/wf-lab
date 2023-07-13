@@ -363,63 +363,13 @@ impl WaveFunctionMultiElec {
     }
 }
 
-// /// Convert an array of ψ to one of electron charge, through space. This is used to calculate potential
-// /// from an electron. (And potential energy between electrons) Modifies in place
-// /// to avoid unecessary allocations.
-// pub(crate) fn update_charge_density_fm_psi(
-//     charge_density: &mut Arr3dReal,
-//     bases_evaled_charge: &[Arr3d],
-//     weights: &[f64],
-//     grid_n_charge: usize,
-// ) {
-//     println!("Creating electron charge for the active e- ...");
-//
-//     // Note: We need to sum to 1 over *all space*, not just in the grid.
-//     // We can mitigate this by using a sufficiently large grid bounds, since the WF
-//     // goes to 0 at distance.
-//
-//     // todo: YOu may need to model in terms of areas vice points; this is likely
-//     // todo a factor on irregular grids.
-//
-//     let num_elecs = 1;
-//     // Save computation on this constant factor.
-//     let c = Q_ELEC * num_elecs as f64;
-//
-//     let mut psi_sq_size = 0.;
-//
-//     for i in 0..grid_n_charge {
-//         for j in 0..grid_n_charge {
-//             for k in 0..grid_n_charge {
-//                 let mut psi = Cplx::new_zero();
-//                 for (i_basis, basis_val) in bases_evaled_charge.iter().enumerate() {
-//                     psi += basis_val[i][j][k] * weights[i_basis];
-//                 }
-//
-//                 let mag = psi.abs_sq();
-//                 psi_sq_size += mag;
-//                 charge_density[i][j][k] = mag * c;
-//             }
-//         }
-//     }
-//
-//     // Normalize <ψ|ψ>
-//     for i in 0..grid_n_charge {
-//         for j in 0..grid_n_charge {
-//             for k in 0..grid_n_charge {
-//                 charge_density[i][j][k] /= psi_sq_size;
-//             }
-//         }
-//     }
-//     println!("Complete");
-// }
-
 /// Convert an array of ψ to one of electron charge, through space. This is used to calculate potential
 /// from an electron. (And potential energy between electrons) Modifies in place
 /// to avoid unecessary allocations.
 /// `psi` must be normalized.
 pub(crate) fn update_charge_density_fm_psi(
     charge_density: &mut Arr3dReal,
-    psi: &Arr3d,
+    psi_on_charge_grid: &Arr3d,
     grid_n_charge: usize,
 ) {
     // Note: We need to sum to 1 over *all space*, not just in the grid.
@@ -432,7 +382,7 @@ pub(crate) fn update_charge_density_fm_psi(
     for i in 0..grid_n_charge {
         for j in 0..grid_n_charge {
             for k in 0..grid_n_charge {
-                charge_density[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
+                charge_density[i][j][k] = psi_on_charge_grid[i][j][k].abs_sq() * Q_ELEC;
             }
         }
     }
