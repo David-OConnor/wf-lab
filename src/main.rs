@@ -50,8 +50,8 @@ use crate::{
 const NUM_SURFACES: usize = 10;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.7;
-const GRID_N_DEFAULT: usize = 40;
-const GRID_N_CHARGE_DEFAULT: usize = 30;
+const GRID_N_DEFAULT: usize = 50;
+const GRID_N_CHARGE_DEFAULT: usize = 40;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -406,7 +406,7 @@ fn main() {
     // todo next up: Figure out why you get incorrect answers if these 2 grids don't line up.
     // todo: FOr now, you can continue with matching them if you wish.
     let (grid_min_render, grid_max_render) = (-4., 4.);
-    let (grid_min_charge, grid_max_charge) = (-9., 9.);
+    let (grid_min_charge, grid_max_charge) = (-10., 10.);
 
     // let spacing_factor = 1.6;
     // Currently, must be one as long as used with elec-elec charge.
