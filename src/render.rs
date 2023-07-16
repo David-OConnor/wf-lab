@@ -13,6 +13,7 @@ use lin_alg2::{
 };
 
 use crate::{
+    complex_nums::Cplx,
     grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     types::{SurfacesPerElec, SurfacesShared},
     util, State, SurfaceData,
@@ -29,6 +30,9 @@ const BACKGROUND_COLOR: Color = (0.5, 0.5, 0.5);
 
 const COLOR_POS_CHARGE: Color = (1., 0., 0.);
 const COLOR_NEG_CHARGE: Color = (0., 0., 1.);
+
+const COLOR_PSI_PP_CALC_1D: Color = (0., 1., 0.);
+const COLOR_PSI_PP_MEAS_1D: Color = (0., 0.5, 0.5);
 
 const CHARGE_SPHERE_SIZE: f32 = 0.05;
 
@@ -340,7 +344,7 @@ pub fn update_meshes(
         // ));
     }
 
-    meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 8, 8));
+    meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 12, 12));
 
     scene.meshes = meshes;
 }
@@ -352,6 +356,9 @@ pub fn update_meshes(
 pub fn update_entities(
     charges: &[(Vec3F64, f64)],
     surface_data: &[SurfaceData],
+    psi_pp_calc_1d: &[Cplx],
+    psi_pp_meas_1d: &[Cplx],
+    posits_1d: &[Vec3F64],
     scene: &mut Scene,
 ) {
     let mut entities = Vec::new();
@@ -362,7 +369,6 @@ pub fn update_entities(
         entities.push(Entity::new(
             i,
             Vec3::new_zero(),
-            // Quaternion::from_axis_angle(Vec3::new(-1., 0., 0.), TAU / 4.),
             Quaternion::new_identity(),
             1.,
             SURFACE_COLORS[i],
@@ -372,7 +378,8 @@ pub fn update_entities(
 
     for (posit, val) in charges {
         entities.push(Entity::new(
-            crate::NUM_SURFACES, // Index 1 after surfaces.
+            // crate::NUM_SURFACES, // Index 1 after surfaces.
+            8, // Index 1 after surfaces.
             Vec3::new(
                 posit.x as f32,
                 // We invert Y and Z due to diff coord systems
@@ -381,13 +388,50 @@ pub fn update_entities(
                 posit.y as f32,
             ),
             Quaternion::new_identity(),
-            1.,
+            6.,
             // todo: More fine-grained shading
             if *val > 0. {
                 COLOR_POS_CHARGE
             } else {
                 COLOR_NEG_CHARGE
             },
+            CHARGE_SHINYNESS,
+        ));
+    }
+
+    // todo: Im comps if ticked
+    // todo: How to handle Z comp?
+
+    // todo: This needs to be called whenever you update eleval data per elec
+    // todo as of now, it is not updated appropriately.
+    for (i, posit) in posits_1d.iter().enumerate() {
+        entities.push(Entity::new(
+            // crate::NUM_SURFACES, // Index 1 after surfaces.
+            8, // Index 1 after surfaces.
+            Vec3::new(
+                posit.x as f32,
+                // We invert Y and Z due to diff coord systems
+                // between the meshes and the renderer.
+                psi_pp_calc_1d[i].real as f32,
+                posit.y as f32,
+            ),
+            Quaternion::new_identity(),
+            4.,
+            COLOR_PSI_PP_CALC_1D,
+            CHARGE_SHINYNESS,
+        ));
+
+        entities.push(Entity::new(
+            8, // Index 1 after surfaces.
+            // crate::NUM_SURFACES, // Index 1 after surfaces.
+            Vec3::new(
+                posit.x as f32,
+                psi_pp_meas_1d[i].real as f32,
+                posit.y as f32,
+            ),
+            Quaternion::new_identity(),
+            4.,
+            COLOR_PSI_PP_MEAS_1D,
             CHARGE_SHINYNESS,
         ));
     }
@@ -471,7 +515,14 @@ pub fn render(state: State) {
         false,
     );
 
-    update_entities(&state.charges_fixed, &state.surface_data, &mut scene);
+    update_entities(
+        &state.charges_fixed,
+        &state.surface_data,
+        &state.eval_data_per_elec[active_elec_init].psi_pp_calc,
+        &state.eval_data_per_elec[active_elec_init].psi_pp_meas,
+        &state.eval_data_shared.posits,
+        &mut scene,
+    );
 
     let input_settings = InputSettings {
         initial_controls: ControlScheme::FreeCamera,

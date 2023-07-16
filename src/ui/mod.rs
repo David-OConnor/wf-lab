@@ -1009,7 +1009,19 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         // Track using a variable to avoid mixing mutable and non-mutable borrows to
         // surfaces.
         if engine_updates.entities {
-            render::update_entities(&state.charges_fixed, &state.surface_data, scene);
+            match state.ui_active_elec {
+                ActiveElec::PerElec(ae) => {
+                    render::update_entities(
+                        &state.charges_fixed,
+                        &state.surface_data,
+                        &state.eval_data_per_elec[ae].psi_pp_calc,
+                        &state.eval_data_per_elec[ae].psi_pp_meas,
+                        &state.eval_data_shared.posits,
+                        scene,
+                    );
+                }
+                ActiveElec::Combined => (),
+            }
         }
 
         if updated_meshes {
