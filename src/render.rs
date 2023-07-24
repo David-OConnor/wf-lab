@@ -416,7 +416,7 @@ pub fn update_entities(
                 posit.y as f32,
             ),
             Quaternion::new_identity(),
-            4.,
+            3.,
             COLOR_PSI_PP_CALC_1D,
             CHARGE_SHINYNESS,
         ));

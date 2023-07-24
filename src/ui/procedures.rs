@@ -143,7 +143,7 @@ pub fn update_fixed_charges(state: &mut State) {
     }
 }
 
-pub fn create_V_from_elec(state: &mut State, ae: usize) {
+pub fn create_V_from_elec(state: &mut State, scene: &mut Scene, ae: usize) {
     let mut psi_charge_grid = new_data(state.grid_n_charge);
 
     let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
@@ -185,9 +185,24 @@ pub fn create_V_from_elec(state: &mut State, ae: usize) {
             state.grid_n_charge,
         );
     }
+
+    // todo: Kludge to update sphere entity locs; DRY
+    match state.ui_active_elec {
+        ActiveElec::PerElec(ae) => {
+            render::update_entities(
+                &state.charges_fixed,
+                &state.surface_data,
+                &state.eval_data_per_elec[ae].psi_pp_calc,
+                &state.eval_data_per_elec[ae].psi_pp_meas,
+                &state.eval_data_shared.posits,
+                scene,
+            );
+        }
+        ActiveElec::Combined => (),
+    }
 }
 
-pub fn update_V_acting_on_elec(state: &mut State, ae: usize) {
+pub fn update_V_acting_on_elec(state: &mut State, scene: &mut Scene, ae: usize) {
     if state.create_3d_electron_V {
         potential::update_V_acting_on_elec(
             &mut state.surfaces_per_elec[ae].V_acting_on_this,
@@ -211,6 +226,21 @@ pub fn update_V_acting_on_elec(state: &mut State, ae: usize) {
             &mut state.eval_data_per_elec[ae],
             state.eval_data_shared.grid_n,
         );
+    }
+
+    // todo: Kludge to update sphere entity locs; DRY
+    match state.ui_active_elec {
+        ActiveElec::PerElec(ae) => {
+            render::update_entities(
+                &state.charges_fixed,
+                &state.surface_data,
+                &state.eval_data_per_elec[ae].psi_pp_calc,
+                &state.eval_data_per_elec[ae].psi_pp_meas,
+                &state.eval_data_shared.posits,
+                scene,
+            );
+        }
+        ActiveElec::Combined => (),
     }
 }
 

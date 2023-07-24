@@ -498,6 +498,7 @@ fn basis_fn_mixer(
 fn bottom_items(
     ui: &mut Ui,
     state: &mut State,
+    scene:  &mut Scene,
     ae: usize,
     updated_meshes: &mut bool,
     updated_basis_weights: &mut bool,
@@ -537,14 +538,14 @@ fn bottom_items(
             .add(egui::Button::new("Create V from this elec"))
             .clicked()
         {
-            procedures::create_V_from_elec(state, ae);
+            procedures::create_V_from_elec(state, scene, ae);
         }
 
         if ui
             .add(egui::Button::new("Update V acting on this elec"))
             .clicked()
         {
-            procedures::update_V_acting_on_elec(state, ae);
+            procedures::update_V_acting_on_elec(state, scene, ae);
 
             *updated_meshes = true;
             *updated_E_or_V = true;
@@ -940,6 +941,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 bottom_items(
                     ui,
                     state,
+                    scene,
                     ae,
                     &mut updated_meshes,
                     &mut updated_basis_weights,

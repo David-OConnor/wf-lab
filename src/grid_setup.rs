@@ -12,9 +12,9 @@ pub(crate) fn find_sample_points(nuclei: &[(Vec3, f64)]) -> Vec<Vec3> {
 
     // We've found that values near the middle experience (numerical?) instabilities;
     // values far away produce much better results.
-    const SAMPLE_DIST_0: f64 = 2.0;
-    const SAMPLE_DIST_1: f64 = 4.0;
-    const SAMPLE_DIST_2: f64 = 8.;
+    const SAMPLE_DIST_0: f64 = 1.0;
+    const SAMPLE_DIST_1: f64 = 2.0;
+    const SAMPLE_DIST_2: f64 = 4.;
 
     const X_PLUS: Vec3 = Vec3::new(1., 0., 0.);
     const Y_PLUS: Vec3 = Vec3::new(0., 1., 0.);
