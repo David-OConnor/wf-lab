@@ -160,6 +160,15 @@ impl Basis {
         }
     }
 
+    pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
+        match self {
+            // Self::Sto(v) => v.value(posit_sample),
+            Self::H(v) => unimplemented!(),
+            Self::Gto(v) => unimplemented!(),
+            Self::Sto(v) => v.second_deriv(posit_sample),
+        }
+    }
+
     pub fn charge_id(&self) -> usize {
         match self {
             // Self::Sto(v) => v.charge_id,
@@ -360,11 +369,22 @@ pub struct Sto {
 }
 
 impl Sto {
+    // /// This constructs an STO from a simple form, characterized by a coefficient, and
+    // /// exp(-xi r).
+    // /// todo: You may need to take into account forms that resemble S2 orbitals etc.
+    // pub fn from_weight_xi(weight: f64, xi: f64, posit: Vec3) -> Self {
+    //     Self {
+    //         posit,
+    //         n,
+    //         xi,
+    //         harmonic: SphericalHarmonic::new(),
+    //         weight,
+    //     }
+    // }
+
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
-
-        // todo: Cross-check this with Horbital::radial; this is perhaps a superset of it.
 
         // This is the form as described on Wikipedia
         // todo: What is up with the (xi/a0).powf(1.5) term?? Not part of the Wikipedia def.
@@ -381,26 +401,51 @@ impl Sto {
         radial
     }
 
-    /// Calculate the (analytic) second derivative. See OneNote: `Exploring the WF, part 6`.
-    /// todo: This currently does not include N; or any coefficient.Unclear if we can
-    /// todo mix it with `val()`, which does use n.
-    pub fn second_deriv(&self, posit_sample: Vec3) -> f64 {
+    /// Analytic dsecond derivative using analytic basis functions.
+    /// See OneNote: `Exploring the WF, part 6`.
+    pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
+        // todo: This currently ignores the spherical harmonic part; add that!
+
+        // todo: Put this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * sqrt(x^2 + y^2 + z^2)^(n-1) * e^(-\xi * sqrt(x^2 + y^2 + z^2)) with respect to x`
+        // todo: Much messier form.
+        // todo: MOdify accordingly.
+
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+        let N = PI_SQRT_INV * self.xi.powf(1.5);
+        // Note: This variant uses the same form as our `value` fn, but assumes n = 1.
+
+        let exp_term = (-self.xi * r).exp();
 
         let mut result = 0.;
 
         let a = (-self.xi * r).exp();
         // Each part is the second deriv WRT to an orthogonal axis.
         for coord in &[diff.x, diff.y, diff.z] {
-            result += self.xi.powi(2) * coord.powi(2) * a / r.powi(2);
+            result += self.xi.powi(2) * coord.powi(2) * exp_term / r.powi(2);
 
-            result += self.xi * coord.powi(2) * a / r.powi(3);
+            result += self.xi * coord.powi(2) * exp_term / r.powi(3);
 
-            result -= self.xi * a / r;
+            result -= self.xi * exp_term / r;
         }
 
-        result
+        let radial = Cplx::from_real(N * result);
+
+        radial
+    }
+
+    /// This uses the weight directly, with no other coefficients.
+    pub fn value_simple_form(&self, posit_sample: Vec3) -> Cplx {
+        let diff = posit_sample - self.posit;
+        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+        // todo: It looks like we apply weight elsewhere.
+        let radial = Cplx::from_real((-self.xi * r).exp());
+
+        // todo: Harmonic, and more general normalizing constant.
+
+        radial
     }
 }
 

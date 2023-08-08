@@ -91,6 +91,7 @@ pub fn mix_bases(
         for j in 0..grid_n {
             for k in 0..grid_n {
                 psi.on_pt[i][j][k] = Cplx::new_zero();
+                psi.psi_pp_analytic[i][j][k] = Cplx::new_zero();
                 psi.x_prev[i][j][k] = Cplx::new_zero();
                 psi.x_next[i][j][k] = Cplx::new_zero();
                 psi.y_prev[i][j][k] = Cplx::new_zero();
@@ -102,6 +103,8 @@ pub fn mix_bases(
                     let scaled = weight * norm_scaler;
 
                     psi.on_pt[i][j][k] += bases_evaled.on_pt[i_basis][i][j][k] * scaled;
+                    psi.psi_pp_analytic[i][j][k] +=
+                        bases_evaled.psi_pp_analytic[i_basis][i][j][k] * scaled;
                     psi.x_prev[i][j][k] += bases_evaled.x_prev[i_basis][i][j][k] * scaled;
                     psi.x_next[i][j][k] += bases_evaled.x_next[i_basis][i][j][k] * scaled;
                     psi.y_prev[i][j][k] += bases_evaled.y_prev[i_basis][i][j][k] * scaled;
@@ -176,6 +179,7 @@ pub fn mix_bases_1d(
 
     for i in 0..grid_n {
         psi.on_pt[i] = Cplx::new_zero();
+        psi.psi_pp_analytic[i] = Cplx::new_zero();
         psi.x_prev[i] = Cplx::new_zero();
         psi.x_next[i] = Cplx::new_zero();
         psi.y_prev[i] = Cplx::new_zero();
@@ -187,6 +191,7 @@ pub fn mix_bases_1d(
             let scaled = weight * norm_scaler;
 
             psi.on_pt[i] += bases_evaled.on_pt[i_basis][i] * scaled;
+            psi.psi_pp_analytic[i] += bases_evaled.psi_pp_analytic[i_basis][i] * scaled;
             psi.x_prev[i] += bases_evaled.x_prev[i_basis][i] * scaled;
             psi.x_next[i] += bases_evaled.x_next[i_basis][i] * scaled;
             psi.y_prev[i] += bases_evaled.y_prev[i_basis][i] * scaled;
@@ -304,6 +309,9 @@ pub fn update_psi_pps(
                     psi.z_prev[i][j][k],
                     psi.z_next[i][j][k],
                 );
+
+                // todo experimenting
+                psi_pp_meas[i][j][k] = psi.psi_pp_analytic[i][j][k];
             }
         }
     }
@@ -334,6 +342,9 @@ pub fn update_psi_pps_1d(
             psi.z_prev[i],
             psi.z_next[i],
         );
+
+        // todo experimenting
+        psi_pp_meas[i] = psi.psi_pp_analytic[i];
     }
 }
 
@@ -573,6 +584,7 @@ pub fn initialize_bases(
 #[derive(Clone)]
 pub struct PsiWDiffs {
     pub on_pt: Arr3d,
+    pub psi_pp_analytic: Arr3d,
     pub x_prev: Arr3d,
     pub x_next: Arr3d,
     pub y_prev: Arr3d,
@@ -585,6 +597,7 @@ impl PsiWDiffs {
     pub fn init(data: &Arr3d) -> Self {
         Self {
             on_pt: data.clone(),
+            psi_pp_analytic: data.clone(),
             x_prev: data.clone(),
             x_next: data.clone(),
             y_prev: data.clone(),
@@ -600,6 +613,7 @@ impl PsiWDiffs {
 #[derive(Clone)]
 pub struct PsiWDiffs1d {
     pub on_pt: Vec<Cplx>,
+    pub psi_pp_analytic: Vec<Cplx>,
     pub x_prev: Vec<Cplx>,
     pub x_next: Vec<Cplx>,
     pub y_prev: Vec<Cplx>,
@@ -612,6 +626,7 @@ impl PsiWDiffs1d {
     pub fn init(data: &Vec<Cplx>) -> Self {
         Self {
             on_pt: data.clone(),
+            psi_pp_analytic: data.clone(),
             x_prev: data.clone(),
             x_next: data.clone(),
             y_prev: data.clone(),
@@ -634,6 +649,7 @@ pub struct BasesEvaluated {
     pub y_next: Vec<Arr3d>,
     pub z_prev: Vec<Arr3d>,
     pub z_next: Vec<Arr3d>,
+    pub psi_pp_analytic: Vec<Arr3d>, // Sneaking this approach in!
 }
 
 impl BasesEvaluated {
@@ -643,6 +659,7 @@ impl BasesEvaluated {
     /// Relatively computationally intensive.
     pub fn new(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) -> Self {
         let mut on_pt = Vec::new();
+        let mut psi_pp_analytic = Vec::new();
         let mut x_prev = Vec::new();
         let mut x_next = Vec::new();
         let mut y_prev = Vec::new();
@@ -652,6 +669,7 @@ impl BasesEvaluated {
 
         for _ in 0..bases.len() {
             on_pt.push(new_data(grid_n));
+            psi_pp_analytic.push(new_data(grid_n));
             x_prev.push(new_data(grid_n));
             x_next.push(new_data(grid_n));
             y_prev.push(new_data(grid_n));
@@ -706,6 +724,9 @@ impl BasesEvaluated {
                         z_next[basis_i][i][j][k] = val_z_next;
 
                         norm_pt += val_pt.abs_sq();
+
+                        psi_pp_analytic[basis_i][i][j][k] = basis.second_deriv(posit_sample);
+
                         // norm_x_prev += val_x_prev.abs_sq();
                         // norm_x_next += val_x_next.abs_sq();
                         // norm_y_prev += val_y_prev.abs_sq();
@@ -743,6 +764,7 @@ impl BasesEvaluated {
             y_next,
             z_prev,
             z_next,
+            psi_pp_analytic,
         }
     }
 }
@@ -759,6 +781,7 @@ pub struct BasesEvaluated1d {
     pub y_next: Vec<Vec<Cplx>>,
     pub z_prev: Vec<Vec<Cplx>>,
     pub z_next: Vec<Vec<Cplx>>,
+    pub psi_pp_analytic: Vec<Vec<Cplx>>, // Sneaking this approach in!
 }
 
 impl BasesEvaluated1d {
@@ -777,9 +800,11 @@ impl BasesEvaluated1d {
         let mut y_next = Vec::new();
         let mut z_prev = Vec::new();
         let mut z_next = Vec::new();
+        let mut psi_pp_analytic = Vec::new();
 
         for _ in 0..bases.len() {
             on_pt.push(vec![Cplx::new_zero(); grid_posits.len()]);
+            psi_pp_analytic.push(vec![Cplx::new_zero(); grid_posits.len()]);
             x_prev.push(vec![Cplx::new_zero(); grid_posits.len()]);
             x_next.push(vec![Cplx::new_zero(); grid_posits.len()]);
             y_prev.push(vec![Cplx::new_zero(); grid_posits.len()]);
@@ -815,6 +840,8 @@ impl BasesEvaluated1d {
                 y_next[basis_i][i] = val_y_next / norm;
                 z_prev[basis_i][i] = val_z_prev / norm;
                 z_next[basis_i][i] = val_z_next / norm;
+
+                psi_pp_analytic[basis_i][i] = basis.second_deriv(posit_sample);
             }
         }
 
@@ -826,6 +853,7 @@ impl BasesEvaluated1d {
             y_next,
             z_prev,
             z_next,
+            psi_pp_analytic,
         }
     }
 }

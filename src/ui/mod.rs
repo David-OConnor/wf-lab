@@ -498,7 +498,7 @@ fn basis_fn_mixer(
 fn bottom_items(
     ui: &mut Ui,
     state: &mut State,
-    scene:  &mut Scene,
+    scene: &mut Scene,
     ae: usize,
     updated_meshes: &mut bool,
     updated_basis_weights: &mut bool,
