@@ -26,14 +26,13 @@
 use crate::{
     basis_wfs::{Basis, Gto, HOrbital, SphericalHarmonic, Sto},
     complex_nums::Cplx,
-    eigen_fns, eval, grid_setup,
+    eigen_fns::{self, KE_COEFF}, eval, grid_setup,
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     num_diff::{self, H},
-    types::SurfacesPerElec,
+    types::{SurfacesPerElec, EvalDataPerElec},
     util,
 };
 
-use crate::types::EvalDataPerElec;
 use lin_alg2::f64::{Quaternion, Vec3};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
@@ -311,7 +310,7 @@ pub fn update_psi_pps(
                 );
 
                 // todo experimenting
-                psi_pp_meas[i][j][k] = psi.psi_pp_analytic[i][j][k];
+                // psi_pp_meas[i][j][k] = psi.psi_pp_analytic[i][j][k];
             }
         }
     }
@@ -344,62 +343,10 @@ pub fn update_psi_pps_1d(
         );
 
         // todo experimenting
-        psi_pp_meas[i] = psi.psi_pp_analytic[i];
+        // psi_pp_meas[i] = psi.psi_pp_analytic[i];
     }
 }
 
-// /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
-// /// between E and psi'' score isn't straightforward, this will converge on a local minimum.
-// pub fn find_E(sfcs: &SurfacesPerElec, grid_n: usize) -> f64 {
-//     // todo: WHere to configure these mins and maxes
-//     let mut result = 0.;
-//
-//     let mut E_min = -2.;
-//     let mut E_max = 2.;
-//     let mut E_range_div2 = 2.;
-//     let vals_per_iter = 8;
-//
-//     let num_iters = 10;
-//
-//     let mut psi_pp_calc = new_data(grid_n);
-//     grid_setup::copy_array(&mut psi_pp_calc, &sfcs.psi_pp_calculated, grid_n);
-//
-//     for _ in 0..num_iters {
-//         let E_vals = util::linspace((E_min, E_max), vals_per_iter);
-//         let mut best_score = 100_000_000.;
-//         let mut best_E = 0.;
-//
-//         for E_trial in E_vals {
-//             for i in 0..grid_n {
-//                 for j in 0..grid_n {
-//                     for k in 0..grid_n {
-//                         psi_pp_calc[i][j][k] = eigen_fns::find_ψ_pp_calc(
-//                             &sfcs.psi.on_pt,
-//                             &sfcs.V_acting_on_this,
-//                             E_trial,
-//                             i,
-//                             j,
-//                             k,
-//                         );
-//                     }
-//                 }
-//             }
-//
-//             let score = eval::score_wf(&psi_pp_calc, &sfcs.psi_pp_measured, grid_n);
-//             if score < best_score {
-//                 best_score = score;
-//                 best_E = E_trial;
-//                 result = E_trial;
-//             }
-//         }
-//
-//         E_min = best_E - E_range_div2;
-//         E_max = best_E + E_range_div2;
-//         E_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
-//     }
-//
-//     result
-// }
 
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
 /// between E and psi'' score isn't straightforward, this will converge on a local minimum.
@@ -886,4 +833,33 @@ pub fn arr_from_bases(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) ->
     }
 
     result
+}
+
+fn analytically_integrate_psi_sq(bases: &[Basis]) {
+    // Try Sympy. WolFram ALpha is causing standard computation time to be exceeded, even for a single
+    // integra.
+}
+
+/// Calulate the electron potential that must be acting on a given enectron, given its
+/// wave function. This is the potential from *other* electroncs in the system. This is, perhaps
+/// something that could be considered DFT. (?)
+///
+/// Note: psi'' here is associated with psi'' measured, vice calculated.
+pub fn calculate_v_elec(V_elec: &mut Arr3dReal, psi: &Arr3d, psi_pp: &Arr3d, E: f64, V_nuc: &Arr3dReal, grid_n: usize) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                // todo: Hermitian operator has real eigenvalues. How are we able to discard
+                // todo the imaginary parts here? Is psi'' / psi always real?
+                V_elec[i][j][k] = -KE_COEFF * (psi_pp[i][j][k] / psi[i][j][k]).real + E - V_nuc[i][j][k];
+
+                println!("V {}", V_elec[i][j][k]);
+            }
+        }
+    }
+    // Note: By dividing by Q_C, we can get the sum of psi^2 from other elecs, I think?
+    // Then a formula where (psi_0^2 + psi_1^2) * Q_C = the charge density, which is associated with the
+    // V_elec we calculate here.
+
+    // todo: How do we go from V_elec to charge density? That may be key.
 }

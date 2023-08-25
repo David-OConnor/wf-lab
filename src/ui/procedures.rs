@@ -79,6 +79,17 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &state.eval_data_per_elec[ae].psi_pp_calc,
         &state.eval_data_per_elec[ae].psi_pp_meas,
     );
+
+    // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
+    let sfcs = &mut state.surfaces_per_elec[ae];
+    wf_ops::calculate_v_elec(
+        &mut sfcs.aux1,
+        &sfcs.psi.on_pt,
+        &sfcs.psi_pp_measured,
+        state.eval_data_per_elec[ae].E,
+        &state.surfaces_shared.V_from_nuclei,
+        state.eval_data_shared.grid_n,
+    );
 }
 
 pub fn update_evaluated_wfs(state: &mut State, ae: usize) {

@@ -57,9 +57,12 @@ const PSI_SCALER: f32 = 120.;
 const PSI_SQ_SCALER: f32 = 1_000.;
 const PSI_PP_SCALER: f32 = 20.;
 
-const ELEC_CHARGE_SCALER: f32 = 600.; // to make WF more visually significant.
-                                      // const ELEC_V_SCALER: f32 = 1100.; // to make WF more visually significant.
-const V_SCALER: f32 = 10.; // to make WF more visually significant.
+const ELEC_CHARGE_SCALER: f32 = 600.;
+// const ELEC_V_SCALER: f32 = 1100.;
+const V_SCALER: f32 = 10.;
+
+// todo: Why is this diff from V_scaler?
+const V_ELEC_SCALER: f32 = 10000.;
 
 fn event_handler(
     _state: &mut State,
@@ -332,6 +335,12 @@ pub fn update_meshes(
             ));
         }
 
+        // Experimenting with V_elec from a given psi.
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(grid_posits, &surfaces.aux1, z_i, V_ELEC_SCALER, grid_n),
+            true,
+        ));
+
         // meshes.push(Mesh::new_surface(
         //     &prepare_2d_mesh_real(
         //         grid_posits,
@@ -379,7 +388,7 @@ pub fn update_entities(
     for (posit, val) in charges {
         entities.push(Entity::new(
             // crate::NUM_SURFACES, // Index 1 after surfaces.
-            8, // Index 1 after surfaces.
+            9, // Index 1 after surfaces.
             Vec3::new(
                 posit.x as f32,
                 // We invert Y and Z due to diff coord systems
@@ -407,7 +416,7 @@ pub fn update_entities(
     for (i, posit) in posits_1d.iter().enumerate() {
         entities.push(Entity::new(
             // crate::NUM_SURFACES, // Index 1 after surfaces.
-            8, // Index 1 after surfaces.
+            9, // Index 1 after surfaces.
             Vec3::new(
                 posit.x as f32,
                 // We invert Y and Z due to diff coord systems
@@ -422,7 +431,7 @@ pub fn update_entities(
         ));
 
         entities.push(Entity::new(
-            8, // Index 1 after surfaces.
+            9, // Index 1 after surfaces.
             // crate::NUM_SURFACES, // Index 1 after surfaces.
             Vec3::new(
                 posit.x as f32,

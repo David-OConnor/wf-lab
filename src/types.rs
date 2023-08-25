@@ -25,6 +25,10 @@ pub struct SurfacesShared {
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
     pub E: f64,
+    /// 2023-08-17: Another attempt at a 3d-grid-based save function
+    pub psi_numeric: Arr3d,
+    /// In case we want to explore something like DFT
+    pub charge_density_dft: Arr3dReal,
     // pub psi_pp_score: f64,
 }
 
@@ -57,13 +61,15 @@ impl SurfacesShared {
             grid_posits,
             grid_posits_charge,
             V_total: data_real.clone(),
-            V_from_nuclei: data_real,
+            V_from_nuclei: data_real.clone(),
             // psi: data.clone(),
             psi: WaveFunctionMultiElec::new(num_elecs, n_grid),
             // psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
-            psi_pp_calculated: data,
+            psi_pp_calculated: data.clone(),
             E: -0.50,
+            psi_numeric: data,
+            charge_density_dft: data_real,
             // psi_pp_score: 1.,
         }
     }
@@ -127,7 +133,7 @@ pub struct SurfacesPerElec {
     // pub E: f64,
     // pub psi_pp_score: f64,
     /// Aux surfaces are for misc visualizations
-    pub aux1: Arr3d,
+    pub aux1: Arr3dReal,
     pub aux2: Arr3d,
     //
     // Below this, are mostly unused/experimental terms.
@@ -172,14 +178,14 @@ impl SurfacesPerElec {
 
         Self {
             // V_from_this: data_real.clone(),
-            V_acting_on_this: data_real,
+            V_acting_on_this: data_real.clone(),
             psi,
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
             // E: -0.50,
             // psi_pp_score: 1.,
             nudge_amounts: default_nudges,
-            aux1: data.clone(),
+            aux1: data_real,
             aux2: data,
             // psi_prev: data.clone(),
             // bases: new_data_basis(N),

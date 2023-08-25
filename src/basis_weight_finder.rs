@@ -1,6 +1,12 @@
 //! Experimental / shell module for finding basis functions given a potential,
 //! or arrangement of nuclei.
 
+// use std::collections::HashMap;
+
+use itertools::Itertools;
+
+use lin_alg2::f64::Vec3;
+
 use crate::{
     basis_wfs::Basis,
     eigen_fns, elec_elec, eval,
@@ -11,7 +17,6 @@ use crate::{
     wf_ops::{self, BasesEvaluated, BasesEvaluated1d},
 };
 
-use lin_alg2::f64::Vec3;
 
 // Observation to explore: For Helium (what else?) Energy seems to be the value
 // where psi'' calc has no part above 0, but barely. todo Can we use this?
@@ -45,11 +50,6 @@ pub fn find_weights(
     // We use this 3D psi for calculating charge density.
     let mut psi_grid = new_data(grid_n_charge);
 
-    // Infinitessimal weight change, used for assessing derivatives.
-    const D_WEIGHT: f64 = 0.0001;
-
-    const NUM_DESCENTS: usize = 3; // todo
-    let descent_rate = 0.1; // todo? Factor for gradient descent based on the vector.
 
     // todo: Consider again using unweighted bases in your main logic. YOu removed it before
     // todo because it was bugged when you attempted it.
@@ -67,101 +67,139 @@ pub fn find_weights(
     // derivatives. We will then follow the gradients to victory (?)
     // let initial_sample_weights = util::linspace((weight_min, weight_max), weight_vals_per_iter);
 
-    // Here: Isolated descent algo. Possibly put in a sep fn.
-    // This starts with a weight=1 n=1 orbital at each electron.
 
-    // todo: Find what's diff each run.
+    let sample_weights = util::linspace((-0.8, 0.8), 6);
+    // todo: sample_differnet xis.
+    // let sample_xis = util::linspace((-1., 10), 20);
 
-    // For now, let's use a single starting point, and gradient-descent from it.
-    let mut current_point = vec![0.; bases.len()];
-    // for i in 0..charges_fixed.len() {
-    for i in 0..1 {
-        current_point[i] = 1.;
+    let weight_permutations: Vec<Vec<f64>> = sample_weights.into_iter().permutations(bases.len()).collect();
+
+    // todo: Scoring in general. Consider measuring slope at each point; not just value.
+
+    // let mut scores = HashMap::new();
+    let mut scores = Vec::new();
+
+    for weights in &weight_permutations {
+        scores.push(score_weight_set(
+            bases,
+            bases_evaled,
+            bases_evaled_charge,
+            eval_data,
+            &mut psi_grid,
+            V_from_elec,
+            &mut charges_elec[0],
+            V_from_nuclei,
+            &weights,
+            posits,
+            grid_posits_charge,
+            grid_n,
+            grid_n_charge,
+        ))
     }
 
-    // todo: Trying sampling a grid approach.
-
-    let vals = util::linspace((-0.5, 0.5), 10);
-
-    for (i_basis, _basis) in bases.iter().enumerate() {
-        for val in &vals {}
-    }
-
-    for _descent_num in 0..NUM_DESCENTS {
-        // This is our gradient. d_score / d_weight
-        let mut diffs = vec![0.; bases.len()];
-
-        // Iterate through each basis; calcualate a score using the same parameters as above,
-        // with the exception of a slightly small weight for the basis.
-        for (i_basis, _basis) in bases.iter().enumerate() {
-            // Scores from a small change along this dimension. basis = dimension
-            // Midpoint.
-            let mut point_shifted_left = current_point.clone();
-            let mut point_shifted_right = current_point.clone();
-
-            point_shifted_left[i_basis] -= D_WEIGHT;
-            point_shifted_right[i_basis] += D_WEIGHT;
-
-            let scores: Vec<f64> = [point_shifted_left, point_shifted_right]
-                .iter()
-                .map(|weights| {
-                    score_weight_set(
-                        bases,
-                        bases_evaled,
-                        bases_evaled_charge,
-                        eval_data,
-                        &mut psi_grid,
-                        V_from_elec,
-                        &mut charges_elec[0],
-                        V_from_nuclei,
-                        weights,
-                        posits,
-                        grid_posits_charge,
-                        grid_n,
-                        grid_n_charge,
-                    )
-                })
-                .collect();
-
-            let score_prev = scores[0];
-            let score_next = scores[1];
-
-            diffs[i_basis] = (score_next - score_prev) / (2. * D_WEIGHT);
+    let mut best_score = 9999.;
+    let mut best_i = 0;
+    for (i, score) in scores.iter().enumerate() {
+        if *score < best_score {
+            best_score = *score;
+            best_i = i;
         }
-
-        // Now that we've computed our gradient, shift down it to the next point.
-        for i in 0..bases.len() {
-            // Direction: Diff is current pt score minus score from a slightly
-            // lower value of a given basis. If it's positive, it means the score gets better
-            // (lower) with a smaller weight, so *reduce* weight accordingly.
-
-            // Leave the n=1 weight for one of the fixed-charges fixed to a value of 1.
-            // Note that this may preclude solutions other than the ground state.
-            // This should help avoid the system seeking 0 on all weights.
-            if i == 0 {
-                continue;
-            }
-
-            current_point[i] -= diffs[i] * descent_rate;
-        }
-
-        println!("\n\nDiffs: {:?}\n", diffs);
-        println!("Score: {:?}", eval_data.score);
-        println!("current pt: {:?}", current_point);
     }
+    println!("Best weight set. Score: {} weights: {:?}", best_score, weight_permutations[best_i])
 
-    println!("\n\nResult: {:?}", current_point);
 
-    // Update the weights stored in bases with what we've set.
-    // We update other things like the grid-based values elsewhere after running this.
-    for (i, basis) in bases.iter_mut().enumerate() {
-        *basis.weight_mut() = current_point[i];
-    }
 
     // wf_ops::update_wf_fm_bases_1d(bases, bases_evaled, eval_data, grid_n, None);
 
     // eval_data.score = eval::score_wf(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas)
 }
+//
+// fn gradient_descent() {
+//     // Infinitessimal weight change, used for assessing derivatives.
+//     const D_WEIGHT: f64 = 0.0001;
+//
+//     const NUM_DESCENTS: usize = 3; // todo
+//     let descent_rate = 0.1; // todo? Factor for gradient descent based on the vector.
+//
+
+    // Here: Isolated descent algo. Possibly put in a sep fn.
+    // This starts with a weight=1 n=1 orbital at each electron.
+
+// Update the weights stored in bases with what we've set.
+// We update other things like the grid-based values elsewhere after running this.
+// for (i, basis) in bases.iter_mut().enumerate() {
+//     *basis.weight_mut() = current_point[i];
+// }
+//     // For now, let's use a single starting point, and gradient-descent from it.
+//     let mut current_point = vec![0.; bases.len()];
+//     // for i in 0..charges_fixed.len() {
+//     for i in 0..1 {
+//         current_point[i] = 1.;
+//     }
+
+//     for _descent_num in 0..NUM_DESCENTS {
+//         // This is our gradient. d_score / d_weight
+//         let mut diffs = vec![0.; bases.len()];
+//
+//         // Iterate through each basis; calcualate a score using the same parameters as above,
+//         // with the exception of a slightly small weight for the basis.
+//         for (i_basis, _basis) in bases.iter().enumerate() {
+//             // Scores from a small change along this dimension. basis = dimension
+//             // Midpoint.
+//             let mut point_shifted_left = current_point.clone();
+//             let mut point_shifted_right = current_point.clone();
+//
+//             point_shifted_left[i_basis] -= D_WEIGHT;
+//             point_shifted_right[i_basis] += D_WEIGHT;
+//
+//             let scores: Vec<f64> = [point_shifted_left, point_shifted_right]
+//                 .iter()
+//                 .map(|weights| {
+//                     score_weight_set(
+//                         bases,
+//                         bases_evaled,
+//                         bases_evaled_charge,
+//                         eval_data,
+//                         &mut psi_grid,
+//                         V_from_elec,
+//                         &mut charges_elec[0],
+//                         V_from_nuclei,
+//                         weights,
+//                         posits,
+//                         grid_posits_charge,
+//                         grid_n,
+//                         grid_n_charge,
+//                     )
+//                 })
+//                 .collect();
+//
+//             let score_prev = scores[0];
+//             let score_next = scores[1];
+//
+//             diffs[i_basis] = (score_next - score_prev) / (2. * D_WEIGHT);
+//         }
+//
+//         // Now that we've computed our gradient, shift down it to the next point.
+//         for i in 0..bases.len() {
+//             // Direction: Diff is current pt score minus score from a slightly
+//             // lower value of a given basis. If it's positive, it means the score gets better
+//             // (lower) with a smaller weight, so *reduce* weight accordingly.
+//
+//             // Leave the n=1 weight for one of the fixed-charges fixed to a value of 1.
+//             // Note that this may preclude solutions other than the ground state.
+//             // This should help avoid the system seeking 0 on all weights.
+//             if i == 0 {
+//                 continue;
+//             }
+//
+//             current_point[i] -= diffs[i] * descent_rate;
+//         }
+//
+//         println!("\n\nDiffs: {:?}\n", diffs);
+//         println!("Score: {:?}", eval_data.score);
+//         println!("current pt: {:?}", current_point);
+//     }
+// }
 
 /// Helper for finding weight gradient descent. Updates psi and psi'', calculate E, and score.
 /// This function doesn't mutate any of the data.

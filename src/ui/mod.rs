@@ -860,20 +860,20 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             updated_E_or_V = true;
 
                             // todo: Temp debugging
-                            println!("\n\n\nV nuc: {:?}", state.eval_data_shared.V_from_nuclei);
-
-                            println!("\nPsi: {:?}", state.eval_data_per_elec[ae].psi.on_pt);
-                            println!("\nCalc: {:?}", state.eval_data_per_elec[ae].psi_pp_calc);
-                            println!("\nMeas: {:?}", state.eval_data_per_elec[ae].psi_pp_meas);
-                            println!("\nV from: {:?}", state.V_from_elecs_1d[ae]);
-                            println!(
-                                "\nV on: {:?}",
-                                state.eval_data_per_elec[ae].V_acting_on_this
-                            );
-
-                            println!("\nV_ from elecs global {:?}", state.V_from_elecs_1d[ae]);
-
-                            println!("\nBasess eval {:?}", state.eval_data_per_elec[ae].psi.on_pt);
+                            // println!("\n\n\nV nuc: {:?}", state.eval_data_shared.V_from_nuclei);
+                            //
+                            // println!("\nPsi: {:?}", state.eval_data_per_elec[ae].psi.on_pt);
+                            // println!("\nCalc: {:?}", state.eval_data_per_elec[ae].psi_pp_calc);
+                            // println!("\nMeas: {:?}", state.eval_data_per_elec[ae].psi_pp_meas);
+                            // println!("\nV from: {:?}", state.V_from_elecs_1d[ae]);
+                            // println!(
+                            //     "\nV on: {:?}",
+                            //     state.eval_data_per_elec[ae].V_acting_on_this
+                            // );
+                            //
+                            // println!("\nV_ from elecs global {:?}", state.V_from_elecs_1d[ae]);
+                            //
+                            // println!("\nBasess eval {:?}", state.eval_data_per_elec[ae].psi.on_pt);
 
                             // todo: Experimental diagnostic
                             let mut sum_pos = 0.;

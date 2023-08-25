@@ -111,6 +111,9 @@ pub fn score_wf(psi_pp_calc: &[Cplx], psi_pp_meas: &[Cplx]) -> f64 {
     for i in 0..psi_pp_calc.len() {
         // todo: Check if either individual is outside a thresh?
         let diff = psi_pp_calc[i] - psi_pp_meas[i];
+        // todo: Ideally, examine its derivative too, but I'm not sure how with
+        // todo this approach. I guess use the analytic values?
+
         result += diff.abs_sq();
     }
 

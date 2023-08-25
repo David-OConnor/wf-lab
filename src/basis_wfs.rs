@@ -157,6 +157,7 @@ impl Basis {
             Self::H(v) => v.value(posit_sample),
             Self::Gto(v) => v.value(posit_sample),
             Self::Sto(v) => v.value(posit_sample),
+            // Self::Sto(v) => v.value_simple_form(posit_sample),
         }
     }
 
@@ -165,7 +166,8 @@ impl Basis {
             // Self::Sto(v) => v.value(posit_sample),
             Self::H(v) => unimplemented!(),
             Self::Gto(v) => unimplemented!(),
-            Self::Sto(v) => v.second_deriv(posit_sample),
+            // Self::Sto(v) => v.second_deriv(posit_sample),
+            Self::Sto(v) => v.second_deriv_simple_form(posit_sample),
         }
     }
 
@@ -194,7 +196,7 @@ impl Basis {
             Self::Gto(_) => "SO1",
             Self::Sto(_) => "SO2",
         }
-        .to_owned()
+            .to_owned()
     }
 }
 
@@ -420,9 +422,9 @@ impl Sto {
 
         let mut result = 0.;
 
-        let a = (-self.xi * r).exp();
         // Each part is the second deriv WRT to an orthogonal axis.
         for coord in &[diff.x, diff.y, diff.z] {
+            // todo oops - you are missing quite a number of terms here...
             result += self.xi.powi(2) * coord.powi(2) * exp_term / r.powi(2);
 
             result += self.xi * coord.powi(2) * exp_term / r.powi(3);
@@ -444,6 +446,31 @@ impl Sto {
         let radial = Cplx::from_real((-self.xi * r).exp());
 
         // todo: Harmonic, and more general normalizing constant.
+
+        radial
+    }
+
+    pub fn second_deriv_simple_form(&self, posit_sample: Vec3) -> Cplx {
+        let diff = posit_sample - self.posit;
+        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+        let exp_term = (-self.xi * r).exp();
+
+        let mut result = 0.;
+
+        //  Put this in Wolfram Alpha:
+        // `second derivative of e^(-\xi * sqrt(x^2 + y^2 + z^2)) with respect to x`
+
+        // Each part is the second deriv WRT to an orthogonal axis.
+        for coord in &[diff.x, diff.y, diff.z] {
+            result += self.xi.powi(2) * coord.powi(2) * exp_term / r.powi(2);
+
+            result += self.xi * coord.powi(2) * exp_term / r.powi(3);
+
+            result -= self.xi * exp_term / r;
+        }
+
+        let radial = Cplx::from_real(result);
 
         radial
     }

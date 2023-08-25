@@ -49,9 +49,9 @@ use crate::{
 
 const NUM_SURFACES: usize = 10;
 
-const SPACING_FACTOR_DEFAULT: f64 = 1.7;
+const SPACING_FACTOR_DEFAULT: f64 = 1.0;
 const GRID_N_DEFAULT: usize = 50;
-const GRID_N_CHARGE_DEFAULT: usize = 40;
+const GRID_N_CHARGE_DEFAULT: usize = 30;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?

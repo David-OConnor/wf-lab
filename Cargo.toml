@@ -12,5 +12,7 @@ egui = "^0.19"
 # We use Scilib for computing H basis fns, eg with Laguerre and Legendre polynomials.
 scilib = "^0.7.0"
 
+# todo: Eventually ditch this tool for permutations:
+itertools = "^0.11.0"
 
 # rulinalg = "^0.4" # Tempish: For adapting the RBF lib
