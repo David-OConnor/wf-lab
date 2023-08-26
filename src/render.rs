@@ -31,7 +31,7 @@ const COLOR_PSI_PP_MEAS_1D: Color = (0., 0.5, 0.5);
 
 const CHARGE_SPHERE_SIZE: f32 = 0.05;
 
-const SURFACE_COLORS: [Color; 10] = [
+const SURFACE_COLORS: [Color; 11] = [
     (0., 0., 1.),
     (0., 0.5, 0.2),
     (1., 0., 0.),
@@ -42,6 +42,7 @@ const SURFACE_COLORS: [Color; 10] = [
     (0.5, 0., 0.5),
     (0.5, 0.4, 0.2),
     (0.5, 0.4, 0.3),
+    (0.3, 0.9, 0.3),
 ];
 
 const SURFACE_SHINYNESS: f32 = 10.5;
@@ -333,9 +334,13 @@ pub fn update_meshes(
             true,
         ));
 
-        // Experimenting with V_elec from a given psi.
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh_real(grid_posits, &surfaces.aux2, z_i, V_SCALER, grid_n),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(grid_posits, &surfaces.aux3, z_i, V_SCALER, grid_n),
             true,
         ));
 

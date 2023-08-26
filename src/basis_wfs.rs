@@ -164,7 +164,7 @@ impl Basis {
     pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
         match self {
             // Self::Sto(v) => v.value(posit_sample),
-            Self::H(v) => unimplemented!(),
+            Self::H(v) => v.second_deriv(posit_sample),
             Self::Gto(v) => unimplemented!(),
             // Self::Sto(v) => v.second_deriv(posit_sample),
             Self::Sto(v) => v.second_deriv_simple_form(posit_sample),
@@ -641,6 +641,11 @@ impl HOrbital {
 
         // Normalization consts are applied to radial and angular parts separately.
         Cplx::from_real(radial) * angular
+    }
+
+    pub fn second_deriv(&self) -> Cplx {
+        // todo: Do this.
+        Cplx::new_zero()
     }
 
     // // todo: Analytic 2nd deriv?

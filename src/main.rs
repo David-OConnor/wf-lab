@@ -47,9 +47,10 @@ use crate::{
     wf_ops::Q_PROT,
 };
 
-const NUM_SURFACES: usize = 10;
+const NUM_SURFACES: usize = 11;
 
-const SPACING_FACTOR_DEFAULT: f64 = 1.3;
+const SPACING_FACTOR_DEFAULT: f64 = 1.5;
+const GRID_MAX: f64 = 15.;
 const GRID_N_DEFAULT: usize = 50;
 const GRID_N_CHARGE_DEFAULT: usize = 30;
 
@@ -357,7 +358,7 @@ fn main() {
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let nuclei = vec![
-        (posit_charge_1, Q_PROT * 2.), // helium
+        (posit_charge_1, Q_PROT * 1.), // helium
                                        // (posit_charge_1, Q_PROT * 1.), // Hydrogen
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
@@ -401,7 +402,8 @@ fn main() {
     // H ion nuc dist is I believe 2 bohr radii.
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
 
-    let (grid_min, grid_max) = grid_setup::choose_grid_limits(&nuclei);
+    // let (grid_min, grid_max) = grid_setup::choose_grid_limits(&nuclei);
+    let (grid_min, grid_max) = (-GRID_MAX, GRID_MAX);
 
     // todo next up: Figure out why you get incorrect answers if these 2 grids don't line up.
     // todo: FOr now, you can continue with matching them if you wish.
@@ -446,8 +448,9 @@ fn main() {
         SurfaceData::new("ψ'' calc im", false),
         SurfaceData::new("ψ'' meas", true),
         SurfaceData::new("ψ'' meas im", false),
-        SurfaceData::new("Aux 1", false),
-        SurfaceData::new("Aux 2", false),
+        SurfaceData::new("Elec V from ψ ", false),
+        SurfaceData::new("Total V from ψ", false),
+        SurfaceData::new("V'_elec", false),
     ];
 
     let state = State {

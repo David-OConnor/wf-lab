@@ -875,21 +875,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             //
                             // println!("\nBasess eval {:?}", state.eval_data_per_elec[ae].psi.on_pt);
 
-                            // todo: Experimental diagnostic
-                            let mut sum_pos = 0.;
-                            for i in 0..state.grid_n_render {
-                                for j in 0..state.grid_n_render {
-                                    for k in 0..state.grid_n_render {
-                                        let psi_pp =
-                                            state.surfaces_per_elec[ae].psi_pp_calculated[i][j][k];
-                                        if psi_pp.real > 0. {
-                                            // todo im part??
-                                            sum_pos += psi_pp.real;
-                                        }
-                                    }
-                                }
-                            }
-                            println!("Sum of pos psi'': {:?}", sum_pos);
                         }
 
                         state.eval_data_per_elec[ae].E

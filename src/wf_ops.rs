@@ -415,46 +415,46 @@ pub fn initialize_bases(
     // todo for now as a kludge to preserve weights, we copy the prev weights.
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
         // See Sebens, for weights under equation 24; this is for Helium.
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 1.41714,
-            weight: 0.76837,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 2.37682,
-            weight: 0.22346,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 4.39628,
-            weight: 0.04082,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 6.52699,
-            weight: -0.00994,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 7.94252,
-            weight: 0.00230,
-            charge_id,
-            harmonic: Default::default(),
-        }));
+        // bases.push(Basis::Sto(Sto {
+        //     posit: *nuc_posit,
+        //     n: 1,
+        //     xi: 1.41714,
+        //     weight: 0.76837,
+        //     charge_id,
+        //     harmonic: Default::default(),
+        // }));
+        // bases.push(Basis::Sto(Sto {
+        //     posit: *nuc_posit,
+        //     n: 1,
+        //     xi: 2.37682,
+        //     weight: 0.22346,
+        //     charge_id,
+        //     harmonic: Default::default(),
+        // }));
+        // bases.push(Basis::Sto(Sto {
+        //     posit: *nuc_posit,
+        //     n: 1,
+        //     xi: 4.39628,
+        //     weight: 0.04082,
+        //     charge_id,
+        //     harmonic: Default::default(),
+        // }));
+        // bases.push(Basis::Sto(Sto {
+        //     posit: *nuc_posit,
+        //     n: 1,
+        //     xi: 6.52699,
+        //     weight: -0.00994,
+        //     charge_id,
+        //     harmonic: Default::default(),
+        // }));
+        // bases.push(Basis::Sto(Sto {
+        //     posit: *nuc_posit,
+        //     n: 1,
+        //     xi: 7.94252,
+        //     weight: 0.00230,
+        //     charge_id,
+        //     harmonic: Default::default(),
+        // }));
 
         for _ in 0..bases.len() {
             visible.push(true);
@@ -463,34 +463,27 @@ pub fn initialize_bases(
     // if let Some(mut vis) = bases_visible {
     //     *vis = visible;
     // }
-    return; // todo temp
+    // return; // todo temp
 
-    // for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
     for n in 1..max_n + 1 {
         for l in 0..n {
             for m in -(l as i16)..l as i16 + 1 {
                 // This loop order allows the basis sliders to be sorted with like-electrons next to each other.
                 for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
-                    // let weight = if i < prev_weights.len() {
-                    //     prev_weights[i]
-                    // } else {
-                    //     0.
-                    // };
-
                     let weight = if n == 1 { 1. } else { 0. };
 
-                    // bases.push(Basis::H(HOrbital {
-                    //     posit: *nuc_posit,
-                    //     n,
-                    //     harmonic: SphericalHarmonic {
-                    //         l,
-                    //         m,
-                    //         orientation: Quaternion::new_identity(),
-                    //     },
-                    //
-                    //     weight,
-                    //     charge_id,
-                    // }));
+                    bases.push(Basis::H(HOrbital {
+                        posit: *nuc_posit,
+                        n,
+                        harmonic: SphericalHarmonic {
+                            l,
+                            m,
+                            orientation: Quaternion::new_identity(),
+                        },
+
+                        weight,
+                        charge_id,
+                    }));
 
                     //    pub posit: Vec3,
                     //     pub n: u16,
@@ -500,23 +493,23 @@ pub fn initialize_bases(
                     //     pub harmonic: SphericalHarmonic,
 
                     // for xi in &[1., 2., 3., 4.] {
-                    for xi in &[1.41714, 2.37682, 4.39628, 6.52699, 7.94252] {
-                        bases.push(Basis::Sto(Sto {
-                            posit: *nuc_posit,
-                            n,
-                            xi: *xi,
-                            harmonic: SphericalHarmonic {
-                                l,
-                                m,
-                                orientation: Quaternion::new_identity(),
-                            },
-                            weight,
-                            charge_id,
-                        }));
-                    }
+                    //     for xi in &[1.41714, 2.37682, 4.39628, 6.52699, 7.94252] {
+                    //         bases.push(Basis::Sto(Sto {
+                    //             posit: *nuc_posit,
+                    //             n,
+                    //             xi: *xi,
+                    //             harmonic: SphericalHarmonic {
+                    //                 l,
+                    //                 m,
+                    //                 orientation: Quaternion::new_identity(),
+                    //             },
+                    //             weight,
+                    //             charge_id,
+                    //         }));
+                    //     }
                 }
 
-                // visible.push(true);
+                visible.push(true);
             }
         }
     }
@@ -851,11 +844,19 @@ pub fn calculate_v_elec(V_elec: &mut Arr3dReal, V_total: &mut Arr3dReal, psi: &A
             for k in 0..grid_n {
                 // todo: Hermitian operator has real eigenvalues. How are we able to discard
                 // todo the imaginary parts here? Is psi'' / psi always real?
-                V_elec[i][j][k] = -KE_COEFF * (psi_pp[i][j][k] / psi[i][j][k]).real + E - V_nuc[i][j][k];
-                V_total[i][j][k] = V_elec[i][j][k] + V_nuc[i][j][k];
+
+                V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
+
+                // todo: This appears to match with our displayed V, but I don't understand why. Electron sign?
+                V_total[i][j][k] = -V_total[i][j][k];
+                V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
             }
         }
     }
+    println!("V (total) from psi at edge: {}", V_total[0][0][0]);
+
+    // todo: Aux 3: Try a numerical derivative of potential; examine for smoothness.
+
     // Note: By dividing by Q_C, we can get the sum of psi^2 from other elecs, I think?
     // Then a formula where (psi_0^2 + psi_1^2) * Q_C = the charge density, which is associated with the
     // V_elec we calculate here.

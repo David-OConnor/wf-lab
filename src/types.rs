@@ -135,6 +135,7 @@ pub struct SurfacesPerElec {
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3dReal,
     pub aux2: Arr3dReal,
+    pub aux3: Arr3dReal,
     //
     // Below this, are mostly unused/experimental terms.
     //
@@ -186,7 +187,8 @@ impl SurfacesPerElec {
             // psi_pp_score: 1.,
             nudge_amounts: default_nudges,
             aux1: data_real.clone(),
-            aux2: data_real,
+            aux2: data_real.clone(),
+            aux3: data_real,
             // psi_prev: data.clone(),
             // bases: new_data_basis(N),
             // momentum: data.clone(),
