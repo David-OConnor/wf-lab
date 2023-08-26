@@ -12,12 +12,7 @@ use lin_alg2::{
     f64::Vec3 as Vec3F64,
 };
 
-use crate::{
-    complex_nums::Cplx,
-    grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
-    types::{SurfacesPerElec, SurfacesShared},
-    util, State, SurfaceData,
-};
+use crate::{complex_nums::Cplx, grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec}, types::{SurfacesPerElec, SurfacesShared}, util, State, SurfaceData, NUM_SURFACES};
 
 type Color = (f32, f32, f32);
 
@@ -59,10 +54,7 @@ const PSI_PP_SCALER: f32 = 20.;
 
 const ELEC_CHARGE_SCALER: f32 = 600.;
 // const ELEC_V_SCALER: f32 = 1100.;
-const V_SCALER: f32 = 10.;
-
-// todo: Why is this diff from V_scaler?
-const V_ELEC_SCALER: f32 = 10000.;
+const V_SCALER: f32 = 2.;
 
 fn event_handler(
     _state: &mut State,
@@ -337,7 +329,13 @@ pub fn update_meshes(
 
         // Experimenting with V_elec from a given psi.
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces.aux1, z_i, V_ELEC_SCALER, grid_n),
+            &prepare_2d_mesh_real(grid_posits, &surfaces.aux1, z_i, V_SCALER, grid_n),
+            true,
+        ));
+
+        // Experimenting with V_elec from a given psi.
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(grid_posits, &surfaces.aux2, z_i, V_SCALER, grid_n),
             true,
         ));
 
@@ -371,7 +369,7 @@ pub fn update_entities(
     scene: &mut Scene,
 ) {
     let mut entities = Vec::new();
-    for i in 0..crate::NUM_SURFACES {
+    for i in 0..NUM_SURFACES {
         if !surface_data[i].visible {
             continue;
         }
@@ -387,8 +385,7 @@ pub fn update_entities(
 
     for (posit, val) in charges {
         entities.push(Entity::new(
-            // crate::NUM_SURFACES, // Index 1 after surfaces.
-            9, // Index 1 after surfaces.
+            NUM_SURFACES, // Index 1 after surfaces.
             Vec3::new(
                 posit.x as f32,
                 // We invert Y and Z due to diff coord systems
@@ -415,8 +412,7 @@ pub fn update_entities(
     // todo as of now, it is not updated appropriately.
     for (i, posit) in posits_1d.iter().enumerate() {
         entities.push(Entity::new(
-            // crate::NUM_SURFACES, // Index 1 after surfaces.
-            9, // Index 1 after surfaces.
+            NUM_SURFACES, // Index 1 after surfaces.
             Vec3::new(
                 posit.x as f32,
                 // We invert Y and Z due to diff coord systems
@@ -431,8 +427,7 @@ pub fn update_entities(
         ));
 
         entities.push(Entity::new(
-            9, // Index 1 after surfaces.
-            // crate::NUM_SURFACES, // Index 1 after surfaces.
+            NUM_SURFACES, // Index 1 after surfaces.
             Vec3::new(
                 posit.x as f32,
                 psi_pp_meas_1d[i].real as f32,

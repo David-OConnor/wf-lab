@@ -49,7 +49,7 @@ use crate::{
 
 const NUM_SURFACES: usize = 10;
 
-const SPACING_FACTOR_DEFAULT: f64 = 1.0;
+const SPACING_FACTOR_DEFAULT: f64 = 1.3;
 const GRID_N_DEFAULT: usize = 50;
 const GRID_N_CHARGE_DEFAULT: usize = 30;
 

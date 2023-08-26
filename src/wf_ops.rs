@@ -845,15 +845,14 @@ fn analytically_integrate_psi_sq(bases: &[Basis]) {
 /// something that could be considered DFT. (?)
 ///
 /// Note: psi'' here is associated with psi'' measured, vice calculated.
-pub fn calculate_v_elec(V_elec: &mut Arr3dReal, psi: &Arr3d, psi_pp: &Arr3d, E: f64, V_nuc: &Arr3dReal, grid_n: usize) {
+pub fn calculate_v_elec(V_elec: &mut Arr3dReal, V_total: &mut Arr3dReal, psi: &Arr3d, psi_pp: &Arr3d, E: f64, V_nuc: &Arr3dReal, grid_n: usize) {
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
                 // todo: Hermitian operator has real eigenvalues. How are we able to discard
                 // todo the imaginary parts here? Is psi'' / psi always real?
                 V_elec[i][j][k] = -KE_COEFF * (psi_pp[i][j][k] / psi[i][j][k]).real + E - V_nuc[i][j][k];
-
-                println!("V {}", V_elec[i][j][k]);
+                V_total[i][j][k] = V_elec[i][j][k] + V_nuc[i][j][k];
             }
         }
     }

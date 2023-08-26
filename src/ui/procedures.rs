@@ -12,19 +12,21 @@ use crate::{
 };
 
 use graphics::{EngineUpdates, Scene};
+use crate::grid_setup::Arr3dReal;
 
 pub fn update_E_or_V(
     eval_data: &mut EvalDataPerElec,
-    surfaces: &mut SurfacesPerElec,
+    sfcs: &mut SurfacesPerElec,
+    V_from_nuclei: &Arr3dReal,
     grid_n_1d: usize,
     grid_n_render: usize,
 ) {
     for i in 0..grid_n_render {
         for j in 0..grid_n_render {
             for k in 0..grid_n_render {
-                surfaces.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
-                    surfaces.psi.on_pt[i][j][k],
-                    surfaces.V_acting_on_this[i][j][k],
+                sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
+                    sfcs.psi.on_pt[i][j][k],
+                    sfcs.V_acting_on_this[i][j][k],
                     eval_data.E,
                 )
             }
@@ -41,6 +43,17 @@ pub fn update_E_or_V(
 
     // todo: Not working for some things lik eV?
     eval_data.score = eval::score_wf(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas);
+
+        // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
+    wf_ops::calculate_v_elec(
+        &mut sfcs.aux1,
+        &mut sfcs.aux2,
+        &sfcs.psi.on_pt,
+        &sfcs.psi_pp_measured,
+        eval_data.E,
+        V_from_nuclei,
+        grid_n_render,
+    );
 }
 
 pub fn update_basis_weights(state: &mut State, ae: usize) {
@@ -84,11 +97,12 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     let sfcs = &mut state.surfaces_per_elec[ae];
     wf_ops::calculate_v_elec(
         &mut sfcs.aux1,
+        &mut sfcs.aux2,
         &sfcs.psi.on_pt,
         &sfcs.psi_pp_measured,
         state.eval_data_per_elec[ae].E,
         &state.surfaces_shared.V_from_nuclei,
-        state.eval_data_shared.grid_n,
+        state.grid_n_render,
     );
 }
 
