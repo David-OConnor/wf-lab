@@ -643,7 +643,7 @@ impl HOrbital {
         Cplx::from_real(radial) * angular
     }
 
-    pub fn second_deriv(&self) -> Cplx {
+    pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
         // todo: Do this.
         Cplx::new_zero()
     }

@@ -92,9 +92,6 @@ pub struct State {
     /// Outer is per-electron. Inner is per-basis
     /// todo: Do we want/need per-electron here?
     pub bases_evaluated_charge: Vec<Vec<Arr3d>>,
-    /// Used to toggle precense of a bases, effectively setting its weight ot 0 without losing the stored
-    /// weight value. Per-electron.
-    pub bases_visible: Vec<Vec<bool>>,
     /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
     pub nudge_amount: Vec<f64>,
     /// Wave function score, evaluated by comparing psi to psi'' from numerical evaluation, and
@@ -358,7 +355,7 @@ fn main() {
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let nuclei = vec![
-        (posit_charge_1, Q_PROT * 1.), // helium
+        (posit_charge_1, Q_PROT * 2.), // helium
                                        // (posit_charge_1, Q_PROT * 1.), // Hydrogen
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
@@ -373,21 +370,18 @@ fn main() {
 
     // Outer of these is per-elec.
     let mut bases = Vec::new();
-    let mut bases_visible = Vec::new();
 
     // let E_start = -0.7;
     // let mut Es = Vec::new();
 
     for _ in 0..num_elecs {
         bases.push(Vec::new());
-        bases_visible.push(Vec::new());
         // Es.push(E_start);
     }
 
     wf_ops::initialize_bases(
         &nuclei,
         &mut bases[ui_active_elec],
-        Some(&mut bases_visible[ui_active_elec]),
         max_basis_n,
     );
 
@@ -396,7 +390,6 @@ fn main() {
     // weights array.
     for i_elec in 1..num_elecs {
         bases[i_elec] = bases[0].clone();
-        bases_visible[i_elec] = bases_visible[0].clone();
     }
 
     // H ion nuc dist is I believe 2 bohr radii.
@@ -440,8 +433,8 @@ fn main() {
         init_1d(&bases, &nuclei, num_elecs);
 
     let surface_data = [
-        SurfaceData::new("V", false),
-        SurfaceData::new("ψ", true),
+        SurfaceData::new("V", true),
+        SurfaceData::new("ψ", false),
         SurfaceData::new("ψ im", false),
         SurfaceData::new("ψ²", false),
         SurfaceData::new("ψ'' calc", true),
@@ -449,7 +442,7 @@ fn main() {
         SurfaceData::new("ψ'' meas", true),
         SurfaceData::new("ψ'' meas im", false),
         SurfaceData::new("Elec V from ψ ", false),
-        SurfaceData::new("Total V from ψ", false),
+        SurfaceData::new("Total V from ψ", true),
         SurfaceData::new("V'_elec", false),
     ];
 
@@ -462,7 +455,6 @@ fn main() {
         bases_evaluated,
         bases_evaluated_1d,
         bases_evaluated_charge,
-        bases_visible,
         surfaces_shared,
         surfaces_per_elec,
         nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],

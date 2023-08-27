@@ -398,7 +398,6 @@ pub fn find_E(data: &mut EvalDataPerElec, grid_n: usize) -> f64 {
 pub fn initialize_bases(
     charges_fixed: &[(Vec3, f64)],
     bases: &mut Vec<Basis>,
-    bases_visible: Option<&mut Vec<bool>>,
     max_n: u16, // quantum number n
 ) {
     // let mut prev_weights = Vec::new();
@@ -409,8 +408,6 @@ pub fn initialize_bases(
     *bases = Vec::new();
     println!("Initializing bases");
 
-    let mut visible = Vec::new();
-
     // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
     // todo for now as a kludge to preserve weights, we copy the prev weights.
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
@@ -418,105 +415,129 @@ pub fn initialize_bases(
         // bases.push(Basis::Sto(Sto {
         //     posit: *nuc_posit,
         //     n: 1,
-        //     xi: 1.41714,
-        //     weight: 0.76837,
+        //     xi: 1.,
+        //     weight: 1.,
         //     charge_id,
         //     harmonic: Default::default(),
         // }));
+        //
         // bases.push(Basis::Sto(Sto {
         //     posit: *nuc_posit,
         //     n: 1,
-        //     xi: 2.37682,
-        //     weight: 0.22346,
+        //     xi: 0.5,
+        //     weight: 0.,
         //     charge_id,
         //     harmonic: Default::default(),
         // }));
-        // bases.push(Basis::Sto(Sto {
+
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 1.41714,
+            weight: 0.76837,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 2.37682,
+            weight: 0.22346,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 4.39628,
+            weight: 0.04082,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 6.52699,
+            weight: -0.00994,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+        bases.push(Basis::Sto(Sto {
+            posit: *nuc_posit,
+            n: 1,
+            xi: 7.94252,
+            weight: 0.00230,
+            charge_id,
+            harmonic: Default::default(),
+        }));
+
+        let weight = 1.;
+        let n = 1;
+        let l = 0;
+        let m = 0;
+        // bases.push(Basis::H(HOrbital {
         //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 4.39628,
-        //     weight: 0.04082,
+        //     n,
+        //     harmonic: SphericalHarmonic {
+        //         l,
+        //         m,
+        //         orientation: Quaternion::new_identity(),
+        //     },
+        //
+        //     weight,
         //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 6.52699,
-        //     weight: -0.00994,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 7.94252,
-        //     weight: 0.00230,
-        //     charge_id,
-        //     harmonic: Default::default(),
         // }));
 
-        for _ in 0..bases.len() {
-            visible.push(true);
-        }
-    }
-    // if let Some(mut vis) = bases_visible {
-    //     *vis = visible;
-    // }
-    // return; // todo temp
-
-    for n in 1..max_n + 1 {
-        for l in 0..n {
-            for m in -(l as i16)..l as i16 + 1 {
-                // This loop order allows the basis sliders to be sorted with like-electrons next to each other.
-                for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
-                    let weight = if n == 1 { 1. } else { 0. };
-
-                    bases.push(Basis::H(HOrbital {
-                        posit: *nuc_posit,
-                        n,
-                        harmonic: SphericalHarmonic {
-                            l,
-                            m,
-                            orientation: Quaternion::new_identity(),
-                        },
-
-                        weight,
-                        charge_id,
-                    }));
-
-                    //    pub posit: Vec3,
-                    //     pub n: u16,
-                    //     pub xi: f64,
-                    //     pub weight: f64,
-                    //     pub charge_id: usize,
-                    //     pub harmonic: SphericalHarmonic,
-
-                    // for xi in &[1., 2., 3., 4.] {
-                    //     for xi in &[1.41714, 2.37682, 4.39628, 6.52699, 7.94252] {
-                    //         bases.push(Basis::Sto(Sto {
-                    //             posit: *nuc_posit,
-                    //             n,
-                    //             xi: *xi,
-                    //             harmonic: SphericalHarmonic {
-                    //                 l,
-                    //                 m,
-                    //                 orientation: Quaternion::new_identity(),
-                    //             },
-                    //             weight,
-                    //             charge_id,
-                    //         }));
-                    //     }
-                }
-
-                visible.push(true);
-            }
-        }
     }
 
-    // if let Some(mut vis) = bases_visible {
-    //     *vis = visible;
+    // for n in 1..max_n + 1 {
+    //     for l in 0..n {
+    //         for m in -(l as i16)..l as i16 + 1 {
+    //             // This loop order allows the basis sliders to be sorted with like-electrons next to each other.
+    //             for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
+    //                 let weight = if n == 1 { 1. } else { 0. };
+    //
+    //                 bases.push(Basis::H(HOrbital {
+    //                     posit: *nuc_posit,
+    //                     n,
+    //                     harmonic: SphericalHarmonic {
+    //                         l,
+    //                         m,
+    //                         orientation: Quaternion::new_identity(),
+    //                     },
+    //
+    //                     weight,
+    //                     charge_id,
+    //                 }));
+    //
+    //                 //    pub posit: Vec3,
+    //                 //     pub n: u16,
+    //                 //     pub xi: f64,
+    //                 //     pub weight: f64,
+    //                 //     pub charge_id: usize,
+    //                 //     pub harmonic: SphericalHarmonic,
+    //
+    //                 // for xi in &[1., 2., 3., 4.] {
+    //                 //     for xi in &[1.41714, 2.37682, 4.39628, 6.52699, 7.94252] {
+    //                 //         bases.push(Basis::Sto(Sto {
+    //                 //             posit: *nuc_posit,
+    //                 //             n,
+    //                 //             xi: *xi,
+    //                 //             harmonic: SphericalHarmonic {
+    //                 //                 l,
+    //                 //                 m,
+    //                 //                 orientation: Quaternion::new_identity(),
+    //                 //             },
+    //                 //             weight,
+    //                 //             charge_id,
+    //                 //         }));
+    //                 //     }
+    //             }
+    //
+    //         }
+    //     }
     // }
+
 }
 
 /// Group that includes psi at a point, and at points surrounding it, an infinetesimal difference
@@ -844,11 +865,8 @@ pub fn calculate_v_elec(V_elec: &mut Arr3dReal, V_total: &mut Arr3dReal, psi: &A
             for k in 0..grid_n {
                 // todo: Hermitian operator has real eigenvalues. How are we able to discard
                 // todo the imaginary parts here? Is psi'' / psi always real?
-
-                V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
-
-                // todo: This appears to match with our displayed V, but I don't understand why. Electron sign?
-                V_total[i][j][k] = -V_total[i][j][k];
+                // todo: What's going on? Why do we need to invert E here?
+                V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], -E);
                 V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
             }
         }
@@ -862,4 +880,60 @@ pub fn calculate_v_elec(V_elec: &mut Arr3dReal, V_total: &mut Arr3dReal, psi: &A
     // V_elec we calculate here.
 
     // todo: How do we go from V_elec to charge density? That may be key.
+}
+
+// todo: For finding E, you should consider varying it until V at the edges, analyticaally, is 0.
+
+/// Calculate E from a trial wave function. We assume V goes to 0 at +/- ∞
+pub fn E_from_trial(bases: &[Basis]) -> f64 {
+    // Important: eval_pt should be close to +- infinity, and DX should be close to 0. However, either of these
+    // causes numerical precision problems, psi and psi'' both go to 0. An analytic second derviative
+    // would help with the DX limit.
+    let eval_pt = 30.;
+    const DX: f64 = 0.00001;
+
+
+    // todo: This isn't reliably working. Maybe diff @ sample pts like described below. Much less numerically fragile.
+
+    // todo: Alternatively, least-squares V from the trial WF, and least-squares diff it from a "known" V?
+    // todo (In your setup, match blue with grey)
+
+    // todo: Ideally with analytic bases, we use the analytic second derivative, but we're currently
+    // todo having trouble with it.
+
+    let mut psi = Cplx::new_zero();
+    let mut psi_x_prev = Cplx::new_zero();
+    let mut psi_x_next = Cplx::new_zero();
+    let mut psi_y_prev = Cplx::new_zero();
+    let mut psi_y_next = Cplx::new_zero();
+    let mut psi_z_prev = Cplx::new_zero();
+    let mut psi_z_next = Cplx::new_zero();
+
+    // todo: Pass in weights as an arg?
+    let mut weights = Vec::new();
+    for basis in bases {
+        weights.push(basis.weight());
+    }
+
+    for (i, basis) in bases.iter().enumerate() {
+        let weight = Cplx::from_real(weights[i]);
+        psi += weight * basis.value( Vec3::new(eval_pt, eval_pt, eval_pt));
+        psi_x_prev += weight * basis.value(Vec3::new(eval_pt - DX, eval_pt, eval_pt));
+        psi_x_next += weight * basis.value(Vec3::new(eval_pt + DX, eval_pt, eval_pt));
+        psi_y_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt - DX, eval_pt));
+        psi_y_next += weight * basis.value(Vec3::new(eval_pt, eval_pt + DX, eval_pt));
+        psi_z_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt, eval_pt - DX));
+        psi_z_next += weight * basis.value(Vec3::new(eval_pt ,eval_pt, eval_pt + DX));
+    }
+
+    psi = psi / bases.len() as f64; // todo: Is this right? Full normalization procedure?
+
+    let psi_pp = num_diff::find_ψ_pp_meas(
+        psi,
+        psi_x_prev, psi_x_next, psi_y_prev, psi_y_next, psi_z_prev, psi_z_next
+    );
+
+    // todo: Additional constraint that psi_pp/psi is Real to be a valid WF, even for complex psi??
+    // println!("psi_pp/psi: {:?}", psi_pp/psi); // todo: Try this at non-ininite values.
+    -KE_COEFF * (psi_pp / psi).real
 }

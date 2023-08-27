@@ -673,7 +673,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     wf_ops::initialize_bases(
                         &state.charges_fixed,
                         &mut state.bases[elec_i],
-                        Some(&mut state.bases_visible[elec_i]),
+                        // Some(&mut state.bases_visible[elec_i]),
                         2,
                     );
                 }

@@ -138,5 +138,5 @@ pub fn _find_E_2_elec(
 /// Calculate the V that must be acting on a given psi, and its (known to be accurate, eg numerical
 /// differention) derivative.
 pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
-     -KE_COEFF * (psi_pp / psi).real + E
+     KE_COEFF * (psi_pp / psi).real + E
 }

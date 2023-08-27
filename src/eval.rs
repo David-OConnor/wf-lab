@@ -82,24 +82,24 @@ pub fn score_wf(psi_pp_calc: &[Cplx], psi_pp_meas: &[Cplx]) -> f64 {
     result / psi_pp_calc.len() as f64
 }
 
-/// Score a wave function by comparing its estimate of total potential acting on it: This
-/// should be 0 at infinity.
-pub fn score_wf_from_V(V_total: &Arr3dReal) -> f64 {
-    V_total[0][0][0]
-}
-
-/// Score a wave function by comparing its estimate of total potential acting on it: This
-/// should be 0 at infinity.
-pub fn score_wf_from_V_analytic(bases: &[Basis], E: f64) -> f64 {
-    let compare_val = 9999.; // Far from the nuclei; should be zero.
-    let compare_pt = Vec3::new(compare_val, compare_val, compare_val);
-
-    let mut psi_at_pt = Cplx::new_zero();
-    let mut psi_pp_pt = Cplx::new_zero();
-    for basis in bases {
-        psi_at_pt += basis.value(compare_pt);
-        psi_pp_at_pt += basis.second_deriv(compare_pt);
-    }
-
-    eigen_fns::calc_V_on_psi(psi_at_pt, psi_pp_at_pt, E)
-}
+// /// Score a wave function by comparing its estimate of total potential acting on it: This
+// /// should be 0 at infinity.
+// pub fn score_wf_from_V(V_total: &Arr3dReal) -> f64 {
+//     V_total[0][0][0]
+// }
+//
+// /// Score a wave function by comparing its estimate of total potential acting on it: This
+// /// should be 0 at infinity.
+// pub fn score_wf_from_V_analytic(bases: &[Basis], E: f64) -> f64 {
+//     let compare_val = 9999.; // Far from the nuclei; should be zero.
+//     let compare_pt = Vec3::new(compare_val, compare_val, compare_val);
+//
+//     let mut psi = Cplx::new_zero();
+//     let mut psi_pp = Cplx::new_zero();
+//     for basis in bases {
+//         psi += basis.value(compare_pt);
+//         psi_pp += basis.second_deriv(compare_pt);
+//     }
+//
+//     eigen_fns::calc_V_on_psi(psi, psi_pp, E)
+// }

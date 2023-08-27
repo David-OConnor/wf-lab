@@ -104,6 +104,9 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &state.surfaces_shared.V_from_nuclei,
         state.grid_n_render,
     );
+
+    let E_from_V = wf_ops::E_from_trial(&state.bases[ae]);
+    // println!("E from V: {}", E_from_V);
 }
 
 pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
@@ -146,7 +149,7 @@ pub fn update_fixed_charges(state: &mut State) {
         wf_ops::initialize_bases(
             &state.charges_fixed,
             &mut state.bases[elec_i],
-            Some(&mut state.bases_visible[elec_i]),
+            // Some(&mut state.bases_visible[elec_i]),
             2,
         );
 

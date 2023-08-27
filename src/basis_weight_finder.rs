@@ -40,7 +40,7 @@ pub fn find_weights(
     grid_posits_charge: &Arr3dVec,
     grid_n: usize,
 ) {
-    wf_ops::initialize_bases(charges_fixed, bases, None, max_n);
+    wf_ops::initialize_bases(charges_fixed, bases, max_n);
 
     let norm = 1.; // todo temp! Figure this out.
 
