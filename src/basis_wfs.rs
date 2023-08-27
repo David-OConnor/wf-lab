@@ -156,17 +156,17 @@ impl Basis {
             // Self::Sto(v) => v.value(posit_sample),
             Self::H(v) => v.value(posit_sample),
             Self::Gto(v) => v.value(posit_sample),
-            Self::Sto(v) => v.value(posit_sample),
-            // Self::Sto(v) => v.value_simple_form(posit_sample),
+            // Self::Sto(v) => v.value(posit_sample),
+            Self::Sto(v) => v.value_simple_form(posit_sample),
         }
     }
 
+    /// Note: We must normalize afterwards.
     pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
         match self {
             // Self::Sto(v) => v.value(posit_sample),
             Self::H(v) => v.second_deriv(posit_sample),
             Self::Gto(v) => unimplemented!(),
-            // Self::Sto(v) => v.second_deriv(posit_sample),
             Self::Sto(v) => v.second_deriv_simple_form(posit_sample),
         }
     }
@@ -196,7 +196,7 @@ impl Basis {
             Self::Gto(_) => "SO1",
             Self::Sto(_) => "SO2",
         }
-            .to_owned()
+        .to_owned()
     }
 }
 
@@ -405,6 +405,7 @@ impl Sto {
 
     /// Analytic dsecond derivative using analytic basis functions.
     /// See OneNote: `Exploring the WF, part 6`.
+    /// Note: We must normalize afterwards.
     pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
         // todo: This currently ignores the spherical harmonic part; add that!
 
@@ -450,6 +451,7 @@ impl Sto {
         radial
     }
 
+    /// Note: We must normalize afterwards.
     pub fn second_deriv_simple_form(&self, posit_sample: Vec3) -> Cplx {
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();

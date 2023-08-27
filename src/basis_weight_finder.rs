@@ -17,7 +17,6 @@ use crate::{
     wf_ops::{self, BasesEvaluated, BasesEvaluated1d},
 };
 
-
 // Observation to explore: For Helium (what else?) Energy seems to be the value
 // where psi'' calc has no part above 0, but barely. todo Can we use this?
 // Is it a least-dampening phenomenon?
@@ -50,7 +49,6 @@ pub fn find_weights(
     // We use this 3D psi for calculating charge density.
     let mut psi_grid = new_data(grid_n_charge);
 
-
     // todo: Consider again using unweighted bases in your main logic. YOu removed it before
     // todo because it was bugged when you attempted it.
 
@@ -67,12 +65,14 @@ pub fn find_weights(
     // derivatives. We will then follow the gradients to victory (?)
     // let initial_sample_weights = util::linspace((weight_min, weight_max), weight_vals_per_iter);
 
-
     let sample_weights = util::linspace((-0.8, 0.8), 6);
     // todo: sample_differnet xis.
     // let sample_xis = util::linspace((-1., 10), 20);
 
-    let weight_permutations: Vec<Vec<f64>> = sample_weights.into_iter().permutations(bases.len()).collect();
+    let weight_permutations: Vec<Vec<f64>> = sample_weights
+        .into_iter()
+        .permutations(bases.len())
+        .collect();
 
     // todo: Scoring in general. Consider measuring slope at each point; not just value.
 
@@ -105,9 +105,10 @@ pub fn find_weights(
             best_i = i;
         }
     }
-    println!("Best weight set. Score: {} weights: {:?}", best_score, weight_permutations[best_i])
-
-
+    println!(
+        "Best weight set. Score: {} weights: {:?}",
+        best_score, weight_permutations[best_i]
+    )
 
     // wf_ops::update_wf_fm_bases_1d(bases, bases_evaled, eval_data, grid_n, None);
 
@@ -122,8 +123,8 @@ pub fn find_weights(
 //     let descent_rate = 0.1; // todo? Factor for gradient descent based on the vector.
 //
 
-    // Here: Isolated descent algo. Possibly put in a sep fn.
-    // This starts with a weight=1 n=1 orbital at each electron.
+// Here: Isolated descent algo. Possibly put in a sep fn.
+// This starts with a weight=1 n=1 orbital at each electron.
 
 // Update the weights stored in bases with what we've set.
 // We update other things like the grid-based values elsewhere after running this.

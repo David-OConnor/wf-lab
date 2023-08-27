@@ -12,7 +12,12 @@ use lin_alg2::{
     f64::Vec3 as Vec3F64,
 };
 
-use crate::{complex_nums::Cplx, grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec}, types::{SurfacesPerElec, SurfacesShared}, util, State, SurfaceData, NUM_SURFACES};
+use crate::{
+    complex_nums::Cplx,
+    grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
+    types::{SurfacesPerElec, SurfacesShared},
+    util, State, SurfaceData, NUM_SURFACES,
+};
 
 type Color = (f32, f32, f32);
 

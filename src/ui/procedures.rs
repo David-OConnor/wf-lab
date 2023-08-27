@@ -11,8 +11,8 @@ use crate::{
     wf_ops, ActiveElec, State,
 };
 
-use graphics::{EngineUpdates, Scene};
 use crate::grid_setup::Arr3dReal;
+use graphics::{EngineUpdates, Scene};
 
 pub fn update_E_or_V(
     eval_data: &mut EvalDataPerElec,
@@ -44,7 +44,7 @@ pub fn update_E_or_V(
     // todo: Not working for some things lik eV?
     eval_data.score = eval::score_wf(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas);
 
-        // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
+    // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
     wf_ops::calculate_v_elec(
         &mut sfcs.aux1,
         &mut sfcs.aux2,

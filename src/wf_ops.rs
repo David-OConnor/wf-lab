@@ -26,10 +26,11 @@
 use crate::{
     basis_wfs::{Basis, Gto, HOrbital, SphericalHarmonic, Sto},
     complex_nums::Cplx,
-    eigen_fns::{self, KE_COEFF}, eval, grid_setup,
+    eigen_fns::{self, KE_COEFF},
+    eval, grid_setup,
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     num_diff::{self, H},
-    types::{SurfacesPerElec, EvalDataPerElec},
+    types::{EvalDataPerElec, SurfacesPerElec},
     util,
 };
 
@@ -310,7 +311,7 @@ pub fn update_psi_pps(
                 );
 
                 // todo experimenting
-                // psi_pp_meas[i][j][k] = psi.psi_pp_analytic[i][j][k];
+                psi_pp_meas[i][j][k] = psi.psi_pp_analytic[i][j][k];
             }
         }
     }
@@ -343,10 +344,9 @@ pub fn update_psi_pps_1d(
         );
 
         // todo experimenting
-        // psi_pp_meas[i] = psi.psi_pp_analytic[i];
+        psi_pp_meas[i] = psi.psi_pp_analytic[i];
     }
 }
-
 
 /// Find the E that minimizes score, by narrowing it down. Note that if the relationship
 /// between E and psi'' score isn't straightforward, this will converge on a local minimum.
@@ -415,24 +415,6 @@ pub fn initialize_bases(
         // bases.push(Basis::Sto(Sto {
         //     posit: *nuc_posit,
         //     n: 1,
-        //     xi: 1.,
-        //     weight: 1.,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        //
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
-        //     xi: 0.5,
-        //     weight: 0.,
-        //     charge_id,
-        //     harmonic: Default::default(),
-        // }));
-        // 
-        // bases.push(Basis::Sto(Sto {
-        //     posit: *nuc_posit,
-        //     n: 1,
         //     xi: 1.41714,
         //     weight: 0.76837,
         //     charge_id,
@@ -470,9 +452,6 @@ pub fn initialize_bases(
         //     charge_id,
         //     harmonic: Default::default(),
         // }));
-
-
-
 
         bases.push(Basis::Sto(Sto {
             posit: *nuc_posit,
@@ -567,13 +546,12 @@ pub fn initialize_bases(
             harmonic: Default::default(),
         }));
 
-
         bases.push(Basis::H(HOrbital {
             posit: *nuc_posit,
-            n:1,
+            n: 1,
             harmonic: SphericalHarmonic {
-                l:0,
-                m:0,
+                l: 0,
+                m: 0,
                 orientation: Quaternion::new_identity(),
             },
             weight: 0.,
@@ -582,10 +560,10 @@ pub fn initialize_bases(
 
         bases.push(Basis::H(HOrbital {
             posit: *nuc_posit,
-            n:2,
+            n: 2,
             harmonic: SphericalHarmonic {
-                l:0,
-                m:0,
+                l: 0,
+                m: 0,
                 orientation: Quaternion::new_identity(),
             },
             weight: 0.,
@@ -594,10 +572,10 @@ pub fn initialize_bases(
 
         bases.push(Basis::H(HOrbital {
             posit: *nuc_posit,
-            n:3,
+            n: 3,
             harmonic: SphericalHarmonic {
-                l:0,
-                m:0,
+                l: 0,
+                m: 0,
                 orientation: Quaternion::new_identity(),
             },
             weight: 0.,
@@ -606,10 +584,10 @@ pub fn initialize_bases(
 
         bases.push(Basis::H(HOrbital {
             posit: *nuc_posit,
-            n:4,
+            n: 4,
             harmonic: SphericalHarmonic {
-                l:0,
-                m:0,
+                l: 0,
+                m: 0,
                 orientation: Quaternion::new_identity(),
             },
             weight: 0.,
@@ -617,55 +595,53 @@ pub fn initialize_bases(
         }));
     }
 
-
-// for n in 1..max_n + 1 {
-//     for l in 0..n {
-//         for m in -(l as i16)..l as i16 + 1 {
-//             // This loop order allows the basis sliders to be sorted with like-electrons next to each other.
-//             for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
-//                 let weight = if n == 1 { 1. } else { 0. };
-//
-//                 bases.push(Basis::H(HOrbital {
-//                     posit: *nuc_posit,
-//                     n,
-//                     harmonic: SphericalHarmonic {
-//                         l,
-//                         m,
-//                         orientation: Quaternion::new_identity(),
-//                     },
-//
-//                     weight,
-//                     charge_id,
-//                 }));
-//
-//                 //    pub posit: Vec3,
-//                 //     pub n: u16,
-//                 //     pub xi: f64,
-//                 //     pub weight: f64,
-//                 //     pub charge_id: usize,
-//                 //     pub harmonic: SphericalHarmonic,
-//
-//                 // for xi in &[1., 2., 3., 4.] {
-//                 //     for xi in &[1.41714, 2.37682, 4.39628, 6.52699, 7.94252] {
-//                 //         bases.push(Basis::Sto(Sto {
-//                 //             posit: *nuc_posit,
-//                 //             n,
-//                 //             xi: *xi,
-//                 //             harmonic: SphericalHarmonic {
-//                 //                 l,
-//                 //                 m,
-//                 //                 orientation: Quaternion::new_identity(),
-//                 //             },
-//                 //             weight,
-//                 //             charge_id,
-//                 //         }));
-//                 //     }
-//             }
-//
-//         }
-//     }
-// }
-
+    // for n in 1..max_n + 1 {
+    //     for l in 0..n {
+    //         for m in -(l as i16)..l as i16 + 1 {
+    //             // This loop order allows the basis sliders to be sorted with like-electrons next to each other.
+    //             for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
+    //                 let weight = if n == 1 { 1. } else { 0. };
+    //
+    //                 bases.push(Basis::H(HOrbital {
+    //                     posit: *nuc_posit,
+    //                     n,
+    //                     harmonic: SphericalHarmonic {
+    //                         l,
+    //                         m,
+    //                         orientation: Quaternion::new_identity(),
+    //                     },
+    //
+    //                     weight,
+    //                     charge_id,
+    //                 }));
+    //
+    //                 //    pub posit: Vec3,
+    //                 //     pub n: u16,
+    //                 //     pub xi: f64,
+    //                 //     pub weight: f64,
+    //                 //     pub charge_id: usize,
+    //                 //     pub harmonic: SphericalHarmonic,
+    //
+    //                 // for xi in &[1., 2., 3., 4.] {
+    //                 //     for xi in &[1.41714, 2.37682, 4.39628, 6.52699, 7.94252] {
+    //                 //         bases.push(Basis::Sto(Sto {
+    //                 //             posit: *nuc_posit,
+    //                 //             n,
+    //                 //             xi: *xi,
+    //                 //             harmonic: SphericalHarmonic {
+    //                 //                 l,
+    //                 //                 m,
+    //                 //                 orientation: Quaternion::new_identity(),
+    //                 //             },
+    //                 //             weight,
+    //                 //             charge_id,
+    //                 //         }));
+    //                 //     }
+    //             }
+    //
+    //         }
+    //     }
+    // }
 }
 
 /// Group that includes psi at a point, and at points surrounding it, an infinetesimal difference
@@ -827,6 +803,7 @@ impl BasesEvaluated {
             }
 
             util::normalize_wf(&mut on_pt[basis_i], norm_pt, grid_n);
+            util::normalize_wf(&mut psi_pp_analytic[basis_i], norm_pt, grid_n);
 
             // note: Using individual norm consts appeares to produce incorrect results.
 
@@ -882,6 +859,8 @@ impl BasesEvaluated1d {
     /// `norm` should be calculated either numerically from a full grid, or analytically
     /// from the basis functions.
     pub fn new(bases: &[Basis], grid_posits: &[Vec3], norm: f64) -> Self {
+        let n = grid_posits.len();
+
         let mut on_pt = Vec::new();
         let mut x_prev = Vec::new();
         let mut x_next = Vec::new();
@@ -892,18 +871,18 @@ impl BasesEvaluated1d {
         let mut psi_pp_analytic = Vec::new();
 
         for _ in 0..bases.len() {
-            on_pt.push(vec![Cplx::new_zero(); grid_posits.len()]);
-            psi_pp_analytic.push(vec![Cplx::new_zero(); grid_posits.len()]);
-            x_prev.push(vec![Cplx::new_zero(); grid_posits.len()]);
-            x_next.push(vec![Cplx::new_zero(); grid_posits.len()]);
-            y_prev.push(vec![Cplx::new_zero(); grid_posits.len()]);
-            y_next.push(vec![Cplx::new_zero(); grid_posits.len()]);
-            z_prev.push(vec![Cplx::new_zero(); grid_posits.len()]);
-            z_next.push(vec![Cplx::new_zero(); grid_posits.len()]);
+            on_pt.push(vec![Cplx::new_zero(); n]);
+            psi_pp_analytic.push(vec![Cplx::new_zero(); n]);
+            x_prev.push(vec![Cplx::new_zero(); n]);
+            x_next.push(vec![Cplx::new_zero(); n]);
+            y_prev.push(vec![Cplx::new_zero(); n]);
+            y_next.push(vec![Cplx::new_zero(); n]);
+            z_prev.push(vec![Cplx::new_zero(); n]);
+            z_next.push(vec![Cplx::new_zero(); n]);
         }
 
         for (basis_i, basis) in bases.iter().enumerate() {
-            for i in 0..grid_posits.len() {
+            for i in 0..n {
                 let posit_sample = grid_posits[i];
 
                 let posit_x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
@@ -930,7 +909,7 @@ impl BasesEvaluated1d {
                 z_prev[basis_i][i] = val_z_prev / norm;
                 z_next[basis_i][i] = val_z_next / norm;
 
-                psi_pp_analytic[basis_i][i] = basis.second_deriv(posit_sample);
+                psi_pp_analytic[basis_i][i] = basis.second_deriv(posit_sample) / norm;
             }
         }
 
@@ -987,7 +966,15 @@ fn analytically_integrate_psi_sq(bases: &[Basis]) {
 /// something that could be considered DFT. (?)
 ///
 /// Note: psi'' here is associated with psi'' measured, vice calculated.
-pub fn calculate_v_elec(V_elec: &mut Arr3dReal, V_total: &mut Arr3dReal, psi: &Arr3d, psi_pp: &Arr3d, E: f64, V_nuc: &Arr3dReal, grid_n: usize) {
+pub fn calculate_v_elec(
+    V_elec: &mut Arr3dReal,
+    V_total: &mut Arr3dReal,
+    psi: &Arr3d,
+    psi_pp: &Arr3d,
+    E: f64,
+    V_nuc: &Arr3dReal,
+    grid_n: usize,
+) {
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
@@ -1023,14 +1010,14 @@ pub fn E_from_trial(bases: &[Basis]) -> f64 {
     // todo having trouble with it.
 
     let mut psi = Cplx::new_zero();
-    // let mut psi_pp = Cplx::new_zero(); // todo: when you get analytic derivs working.
+    let mut psi_pp = Cplx::new_zero();
 
-    let mut psi_x_prev = Cplx::new_zero();
-    let mut psi_x_next = Cplx::new_zero();
-    let mut psi_y_prev = Cplx::new_zero();
-    let mut psi_y_next = Cplx::new_zero();
-    let mut psi_z_prev = Cplx::new_zero();
-    let mut psi_z_next = Cplx::new_zero();
+    // let mut psi_x_prev = Cplx::new_zero();
+    // let mut psi_x_next = Cplx::new_zero();
+    // let mut psi_y_prev = Cplx::new_zero();
+    // let mut psi_y_next = Cplx::new_zero();
+    // let mut psi_z_prev = Cplx::new_zero();
+    // let mut psi_z_next = Cplx::new_zero();
 
     // todo: Pass in weights as an arg?
     let mut weights = Vec::new();
@@ -1041,23 +1028,28 @@ pub fn E_from_trial(bases: &[Basis]) -> f64 {
     for (i, basis) in bases.iter().enumerate() {
         let weight = Cplx::from_real(weights[i]);
 
-        psi += weight * basis.value( Vec3::new(eval_pt, eval_pt, eval_pt));
-        psi_x_prev += weight * basis.value(Vec3::new(eval_pt - H, eval_pt, eval_pt));
-        psi_x_next += weight * basis.value(Vec3::new(eval_pt + H, eval_pt, eval_pt));
-        psi_y_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt - H, eval_pt));
-        psi_y_next += weight * basis.value(Vec3::new(eval_pt, eval_pt + H, eval_pt));
-        psi_z_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt, eval_pt - H));
-        psi_z_next += weight * basis.value(Vec3::new(eval_pt ,eval_pt, eval_pt + H));
+        psi += weight * basis.value(Vec3::new(eval_pt, eval_pt, eval_pt));
+        psi_pp += weight * basis.second_deriv(Vec3::new(eval_pt, eval_pt, eval_pt));
+        //     psi_x_prev += weight * basis.value(Vec3::new(eval_pt - H, eval_pt, eval_pt));
+        //     psi_x_next += weight * basis.value(Vec3::new(eval_pt + H, eval_pt, eval_pt));
+        //     psi_y_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt - H, eval_pt));
+        //     psi_y_next += weight * basis.value(Vec3::new(eval_pt, eval_pt + H, eval_pt));
+        //     psi_z_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt, eval_pt - H));
+        //     psi_z_next += weight * basis.value(Vec3::new(eval_pt ,eval_pt, eval_pt + H));
+
+        // util::normalize_wf(&mut psi[basis_i], norm_pt, grid_n);
+        // util::normalize_wf(&mut psi_pp_analytic[basis_i], norm_pt, grid_n);
     }
 
-    let psi_pp = num_diff::find_ψ_pp_meas(
-        psi,
-        psi_x_prev, psi_x_next, psi_y_prev, psi_y_next, psi_z_prev, psi_z_next
-    );
+    // todo: How to normalize?
 
-    // todo: Additional constraint that psi_pp/psi is Real to be a valid WF, even for complex psi??
-    // println!("psi_pp/psi: {:?}", psi_pp/psi); // todo: Try this at non-ininite values.
+    // let psi_pp = num_diff::find_ψ_pp_meas(
+    //     psi,
+    //     psi_x_prev, psi_x_next, psi_y_prev, psi_y_next, psi_z_prev, psi_z_next
+    // );
 
+    // util::normalize_wf(&mut psi[basis_i], norm_pt, grid_n);
+    // util::normalize_wf(&mut psi_pp_[basis_i], norm_pt, grid_n);
 
     // todo: Why do we need to flip the sign?
     // -KE_COEFF * (psi_pp / psi).real

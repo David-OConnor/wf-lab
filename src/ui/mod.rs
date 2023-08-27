@@ -874,7 +874,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             // println!("\nV_ from elecs global {:?}", state.V_from_elecs_1d[ae]);
                             //
                             // println!("\nBasess eval {:?}", state.eval_data_per_elec[ae].psi.on_pt);
-
                         }
 
                         state.eval_data_per_elec[ae].E

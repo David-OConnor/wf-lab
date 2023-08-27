@@ -2,7 +2,12 @@
 
 use lin_alg2::f64::Vec3;
 
-use crate::{complex_nums::Cplx, basis_wfs::Basis, grid_setup::{Arr3d, Arr3dReal}, eigen_fns};
+use crate::{
+    basis_wfs::Basis,
+    complex_nums::Cplx,
+    eigen_fns,
+    grid_setup::{Arr3d, Arr3dReal},
+};
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
 /// This requires normalizing the wave functions we're comparing.
@@ -63,7 +68,6 @@ fn _fidelity(psi_pp_calc: &Arr3d, psi_pp_meas: &Arr3d, n: usize) -> f64 {
 
     result.abs_sq()
 }
-
 
 /// Score a wave function by comparing the least-squares sum of its measured and
 /// calculated second derivaties.
