@@ -49,8 +49,9 @@ use crate::{
 
 const NUM_SURFACES: usize = 11;
 
-const SPACING_FACTOR_DEFAULT: f64 = 1.5;
-const GRID_MAX: f64 = 15.;
+const SPACING_FACTOR_DEFAULT: f64 = 1.;
+const GRID_MAX_EVAL: f64 = 10.;
+const GRID_MAX_RENDER: f64 = 5.;
 const GRID_N_DEFAULT: usize = 50;
 const GRID_N_CHARGE_DEFAULT: usize = 30;
 
@@ -396,12 +397,11 @@ fn main() {
     // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
 
     // let (grid_min, grid_max) = grid_setup::choose_grid_limits(&nuclei);
-    let (grid_min, grid_max) = (-GRID_MAX, GRID_MAX);
 
     // todo next up: Figure out why you get incorrect answers if these 2 grids don't line up.
     // todo: FOr now, you can continue with matching them if you wish.
-    let (grid_min_render, grid_max_render) = (-4., 4.);
-    let (grid_min_charge, grid_max_charge) = (-10., 10.);
+    let (grid_min_render, grid_max_render) = (-GRID_MAX_RENDER, GRID_MAX_RENDER);
+    let (grid_min_charge, grid_max_charge) = (-GRID_MAX_EVAL, GRID_MAX_EVAL);
 
     // let spacing_factor = 1.6;
     // Currently, must be one as long as used with elec-elec charge.
@@ -437,9 +437,9 @@ fn main() {
         SurfaceData::new("ψ", false),
         SurfaceData::new("ψ im", false),
         SurfaceData::new("ψ²", false),
-        SurfaceData::new("ψ'' calc", true),
+        SurfaceData::new("ψ'' calc", false),
         SurfaceData::new("ψ'' calc im", false),
-        SurfaceData::new("ψ'' meas", true),
+        SurfaceData::new("ψ'' meas", false),
         SurfaceData::new("ψ'' meas im", false),
         SurfaceData::new("Elec V from ψ ", false),
         SurfaceData::new("Total V from ψ", true),

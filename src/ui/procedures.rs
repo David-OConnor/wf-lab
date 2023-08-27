@@ -106,7 +106,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     );
 
     let E_from_V = wf_ops::E_from_trial(&state.bases[ae]);
-    // println!("E from V: {}", E_from_V);
+    println!("E from V: {}", E_from_V);
 }
 
 pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
