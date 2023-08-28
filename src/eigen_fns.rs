@@ -135,8 +135,17 @@ pub fn _find_E_2_elec(
     }
 }
 
+// todo: Separate module for this work on V-based evaluation?
+
 /// Calculate the V that must be acting on a given psi, and its (known to be accurate, eg numerical
 /// differention) derivative.
 pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
-    KE_COEFF * (psi_pp / psi).real + E
+    // todo: What's going on? Why do we need to invert E here?
+    //KE_COEFF * (psi_pp / psi).real + E
+    KE_COEFF * (psi_pp / psi).real - E
+}
+
+/// A mirror of `calc_V_on_psi`.
+pub fn calc_E_on_psi(psi: Cplx, psi_pp: Cplx, V: f64) -> f64 {
+    KE_COEFF * (psi_pp / psi).real - V
 }

@@ -4,10 +4,9 @@ use egui::{self, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::Vec3;
 
-use crate::grid_setup::new_data;
 use crate::{
-    basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval, potential, render, wf_ops,
-    ActiveElec, State,
+    basis_finder, basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval,
+    grid_setup::new_data, potential, render, wf_ops, ActiveElec, State,
 };
 
 pub(crate) mod procedures;
@@ -32,7 +31,7 @@ const GRID_SIZE_MIN: f64 = 0.;
 const GRID_SIZE_MAX: f64 = 40.;
 
 const ITEM_SPACING: f32 = 18.;
-const FLOAT_EDIT_WIDTH: f32 = 24.;
+const FLOAT_EDIT_WIDTH: f32 = 32.;
 
 const NUDGE_MIN: f64 = 0.;
 const NUDGE_MAX: f64 = 0.2;
@@ -290,6 +289,7 @@ fn basis_fn_mixer(
                             let n_prev = b.n;
                             let l_prev = b.harmonic.l;
                             let m_prev = b.harmonic.m;
+                            let xi_prev = b.xi;
                             // ui.heading("c:");
                             // let mut entry = b.c.to_string(); // angle
                             // let response =
@@ -322,11 +322,17 @@ fn basis_fn_mixer(
                             }
 
                             ui.heading("ξ:");
-                            let mut entry = b.xi.to_string(); // angle
-                            let response =
-                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            // todo: It's easier to use ints.
+                            const XI_INT_FACTOR: f64 = 100.;
+                            let mut val = (b.xi * XI_INT_FACTOR) as u32; // angle
+                            let mut entry = val.to_string();
+                            let response = ui.add(
+                                egui::TextEdit::singleline(&mut entry)
+                                    .desired_width(FLOAT_EDIT_WIDTH),
+                            );
                             if response.changed() {
-                                b.xi = entry.parse().unwrap_or(1.);
+                                val = entry.parse().unwrap_or(0);
+                                b.xi = (val as f64) / XI_INT_FACTOR;
                             }
 
                             // todo: DRY with H
@@ -341,6 +347,11 @@ fn basis_fn_mixer(
                                     b.harmonic.m = b.harmonic.l as i16
                                 }
 
+                                *updated_unweighted_basis_wfs = true;
+                                *updated_basis_weights = true;
+                            }
+
+                            if b.xi != xi_prev {
                                 *updated_unweighted_basis_wfs = true;
                                 *updated_basis_weights = true;
                             }
@@ -578,26 +589,32 @@ fn bottom_items(
         }
     });
 
-    if ui.add(egui::Button::new("Find weights")).clicked() {
-        basis_weight_finder::find_weights(
-            &state.charges_fixed,
-            &mut state.charges_electron,
-            &mut state.eval_data_per_elec[ae],
-            &state.eval_data_shared.posits,
-            &mut state.bases[ae],
-            &mut state.bases_evaluated_1d[ae],
-            &mut state.bases_evaluated_charge[ae],
-            state.max_basis_n,
-            &state.eval_data_shared.V_from_nuclei,
-            &mut state.V_from_elecs_1d[ae],
-            state.grid_n_charge,
-            &state.surfaces_shared.grid_posits_charge,
-            state.eval_data_shared.grid_n,
-        );
+    // if ui.add(egui::Button::new("Find weights")).clicked() {
+    //     basis_weight_finder::find_weights(
+    //         &state.charges_fixed,
+    //         &mut state.charges_electron,
+    //         &mut state.eval_data_per_elec[ae],
+    //         &state.eval_data_shared.posits,
+    //         &mut state.bases[ae],
+    //         &mut state.bases_evaluated_1d[ae],
+    //         &mut state.bases_evaluated_charge[ae],
+    //         state.max_basis_n,
+    //         &state.eval_data_shared.V_from_nuclei,
+    //         &mut state.V_from_elecs_1d[ae],
+    //         state.grid_n_charge,
+    //         &state.surfaces_shared.grid_posits_charge,
+    //         state.eval_data_shared.grid_n,
+    //     );
 
-        println!(
-            "E in UI code after weight finder: {:?}",
-            state.eval_data_per_elec[ae].E
+    //     *updated_E_or_V = true;
+    //     *updated_basis_weights = true;
+    //     *updated_meshes = true;
+    // }
+
+    if ui.add(egui::Button::new("Find STO bases")).clicked() {
+        basis_finder::find_stos(
+            &state.surfaces_per_elec[ae].V_acting_on_this,
+            &state.surfaces_shared.grid_posits,
         );
 
         *updated_E_or_V = true;

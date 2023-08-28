@@ -12,29 +12,33 @@ pub(crate) fn find_sample_points(nuclei: &[(Vec3, f64)]) -> Vec<Vec3> {
 
     // We've found that values near the middle experience (numerical?) instabilities;
     // values far away produce much better results.
-    const SAMPLE_DIST_0: f64 = 1.0;
-    const SAMPLE_DIST_1: f64 = 2.0;
-    const SAMPLE_DIST_2: f64 = 4.;
+    // const SAMPLE_DIST_0: f64 = 1.0;
+    // const SAMPLE_DIST_1: f64 = 2.0;
+    // const SAMPLE_DIST_2: f64 = 4.;
 
     const X_PLUS: Vec3 = Vec3::new(1., 0., 0.);
     const Y_PLUS: Vec3 = Vec3::new(0., 1., 0.);
     const Z_PLUS: Vec3 = Vec3::new(0., 0., 1.);
 
+    let sample_dists = [0.5, 1., 2., 3., 4., 5., 6., 7.];
+
     // todo: This is rough. Figure out how to do this.
     let mut result = Vec::new();
 
     for (nuc_posit, _charge) in nuclei {
-        result.push(*nuc_posit + X_PLUS * SAMPLE_DIST_0);
-        result.push(*nuc_posit + X_PLUS * SAMPLE_DIST_1);
-        result.push(*nuc_posit + X_PLUS * SAMPLE_DIST_2);
+        for dist in sample_dists {
+            result.push(*nuc_posit + X_PLUS * dist);
+            result.push(*nuc_posit + X_PLUS * dist);
+            result.push(*nuc_posit + X_PLUS * dist);
 
-        result.push(*nuc_posit + Y_PLUS * SAMPLE_DIST_0);
-        result.push(*nuc_posit + Y_PLUS * SAMPLE_DIST_1);
-        result.push(*nuc_posit + Y_PLUS * SAMPLE_DIST_2);
+            result.push(*nuc_posit + Y_PLUS * dist);
+            result.push(*nuc_posit + Y_PLUS * dist);
+            result.push(*nuc_posit + Y_PLUS * dist);
 
-        result.push(*nuc_posit + Z_PLUS * SAMPLE_DIST_0);
-        result.push(*nuc_posit + Z_PLUS * SAMPLE_DIST_1);
-        result.push(*nuc_posit + Z_PLUS * SAMPLE_DIST_2);
+            result.push(*nuc_posit + Z_PLUS * dist);
+            result.push(*nuc_posit + Z_PLUS * dist);
+            result.push(*nuc_posit + Z_PLUS * dist);
+        }
     }
 
     result

@@ -980,13 +980,14 @@ pub fn calculate_v_elec(
             for k in 0..grid_n {
                 // todo: Hermitian operator has real eigenvalues. How are we able to discard
                 // todo the imaginary parts here? Is psi'' / psi always real?
-                // todo: What's going on? Why do we need to invert E here?
-                V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], -E);
+                V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
                 V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
             }
         }
     }
-    println!("V (total) from psi at edge: {}", V_total[0][0][0]);
+    // println!("V (total) from psi at edge: {}", V_total[0][0][0]);
+
+    // todo: YOu would rope your
 
     // todo: Aux 3: Try a numerical derivative of potential; examine for smoothness.
 
@@ -999,25 +1000,75 @@ pub fn calculate_v_elec(
 
 // todo: For finding E, you should consider varying it until V at the edges, analyticaally, is 0.
 
+// /// Calculate E from a trial wave function. We assume V goes to 0 at +/- ∞
+// /// note that this appears to approach the eneryg, but doens't hit it.
+// pub fn E_from_trial(bases: &[Basis]) -> f64 {
+//     // Important: eval_pt should be close to +- infinity, but doing so may cause numerical issues
+//     // as both psi and psi'' go to 0.
+//     let eval_pt = 30.;
+//     // todo: Ideally with analytic bases, we use the analytic second derivative, but we're currently
+//     // todo having trouble with it.
+//
+//     // let mut psi = Cplx::new_zero();
+//     // let mut psi_pp = Cplx::new_zero();
+//     let mut psi_pp_div_psi =0.;
+//
+//     // let mut psi_x_prev = Cplx::new_zero();
+//     // let mut psi_x_next = Cplx::new_zero();
+//     // let mut psi_y_prev = Cplx::new_zero();
+//     // let mut psi_y_next = Cplx::new_zero();
+//     // let mut psi_z_prev = Cplx::new_zero();
+//     // let mut psi_z_next = Cplx::new_zero();
+//
+//     // todo: Pass in weights as an arg?
+//     let mut weights = Vec::new();
+//     for basis in bases {
+//         weights.push(basis.weight());
+//     }
+//
+//     for (i, basis) in bases.iter().enumerate() {
+//         // let weight = Cplx::from_real(weights[i]);
+//         let weight = weights[i];
+//
+//         psi_pp_div_psi += weight * basis.psi_pp_div_psi(Vec3::new(eval_pt, eval_pt, eval_pt));
+//         // psi += weight * basis.value(Vec3::new(eval_pt, eval_pt, eval_pt));
+//         // psi_pp += weight * basis.second_deriv(Vec3::new(eval_pt, eval_pt, eval_pt));
+//         //     psi_x_prev += weight * basis.value(Vec3::new(eval_pt - H, eval_pt, eval_pt));
+//         //     psi_x_next += weight * basis.value(Vec3::new(eval_pt + H, eval_pt, eval_pt));
+//         //     psi_y_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt - H, eval_pt));
+//         //     psi_y_next += weight * basis.value(Vec3::new(eval_pt, eval_pt + H, eval_pt));
+//         //     psi_z_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt, eval_pt - H));
+//         //     psi_z_next += weight * basis.value(Vec3::new(eval_pt ,eval_pt, eval_pt + H));
+//
+//     }
+//
+//     // It appears we don't need to normalize, since we'd normalize by psi and psi'' by the same amount,
+//     // and the relevant quantity is their ratio.
+//
+//     // let psi_pp = num_diff::find_ψ_pp_meas(
+//     //     psi,
+//     //     psi_x_prev, psi_x_next, psi_y_prev, psi_y_next, psi_z_prev, psi_z_next
+//     // );
+//
+//     // todo: WIth this psi_pp_div_psi shortcut, you appear to be getting normalization issues.
+//
+//     // todo: Why do we need to flip the sign?
+//     // -KE_COEFF * (psi_pp / psi).real
+//     // KE_COEFF * (psi_pp / psi).real
+//     KE_COEFF * psi_pp_div_psi
+// }
+
 /// Calculate E from a trial wave function. We assume V goes to 0 at +/- ∞
 /// note that this appears to approach the eneryg, but doens't hit it.
-pub fn E_from_trial(bases: &[Basis]) -> f64 {
-    // Important: eval_pt should be close to +- infinity, and H should be close to 0. However, either of these
-    // causes numerical precision problems, psi and psi'' both go to 0. An analytic second derviative
-    // would help with the H limit.
-    let eval_pt = 30.;
+pub fn E_from_trial(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> f64 {
+    // Important: eval_pt should be close to +- infinity, but doing so may cause numerical issues
+    // as both psi and psi'' go to 0.
     // todo: Ideally with analytic bases, we use the analytic second derivative, but we're currently
     // todo having trouble with it.
 
     let mut psi = Cplx::new_zero();
     let mut psi_pp = Cplx::new_zero();
-
-    // let mut psi_x_prev = Cplx::new_zero();
-    // let mut psi_x_next = Cplx::new_zero();
-    // let mut psi_y_prev = Cplx::new_zero();
-    // let mut psi_y_next = Cplx::new_zero();
-    // let mut psi_z_prev = Cplx::new_zero();
-    // let mut psi_z_next = Cplx::new_zero();
+    // let mut psi_pp_div_psi = 0.;
 
     // todo: Pass in weights as an arg?
     let mut weights = Vec::new();
@@ -1027,31 +1078,16 @@ pub fn E_from_trial(bases: &[Basis]) -> f64 {
 
     for (i, basis) in bases.iter().enumerate() {
         let weight = Cplx::from_real(weights[i]);
+        // let weight = weights[i];
 
-        psi += weight * basis.value(Vec3::new(eval_pt, eval_pt, eval_pt));
-        psi_pp += weight * basis.second_deriv(Vec3::new(eval_pt, eval_pt, eval_pt));
-        //     psi_x_prev += weight * basis.value(Vec3::new(eval_pt - H, eval_pt, eval_pt));
-        //     psi_x_next += weight * basis.value(Vec3::new(eval_pt + H, eval_pt, eval_pt));
-        //     psi_y_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt - H, eval_pt));
-        //     psi_y_next += weight * basis.value(Vec3::new(eval_pt, eval_pt + H, eval_pt));
-        //     psi_z_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt, eval_pt - H));
-        //     psi_z_next += weight * basis.value(Vec3::new(eval_pt ,eval_pt, eval_pt + H));
-
-        // util::normalize_wf(&mut psi[basis_i], norm_pt, grid_n);
-        // util::normalize_wf(&mut psi_pp_analytic[basis_i], norm_pt, grid_n);
+        // psi_pp_div_psi += weight * basis.psi_pp_div_psi(posit_corner);
+        psi += weight * basis.value(posit_corner);
+        psi_pp += weight * basis.second_deriv(posit_corner);
     }
 
-    // todo: How to normalize?
-
-    // let psi_pp = num_diff::find_ψ_pp_meas(
-    //     psi,
-    //     psi_x_prev, psi_x_next, psi_y_prev, psi_y_next, psi_z_prev, psi_z_next
-    // );
-
-    // util::normalize_wf(&mut psi[basis_i], norm_pt, grid_n);
-    // util::normalize_wf(&mut psi_pp_[basis_i], norm_pt, grid_n);
+    // todo: WIth this psi_pp_div_psi shortcut, you appear to be getting normalization issues.
 
     // todo: Why do we need to flip the sign?
-    // -KE_COEFF * (psi_pp / psi).real
-    KE_COEFF * (psi_pp / psi).real
+    KE_COEFF * (psi_pp / psi).real - V_corner
+    // KE_COEFF * psi_pp_div_psi - V_corner
 }

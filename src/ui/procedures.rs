@@ -105,7 +105,11 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         state.grid_n_render,
     );
 
-    let E_from_V = wf_ops::E_from_trial(&state.bases[ae]);
+    let E_from_V = wf_ops::E_from_trial(
+        &state.bases[ae],
+        state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
+        state.surfaces_shared.grid_posits[0][0][0],
+    );
     println!("E from V: {}", E_from_V);
 }
 

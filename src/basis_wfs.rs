@@ -171,6 +171,14 @@ impl Basis {
         }
     }
 
+    pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
+        match self {
+            Self::H(v) => v.psi_pp_div_psi(posit_sample),
+            Self::Gto(v) => unimplemented!(),
+            Self::Sto(v) => v.psi_pp_div_psi(posit_sample),
+        }
+    }
+
     pub fn charge_id(&self) -> usize {
         match self {
             // Self::Sto(v) => v.charge_id,
@@ -392,10 +400,21 @@ impl Sto {
         // todo: What is up with the (xi/a0).powf(1.5) term?? Not part of the Wikipedia def.
         let N = PI_SQRT_INV * self.xi.powf(1.5);
 
+        // todo: An analytic second deriv will get messier with higher N.
+
+        //   let L = Poly::laguerre((n - l - 1).into(), 2 * l + 1);
+        // // let L = util::make_laguerre(n - l - 1, 2 * l + 1.);
+        //
+        // return
+        //     * (-r / (n as f64 * A_0)).exp()
+        //     * (2. * r / (n as f64 * A_0)).powi(l.into())
+        //     * L.compute(2. * r / (n as f64 * A_0));
+
         let radial = Cplx::from_real(
             // PI_SQRT_INV * (self.xi / A_0).powf(1.5) * (-self.xi * r / A_0).exp(),
             // Shortcut as long as A_0 = 1
-            N * r.powi((self.n - 1).into()) * (-self.xi * r).exp(),
+            // N * r.powi((self.n - 1).into()) * (-self.xi * r).exp(),
+            N * r.powi((self.n - 1).into()) * (-self.xi * r / (self.n as f64 * A_0)).exp(),
         );
 
         // todo: Harmonic, and more general normalizing constant.
@@ -418,6 +437,8 @@ impl Sto {
 
         let N = PI_SQRT_INV * self.xi.powf(1.5);
         // Note: This variant uses the same form as our `value` fn, but assumes n = 1.
+
+        // todo: An analytic second deriv will get messier with higher N.
 
         let exp_term = (-self.xi * r).exp();
 
@@ -443,8 +464,11 @@ impl Sto {
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
+        // todo: An analytic second deriv will get messier with higher N.
+
         // todo: It looks like we apply weight elsewhere.
-        let radial = Cplx::from_real((-self.xi * r).exp());
+        // let radial = Cplx::from_real((-self.xi * r).exp());
+        let radial = Cplx::from_real((-self.xi * r / (self.n as f64 * A_0)).exp());
 
         // todo: Harmonic, and more general normalizing constant.
 
@@ -460,19 +484,39 @@ impl Sto {
 
         let mut result = 0.;
 
+        // todo: An analytic second deriv will get messier with higher N.
+
         //  Put this in Wolfram Alpha:
         // `second derivative of e^(-\xi * sqrt(x^2 + y^2 + z^2)) with respect to x`
 
         // Each part is the second deriv WRT to an orthogonal axis.
         for coord in &[diff.x, diff.y, diff.z] {
             result += self.xi.powi(2) * coord.powi(2) * exp_term / r.powi(2);
-
             result += self.xi * coord.powi(2) * exp_term / r.powi(3);
-
             result -= self.xi * exp_term / r;
         }
 
         let radial = Cplx::from_real(result);
+
+        radial
+    }
+
+    /// Saves some minor computations over calculating them individually, due to
+    /// eliminated terms. Of note, the exponential term cancels out.
+    /// todo: Is it really always real?
+    pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
+        let diff = posit_sample - self.posit;
+        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+        let mut result = 0.;
+
+        for coord in &[diff.x, diff.y, diff.z] {
+            result += self.xi.powi(2) * coord.powi(2) / r.powi(2);
+            result += self.xi * coord.powi(2) / r.powi(3);
+            result -= self.xi / r;
+        }
+
+        let radial = result;
 
         radial
     }
@@ -650,8 +694,8 @@ impl HOrbital {
         Cplx::new_zero()
     }
 
-    // // todo: Analytic 2nd deriv?
-    // pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
-    //
-    // }
+    pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
+        // todo: Do this.
+        0.
+    }
 }

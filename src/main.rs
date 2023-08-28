@@ -32,6 +32,7 @@ mod eval;
 mod grid_setup;
 mod interp;
 // mod nudge;
+mod basis_finder;
 mod num_diff;
 mod potential;
 mod render;
@@ -49,7 +50,7 @@ use crate::{
 
 const NUM_SURFACES: usize = 11;
 
-const SPACING_FACTOR_DEFAULT: f64 = 1.;
+const SPACING_FACTOR_DEFAULT: f64 = 1.5;
 const GRID_MAX_EVAL: f64 = 10.;
 const GRID_MAX_RENDER: f64 = 5.;
 const GRID_N_DEFAULT: usize = 40;

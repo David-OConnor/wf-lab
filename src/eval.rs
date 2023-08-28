@@ -77,13 +77,24 @@ pub fn score_wf(psi_pp_calc: &[Cplx], psi_pp_meas: &[Cplx]) -> f64 {
     for i in 0..psi_pp_calc.len() {
         // todo: Check if either individual is outside a thresh?
         let diff = psi_pp_calc[i] - psi_pp_meas[i];
-        // todo: Ideally, examine its derivative too, but I'm not sure how with
-        // todo this approach. I guess use the analytic values?
-
         result += diff.abs_sq();
     }
 
     result / psi_pp_calc.len() as f64
+}
+
+/// Score a wave function by comparing the least-squares sum of the known potential acting onit,
+/// and the estimated potential from the wave function.
+pub fn score_wf_from_V(V_known: &[f64], V_from_psi: &[f64]) -> f64 {
+    let mut result = 0.;
+
+    for i in 0..V_known.len() {
+        // todo: Check if either individual is outside a thresh?
+        let diff = V_known[i] - V_from_psi[i];
+        result += diff.abs();
+    }
+
+    result / V_known.len() as f64
 }
 
 // /// Score a wave function by comparing its estimate of total potential acting on it: This
