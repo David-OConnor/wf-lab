@@ -1,20 +1,23 @@
 //! This module contains code for setting up grids and sample points.
 
-use crate::{complex_nums::Cplx, util, wf_ops::PsiWDiffs1d};
+use crate::{complex_nums::Cplx, util};
 
+use crate::types::PsiWDiffs1d;
 use lin_alg2::f64::Vec3;
+
+// type Arr3d = Vec<Vec<Vec<f64>>>;
+pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
+
+pub type Arr3d = Vec<Vec<Vec<Cplx>>>;
+// pub type Arr3dBasis = Vec<Vec<Vec<SinExpBasisPt>>>;
+
+pub type Arr3dVec = Vec<Vec<Vec<Vec3>>>;
 
 /// Find sample points for evaluating wave functions, based on nuclei positions.
 /// Attempts to choose a minimal set of points that can accuruately be used
 /// to assess trial wave functions, without introducing numerical instabilities.
 pub(crate) fn find_sample_points(nuclei: &[(Vec3, f64)]) -> Vec<Vec3> {
     // todo: Mass-dependent?
-
-    // We've found that values near the middle experience (numerical?) instabilities;
-    // values far away produce much better results.
-    // const SAMPLE_DIST_0: f64 = 1.0;
-    // const SAMPLE_DIST_1: f64 = 2.0;
-    // const SAMPLE_DIST_2: f64 = 4.;
 
     const X_PLUS: Vec3 = Vec3::new(1., 0., 0.);
     const Y_PLUS: Vec3 = Vec3::new(0., 1., 0.);
@@ -102,14 +105,6 @@ pub fn update_grid_posits(
     }
 }
 
-// type Arr3d = Vec<Vec<Vec<f64>>>;
-pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
-
-pub type Arr3d = Vec<Vec<Vec<Cplx>>>;
-// pub type Arr3dBasis = Vec<Vec<Vec<SinExpBasisPt>>>;
-
-pub type Arr3dVec = Vec<Vec<Vec<Vec3>>>;
-
 /// Make a new 3D grid, as a nested Vec
 pub fn new_data(n: usize) -> Arr3d {
     let mut z = Vec::new();
@@ -139,19 +134,6 @@ pub fn new_data_real(n: usize) -> Arr3dReal {
     x
 }
 
-// pub fn new_data_basis(n: usize) -> Arr3dBasis {
-//     let mut z = Vec::new();
-//     z.resize(n, SinExpBasisPt::default());
-//
-//     let mut y = Vec::new();
-//     y.resize(n, z);
-//
-//     let mut x = Vec::new();
-//     x.resize(n, y);
-//
-//     x
-// }
-
 /// Make a new 3D grid of position vectors, as a nested Vec
 pub fn new_data_vec(n: usize) -> Arr3dVec {
     let mut z = Vec::new();
@@ -165,16 +147,6 @@ pub fn new_data_vec(n: usize) -> Arr3dVec {
 
     x
 }
-
-// pub fn copy_array_real(dest: &mut Arr3dReal, source: &Arr3dReal, grid_n: usize) {
-//     for i in 0..grid_n {
-//         for j in 0..grid_n {
-//             for k in 0..grid_n {
-//                 dest[i][j][k] = source[i][j][k];
-//             }
-//         }
-//     }
-// }
 
 pub fn copy_array(dest: &mut Arr3d, source: &Arr3d, grid_n: usize) {
     for i in 0..grid_n {

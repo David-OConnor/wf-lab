@@ -6,15 +6,16 @@
 use itertools::Itertools;
 
 use lin_alg2::f64::Vec3;
+use wf_lab::types::{BasesEvaluated, BasesEvaluated1d};
 
 use crate::{
     basis_wfs::Basis,
     eigen_fns, elec_elec, eval,
-    grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{Arr3d, Arr3dReal, Arr3dVec, new_data},
     potential,
     types::{EvalDataPerElec, SurfacesPerElec, SurfacesShared},
     util,
-    wf_ops::{self, BasesEvaluated, BasesEvaluated1d},
+    wf_ops::{self},
 };
 
 // Observation to explore: For Helium (what else?) Energy seems to be the value

@@ -1,18 +1,18 @@
 //! This module contains code called by the GUI that modifies state (eg wave functions).
 //! Components here may be called in one or more places.
 
+use graphics::{EngineUpdates, Scene};
+
 use crate::{
     eigen_fns,
     elec_elec::{self, PositIndex, WaveFunctionMultiElec},
     eval,
-    grid_setup::new_data,
+    grid_setup::{new_data, Arr3dReal},
     potential, render,
+    types::{BasesEvaluated, BasesEvaluated1d},
     types::{EvalDataPerElec, SurfacesPerElec},
     wf_ops, ActiveElec, State,
 };
-
-use crate::grid_setup::Arr3dReal;
-use graphics::{EngineUpdates, Scene};
 
 pub fn update_E_or_V(
     eval_data: &mut EvalDataPerElec,
@@ -42,7 +42,7 @@ pub fn update_E_or_V(
     }
 
     // todo: Not working for some things lik eV?
-    eval_data.score = eval::score_wf(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas);
+    eval_data.score = eval::score_wf_from_psi_pp(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas);
 
     // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
     wf_ops::calculate_v_elec(
@@ -88,7 +88,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         E,
     );
 
-    state.eval_data_per_elec[ae].score = eval::score_wf(
+    state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
         &state.eval_data_per_elec[ae].psi_pp_calc,
         &state.eval_data_per_elec[ae].psi_pp_meas,
     );
@@ -114,7 +114,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
 }
 
 pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
-    state.bases_evaluated[ae] = wf_ops::BasesEvaluated::new(
+    state.bases_evaluated[ae] = BasesEvaluated::new(
         &state.bases[ae],
         &state.surfaces_shared.grid_posits,
         state.grid_n_render,
@@ -122,7 +122,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
 
     let norm = 1.; // todo temp!!!
     state.bases_evaluated_1d[ae] =
-        wf_ops::BasesEvaluated1d::new(&state.bases[ae], &state.eval_data_shared.posits, norm);
+        BasesEvaluated1d::new(&state.bases[ae], &state.eval_data_shared.posits, norm);
 
     state.bases_evaluated_charge[ae] = wf_ops::arr_from_bases(
         &state.bases[ae],

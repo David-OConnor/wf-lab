@@ -23,7 +23,6 @@
 
 use lin_alg2::f64::Vec3;
 
-mod basis_weight_finder;
 mod basis_wfs;
 mod complex_nums;
 mod eigen_fns;
@@ -88,8 +87,8 @@ pub struct State {
     /// Basis wave functions. Perhaps faster to cache these (at the cost of more memory use, rather than
     /// compute their value each time we change weights...) Per-electron.
     /// todo: This should probably be in one of the surfaces.
-    pub bases_evaluated: Vec<wf_ops::BasesEvaluated>,
-    pub bases_evaluated_1d: Vec<wf_ops::BasesEvaluated1d>,
+    pub bases_evaluated: Vec<types::BasesEvaluated>,
+    pub bases_evaluated_1d: Vec<types::BasesEvaluated1d>,
     /// Similar to `bases_evaluated`, but on the charge grid. We don't need diffs for this.
     /// Outer is per-electron. Inner is per-basis
     /// todo: Do we want/need per-electron here?
@@ -176,7 +175,7 @@ pub fn init_from_grid(
 ) -> (
     Vec<Arr3dReal>,
     Vec<Arr3dReal>,
-    Vec<wf_ops::BasesEvaluated>,
+    Vec<types::BasesEvaluated>,
     Vec<Vec<Arr3d>>,
     SurfacesShared,
     Vec<SurfacesPerElec>,
@@ -229,7 +228,7 @@ pub fn init_from_grid(
         );
     }
 
-    let bases_evaluated_one = wf_ops::BasesEvaluated::new(
+    let bases_evaluated_one = types::BasesEvaluated::new(
         &bases[0], // todo: A bit of a kludge
         &surfaces_shared.grid_posits,
         grid_n,
@@ -286,7 +285,7 @@ pub fn init_1d(
     EvalDataShared,
     Vec<EvalDataPerElec>,
     Vec<Vec<f64>>,
-    Vec<wf_ops::BasesEvaluated1d>,
+    Vec<types::BasesEvaluated1d>,
 ) {
     let mut eval_data_shared = EvalDataShared::new(&charges_fixed);
     let eval_data_one = EvalDataPerElec::new(eval_data_shared.grid_n);
@@ -315,7 +314,7 @@ pub fn init_1d(
     }
 
     let norm = 1.; // todo: Figure this out!
-    let bases_evaluated_one = wf_ops::BasesEvaluated1d::new(
+    let bases_evaluated_one = types::BasesEvaluated1d::new(
         &bases[0], // todo: A bit of a kludge
         &eval_data_shared.posits,
         norm,

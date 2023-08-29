@@ -5,8 +5,8 @@ use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::Vec3;
 
 use crate::{
-    basis_finder, basis_weight_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval,
-    grid_setup::new_data, potential, render, wf_ops, ActiveElec, State,
+    basis_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval, grid_setup::new_data, potential,
+    render, wf_ops, ActiveElec, State,
 };
 
 pub(crate) mod procedures;
@@ -493,7 +493,7 @@ fn basis_fn_mixer(
                             E,
                         );
 
-                        state.eval_data_per_elec[ae].score = eval::score_wf(
+                        state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
                             &state.eval_data_per_elec[ae].psi_pp_calc,
                             &state.eval_data_per_elec[ae].psi_pp_meas,
                         );
@@ -533,7 +533,7 @@ fn bottom_items(
             //     state.grid_n_render,
             // );
 
-            state.eval_data_per_elec[ae].score = eval::score_wf(
+            state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
                 &state.eval_data_per_elec[ae].psi_pp_calc,
                 &state.eval_data_per_elec[ae].psi_pp_meas,
             );

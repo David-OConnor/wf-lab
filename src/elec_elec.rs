@@ -8,9 +8,10 @@ use crate::{
     complex_nums::Cplx,
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     num_diff, util,
-    wf_ops::{BasesEvaluated, PsiWDiffs, Q_ELEC},
+    wf_ops::Q_ELEC,
 };
 
+use crate::types::{BasesEvaluated, PsiWDiffs};
 use lin_alg2::f64::Vec3;
 
 /// This struct helps keep syntax more readable

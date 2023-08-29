@@ -359,54 +359,6 @@ pub(crate) fn _find_ψ_pp_meas_from_interp(
     let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - h2);
     let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + h2);
 
-    // Given the points we're sampling are along the grid lines, we can (conveniently! do 1D
-    // interpolation here, vice 3D.
-
-    // todo: I think this 1d simplification won't work. I think perhaps even your
-    // todo overall 3d approach won't work. But proper 3D interp will. (?)
-
-    // let psi_x_prev = interp::linear_1d_cplx(
-    //     x_prev.x,
-    //     (posit_sample.x - grid_dx, posit_sample.x),
-    //     psi[i - 1][j][k],
-    //     psi[i][j][k],
-    // );
-    //
-    // let psi_x_next = interp::linear_1d_cplx(
-    //     x_next.x,
-    //     (posit_sample.x, posit_sample.x + grid_dx),
-    //     psi[i][j][k],
-    //     psi[i + 1][j][k],
-    // );
-    //
-    // let psi_y_prev = interp::linear_1d_cplx(
-    //     y_prev.y,
-    //     (posit_sample.y - grid_dx, posit_sample.y),
-    //     psi[i][j - 1][k],
-    //     psi[i][j][k],
-    // );
-    //
-    // let psi_y_next = interp::linear_1d_cplx(
-    //     y_next.y,
-    //     (posit_sample.y, posit_sample.y + grid_dx),
-    //     psi[i][j][k],
-    //     psi[i][j + 1][k],
-    // );
-    //
-    // let psi_z_prev = interp::linear_1d_cplx(
-    //     z_prev.z,
-    //     (posit_sample.z - grid_dx, posit_sample.z),
-    //     psi[i][j][k - 1],
-    //     psi[i][j][k],
-    // );
-    //
-    // let psi_z_next = interp::linear_1d_cplx(
-    //     z_next.z,
-    //     (posit_sample.z, posit_sample.z + grid_dx),
-    //     psi[i][j][k],
-    //     psi[i][j][k + 1],
-    // );
-
     let psi_x_prev = interp::linear_3d_cplx(
         x_prev,
         (posit_sample.x - grid_dx, posit_sample.x),
@@ -504,32 +456,3 @@ pub(crate) fn _find_ψ_pp_meas_from_interp(
     // result / H_SQ
     result / (h2 * h2)
 }
-
-// /// Calcualte ψ'' measured, using a discrete function, interpolated.
-// /// Calculate ψ'' based on a numerical derivative of psi
-// /// in 3D.
-// pub(crate) fn find_ψ_pp_meas_fm_rbf(posit_sample: Vec3, psi_sample: Cplx, rbf: &Rbf) -> Cplx {
-//     let h2 = 0.01;
-//
-//     let x_prev = Vec3::new(posit_sample.x - h2, posit_sample.y, posit_sample.z);
-//     let x_next = Vec3::new(posit_sample.x + h2, posit_sample.y, posit_sample.z);
-//     let y_prev = Vec3::new(posit_sample.x, posit_sample.y - h2, posit_sample.z);
-//     let y_next = Vec3::new(posit_sample.x, posit_sample.y + h2, posit_sample.z);
-//     let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - h2);
-//     let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + h2);
-//
-//     let psi_x_prev = rbf.interp_point(x_prev);
-//     let psi_x_next = rbf.interp_point(x_next);
-//     let psi_y_prev = rbf.interp_point(y_prev);
-//     let psi_y_next = rbf.interp_point(y_next);
-//     let psi_z_prev = rbf.interp_point(z_prev);
-//     let psi_z_next = rbf.interp_point(z_next);
-//
-//     // todo: real only for now.
-//
-//     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-//         - psi_sample.real * 6.;
-//
-//     // result / H_SQ
-//     Cplx::from_real(result / (h2 * h2)) // todo real temp
-// }
