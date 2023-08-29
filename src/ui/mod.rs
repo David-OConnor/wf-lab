@@ -563,26 +563,16 @@ fn bottom_items(
         }
 
         if ui.add(egui::Button::new("Find E")).clicked() {
-            // state.surfaces_per_elec[ae].E =
-            //     wf_ops::find_E(&mut state.eval_data_per_elec[ae], state.eval_data_shared.n);
-
-            state.eval_data_per_elec[ae].E = wf_ops::find_E(
-                &mut state.eval_data_per_elec[ae],
-                state.eval_data_shared.grid_n,
-            );
-
-            // let E = state.surfaces_per_elec[active_elec].E; // avoids mutable/immutable borrow issues.
-            // wf_ops::update_psi_pp_calc(
-            //     // clone is due to an API hiccup.
-            //     &state.surfaces_per_elec[active_elec].psi.on_pt.clone(),
-            //     &state.surfaces_per_elec[active_elec].V_acting_on_this,
-            //     &mut state.surfaces_per_elec[active_elec].psi_pp_calculated,
-            //     E,
-            //     state.grid_n,
+            // state.eval_data_per_elec[ae].E = wf_ops::find_E(
+            //     &mut state.eval_data_per_elec[ae],
+            //     state.eval_data_shared.grid_n,
             // );
 
-            // Update the grid for visualization.
-            // todo: We use this instead of the above method due to mutable/immutable borrow conflicts.
+            state.eval_data_per_elec[ae].E = wf_ops::E_from_trial(
+                &state.bases[ae],
+                state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
+                state.surfaces_shared.grid_posits[0][0][0],
+            );
 
             *updated_E_or_V = true;
             *updated_meshes = true;

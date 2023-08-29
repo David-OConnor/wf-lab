@@ -38,6 +38,22 @@ pub(crate) fn find_ψ_pp_meas(
     result / H_SQ
 }
 
+pub(crate) fn find_pp_real(
+    psi_on_pt: f64,
+    psi_x_prev: f64,
+    psi_x_next: f64,
+    psi_y_prev: f64,
+    psi_y_next: f64,
+    psi_z_prev: f64,
+    psi_z_next: f64,
+    h: f64,
+) -> f64 {
+    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+        - psi_on_pt * 6.;
+
+    result / h
+}
+
 /// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.
 /// Calculate ψ'' based on a numerical derivative of psi in 3D.
 ///

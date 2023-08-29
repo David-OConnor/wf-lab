@@ -25,6 +25,7 @@ use scilib::{self, math::polynomial::Poly};
 // todo: There's also a WIP scilib Quantum lib that can do these H orbital calculations
 // todo directly.
 
+use crate::eigen_fns::KE_COEFF;
 use lin_alg2::f64::{Quaternion, Vec3};
 
 // Hartree units.
@@ -176,6 +177,22 @@ impl Basis {
             Self::H(v) => v.psi_pp_div_psi(posit_sample),
             Self::Gto(v) => unimplemented!(),
             Self::Sto(v) => v.psi_pp_div_psi(posit_sample),
+        }
+    }
+
+    pub fn V_p_from_psi(&self, posit_sample: Vec3) -> f64 {
+        match self {
+            Self::H(v) => 0.,
+            Self::Gto(v) => unimplemented!(),
+            Self::Sto(v) => v.V_p_from_psi(posit_sample),
+        }
+    }
+
+    pub fn V_pp_from_psi(&self, posit_sample: Vec3) -> f64 {
+        match self {
+            Self::H(v) => 0.,
+            Self::Gto(v) => unimplemented!(),
+            Self::Sto(v) => v.V_pp_from_psi(posit_sample),
         }
     }
 
@@ -519,6 +536,58 @@ impl Sto {
         let radial = result;
 
         radial
+    }
+
+    pub fn V_p_from_psi(&self, posit_sample: Vec3) -> f64 {
+        // From Wolfram alpha
+        let diff = posit_sample - self.posit;
+        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+        let mut result = 0.;
+
+        let xi = self.xi;
+
+        // todo: DRY here
+        result +=
+            1. / r.powi(5) * xi * diff.x * (diff.y.powi(2) + diff.z.powi(2)) * (2. * xi * r + 3.);
+        result +=
+            1. / r.powi(5) * xi * diff.y * (diff.x.powi(2) + diff.z.powi(2)) * (2. * xi * r + 3.);
+        result +=
+            1. / r.powi(5) * xi * diff.z * (diff.x.powi(2) + diff.y.powi(2)) * (2. * xi * r + 3.);
+
+        let radial = result;
+
+        radial * KE_COEFF
+    }
+
+    pub fn V_pp_from_psi(&self, posit_sample: Vec3) -> f64 {
+        let diff = posit_sample - self.posit;
+        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+
+        let mut result = 0.;
+
+        let xi = self.xi;
+        let x2 = diff.x.powi(2);
+        let y2 = diff.y.powi(2);
+        let z2 = diff.z.powi(2);
+
+        // todo DRY here
+        result += 1. / r.powi(7)
+            * xi
+            * (y2 + z2)
+            * ((y2 + z2) * (2. * xi * r + 3.) - 6. * x2 * (xi * r + 2.));
+        result += 1. / r.powi(7)
+            * xi
+            * (x2 + z2)
+            * ((x2 + z2) * (2. * xi * r + 3.) - 6. * y2 * (xi * r + 2.));
+        result += 1. / r.powi(7)
+            * xi
+            * (x2 + y2)
+            * ((x2 + y2) * (2. * xi * r + 3.) - 6. * z2 * (xi * r + 2.));
+
+        let radial = result;
+
+        radial * KE_COEFF
     }
 }
 

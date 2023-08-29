@@ -147,5 +147,6 @@ pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
 
 /// A mirror of `calc_V_on_psi`.
 pub fn calc_E_on_psi(psi: Cplx, psi_pp: Cplx, V: f64) -> f64 {
+    // todo: As above, why are we inverting E here?
     KE_COEFF * (psi_pp / psi).real - V
 }

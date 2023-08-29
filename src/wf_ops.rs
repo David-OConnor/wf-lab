@@ -956,11 +956,6 @@ pub fn arr_from_bases(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) ->
     result
 }
 
-fn analytically_integrate_psi_sq(bases: &[Basis]) {
-    // Try Sympy. WolFram ALpha is causing standard computation time to be exceeded, even for a single
-    // integra.
-}
-
 /// Calulate the electron potential that must be acting on a given enectron, given its
 /// wave function. This is the potential from *other* electroncs in the system. This is, perhaps
 /// something that could be considered DFT. (?)
@@ -985,7 +980,6 @@ pub fn calculate_v_elec(
             }
         }
     }
-    // println!("V (total) from psi at edge: {}", V_total[0][0][0]);
 
     // todo: YOu would rope your
 
@@ -999,64 +993,6 @@ pub fn calculate_v_elec(
 }
 
 // todo: For finding E, you should consider varying it until V at the edges, analyticaally, is 0.
-
-// /// Calculate E from a trial wave function. We assume V goes to 0 at +/- ∞
-// /// note that this appears to approach the eneryg, but doens't hit it.
-// pub fn E_from_trial(bases: &[Basis]) -> f64 {
-//     // Important: eval_pt should be close to +- infinity, but doing so may cause numerical issues
-//     // as both psi and psi'' go to 0.
-//     let eval_pt = 30.;
-//     // todo: Ideally with analytic bases, we use the analytic second derivative, but we're currently
-//     // todo having trouble with it.
-//
-//     // let mut psi = Cplx::new_zero();
-//     // let mut psi_pp = Cplx::new_zero();
-//     let mut psi_pp_div_psi =0.;
-//
-//     // let mut psi_x_prev = Cplx::new_zero();
-//     // let mut psi_x_next = Cplx::new_zero();
-//     // let mut psi_y_prev = Cplx::new_zero();
-//     // let mut psi_y_next = Cplx::new_zero();
-//     // let mut psi_z_prev = Cplx::new_zero();
-//     // let mut psi_z_next = Cplx::new_zero();
-//
-//     // todo: Pass in weights as an arg?
-//     let mut weights = Vec::new();
-//     for basis in bases {
-//         weights.push(basis.weight());
-//     }
-//
-//     for (i, basis) in bases.iter().enumerate() {
-//         // let weight = Cplx::from_real(weights[i]);
-//         let weight = weights[i];
-//
-//         psi_pp_div_psi += weight * basis.psi_pp_div_psi(Vec3::new(eval_pt, eval_pt, eval_pt));
-//         // psi += weight * basis.value(Vec3::new(eval_pt, eval_pt, eval_pt));
-//         // psi_pp += weight * basis.second_deriv(Vec3::new(eval_pt, eval_pt, eval_pt));
-//         //     psi_x_prev += weight * basis.value(Vec3::new(eval_pt - H, eval_pt, eval_pt));
-//         //     psi_x_next += weight * basis.value(Vec3::new(eval_pt + H, eval_pt, eval_pt));
-//         //     psi_y_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt - H, eval_pt));
-//         //     psi_y_next += weight * basis.value(Vec3::new(eval_pt, eval_pt + H, eval_pt));
-//         //     psi_z_prev += weight * basis.value(Vec3::new(eval_pt, eval_pt, eval_pt - H));
-//         //     psi_z_next += weight * basis.value(Vec3::new(eval_pt ,eval_pt, eval_pt + H));
-//
-//     }
-//
-//     // It appears we don't need to normalize, since we'd normalize by psi and psi'' by the same amount,
-//     // and the relevant quantity is their ratio.
-//
-//     // let psi_pp = num_diff::find_ψ_pp_meas(
-//     //     psi,
-//     //     psi_x_prev, psi_x_next, psi_y_prev, psi_y_next, psi_z_prev, psi_z_next
-//     // );
-//
-//     // todo: WIth this psi_pp_div_psi shortcut, you appear to be getting normalization issues.
-//
-//     // todo: Why do we need to flip the sign?
-//     // -KE_COEFF * (psi_pp / psi).real
-//     // KE_COEFF * (psi_pp / psi).real
-//     KE_COEFF * psi_pp_div_psi
-// }
 
 /// Calculate E from a trial wave function. We assume V goes to 0 at +/- ∞
 /// note that this appears to approach the eneryg, but doens't hit it.
@@ -1089,5 +1025,4 @@ pub fn E_from_trial(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> f64 {
 
     // todo: Why do we need to flip the sign?
     KE_COEFF * (psi_pp / psi).real - V_corner
-    // KE_COEFF * psi_pp_div_psi - V_corner
 }
