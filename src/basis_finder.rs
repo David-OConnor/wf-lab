@@ -2,6 +2,7 @@
 
 use lin_alg2::f64::Vec3;
 
+use crate::complex_nums::Cplx;
 use crate::{
     basis_wfs::{Basis, Sto},
     eigen_fns::{self, calc_E_on_psi, calc_V_on_psi},
@@ -65,7 +66,6 @@ fn numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dRea
 
 /// Find a wave function, composed of STOs, that match a given potential.
 pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
-    let mut bases = Vec::new();
     let E = 0.;
 
     const XI_INITIAL: f64 = 1.;
@@ -100,8 +100,8 @@ pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
     let mut best_xi_i = 0;
     let mut smallest_diff = 99999.;
     // This isn't perhaps an ideal apperoach, but try it to find the baseline xi.
-    let trial_xis = util::linspace((1., 6.), 100);
-    for (i, trial_xi) in trial_xis.iter().enumerate() {
+    let trial_base_xis = util::linspace((1., 6.), 100);
+    for (i, trial_xi) in trial_base_xis.iter().enumerate() {
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
             n: 1,
@@ -132,27 +132,101 @@ pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
         }
     }
 
-    let sto = Basis::Sto(Sto {
+    let base_sto = Basis::Sto(Sto {
         posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
         n: 1,
-        xi: trial_xis[best_xi_i],
+        xi: trial_base_xis[best_xi_i],
         weight: 1.,
         charge_id: 0,
         harmonic: Default::default(),
     });
 
     // todo: Helper fn for this process? Lots of DRY.
-    let psi_corner = sto.value(posit_corner);
-    let psi_pp_corner = sto.second_deriv(posit_corner);
+    let psi_corner = base_sto.value(posit_corner);
+    let psi_pp_corner = base_sto.second_deriv(posit_corner);
     let E = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
 
     // numerical_psi_ps(&trial_base_sto, grid_posits, V, E);
+    let base_xi = trial_base_xis[best_xi_i];
 
-    println!("\nBase xi: {}. E: {}", trial_xis[best_xi_i], E);
+    println!("\nBase xi: {}. E: {}", base_xi, E);
 
-    // let V_p_corner = (
-    //
-    //     )
+    // Now, add more xis:
+
+    let additional_xis = [2., 3., 4., 5., 6., 7., 8., 9., 10.];
+    let weights = util::linspace((-2., 2.), 100);
+
+    // todo: Not idea.
+    let sample_pts = vec![
+        grid_posits[10][0][0],
+        grid_posits[15][0][0],
+        grid_posits[20][0][0],
+    ];
+
+    let V_samples = vec![V[10][0][0], V[15][0][0], V[20][0][0]];
+
+    let mut bases = vec![base_sto.clone()];
+
+    let mut psi_other_bases = Vec::new();
+    let mut psi_pp_other_bases = Vec::new();
+    for pt in &sample_pts {
+        for basis in &bases {
+            psi_other_bases.push(basis.value(*pt));
+            psi_pp_other_bases.push(basis.second_deriv(*pt));
+        }
+    }
+
+    for xi in &additional_xis {
+        if xi <= &base_xi {
+            continue;
+        }
+
+        let mut best_weight_i = 0;
+        let mut smallest_diff = 9999.;
+
+        for (i_weight, weight) in weights.iter().enumerate() {
+            let sto = Basis::Sto(Sto {
+                posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
+                n: 1,
+                xi: *xi,
+                weight: *weight,
+                charge_id: 0,
+                harmonic: Default::default(),
+            });
+
+            // todo: DRY from above. Helper fn for this flow.
+            let mut diff = 0.;
+            for (i_pt, pt) in sample_pts.iter().enumerate() {
+                let psi = psi_other_bases[i_pt] + Cplx::from_real(*weight) * sto.value(*pt);
+                let psi_pp =
+                    psi_pp_other_bases[i_pt] + Cplx::from_real(*weight) * sto.second_deriv(*pt);
+                let V_from_psi = calc_V_on_psi(psi, psi_pp, E);
+
+                // todo: Square?
+                diff += (V_from_psi - V_samples[i_pt]).abs();
+            }
+
+            if diff < smallest_diff {
+                best_weight_i = i_weight;
+                smallest_diff = diff;
+            }
+        }
+        let best_weight = weights[best_weight_i];
+        bases.push(Basis::Sto(Sto {
+            posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
+            n: 1,
+            xi: *xi,
+            weight: best_weight,
+            charge_id: 0,
+            harmonic: Default::default(),
+        }))
+    }
+
+    for basis in &bases {
+        if let Basis::Sto(sto) = basis {
+            println!("Xi: {}, weight: {}", sto.xi, sto.weight);
+        }
+    }
 
     (bases, E)
 }
