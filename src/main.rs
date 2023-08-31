@@ -471,7 +471,7 @@ fn main() {
         adjust_E_with_weights: false,
         auto_gen_elec_V: false,
         weight_symmetry: true,
-        create_3d_electron_V: false,
+        create_3d_electron_V: true,
     };
 
     render::render(state);

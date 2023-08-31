@@ -20,8 +20,8 @@ const E_MIN: f64 = -4.5;
 const E_MAX: f64 = 0.2;
 
 // Wave fn weights
-pub const WEIGHT_MIN: f64 = -1.;
-pub const WEIGHT_MAX: f64 = 2.;
+pub const WEIGHT_MIN: f64 = -2.5;
+pub const WEIGHT_MAX: f64 = 2.5;
 
 const _L_MIN: f64 = -3.;
 const _L_MAX: f64 = 3.;

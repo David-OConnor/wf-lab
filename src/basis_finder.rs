@@ -64,8 +64,7 @@ fn numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dRea
     // println!("V'' corner: Blue {}  Grey {}", V_pp_corner, V_pp_psi);
 }
 
-/// Find a wave function, composed of STOs, that match a given potential.
-pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
+fn find_base_xi_E(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (f64, f64) {
     let E = 0.;
 
     const XI_INITIAL: f64 = 1.;
@@ -93,9 +92,6 @@ pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
 
     let psi_corner = trial_base_sto.value(posit_corner);
     let psi_pp_corner = trial_base_sto.second_deriv(posit_corner);
-    let E = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
-
-    println!("E from corner {:?}", E);
 
     let mut best_xi_i = 0;
     let mut smallest_diff = 99999.;
@@ -132,10 +128,14 @@ pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
         }
     }
 
+    let base_xi = trial_base_xis[best_xi_i];
+
+    // Now that we've identified the base Xi, use it to calculate the energy of the system.
+    // (The energy appears to be determined primarily by it.)
     let base_sto = Basis::Sto(Sto {
         posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
         n: 1,
-        xi: trial_base_xis[best_xi_i],
+        xi: base_xi,
         weight: 1.,
         charge_id: 0,
         harmonic: Default::default(),
@@ -146,39 +146,84 @@ pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
     let psi_pp_corner = base_sto.second_deriv(posit_corner);
     let E = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
 
-    // numerical_psi_ps(&trial_base_sto, grid_posits, V, E);
-    let base_xi = trial_base_xis[best_xi_i];
+    (base_xi, E)
+}
 
-    println!("\nBase xi: {}. E: {}", base_xi, E);
+/// Find a wave function, composed of STOs, that match a given potential.
+pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
+    let (base_xi, E) = find_base_xi_E(V, grid_posits);
+
+    println!("\nBase xi: {}. E: {}\n", base_xi, E);
+
+    let base_sto = Basis::Sto(Sto {
+        posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
+        n: 1,
+        xi: base_xi,
+        weight: 1.,
+        charge_id: 0,
+        harmonic: Default::default(),
+    });
 
     // Now, add more xis:
 
-    let additional_xis = [2., 3., 4., 5., 6., 7., 8., 9., 10.];
-    let weights = util::linspace((-2., 2.), 100);
+    let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
+    let weights = util::linspace((-2.5, 2.5), 100);
 
-    // todo: Not idea.
+    // todo: Not ideal. Set up sample points at specific intervals, then evaluate
+    // todo V at those intervals; don't use the grid.
     let sample_pts = vec![
-        grid_posits[10][0][0],
-        grid_posits[15][0][0],
-        grid_posits[20][0][0],
+        // grid_posits[20][20][20],
+        grid_posits[14][14][14],
+        grid_posits[13][14][12],
+        grid_posits[12][12][12],
+        grid_posits[10][10][10],
+        grid_posits[9][9][9],
+        grid_posits[8][8][8],
+        grid_posits[7][7][7],
     ];
 
-    let V_samples = vec![V[10][0][0], V[15][0][0], V[20][0][0]];
+    let V_samples = vec![
+        // V[20][20][20],
+        V[14][14][14],
+        V[13][14][12],
+        V[12][12][12],
+        V[10][10][10],
+        V[9][9][9],
+        V[8][8][8],
+        V[7][7][7],
+    ];
+
+    // todo: Check these sample pts for 0
 
     let mut bases = vec![base_sto.clone()];
 
-    let mut psi_other_bases = Vec::new();
-    let mut psi_pp_other_bases = Vec::new();
-    for pt in &sample_pts {
-        for basis in &bases {
-            psi_other_bases.push(basis.value(*pt));
-            psi_pp_other_bases.push(basis.second_deriv(*pt));
-        }
-    }
+    const EPS: f64 = 0.00000001;
 
     for xi in &additional_xis {
         if xi <= &base_xi {
             continue;
+        }
+
+        // Update this for each Xi, since we add a basis each time.else {     // Calculate the value from the previously-selected bases at the sample points.
+        let mut psi_other_bases = Vec::new();
+        let mut psi_pp_other_bases = Vec::new();
+
+        for pt in &sample_pts {
+            let mut psi = Cplx::new_zero();
+            let mut psi_pp = Cplx::new_zero();
+
+            // Prevents NaNs. Alternatively, don't use the origin as a point.
+            // if pt.magnitude() < EPS {
+            //     continue
+            // }
+
+            for basis in &bases {
+                psi += Cplx::from_real(basis.weight()) * basis.value(*pt);
+                psi_pp += Cplx::from_real(basis.weight()) * basis.second_deriv(*pt);
+            }
+
+            psi_other_bases.push(psi);
+            psi_pp_other_bases.push(psi_pp);
         }
 
         let mut best_weight_i = 0;
@@ -198,8 +243,15 @@ pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
             let mut diff = 0.;
             for (i_pt, pt) in sample_pts.iter().enumerate() {
                 let psi = psi_other_bases[i_pt] + Cplx::from_real(*weight) * sto.value(*pt);
+
                 let psi_pp =
                     psi_pp_other_bases[i_pt] + Cplx::from_real(*weight) * sto.second_deriv(*pt);
+
+                // psi is a denominator; prevents nans.
+                if psi.abs_sq() < EPS {
+                    continue;
+                }
+
                 let V_from_psi = calc_V_on_psi(psi, psi_pp, E);
 
                 // todo: Square?
@@ -211,6 +263,7 @@ pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
                 smallest_diff = diff;
             }
         }
+
         let best_weight = weights[best_weight_i];
         bases.push(Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.

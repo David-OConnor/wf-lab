@@ -110,7 +110,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
         state.surfaces_shared.grid_posits[0][0][0],
     );
-    println!("E from V: {}", E_from_V);
+    // println!("E from V: {}", E_from_V);
 }
 
 pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
