@@ -210,7 +210,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                                state.charges_fixed.iter().enumerate()
+                            state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -450,7 +450,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                    .text("Wt"),
+                        .text("Wt"),
                 );
             }
 
@@ -602,10 +602,16 @@ fn bottom_items(
     // }
 
     if ui.add(egui::Button::new("Find STO bases")).clicked() {
-        basis_finder::find_stos(
+        let (bases, E) = basis_finder::find_stos(
             &state.surfaces_per_elec[ae].V_acting_on_this,
             &state.surfaces_shared.grid_posits,
         );
+
+        // todo: Which of these are we using?
+        state.eval_data_per_elec[ae].E = E;
+
+        // todo: We'd need to re-calcualte the bases here if replacing them with non-defaults.
+        // state.bases[ae] = bases;
 
         *updated_E_or_V = true;
         *updated_basis_weights = true;
@@ -807,7 +813,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.ui_z_displayed
                 },
             )
-            .text("Z slice"),
+                .text("Z slice"),
         );
 
         ui.add(
@@ -819,7 +825,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-            .text("Visual rotation"),
+                .text("Visual rotation"),
         );
 
         ui.add(
@@ -838,7 +844,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_range_render.1
             })
-            .text("Grid range"),
+                .text("Grid range"),
         );
 
         match state.ui_active_elec {
@@ -885,7 +891,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.eval_data_per_elec[ae].E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 ui.add(
@@ -897,8 +903,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.nudge_amount[ae]
                     })
-                    .text("Nudge amount")
-                    .logarithmic(true),
+                        .text("Nudge amount")
+                        .logarithmic(true),
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -986,7 +992,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 // Multiply wave functions together, and stores in Shared surfaces.

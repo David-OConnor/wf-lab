@@ -439,32 +439,8 @@ pub fn initialize_bases(
         bases.push(Basis::Sto(Sto {
             posit: *nuc_posit,
             n: 1,
-            xi: 0.5,
-            weight: 0.,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 0.8,
-            weight: 0.,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
             xi: 1.,
             weight: 1.,
-            charge_id,
-            harmonic: Default::default(),
-        }));
-        bases.push(Basis::Sto(Sto {
-            posit: *nuc_posit,
-            n: 1,
-            xi: 1.2,
-            weight: 0.,
             charge_id,
             harmonic: Default::default(),
         }));
@@ -529,53 +505,71 @@ pub fn initialize_bases(
             harmonic: Default::default(),
         }));
 
-        bases.push(Basis::H(HOrbital {
+        bases.push(Basis::Sto(Sto {
             posit: *nuc_posit,
             n: 1,
-            harmonic: SphericalHarmonic {
-                l: 0,
-                m: 0,
-                orientation: Quaternion::new_identity(),
-            },
-            weight: 0.,
+            xi: 9.,
+            weight: 0.0,
             charge_id,
+            harmonic: Default::default(),
         }));
 
-        bases.push(Basis::H(HOrbital {
+        bases.push(Basis::Sto(Sto {
             posit: *nuc_posit,
-            n: 2,
-            harmonic: SphericalHarmonic {
-                l: 0,
-                m: 0,
-                orientation: Quaternion::new_identity(),
-            },
-            weight: 0.,
+            n: 1,
+            xi: 10.,
+            weight: 0.0,
             charge_id,
+            harmonic: Default::default(),
         }));
-
-        bases.push(Basis::H(HOrbital {
-            posit: *nuc_posit,
-            n: 3,
-            harmonic: SphericalHarmonic {
-                l: 0,
-                m: 0,
-                orientation: Quaternion::new_identity(),
-            },
-            weight: 0.,
-            charge_id,
-        }));
-
-        bases.push(Basis::H(HOrbital {
-            posit: *nuc_posit,
-            n: 4,
-            harmonic: SphericalHarmonic {
-                l: 0,
-                m: 0,
-                orientation: Quaternion::new_identity(),
-            },
-            weight: 0.,
-            charge_id,
-        }));
+        //
+        // bases.push(Basis::H(HOrbital {
+        //     posit: *nuc_posit,
+        //     n: 1,
+        //     harmonic: SphericalHarmonic {
+        //         l: 0,
+        //         m: 0,
+        //         orientation: Quaternion::new_identity(),
+        //     },
+        //     weight: 0.,
+        //     charge_id,
+        // }));
+        //
+        // bases.push(Basis::H(HOrbital {
+        //     posit: *nuc_posit,
+        //     n: 2,
+        //     harmonic: SphericalHarmonic {
+        //         l: 0,
+        //         m: 0,
+        //         orientation: Quaternion::new_identity(),
+        //     },
+        //     weight: 0.,
+        //     charge_id,
+        // }));
+        //
+        // bases.push(Basis::H(HOrbital {
+        //     posit: *nuc_posit,
+        //     n: 3,
+        //     harmonic: SphericalHarmonic {
+        //         l: 0,
+        //         m: 0,
+        //         orientation: Quaternion::new_identity(),
+        //     },
+        //     weight: 0.,
+        //     charge_id,
+        // }));
+        //
+        // bases.push(Basis::H(HOrbital {
+        //     posit: *nuc_posit,
+        //     n: 4,
+        //     harmonic: SphericalHarmonic {
+        //         l: 0,
+        //         m: 0,
+        //         orientation: Quaternion::new_identity(),
+        //     },
+        //     weight: 0.,
+        //     charge_id,
+        // }));
     }
 
     // for n in 1..max_n + 1 {
