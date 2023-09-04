@@ -3,13 +3,12 @@
 use lin_alg2::f64::Vec3;
 
 use crate::{
-    complex_nums::Cplx,
     basis_wfs::{Basis, Sto},
+    complex_nums::Cplx,
     eigen_fns::{self, calc_E_on_psi, calc_V_on_psi},
     grid_setup::Arr3dReal,
     grid_setup::Arr3dVec,
-    num_diff, util, wf_ops,
-    potential,
+    num_diff, potential, util, wf_ops,
     wf_ops::{Q_ELEC, Q_PROT},
 };
 
@@ -57,16 +56,21 @@ fn numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dRea
     let V_p_psi = ((calc_V_on_psi(psi_x_next, psi_pp_x_next, E)
         - calc_V_on_psi(psi_x_prev, psi_pp_x_prev, E))
         + (calc_V_on_psi(psi_y_next, psi_pp_y_next, E)
-        - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
+            - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
         + (calc_V_on_psi(psi_z_next, psi_pp_z_next, E)
-        - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
+            - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
         / (2. * H);
 
     println!("V' corner: Blue {}  Grey {}", V_p_corner, V_p_psi);
     // println!("V'' corner: Blue {}  Grey {}", V_pp_corner, V_pp_psi);
 }
 
-fn find_base_xi_E_common(V_corner: f64, posit_corner: Vec3, V_sample: f64, posit_sample: Vec3) -> (f64, f64) {
+fn find_base_xi_E_common(
+    V_corner: f64,
+    posit_corner: Vec3,
+    V_sample: f64,
+    posit_sample: Vec3,
+) -> (f64, f64) {
     const XI_INITIAL: f64 = 1.;
 
     // Base STO is the one with the lowest xi.
@@ -150,17 +154,20 @@ fn find_base_xi_E(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (f64, f64) {
     find_base_xi_E_common(V_corner, posit_corner, V_sample, posit_sample)
 }
 
-fn find_base_xi_E_type2(nuclei: &[f64], charge_elec: &Arr3dReal, grid_charge: &Arr3dVec) -> (f64, f64) {
+fn find_base_xi_E_type2(
+    charges_fixed: &[(Vec3, f64)],
+    charge_elec: &Arr3dReal,
+    grid_charge: &Arr3dVec,
+) -> (f64, f64) {
     let posit_corner = Vec3::new(30., 30., 30.);
     let posit_sample = Vec3::new(30., 0., 0.);
 
     let mut V_corner = 0.;
     let mut V_sample = 0.;
 
-    for charge in nuclei {
-        // todo: For now, we assume nuclei are at 0.
-        V_sample += potential::V_coulomb(Vec3::new_zero(), posit_sample, charge);
-        V_corner += potential::V_coulomb(Vec3::new_zero(), posit_corner, charge);
+    for (posit_nuc, charge) in charges_fixed {
+        V_sample += potential::V_coulomb(*posit_nuc, posit_sample, *charge);
+        V_corner += potential::V_coulomb(*posit_nuc, posit_corner, *charge);
     }
 
     for i in 0..charge_elec.len() {
@@ -178,9 +185,13 @@ fn find_base_xi_E_type2(nuclei: &[f64], charge_elec: &Arr3dReal, grid_charge: &A
 
 /// Find a wave function, composed of STOs, that match a given potential.
 // pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
-pub fn find_stos(nuclei: &[f64], charge_elec: &Arr3dReal, grid_charge: &Arr3dVec) -> (Vec<Basis>, f64) {
+pub fn find_stos(
+    charges_fixed: &[(Vec3, f64)],
+    charge_elec: &Arr3dReal,
+    grid_charge: &Arr3dVec,
+) -> (Vec<Basis>, f64) {
     // let (base_xi, E) = find_base_xi_E(V, grid_posits);
-    let (base_xi, E) = find_base_xi_E_type2(nuclei, charge_elec, grid_charge);
+    let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge);
     println!("\nBase xi: {}. E: {}\n", base_xi, E);
 
     let base_sto = Basis::Sto(Sto {
@@ -234,27 +245,33 @@ pub fn find_stos(nuclei: &[f64], charge_elec: &Arr3dReal, grid_charge: &Arr3dVec
 
     let mut V_samples = Vec::new();
 
-    for pt in grid_posits {
+    for posit_sample in &grid_posits {
         // todo: Dry with above! Find a helper you alreayd have, or make one.
         let mut V_sample = 0.;
 
-        for charge in nuclei {
+        for (posit_nuc, charge) in charges_fixed {
             // todo: For now, we assume nuclei are at 0.
-            V_sample += potential::V_coulomb(Vec3::new_zero(), posit_sample, charge);
+            V_sample += potential::V_coulomb(*posit_nuc, *posit_sample, *charge);
         }
 
         for i in 0..charge_elec.len() {
             for j in 0..charge_elec.len() {
                 for k in 0..charge_elec.len() {
                     // todo: Wrong. YHou must normalize. Check out existing code you haeve.
-                    V_sample += potential::V_coulomb(grid_charge[i][j][k], posit_sample, Q_ELEC);
+                    V_sample += potential::V_coulomb(grid_charge[i][j][k], *posit_sample, Q_ELEC);
                 }
             }
         }
         V_samples.push(V_sample);
     }
 
-    println!("SAMPLE: {:?} {} {} {}", grid_posits[0].magnitude(), grid_posits[1].magnitude(), grid_posits[2].magnitude(), grid_posits[3].magnitude());
+    println!(
+        "SAMPLE: {:?} {} {} {}",
+        grid_posits[0].magnitude(),
+        grid_posits[1].magnitude(),
+        grid_posits[2].magnitude(),
+        grid_posits[3].magnitude()
+    );
 
     // todo: Check these sample pts for 0
 

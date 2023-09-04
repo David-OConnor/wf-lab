@@ -4,6 +4,7 @@ use egui::{self, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::Vec3;
 
+use crate::grid_setup::{new_data_real, Arr3dReal};
 use crate::{
     basis_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval, grid_setup::new_data, potential,
     render, wf_ops, ActiveElec, State,
@@ -210,7 +211,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                            state.charges_fixed.iter().enumerate()
+                                state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -450,7 +451,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                        .text("Wt"),
+                    .text("Wt"),
                 );
             }
 
@@ -602,9 +603,31 @@ fn bottom_items(
     // }
 
     if ui.add(egui::Button::new("Find STO bases")).clicked() {
+        // let (bases, E) = basis_finder::find_stos(
+        //     &state.surfaces_per_elec[ae].V_acting_on_this,
+        //     &state.surfaces_shared.grid_posits,
+        // );
+
+        // todo: Place this somewhere? `potential module`?
+        let mut charges_other_electrons = new_data_real(state.grid_n_charge);
+
+        for (i_charge, charge_from_elec) in state.charges_electron.iter().enumerate() {
+            if i_charge == ae {
+                continue;
+            }
+            for i in 0..state.grid_n_charge {
+                for j in 0..state.grid_n_charge {
+                    for k in 0..state.grid_n_charge {
+                        charges_other_electrons[i][j][k] += charge_from_elec[i][j][k];
+                    }
+                }
+            }
+        }
+
         let (bases, E) = basis_finder::find_stos(
-            &state.surfaces_per_elec[ae].V_acting_on_this,
-            &state.surfaces_shared.grid_posits,
+            &state.charges_fixed,
+            &charges_other_electrons,
+            &state.surfaces_shared.grid_posits_charge,
         );
 
         // todo: Which of these are we using?
@@ -813,7 +836,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.ui_z_displayed
                 },
             )
-                .text("Z slice"),
+            .text("Z slice"),
         );
 
         ui.add(
@@ -825,7 +848,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.visual_rotation
             })
-                .text("Visual rotation"),
+            .text("Visual rotation"),
         );
 
         ui.add(
@@ -844,7 +867,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_range_render.1
             })
-                .text("Grid range"),
+            .text("Grid range"),
         );
 
         match state.ui_active_elec {
@@ -891,7 +914,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.eval_data_per_elec[ae].E
                     })
-                        .text("E"),
+                    .text("E"),
                 );
 
                 ui.add(
@@ -903,8 +926,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.nudge_amount[ae]
                     })
-                        .text("Nudge amount")
-                        .logarithmic(true),
+                    .text("Nudge amount")
+                    .logarithmic(true),
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -992,7 +1015,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                        .text("E"),
+                    .text("E"),
                 );
 
                 // Multiply wave functions together, and stores in Shared surfaces.
