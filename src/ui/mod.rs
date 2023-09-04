@@ -628,6 +628,7 @@ fn bottom_items(
             &state.charges_fixed,
             &charges_other_electrons,
             &state.surfaces_shared.grid_posits_charge,
+            state.grid_n_charge
         );
 
         // todo: Which of these are we using?

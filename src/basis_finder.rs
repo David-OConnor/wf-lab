@@ -5,9 +5,9 @@ use lin_alg2::f64::Vec3;
 use crate::{
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
+    elec_elec,
     eigen_fns::{self, calc_E_on_psi, calc_V_on_psi},
-    grid_setup::Arr3dReal,
-    grid_setup::Arr3dVec,
+    grid_setup::{Arr3dReal, Arr3d, Arr3dVec, new_data_real, new_data},
     num_diff, potential, util, wf_ops,
     wf_ops::{Q_ELEC, Q_PROT},
 };
@@ -56,9 +56,9 @@ fn numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dRea
     let V_p_psi = ((calc_V_on_psi(psi_x_next, psi_pp_x_next, E)
         - calc_V_on_psi(psi_x_prev, psi_pp_x_prev, E))
         + (calc_V_on_psi(psi_y_next, psi_pp_y_next, E)
-            - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
+        - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
         + (calc_V_on_psi(psi_z_next, psi_pp_z_next, E)
-            - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
+        - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
         / (2. * H);
 
     println!("V' corner: Blue {}  Grey {}", V_p_corner, V_p_psi);
@@ -87,6 +87,8 @@ fn find_base_xi_E_common(
 
     // let psi_corner = trial_base_sto.value(posit_corner);
     // let psi_pp_corner = trial_base_sto.second_deriv(posit_corner);
+
+    // todo: Try at different ns, one the `value` and `second_deriv` there for STOs are set up appropritaely.
 
     let mut best_xi_i = 0;
     let mut smallest_diff = 99999.;
@@ -173,9 +175,9 @@ fn find_base_xi_E_type2(
     for i in 0..charge_elec.len() {
         for j in 0..charge_elec.len() {
             for k in 0..charge_elec.len() {
-                // todo: Wrong. YHou must normalize. Check out existing code you haeve.
-                V_sample += potential::V_coulomb(grid_charge[i][j][k], posit_sample, Q_ELEC);
-                V_corner += potential::V_coulomb(grid_charge[i][j][k], posit_corner, Q_ELEC);
+                let charge = charge_elec[i][j][k];
+                V_sample += potential::V_coulomb(grid_charge[i][j][k], posit_sample, charge);
+                V_corner += potential::V_coulomb(grid_charge[i][j][k], posit_corner, charge);
             }
         }
     }
@@ -189,10 +191,61 @@ pub fn find_stos(
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
+    grid_n_charge: usize,
 ) -> (Vec<Basis>, f64) {
     // let (base_xi, E) = find_base_xi_E(V, grid_posits);
     let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge);
     println!("\nBase xi: {}. E: {}\n", base_xi, E);
+
+    // todo: Move this part about trial elec V A/R
+    // todo: Frame in terms of a trial psi via STOs instead? Equivlanet. Less direct,
+    // todo but may be easier to construct
+    // let mut trial_electron_v = new_data_real(grid_elecd)
+
+    let mut trial_elec_charge = new_data_real(grid_n_charge);
+    {
+        let mut trial_other_elecs_wf = vec![
+            Basis::Sto(Sto {
+                posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
+                n: 1,
+                xi: base_xi,
+                weight: 1.,
+                charge_id: 0,
+                harmonic: Default::default(),
+            })
+        ];
+
+        let mut psi_trial_charge_grid = new_data(grid_n_charge);
+        let mut norm = 0.;
+        for i in 0..grid_n_charge {
+            for j in 0..grid_n_charge {
+                for k in 0..grid_n_charge {
+                    let posit_sample = grid_charge[i][j][k];
+                    let mut psi = Cplx::new_zero();
+
+                    for basis in &trial_other_elecs_wf {
+                        psi += basis.value(posit_sample);
+                    }
+
+                    psi_trial_charge_grid[i][j][k] = psi;
+                    norm += psi.abs_sq();
+                }
+            }
+        }
+
+        // Note: We're saving a loop by not calling `elec_elec::update_charge_density_fm_psi`. here,
+        // since we need to normalize anyway.
+        for i in 0..grid_n_charge {
+            for j in 0..grid_n_charge {
+                for k in 0..grid_n_charge {
+                     trial_elec_charge[i][j][k] = psi_trial_charge_grid[i][j][k].abs_sq() * Q_ELEC / norm
+                }
+            }
+        }
+    }
+
+    // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
+    // todo charge densities based on this trial.
 
     let base_sto = Basis::Sto(Sto {
         posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
@@ -206,12 +259,12 @@ pub fn find_stos(
     // Now, add more xis:
 
     let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
-    let weights = util::linspace((-1.3, 1.3), 200);
+    let weights = util::linspace((-1.2, 1.2), 200);
 
     // todo: Not ideal. Set up sample points at specific intervals, then evaluate
     // todo V at those intervals; don't use the grid.
 
-    // tod: It's critical these sample points span points both close and far from the nuclei.
+    // tod: It's important that these sample points span points both close and far from the nuclei.
 
     let sample_dists = vec![0.1, 0.3, 0.8, 1., 1.5, 2., 3., 4., 8., 15.];
     let mut grid_posits = Vec::new();
@@ -220,28 +273,6 @@ pub fn find_stos(
         grid_posits.push(Vec3::new(0., dist, 0.));
         grid_posits.push(Vec3::new(0., 0., dist));
     }
-
-    // let sample_pts = vec![
-    //     // grid_posits[20][20][20],
-    //     grid_posits[14][14][14],
-    //     grid_posits[13][14][12],
-    //     grid_posits[12][12][12],
-    //     grid_posits[10][10][10],
-    //     grid_posits[9][9][9],
-    //     grid_posits[8][8][8],
-    //     grid_posits[7][7][7],
-    // ];
-    //
-    // let V_samples = vec![
-    //     // V[20][20][20],
-    //     V[14][14][14],
-    //     V[13][14][12],
-    //     V[12][12][12],
-    //     V[10][10][10],
-    //     V[9][9][9],
-    //     V[8][8][8],
-    //     V[7][7][7],
-    // ];
 
     let mut V_samples = Vec::new();
 
@@ -257,8 +288,8 @@ pub fn find_stos(
         for i in 0..charge_elec.len() {
             for j in 0..charge_elec.len() {
                 for k in 0..charge_elec.len() {
-                    // todo: Wrong. YHou must normalize. Check out existing code you haeve.
-                    V_sample += potential::V_coulomb(grid_charge[i][j][k], *posit_sample, Q_ELEC);
+                    let charge = charge_elec[i][j][k];
+                    V_sample += potential::V_coulomb(grid_charge[i][j][k], *posit_sample, charge);
                 }
             }
         }
