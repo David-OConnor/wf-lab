@@ -202,13 +202,44 @@ pub fn find_stos(
     // todo but may be easier to construct
     // let mut trial_electron_v = new_data_real(grid_elecd)
 
-    let mut trial_elec_charge = new_data_real(grid_n_charge);
+    // Rough, observational area of where each Xi should match:
+    // 1: outer edge (?)5+
+    // 2: 4.5
+    // 3: 4.
+    // 4: 2.
+    // 5: 0.5
+    // 6: 0.25?
+    // 7:
+    // 8:
+    // 9:
+    // 10:
+
+    // I think maybe find the -3dB point or similar, when looking at the derivative?
+
+    // Second derivative peaks: 1/xi
+    // 1: 1
+    // 2: 0.5
+    // 3: 0.333
+    // 4: 0.25
+    // 5: 0.2
+
+    // Eyeballing a dropoff point on first derivative: (rough) This seems to match the dimple in the
+    // 3d plots.
+
+    // 1: 3
+    // 2: 1.8
+    // 3: 1.3
+    // 4: 1.0
+    // 5: 0.75
+    // 6: 0.63
+
+    let mut trial_other_elecs_charge = new_data_real(grid_n_charge);
     {
         let mut trial_other_elecs_wf = vec![
             Basis::Sto(Sto {
                 posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
                 n: 1,
-                xi: base_xi,
+                xi: 1.5,
                 weight: 1.,
                 charge_id: 0,
                 harmonic: Default::default(),
@@ -238,7 +269,7 @@ pub fn find_stos(
         for i in 0..grid_n_charge {
             for j in 0..grid_n_charge {
                 for k in 0..grid_n_charge {
-                     trial_elec_charge[i][j][k] = psi_trial_charge_grid[i][j][k].abs_sq() * Q_ELEC / norm
+                    trial_other_elecs_charge[i][j][k] = psi_trial_charge_grid[i][j][k].abs_sq() * Q_ELEC / norm
                 }
             }
         }
@@ -266,12 +297,46 @@ pub fn find_stos(
 
     // tod: It's important that these sample points span points both close and far from the nuclei.
 
-    let sample_dists = vec![0.1, 0.3, 0.8, 1., 1.5, 2., 3., 4., 8., 15.];
+    // let sample_dists = vec![0.1, 0.3, 0.8, 1., 1.5, 2., 3., 4., 8., 15.];
+
+    // Each of these distances corresponds to a xi.
+    // let mut sample_dists = Vec::new();
+    for xi in &additional_xis {
+
+    }
+
+        // 1: 3
+    // 2: 1.8
+    // 3: 1.3
+    // 4: 1.0
+    // 5: 0.75
+    // 6: 0.63
+    // todo: Hard-coded for now, starting at xi=1. Note that different base xis will throw this off!
+    let sample_dists = [
+        3.,
+        1.8,
+        1.3,
+        1.,
+        0.75,
+        0.63, // 6
+        0.5,
+        0.45,
+        0.42,
+        0.4,
+    ];
+
     let mut grid_posits = Vec::new();
     for dist in sample_dists {
+        // todo: Represent more than just x, but for now, this will do.
+                // todo: Represent more than just x, but for now, this will do.
+        // grid_posits.push(vec![
+        //     Vec3::new(dist, 0., 0.),
+        //     Vec3::new(0., dist, 0.),
+        //     Vec3::new(0., 0., dist)
+        // ]);
         grid_posits.push(Vec3::new(dist, 0., 0.));
-        grid_posits.push(Vec3::new(0., dist, 0.));
-        grid_posits.push(Vec3::new(0., 0., dist));
+        // grid_posits.push(Vec3::new(0., dist, 0.));
+        // grid_posits.push(Vec3::new(0., 0., dist));
     }
 
     let mut V_samples = Vec::new();
@@ -296,21 +361,11 @@ pub fn find_stos(
         V_samples.push(V_sample);
     }
 
-    println!(
-        "SAMPLE: {:?} {} {} {}",
-        grid_posits[0].magnitude(),
-        grid_posits[1].magnitude(),
-        grid_posits[2].magnitude(),
-        grid_posits[3].magnitude()
-    );
-
-    // todo: Check these sample pts for 0
-
     let mut bases = vec![base_sto.clone()];
 
     const EPS: f64 = 0.00000001;
 
-    for xi in &additional_xis {
+    for (i_xi, xi) in additional_xis.iter().enumerate() {
         if xi <= &base_xi {
             continue;
         }
@@ -319,14 +374,10 @@ pub fn find_stos(
         let mut psi_other_bases = Vec::new();
         let mut psi_pp_other_bases = Vec::new();
 
-        for pt in &grid_posits {
+        // for pt in &grid_posits {
+        let pt = &grid_posits[i_xi];
             let mut psi = Cplx::new_zero();
             let mut psi_pp = Cplx::new_zero();
-
-            // Prevents NaNs. Alternatively, don't use the origin as a point.
-            // if pt.magnitude() < EPS {
-            //     continue
-            // }
 
             for basis in &bases {
                 psi += Cplx::from_real(basis.weight()) * basis.value(*pt);
@@ -335,17 +386,16 @@ pub fn find_stos(
 
             psi_other_bases.push(psi);
             psi_pp_other_bases.push(psi_pp);
-        }
+        // }
 
         let mut best_weight_i = 0;
         let mut smallest_diff = 9999.;
 
         // todo: Exerimental. Consider V from psi, and target V to be equivlant if they're within this
         // todo value of each other.
-        const V_DIFF_THRESH: f64 = 0.0001;
+        const V_DIFF_THRESH: f64 = 0.00005;
 
-        let mut best_match_count = 0;
-        let mut best_weight_i = 0;
+        // let mut best_match_count = 0;
 
         for (i_weight, weight) in weights.iter().enumerate() {
             let sto = Basis::Sto(Sto {
@@ -359,52 +409,61 @@ pub fn find_stos(
 
             let mut num_pts_close = 0;
 
-            for (i_pt, pt) in grid_posits.iter().enumerate() {
+            // for (i_pt, pt) in grid_posits.iter().enumerate() {
+                let pt = &grid_posits[i_xi];
+                let i_pt = 0;
+
+                // todo: Experimenting; we care about specific radii for certain xi (?)
+                // if pt.magnitude() <
+
                 let psi = psi_other_bases[i_pt] + Cplx::from_real(*weight) * sto.value(*pt);
 
                 let psi_pp =
                     psi_pp_other_bases[i_pt] + Cplx::from_real(*weight) * sto.second_deriv(*pt);
 
-                // psi is a denominator; prevents nans.
-                // todo: You could abort all pts on this weight.
-                // if psi.abs_sq() < EPS {
-                //     println!("V eps violation. xi: {}", xi);
-                //     diff = 999999.;
-                //     // continue;
-                // }
 
                 let V_from_psi = calc_V_on_psi(psi, psi_pp, E);
 
-                // if V_from_psi.is_nan() {
-                //     println!("NaN. xi: {}", xi);
-                //     diff = 999999.;
-                // }
-
                 // // todo: experimenting with taking the weight that has the single lowest score.
                 // let this_diff = (V_from_psi - V_samples[i_pt]).abs();
-                // if this_diff < smallest_diff {
-                //     best_weight_i = i_weight;
-                //     smallest_diff = this_diff;
-                // }
 
-                let diff = (V_from_psi - V_samples[i_pt]).abs();
-                if diff < V_DIFF_THRESH {
-                    num_pts_close += 1;
+                // todo: Experimenting with weighing the distance.
+                let this_diff = (V_from_psi - V_samples[i_pt]).abs();
+
+
+                // let this_diff = (V_from_psi - V_samples[i_pt]).powi(2);
+                if this_diff < smallest_diff {
+                    best_weight_i = i_weight;
+                    smallest_diff = this_diff;
                 }
-                //
-                // if *xi > 1.9 && *xi < 2.1 {
-                //     println!("Weight: {} V Psi: {} V sample: {}, diff: {}", weight, V_from_psi, V_samples[i_pt],
-                //              (V_from_psi - V_samples[i_pt]).abs())
-                // }
-            }
 
-            if num_pts_close > best_match_count {
-                best_weight_i = i_weight;
-                best_match_count = num_pts_close;
-            }
+                // let diff = (V_from_psi - V_samples[i_pt]).abs();
+                // // let diff = (V_from_psi - V_samples[i_pt]).powi(2);
+                // if diff < V_DIFF_THRESH {
+                //     num_pts_close += 1;
+                // }
+
+                if *xi > 1.9 && *xi < 2.1 {
+                    println!("Weight: {} V Psi: {} V sample: {}, diff: {}", weight, V_from_psi, V_samples[i_pt],
+                             (V_from_psi - V_samples[i_pt]).abs())
+                }
+            // }
+
+            // if num_pts_close > best_match_count {
+            //     best_weight_i = i_weight;
+            //     best_match_count = num_pts_close;
+            // }
         }
 
+        // println!("Best match ct: {:?}", best_match_count);
+        // let best_weight = if best_match_count > 0 {
+        //     weights[best_weight_i]
+        // } else {
+        //     0.
+        // };
+
         let best_weight = weights[best_weight_i];
+
         bases.push(Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
             n: 1,
