@@ -5,9 +5,9 @@ use lin_alg2::f64::Vec3;
 use crate::{
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
-    elec_elec,
     eigen_fns::{self, calc_E_on_psi, calc_V_on_psi},
-    grid_setup::{Arr3dReal, Arr3d, Arr3dVec, new_data_real, new_data},
+    elec_elec,
+    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     num_diff, potential, util, wf_ops,
     wf_ops::{Q_ELEC, Q_PROT},
 };
@@ -56,9 +56,9 @@ fn numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dRea
     let V_p_psi = ((calc_V_on_psi(psi_x_next, psi_pp_x_next, E)
         - calc_V_on_psi(psi_x_prev, psi_pp_x_prev, E))
         + (calc_V_on_psi(psi_y_next, psi_pp_y_next, E)
-        - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
+            - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
         + (calc_V_on_psi(psi_z_next, psi_pp_z_next, E)
-        - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
+            - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
         / (2. * H);
 
     println!("V' corner: Blue {}  Grey {}", V_p_corner, V_p_psi);
@@ -185,6 +185,50 @@ fn find_base_xi_E_type2(
     find_base_xi_E_common(V_corner, posit_corner, V_sample, posit_sample)
 }
 
+fn find_charge_trial_wf(grid_charge: &Arr3dVec, grid_n_charge: usize) -> Arr3dReal {
+    let mut result = new_data_real(grid_n_charge);
+    {
+        let mut trial_other_elecs_wf = vec![Basis::Sto(Sto {
+            posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
+            n: 1,
+            xi: 1.5,
+            weight: 1.,
+            charge_id: 0,
+            harmonic: Default::default(),
+        })];
+
+        let mut psi_trial_charge_grid = new_data(grid_n_charge);
+        let mut norm = 0.;
+        for i in 0..grid_n_charge {
+            for j in 0..grid_n_charge {
+                for k in 0..grid_n_charge {
+                    let posit_sample = grid_charge[i][j][k];
+                    let mut psi = Cplx::new_zero();
+
+                    for basis in &trial_other_elecs_wf {
+                        psi += basis.value(posit_sample);
+                    }
+
+                    psi_trial_charge_grid[i][j][k] = psi;
+                    norm += psi.abs_sq();
+                }
+            }
+        }
+
+        // Note: We're saving a loop by not calling `elec_elec::update_charge_density_fm_psi`. here,
+        // since we need to normalize anyway.
+        for i in 0..grid_n_charge {
+            for j in 0..grid_n_charge {
+                for k in 0..grid_n_charge {
+                    result[i][j][k] = psi_trial_charge_grid[i][j][k].abs_sq() * Q_ELEC / norm
+                }
+            }
+        }
+    }
+
+    result
+}
+
 /// Find a wave function, composed of STOs, that match a given potential.
 // pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
 pub fn find_stos(
@@ -233,47 +277,7 @@ pub fn find_stos(
     // 5: 0.75
     // 6: 0.63
 
-    let mut trial_other_elecs_charge = new_data_real(grid_n_charge);
-    {
-        let mut trial_other_elecs_wf = vec![
-            Basis::Sto(Sto {
-                posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
-                n: 1,
-                xi: 1.5,
-                weight: 1.,
-                charge_id: 0,
-                harmonic: Default::default(),
-            })
-        ];
-
-        let mut psi_trial_charge_grid = new_data(grid_n_charge);
-        let mut norm = 0.;
-        for i in 0..grid_n_charge {
-            for j in 0..grid_n_charge {
-                for k in 0..grid_n_charge {
-                    let posit_sample = grid_charge[i][j][k];
-                    let mut psi = Cplx::new_zero();
-
-                    for basis in &trial_other_elecs_wf {
-                        psi += basis.value(posit_sample);
-                    }
-
-                    psi_trial_charge_grid[i][j][k] = psi;
-                    norm += psi.abs_sq();
-                }
-            }
-        }
-
-        // Note: We're saving a loop by not calling `elec_elec::update_charge_density_fm_psi`. here,
-        // since we need to normalize anyway.
-        for i in 0..grid_n_charge {
-            for j in 0..grid_n_charge {
-                for k in 0..grid_n_charge {
-                    trial_other_elecs_charge[i][j][k] = psi_trial_charge_grid[i][j][k].abs_sq() * Q_ELEC / norm
-                }
-            }
-        }
-    }
+    let other_elecs_charge = find_charge_trial_wf(grid_charge, grid_n_charge);
 
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
@@ -290,7 +294,7 @@ pub fn find_stos(
     // Now, add more xis:
 
     let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
-    let weights = util::linspace((-1.2, 1.2), 200);
+    let weights = util::linspace((-1., 1.), 200);
 
     // todo: Not ideal. Set up sample points at specific intervals, then evaluate
     // todo V at those intervals; don't use the grid.
@@ -301,81 +305,79 @@ pub fn find_stos(
 
     // Each of these distances corresponds to a xi.
     // let mut sample_dists = Vec::new();
-    for xi in &additional_xis {
+    for xi in &additional_xis {}
 
-    }
-
-        // 1: 3
+    // 1: 3
     // 2: 1.8
     // 3: 1.3
     // 4: 1.0
     // 5: 0.75
     // 6: 0.63
+
+    // These sample distances correspond to xi.
     // todo: Hard-coded for now, starting at xi=1. Note that different base xis will throw this off!
     let sample_dists = [
-        3.,
-        1.8,
-        1.3,
-        1.,
-        0.75,
-        0.63, // 6
-        0.5,
-        0.45,
-        0.42,
-        0.4,
+        3., // 1.8,
+        2.5, 1.3, 1., 0.75, 0.63, // 6
+        0.5, 0.45, 0.42, 0.4,
     ];
 
-    let mut grid_posits = Vec::new();
+    let mut sample_pt_sets = Vec::new();
     for dist in sample_dists {
         // todo: Represent more than just x, but for now, this will do.
-                // todo: Represent more than just x, but for now, this will do.
-        // grid_posits.push(vec![
-        //     Vec3::new(dist, 0., 0.),
-        //     Vec3::new(0., dist, 0.),
-        //     Vec3::new(0., 0., dist)
-        // ]);
-        grid_posits.push(Vec3::new(dist, 0., 0.));
+        // todo: Represent more than just x, but for now, this will do.
+        sample_pt_sets.push(vec![
+            Vec3::new(dist, 0., 0.),
+            Vec3::new(0., dist, 0.),
+            Vec3::new(0., 0., dist),
+        ]);
+        // grid_posits.push(Vec3::new(dist, 0., 0.));
         // grid_posits.push(Vec3::new(0., dist, 0.));
         // grid_posits.push(Vec3::new(0., 0., dist));
     }
 
-    let mut V_samples = Vec::new();
+    let mut V_samples = Vec::new(); // Outer: By xi.
 
-    for posit_sample in &grid_posits {
-        // todo: Dry with above! Find a helper you alreayd have, or make one.
-        let mut V_sample = 0.;
+    for sample_pts in &sample_pt_sets {
+        let mut sample_set = Vec::new(); // By posit. (eg the 3 posits per dist defined above)
 
-        for (posit_nuc, charge) in charges_fixed {
-            // todo: For now, we assume nuclei are at 0.
-            V_sample += potential::V_coulomb(*posit_nuc, *posit_sample, *charge);
-        }
+        for posit_sample in sample_pts {
+            // todo: Dry with above! Find a helper you alreayd have, or make one.
+            let mut V_sample = 0.;
 
-        for i in 0..charge_elec.len() {
-            for j in 0..charge_elec.len() {
-                for k in 0..charge_elec.len() {
-                    let charge = charge_elec[i][j][k];
-                    V_sample += potential::V_coulomb(grid_charge[i][j][k], *posit_sample, charge);
+            for (posit_nuc, charge) in charges_fixed {
+                // todo: For now, we assume nuclei are at 0.
+                V_sample += potential::V_coulomb(*posit_nuc, *posit_sample, *charge);
+            }
+
+            for i in 0..charge_elec.len() {
+                for j in 0..charge_elec.len() {
+                    for k in 0..charge_elec.len() {
+                        let charge = charge_elec[i][j][k];
+                        V_sample +=
+                            potential::V_coulomb(grid_charge[i][j][k], *posit_sample, charge);
+                    }
                 }
             }
+            sample_set.push(V_sample);
         }
-        V_samples.push(V_sample);
+
+        V_samples.push(sample_set);
     }
 
     let mut bases = vec![base_sto.clone()];
-
-    const EPS: f64 = 0.00000001;
 
     for (i_xi, xi) in additional_xis.iter().enumerate() {
         if xi <= &base_xi {
             continue;
         }
 
-        // Update this for each Xi, since we add a basis each time.else {     // Calculate the value from the previously-selected bases at the sample points.
         let mut psi_other_bases = Vec::new();
         let mut psi_pp_other_bases = Vec::new();
 
-        // for pt in &grid_posits {
-        let pt = &grid_posits[i_xi];
+        // For this xi, calculate psi and psi'' for the already-added bases.
+        for pt in &sample_pt_sets[i_xi] {
+            // todo: Is V linear with these? Can we simply calculate V_other directly? Try once this approach works.
             let mut psi = Cplx::new_zero();
             let mut psi_pp = Cplx::new_zero();
 
@@ -386,16 +388,10 @@ pub fn find_stos(
 
             psi_other_bases.push(psi);
             psi_pp_other_bases.push(psi_pp);
-        // }
+        }
 
         let mut best_weight_i = 0;
         let mut smallest_diff = 9999.;
-
-        // todo: Exerimental. Consider V from psi, and target V to be equivlant if they're within this
-        // todo value of each other.
-        const V_DIFF_THRESH: f64 = 0.00005;
-
-        // let mut best_match_count = 0;
 
         for (i_weight, weight) in weights.iter().enumerate() {
             let sto = Basis::Sto(Sto {
@@ -407,52 +403,35 @@ pub fn find_stos(
                 harmonic: Default::default(),
             });
 
-            let mut num_pts_close = 0;
+            let mut cum_diff_this_set = 0.;
 
-            // for (i_pt, pt) in grid_posits.iter().enumerate() {
-                let pt = &grid_posits[i_xi];
-                let i_pt = 0;
-
-                // todo: Experimenting; we care about specific radii for certain xi (?)
-                // if pt.magnitude() <
-
+            for (i_pt, pt) in sample_pt_sets[i_xi].iter().enumerate() {
                 let psi = psi_other_bases[i_pt] + Cplx::from_real(*weight) * sto.value(*pt);
 
                 let psi_pp =
                     psi_pp_other_bases[i_pt] + Cplx::from_real(*weight) * sto.second_deriv(*pt);
 
-
                 let V_from_psi = calc_V_on_psi(psi, psi_pp, E);
+                let V_to_match = V_samples[i_xi][i_pt];
 
-                // // todo: experimenting with taking the weight that has the single lowest score.
-                // let this_diff = (V_from_psi - V_samples[i_pt]).abs();
+                // println!("V. From psi: {}, To match: {}", V_from_psi, V_to_match);
+                println!(
+                    "V. Xi: {}, Weight: {}, From psi: {}, To match: {} Diff: {}",
+                    xi,
+                    weight,
+                    V_from_psi,
+                    V_to_match,
+                    (V_from_psi - V_to_match).abs()
+                );
+                let this_diff = (V_from_psi - V_to_match).abs();
 
-                // todo: Experimenting with weighing the distance.
-                let this_diff = (V_from_psi - V_samples[i_pt]).abs();
+                cum_diff_this_set += this_diff;
+            }
 
-
-                // let this_diff = (V_from_psi - V_samples[i_pt]).powi(2);
-                if this_diff < smallest_diff {
-                    best_weight_i = i_weight;
-                    smallest_diff = this_diff;
-                }
-
-                // let diff = (V_from_psi - V_samples[i_pt]).abs();
-                // // let diff = (V_from_psi - V_samples[i_pt]).powi(2);
-                // if diff < V_DIFF_THRESH {
-                //     num_pts_close += 1;
-                // }
-
-                if *xi > 1.9 && *xi < 2.1 {
-                    println!("Weight: {} V Psi: {} V sample: {}, diff: {}", weight, V_from_psi, V_samples[i_pt],
-                             (V_from_psi - V_samples[i_pt]).abs())
-                }
-            // }
-
-            // if num_pts_close > best_match_count {
-            //     best_weight_i = i_weight;
-            //     best_match_count = num_pts_close;
-            // }
+            if cum_diff_this_set < smallest_diff {
+                best_weight_i = i_weight;
+                smallest_diff = cum_diff_this_set;
+            }
         }
 
         // println!("Best match ct: {:?}", best_match_count);
