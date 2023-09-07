@@ -56,9 +56,9 @@ fn numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dRea
     let V_p_psi = ((calc_V_on_psi(psi_x_next, psi_pp_x_next, E)
         - calc_V_on_psi(psi_x_prev, psi_pp_x_prev, E))
         + (calc_V_on_psi(psi_y_next, psi_pp_y_next, E)
-            - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
+        - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
         + (calc_V_on_psi(psi_z_next, psi_pp_z_next, E)
-            - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
+        - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
         / (2. * H);
 
     println!("V' corner: Blue {}  Grey {}", V_p_corner, V_p_psi);
@@ -71,29 +71,12 @@ fn find_base_xi_E_common(
     V_sample: f64,
     posit_sample: Vec3,
 ) -> (f64, f64) {
-    const XI_INITIAL: f64 = 1.;
-
-    // Base STO is the one with the lowest xi.
-    // let mut trial_base_sto = Basis::Sto(Sto {
-    //     posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
-    //     n: 1,
-    //     xi: XI_INITIAL,
-    //     weight: 1.,
-    //     // todo: As-required. This is used to associate it's position with a nucleus's.
-    //     // todo: If we have nuc position, what purpose does it servce.
-    //     charge_id: 0,
-    //     harmonic: Default::default(),
-    // });
-
-    // let psi_corner = trial_base_sto.value(posit_corner);
-    // let psi_pp_corner = trial_base_sto.second_deriv(posit_corner);
-
     // todo: Try at different ns, one the `value` and `second_deriv` there for STOs are set up appropritaely.
 
     let mut best_xi_i = 0;
     let mut smallest_diff = 99999.;
     // This isn't perhaps an ideal apperoach, but try it to find the baseline xi.
-    let trial_base_xis = util::linspace((1., 6.), 100);
+    let trial_base_xis = util::linspace((0.1, 5.), 100);
     for (i, trial_xi) in trial_base_xis.iter().enumerate() {
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
@@ -314,7 +297,7 @@ pub fn find_stos(
     // 5: 0.75
     // 6: 0.63
 
-    // These sample distances correspond to xi.
+    // These sample distances correspon d to xi.
     // todo: Hard-coded for now, starting at xi=1. Note that different base xis will throw this off!
     let sample_dists = [
         3., // 1.8,
@@ -336,13 +319,14 @@ pub fn find_stos(
         // grid_posits.push(Vec3::new(0., 0., dist));
     }
 
-    let mut V_samples = Vec::new(); // Outer: By xi.
+    let mut V_to_match_outer = Vec::new(); // Outer: By xi.
+
+
 
     for sample_pts in &sample_pt_sets {
-        let mut sample_set = Vec::new(); // By posit. (eg the 3 posits per dist defined above)
+        let mut V_to_match_inner = Vec::new(); // By posit. (eg the 3 posits per dist defined above)
 
         for posit_sample in sample_pts {
-            // todo: Dry with above! Find a helper you alreayd have, or make one.
             let mut V_sample = 0.;
 
             for (posit_nuc, charge) in charges_fixed {
@@ -350,19 +334,21 @@ pub fn find_stos(
                 V_sample += potential::V_coulomb(*posit_nuc, *posit_sample, *charge);
             }
 
-            for i in 0..charge_elec.len() {
-                for j in 0..charge_elec.len() {
-                    for k in 0..charge_elec.len() {
+            for i in 0..grid_n_charge {
+                for j in 0..grid_n_charge {
+                    for k in 0..grid_n_charge {
+                        let posit_charge = grid_charge[i][j][k];
                         let charge = charge_elec[i][j][k];
+
                         V_sample +=
-                            potential::V_coulomb(grid_charge[i][j][k], *posit_sample, charge);
+                            potential::V_coulomb(posit_charge, *posit_sample, charge);
                     }
                 }
             }
-            sample_set.push(V_sample);
+            V_to_match_inner.push(V_sample);
         }
 
-        V_samples.push(sample_set);
+        V_to_match_outer.push(V_to_match_inner);
     }
 
     let mut bases = vec![base_sto.clone()];
@@ -412,7 +398,7 @@ pub fn find_stos(
                     psi_pp_other_bases[i_pt] + Cplx::from_real(*weight) * sto.second_deriv(*pt);
 
                 let V_from_psi = calc_V_on_psi(psi, psi_pp, E);
-                let V_to_match = V_samples[i_xi][i_pt];
+                let V_to_match = V_to_match_outer[i_xi][i_pt];
 
                 // println!("V. From psi: {}, To match: {}", V_from_psi, V_to_match);
                 println!(

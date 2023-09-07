@@ -603,11 +603,6 @@ fn bottom_items(
     // }
 
     if ui.add(egui::Button::new("Find STO bases")).clicked() {
-        // let (bases, E) = basis_finder::find_stos(
-        //     &state.surfaces_per_elec[ae].V_acting_on_this,
-        //     &state.surfaces_shared.grid_posits,
-        // );
-
         // todo: Place this somewhere? `potential module`?
         let mut charges_other_electrons = new_data_real(state.grid_n_charge);
 
