@@ -207,7 +207,7 @@ pub fn create_V_from_elec(state: &mut State, scene: &mut Scene, ae: usize) {
         state.grid_n_charge,
     );
 
-    if state.create_3d_electron_V {
+    if state.create_3d_electron_V || state.create_2d_electron_V {
         potential::create_V_from_an_elec_grid(
             &mut state.V_from_elecs[ae],
             &state.charges_electron[ae],
@@ -215,6 +215,7 @@ pub fn create_V_from_elec(state: &mut State, scene: &mut Scene, ae: usize) {
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_render,
             state.grid_n_charge,
+            state.create_2d_electron_V,
         );
     }
 
@@ -235,7 +236,7 @@ pub fn create_V_from_elec(state: &mut State, scene: &mut Scene, ae: usize) {
 }
 
 pub fn update_V_acting_on_elec(state: &mut State, scene: &mut Scene, ae: usize) {
-    if state.create_3d_electron_V {
+    if state.create_3d_electron_V || state.create_2d_electron_V {
         potential::update_V_acting_on_elec(
             &mut state.surfaces_per_elec[ae].V_acting_on_this,
             &state.surfaces_shared.V_from_nuclei,

@@ -56,9 +56,9 @@ fn numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dRea
     let V_p_psi = ((calc_V_on_psi(psi_x_next, psi_pp_x_next, E)
         - calc_V_on_psi(psi_x_prev, psi_pp_x_prev, E))
         + (calc_V_on_psi(psi_y_next, psi_pp_y_next, E)
-        - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
+            - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
         + (calc_V_on_psi(psi_z_next, psi_pp_z_next, E)
-        - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
+            - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
         / (2. * H);
 
     println!("V' corner: Blue {}  Grey {}", V_p_corner, V_p_psi);
@@ -321,8 +321,6 @@ pub fn find_stos(
 
     let mut V_to_match_outer = Vec::new(); // Outer: By xi.
 
-
-
     for sample_pts in &sample_pt_sets {
         let mut V_to_match_inner = Vec::new(); // By posit. (eg the 3 posits per dist defined above)
 
@@ -340,8 +338,7 @@ pub fn find_stos(
                         let posit_charge = grid_charge[i][j][k];
                         let charge = charge_elec[i][j][k];
 
-                        V_sample +=
-                            potential::V_coulomb(posit_charge, *posit_sample, charge);
+                        V_sample += potential::V_coulomb(posit_charge, *posit_sample, charge);
                     }
                 }
             }

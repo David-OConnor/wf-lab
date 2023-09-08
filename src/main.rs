@@ -53,7 +53,7 @@ const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_EVAL: f64 = 10.;
 const GRID_MAX_RENDER: f64 = 5.;
 const GRID_N_DEFAULT: usize = 30;
-const GRID_N_CHARGE_DEFAULT: usize = 30;
+const GRID_N_CHARGE_DEFAULT: usize = 40;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -139,6 +139,7 @@ pub struct State {
     pub weight_symmetry: bool,
     /// This is very computationally intensive, but can help visualize and debug electron-electron
     /// repulsion.
+    pub create_2d_electron_V: bool,
     pub create_3d_electron_V: bool,
 }
 
@@ -471,7 +472,8 @@ fn main() {
         adjust_E_with_weights: false,
         auto_gen_elec_V: false,
         weight_symmetry: true,
-        create_3d_electron_V: true,
+        create_2d_electron_V: true,
+        create_3d_electron_V: false,
     };
 
     render::render(state);

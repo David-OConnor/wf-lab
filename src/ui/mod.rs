@@ -777,6 +777,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             {}
 
             if ui
+                .checkbox(&mut state.create_2d_electron_V, "2D elec V")
+                .clicked()
+            {}
+
+            if ui
                 .checkbox(&mut state.create_3d_electron_V, "3D elec V")
                 .clicked()
             {}
