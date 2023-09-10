@@ -415,6 +415,32 @@ pub fn update_entities(
         ));
     }
 
+    // todo: Debugging STO basis finder
+    for grid_marker in &[
+        Vec3::new(1., -1. * V_SCALER, 0.),
+        Vec3::new(1., 0. * V_SCALER, 0.),
+        Vec3::new(1., 1. * V_SCALER, 0.),
+        Vec3::new(1., 2. * V_SCALER, 0.),
+        Vec3::new(2., -1. * V_SCALER, 0.),
+        Vec3::new(2., 0. * V_SCALER, 0.),
+        Vec3::new(2., 1. * V_SCALER, 0.),
+        Vec3::new(2., 2. * V_SCALER, 0.),
+        Vec3::new(3., -1. * V_SCALER, 0.),
+        Vec3::new(3., 0. * V_SCALER, 0.),
+        Vec3::new(3., 1. * V_SCALER, 0.),
+        Vec3::new(3., 2. * V_SCALER, 0.),
+    ] {
+        entities.push(Entity::new(
+            NUM_SURFACES, // Index 1 after surfaces.
+            *grid_marker,
+            Quaternion::new_identity(),
+            2.,
+            // todo: More fine-grained shading
+            (1., 0., 1.),
+            CHARGE_SHINYNESS,
+        ));
+    }
+
     // todo: Im comps if ticked
     // todo: How to handle Z comp?
 

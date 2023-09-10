@@ -21,7 +21,7 @@ const E_MIN: f64 = -4.5;
 const E_MAX: f64 = 0.2;
 
 // Wave fn weights
-pub const WEIGHT_MIN: f64 = -0.5;
+pub const WEIGHT_MIN: f64 = -1.;
 pub const WEIGHT_MAX: f64 = 1.4;
 
 const _L_MIN: f64 = -3.;
@@ -179,7 +179,7 @@ fn basis_fn_mixer(
     // Select with charge (and its position) this basis fn is associated with.
 
     egui::containers::ScrollArea::vertical()
-        .max_height(400.)
+        .max_height(500.)
         .show(ui, |ui| {
             // We use this Vec to avoid double-mutable borrow issues.
             let mut bases_modified = Vec::new();
@@ -610,13 +610,16 @@ fn bottom_items(
             if i_charge == ae {
                 continue;
             }
+            let mut sum = 0.; // todo confirming
             for i in 0..state.grid_n_charge {
                 for j in 0..state.grid_n_charge {
                     for k in 0..state.grid_n_charge {
                         charges_other_electrons[i][j][k] += charge_from_elec[i][j][k];
+                        sum += charge_from_elec[i][j][k];
                     }
                 }
             }
+            println!("Charge sum (should be -1): {:?}", sum);
         }
 
         let (bases, E) = basis_finder::find_stos(

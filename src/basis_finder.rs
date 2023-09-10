@@ -76,7 +76,7 @@ fn find_base_xi_E_common(
     let mut best_xi_i = 0;
     let mut smallest_diff = 99999.;
     // This isn't perhaps an ideal apperoach, but try it to find the baseline xi.
-    let trial_base_xis = util::linspace((0.1, 5.), 100);
+    let trial_base_xis = util::linspace((1., 5.), 100);
     for (i, trial_xi) in trial_base_xis.iter().enumerate() {
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
@@ -224,6 +224,10 @@ pub fn find_stos(
     let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge);
     println!("\nBase xi: {}. E: {}\n", base_xi, E);
 
+    // todo temp!
+    let base_xi = 1.5;
+    let E = -1.18;
+
     // todo: Move this part about trial elec V A/R
     // todo: Frame in terms of a trial psi via STOs instead? Equivlanet. Less direct,
     // todo but may be easier to construct
@@ -305,14 +309,17 @@ pub fn find_stos(
         0.5, 0.45, 0.42, 0.4,
     ];
 
+    // todo: TS
+    let sample_dists = [2.; 10];
+
     let mut sample_pt_sets = Vec::new();
     for dist in sample_dists {
         // todo: Represent more than just x, but for now, this will do.
         // todo: Represent more than just x, but for now, this will do.
         sample_pt_sets.push(vec![
             Vec3::new(dist, 0., 0.),
-            Vec3::new(0., dist, 0.),
-            Vec3::new(0., 0., dist),
+            // Vec3::new(0., dist, 0.),
+            // Vec3::new(0., 0., dist),
         ]);
         // grid_posits.push(Vec3::new(dist, 0., 0.));
         // grid_posits.push(Vec3::new(0., dist, 0.));
@@ -328,7 +335,6 @@ pub fn find_stos(
             let mut V_sample = 0.;
 
             for (posit_nuc, charge) in charges_fixed {
-                // todo: For now, we assume nuclei are at 0.
                 V_sample += potential::V_coulomb(*posit_nuc, *posit_sample, *charge);
             }
 
@@ -348,13 +354,14 @@ pub fn find_stos(
         V_to_match_outer.push(V_to_match_inner);
     }
 
-    let mut bases = vec![base_sto.clone()];
+    let mut bases = vec![base_sto];
 
     for (i_xi, xi) in additional_xis.iter().enumerate() {
         if xi <= &base_xi {
             continue;
         }
 
+        // Re-generate `psi_other_basis`, because we add a new base each time.
         let mut psi_other_bases = Vec::new();
         let mut psi_pp_other_bases = Vec::new();
 
@@ -364,7 +371,11 @@ pub fn find_stos(
             let mut psi = Cplx::new_zero();
             let mut psi_pp = Cplx::new_zero();
 
-            for basis in &bases {
+            for (i, basis) in bases.iter().enumerate() {
+                if i > 0 {
+                    // todo TS!
+                    continue;
+                }
                 psi += Cplx::from_real(basis.weight()) * basis.value(*pt);
                 psi_pp += Cplx::from_real(basis.weight()) * basis.second_deriv(*pt);
             }
