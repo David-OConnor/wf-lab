@@ -645,13 +645,19 @@ pub fn arr_from_bases(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) ->
             }
         }
 
+        let mut xi = 0.;
+        if let Basis::Sto(sto) = basis {
+            xi = sto.xi;
+        }
+        println!("Norm for xi={}: {norm}", xi);
+
         util::normalize_wf(&mut result[basis_i], norm, grid_n);
     }
 
     result
 }
 
-/// Calulate the electron potential that must be acting on a given enectron, given its
+/// Calulate the electron potential that must be acting on a given electron, given its
 /// wave function. This is the potential from *other* electroncs in the system. This is, perhaps
 /// something that could be considered DFT. (?)
 ///
@@ -675,8 +681,6 @@ pub fn calculate_v_elec(
             }
         }
     }
-
-    // todo: YOu would rope your
 
     // todo: Aux 3: Try a numerical derivative of potential; examine for smoothness.
 

@@ -326,6 +326,12 @@ impl BasesEvaluated {
                 }
             }
 
+            let mut xi = 0.;
+            if let Basis::Sto(sto) = basis {
+                xi = sto.xi;
+            }
+            println!("(Bev) Norm for xi={}: {norm_pt}", xi);
+
             util::normalize_wf(&mut on_pt[basis_i], norm_pt, grid_n);
             util::normalize_wf(&mut psi_pp_analytic[basis_i], norm_pt, grid_n);
 
