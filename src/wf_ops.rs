@@ -649,8 +649,6 @@ pub fn arr_from_bases(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) ->
         if let Basis::Sto(sto) = basis {
             xi = sto.xi;
         }
-        println!("Norm for xi={}: {norm}", xi);
-
         util::normalize_wf(&mut result[basis_i], norm, grid_n);
     }
 

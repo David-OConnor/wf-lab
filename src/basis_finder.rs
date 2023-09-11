@@ -224,10 +224,6 @@ pub fn find_stos(
     let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge);
     println!("\nBase xi: {}. E: {}\n", base_xi, E);
 
-    // todo temp!
-    let base_xi = 1.5;
-    let E = -1.18;
-
     // todo: Move this part about trial elec V A/R
     // todo: Frame in terms of a trial psi via STOs instead? Equivlanet. Less direct,
     // todo but may be easier to construct
@@ -283,26 +279,12 @@ pub fn find_stos(
     let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
     let weights = util::linspace((-1., 1.), 200);
 
-    // taken with... 1d?
-    // These correspond to the hard-set Xis above.
-    let norms = [
-        // 25.392680856367818, // for 1.0
-        7.824996489966211, // for 1.5
-        3.626005172944867, // 2
-        1.5861538888455389,
-        1.1666246143992725,
-        1.0527522128618567, // 5
-        1.017679443298181,
-        1.006126830261436,
-        1.0021680699927205,
-        1.000777564426963,
-        1.0002813137996382, // 10
-    ];
-
+    // Note: Using norms by dividing and summing from discrete grid sizes. It appearse that it's the ratios
+    // that matter. Higher grid size, or a true analytic norm would be better.
     // taken @ size = 100
+    // todo: Try to get even higher, but this is probably fine.
     let norms = [
-        // 5424.308042880133, // 1
-        930.9147592505661, // 1.5
+        5424.308042880133, // 1
         678.6725787289182, // 2
         201.19437666856675,
         84.9987267609355,
@@ -334,27 +316,31 @@ pub fn find_stos(
 
     // These sample distances correspon d to xi.
     // todo: Hard-coded for now, starting at xi=1. Note that different base xis will throw this off!
-    let sample_dists = [
+    let sample_dists_per_xi = [
         3., // 1.8,
         2.5, 1.3, 1., 0.75, 0.63, // 6
         0.5, 0.45, 0.42, 0.4,
     ];
 
-    // todo: TS
-    let sample_dists = [2.; 10];
+    let sample_dists = [
+        3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, // 6
+        0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
+    ];
 
     let mut sample_pt_sets = Vec::new();
-    for dist in sample_dists {
-        // todo: Represent more than just x, but for now, this will do.
-        // todo: Represent more than just x, but for now, this will do.
+    for dist in sample_dists_per_xi {
         sample_pt_sets.push(vec![
             Vec3::new(dist, 0., 0.),
-            // Vec3::new(0., dist, 0.),
-            // Vec3::new(0., 0., dist),
+            Vec3::new(0., dist, 0.),
+            Vec3::new(0., 0., dist),
         ]);
-        // grid_posits.push(Vec3::new(dist, 0., 0.));
-        // grid_posits.push(Vec3::new(0., dist, 0.));
-        // grid_posits.push(Vec3::new(0., 0., dist));
+    }
+
+    let mut sample_pts_all = Vec::new();
+    for dist in sample_dists {
+        sample_pts_all.push(Vec3::new(dist, 0., 0.));
+        sample_pts_all.push(Vec3::new(0., dist, 0.));
+        sample_pts_all.push(Vec3::new(0., 0., dist));
     }
 
     let mut V_to_match_outer = Vec::new(); // Outer: By xi.
@@ -387,6 +373,10 @@ pub fn find_stos(
 
     let mut bases = vec![base_sto];
     for xi in &additional_xis {
+        if xi <= &base_xi {
+            continue;
+        }
+
         bases.push(Basis::Sto(Sto {
             posit: Vec3::new_zero(),
             n: 1,
@@ -407,7 +397,8 @@ pub fn find_stos(
         let mut psi_pp_other_bases = Vec::new();
 
         // For this xi, calculate psi and psi'' for the already-added bases.
-        for pt in &sample_pt_sets[i_xi] {
+        // for pt in &sample_pt_sets[i_xi] {
+        for pt in &sample_pts_all {
             // todo: Is V linear with these? Can we simply calculate V_other directly? Try once this approach works.
             let mut psi = Cplx::new_zero();
             let mut psi_pp = Cplx::new_zero();
@@ -415,7 +406,7 @@ pub fn find_stos(
             const EPS: f64 = 0.00001;
 
             for (i_basis, basis) in bases.iter().enumerate() {
-                if basis.weight() < EPS {
+                if basis.weight().abs() < EPS {
                     continue;
                 }
                 let weight = Cplx::from_real(basis.weight()) / norms[i_basis];
@@ -423,8 +414,6 @@ pub fn find_stos(
                 psi += weight * basis.value(*pt);
                 psi_pp += weight * basis.second_deriv(*pt);
             }
-
-            println!("PSI: {} PSI'': {}", psi.real, psi_pp.real);
 
             // let psi = Cplx::new_zero(); // todo temp! Experimenting to make sure absolute weight doesn' tmatter.
             // let psi_pp = Cplx::new_zero(); // todo tmep!!
@@ -448,27 +437,29 @@ pub fn find_stos(
             let mut cum_diff_this_set = 0.;
 
             for (i_pt, pt) in sample_pt_sets[i_xi].iter().enumerate() {
-                let weight = Cplx::from_real(*weight) / norms[i_xi];
+                let weight_ = Cplx::from_real(*weight) / norms[i_xi];
 
-                let mut psi = psi_other_bases[i_pt] + weight * sto.value(*pt);
+                let mut psi = psi_other_bases[i_pt] + weight_ * sto.value(*pt);
 
-                let mut psi_pp = psi_pp_other_bases[i_pt] + weight * sto.second_deriv(*pt);
+                let mut psi_pp = psi_pp_other_bases[i_pt] + weight_ * sto.second_deriv(*pt);
 
                 let V_from_psi = calc_V_on_psi(psi, psi_pp, E);
                 let V_to_match = V_to_match_outer[i_xi][i_pt];
 
                 if *xi < 5. {
                     // println!("V. From psi: {}, To match: {}", V_from_psi, V_to_match);
-                    println!(
-                        "V. Xi: {}, Weight: {:.3}, From psi: {:.3}, To match: {:.3} psi {:.3} psi'' {:.3}",
-                        xi,
-                        weight,
-                        V_from_psi,
-                        V_to_match,
-                        // (V_from_psi - V_to_match).abs()
-                        psi.real,
-                        psi_pp.real,
-                    );
+                    // println!(
+                    //     "V. Xi: {}, Weight: {:.3}, From psi: {:.3}, To match: {:.3} psi {:.3} psi'' {:.3}",
+                    //     xi,
+                    //     weight,
+                    //     V_from_psi,
+                    //     V_to_match,
+                    //     // (V_from_psi - V_to_match).abs()
+                    //     psi.real,
+                    //     psi_pp.real,
+                    // );
+
+                    // println!("PREV V: {:.4}", calc_V_on_psi(psi_other_bases[i_pt], psi_pp_other_bases[i_pt], E))
 
                     // println!("Aux. psi_other {:.6} psi_pp_other: {:.6}, psi_this: {:.6}, psi_pp_this: {:.6}\n",
                     //          psi_other_bases[i_pt].real, psi_pp_other_bases[i_pt].real, Cplx::from_real(*weight) * sto.value(*pt).real / norm, Cplx::from_real(*weight) * sto.second_deriv(*pt).real / norm);
@@ -484,13 +475,6 @@ pub fn find_stos(
                 smallest_diff = cum_diff_this_set;
             }
         }
-
-        // println!("Best match ct: {:?}", best_match_count);
-        // let best_weight = if best_match_count > 0 {
-        //     weights[best_weight_i]
-        // } else {
-        //     0.
-        // };
 
         let best_weight = weights[best_weight_i];
 

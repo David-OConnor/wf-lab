@@ -330,7 +330,9 @@ impl BasesEvaluated {
             if let Basis::Sto(sto) = basis {
                 xi = sto.xi;
             }
-            println!("(Bev) Norm for xi={}: {norm_pt}", xi);
+
+            // todo: Use this line, with high grid n, for finding the norm for analytic basis wfs.
+            // println!("Norm for xi={}: {norm_pt}", xi);
 
             util::normalize_wf(&mut on_pt[basis_i], norm_pt, grid_n);
             util::normalize_wf(&mut psi_pp_analytic[basis_i], norm_pt, grid_n);
