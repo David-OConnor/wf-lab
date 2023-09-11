@@ -265,15 +265,6 @@ pub fn find_stos(
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
 
-    let base_sto = Basis::Sto(Sto {
-        posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
-        n: 1,
-        xi: base_xi,
-        weight: 1.,
-        charge_id: 0,
-        harmonic: Default::default(),
-    });
-
     // Now, add more xis:
 
     let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
@@ -296,16 +287,23 @@ pub fn find_stos(
         5.8437728521755785, // 10
     ];
 
+    let base_norm = norms[0]; // todo temp! Fix this; will cause errors.
+
+    let base_sto = Basis::Sto(Sto {
+        posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
+        n: 1,
+        xi: base_xi,
+        weight: 1.,
+        charge_id: 0,
+        harmonic: Default::default(),
+    });
+
     // todo: Not ideal. Set up sample points at specific intervals, then evaluate
     // todo V at those intervals; don't use the grid.
 
     // tod: It's important that these sample points span points both close and far from the nuclei.
 
     // let sample_dists = vec![0.1, 0.3, 0.8, 1., 1.5, 2., 3., 4., 8., 15.];
-
-    // Each of these distances corresponds to a xi.
-    // let mut sample_dists = Vec::new();
-    for xi in &additional_xis {}
 
     // 1: 3
     // 2: 1.8
@@ -322,11 +320,6 @@ pub fn find_stos(
         0.5, 0.45, 0.42, 0.4,
     ];
 
-    let sample_dists = [
-        3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, // 6
-        0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
-    ];
-
     let mut sample_pt_sets = Vec::new();
     for dist in sample_dists_per_xi {
         sample_pt_sets.push(vec![
@@ -336,12 +329,7 @@ pub fn find_stos(
         ]);
     }
 
-    let mut sample_pts_all = Vec::new();
-    for dist in sample_dists {
-        sample_pts_all.push(Vec3::new(dist, 0., 0.));
-        sample_pts_all.push(Vec3::new(0., dist, 0.));
-        sample_pts_all.push(Vec3::new(0., 0., dist));
-    }
+    // todo: Factor sample pt gen to sep fn.
 
     let mut V_to_match_outer = Vec::new(); // Outer: By xi.
 
@@ -371,11 +359,51 @@ pub fn find_stos(
         V_to_match_outer.push(V_to_match_inner);
     }
 
-    let mut bases = vec![base_sto];
-    for xi in &additional_xis {
-        if xi <= &base_xi {
-            continue;
+    // Go low to validate high xi, not not too low, Icarus.
+    let sample_dists = [
+        3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, // 6
+        0.5, 0.45, 0.42, 0.4, 0.35, 0.3, 0.2, 0.1, 0.05,
+    ];
+
+    let mut sample_pts_all = Vec::new();
+    for dist in sample_dists {
+        sample_pts_all.push(Vec3::new(dist, 0., 0.));
+        sample_pts_all.push(Vec3::new(0., dist, 0.));
+        sample_pts_all.push(Vec3::new(0., 0., dist));
+    }
+
+    let mut V_to_match2 = Vec::new();
+
+    for posit_sample in &sample_pts_all {
+        let mut V_sample = 0.;
+
+        for (posit_nuc, charge) in charges_fixed {
+            V_sample += potential::V_coulomb(*posit_nuc, *posit_sample, *charge);
         }
+
+        for i in 0..grid_n_charge {
+            for j in 0..grid_n_charge {
+                for k in 0..grid_n_charge {
+                    let posit_charge = grid_charge[i][j][k];
+                    let charge = charge_elec[i][j][k];
+
+                    V_sample += potential::V_coulomb(posit_charge, *posit_sample, charge);
+                }
+            }
+        }
+
+        V_to_match2.push(V_sample);
+    }
+
+    const EPS: f64 = 0.0001;
+
+    // `bases` here doesn't include the base STO; this helps keep indexing consistent.
+
+    let mut bases = Vec::new();
+    for xi in &additional_xis {
+        // if *xi <= base_xi + EPS {
+        //     continue;
+        // }
 
         bases.push(Basis::Sto(Sto {
             posit: Vec3::new_zero(),
@@ -388,7 +416,7 @@ pub fn find_stos(
     }
 
     for (i_xi, xi) in additional_xis.iter().enumerate() {
-        if xi <= &base_xi {
+        if *xi <= base_xi + EPS {
             continue;
         }
 
@@ -404,6 +432,12 @@ pub fn find_stos(
             let mut psi_pp = Cplx::new_zero();
 
             const EPS: f64 = 0.00001;
+
+            // todo: DRY here between the base basis and the others.
+            let weight = Cplx::from_real(base_sto.weight()) / base_norm;
+
+            psi += weight * base_sto.value(*pt);
+            psi_pp += weight * base_sto.second_deriv(*pt);
 
             for (i_basis, basis) in bases.iter().enumerate() {
                 if basis.weight().abs() < EPS {
@@ -437,6 +471,7 @@ pub fn find_stos(
             let mut cum_diff_this_set = 0.;
 
             for (i_pt, pt) in sample_pt_sets[i_xi].iter().enumerate() {
+                // for (i_pt, pt) in sample_pts_all.iter().enumerate() {
                 let weight_ = Cplx::from_real(*weight) / norms[i_xi];
 
                 let mut psi = psi_other_bases[i_pt] + weight_ * sto.value(*pt);
@@ -445,6 +480,7 @@ pub fn find_stos(
 
                 let V_from_psi = calc_V_on_psi(psi, psi_pp, E);
                 let V_to_match = V_to_match_outer[i_xi][i_pt];
+                // let V_to_match = V_to_match2[i_pt];
 
                 if *xi < 5. {
                     // println!("V. From psi: {}, To match: {}", V_from_psi, V_to_match);
