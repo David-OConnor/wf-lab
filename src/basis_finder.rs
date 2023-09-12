@@ -212,6 +212,127 @@ fn find_charge_trial_wf(grid_charge: &Arr3dVec, grid_n_charge: usize) -> Arr3dRe
     result
 }
 
+fn generate_sample_pts() -> (Vec<Vec3>, Vec<Vec<Vec3>>) {
+    // tod: It's important that these sample points span points both close and far from the nuclei.
+
+    // let sample_dists = vec![0.1, 0.3, 0.8, 1., 1.5, 2., 3., 4., 8., 15.];
+
+    // 1: 3
+    // 2: 1.8
+    // 3: 1.3
+    // 4: 1.0
+    // 5: 0.75
+    // 6: 0.63
+
+    // These sample distances correspon d to xi.
+    // todo: Hard-coded for now, starting at xi=1. Note that different base xis will throw this off!
+    let sample_dists_per_xi = [
+        3., 2.5, 1.3, 1., 0.75, 0.63, // 6
+        0.5, 0.45, 0.42, 0.4,
+    ];
+
+    let mut sample_pt_sets = Vec::new();
+    for dist in sample_dists_per_xi {
+        for scaler in &[0.7, 1., 1.3] {
+            sample_pt_sets.push(vec![
+                Vec3::new(dist * scaler, 0., 0.),
+                Vec3::new(0., dist * scaler, 0.),
+                Vec3::new(0., 0., dist * scaler),
+            ]);
+        }
+    }
+
+    // todo: Factor sample pt gen to sep fn.
+
+    // Go low to validate high xi, not not too low, Icarus.
+    let sample_dists = [
+        3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, // 6
+        0.5, 0.45, 0.42, 0.4, 0.35, 0.3, 0.2, 0.1, 0.05,
+    ];
+
+    let mut sample_pts_all = Vec::new();
+    for dist in sample_dists {
+        sample_pts_all.push(Vec3::new(dist, 0., 0.));
+        sample_pts_all.push(Vec3::new(0., dist, 0.));
+        sample_pts_all.push(Vec3::new(0., 0., dist));
+    }
+
+    (sample_pts_all, sample_pt_sets)
+}
+
+/// Using a set of points to evaluate a basis at, tailored for a specifix xi.
+fn make_ref_V_per_xi(
+    sample_pt_sets: &[Vec<Vec3>],
+    charges_fixed: &[(Vec3, f64)],
+    charge_elec: &Arr3dReal,
+    grid_charge: &Arr3dVec,
+    grid_n_charge: usize,
+) -> Vec<Vec<f64>> {
+    let mut V_to_match_outer = Vec::new(); // Outer: By xi.
+
+    for sample_pts in sample_pt_sets {
+        let mut V_to_match_inner = Vec::new(); // By posit. (eg the 3 posits per dist defined above)
+
+        for posit_sample in sample_pts {
+            let mut V_sample = 0.;
+
+            for (posit_nuc, charge) in charges_fixed {
+                V_sample += potential::V_coulomb(*posit_nuc, *posit_sample, *charge);
+            }
+
+            for i in 0..grid_n_charge {
+                for j in 0..grid_n_charge {
+                    for k in 0..grid_n_charge {
+                        let posit_charge = grid_charge[i][j][k];
+                        let charge = charge_elec[i][j][k];
+
+                        V_sample += potential::V_coulomb(posit_charge, *posit_sample, charge);
+                    }
+                }
+            }
+            V_to_match_inner.push(V_sample);
+        }
+
+        V_to_match_outer.push(V_to_match_inner);
+    }
+
+    V_to_match_outer
+}
+
+/// Using a flat set of sample points.
+fn make_ref_V_flat(
+    sample_pts: &[Vec3],
+    charges_fixed: &[(Vec3, f64)],
+    charge_elec: &Arr3dReal,
+    grid_charge: &Arr3dVec,
+    grid_n_charge: usize,
+) -> Vec<f64> {
+    let mut V_to_match = Vec::new();
+
+    for sample_pt in sample_pts {
+        let mut V_sample = 0.;
+
+        for (posit_nuc, charge) in charges_fixed {
+            V_sample += potential::V_coulomb(*posit_nuc, *sample_pt, *charge);
+        }
+
+        for i in 0..grid_n_charge {
+            for j in 0..grid_n_charge {
+                for k in 0..grid_n_charge {
+                    let posit_charge = grid_charge[i][j][k];
+                    let charge = charge_elec[i][j][k];
+
+                    V_sample += potential::V_coulomb(posit_charge, *sample_pt, charge);
+                }
+            }
+        }
+
+        V_to_match.push(V_sample);
+    }
+
+    V_to_match
+}
+
 /// Find a wave function, composed of STOs, that match a given potential.
 // pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
 pub fn find_stos(
@@ -298,103 +419,22 @@ pub fn find_stos(
         harmonic: Default::default(),
     });
 
-    // todo: Not ideal. Set up sample points at specific intervals, then evaluate
-    // todo V at those intervals; don't use the grid.
+    let (sample_pts_all, sample_pt_sets) = generate_sample_pts();
 
-    // tod: It's important that these sample points span points both close and far from the nuclei.
-
-    // let sample_dists = vec![0.1, 0.3, 0.8, 1., 1.5, 2., 3., 4., 8., 15.];
-
-    // 1: 3
-    // 2: 1.8
-    // 3: 1.3
-    // 4: 1.0
-    // 5: 0.75
-    // 6: 0.63
-
-    // These sample distances correspon d to xi.
-    // todo: Hard-coded for now, starting at xi=1. Note that different base xis will throw this off!
-    let sample_dists_per_xi = [
-        3., // 1.8,
-        2.5, 1.3, 1., 0.75, 0.63, // 6
-        0.5, 0.45, 0.42, 0.4,
-    ];
-
-    let mut sample_pt_sets = Vec::new();
-    for dist in sample_dists_per_xi {
-        sample_pt_sets.push(vec![
-            Vec3::new(dist, 0., 0.),
-            Vec3::new(0., dist, 0.),
-            Vec3::new(0., 0., dist),
-        ]);
-    }
-
-    // todo: Factor sample pt gen to sep fn.
-
-    let mut V_to_match_outer = Vec::new(); // Outer: By xi.
-
-    for sample_pts in &sample_pt_sets {
-        let mut V_to_match_inner = Vec::new(); // By posit. (eg the 3 posits per dist defined above)
-
-        for posit_sample in sample_pts {
-            let mut V_sample = 0.;
-
-            for (posit_nuc, charge) in charges_fixed {
-                V_sample += potential::V_coulomb(*posit_nuc, *posit_sample, *charge);
-            }
-
-            for i in 0..grid_n_charge {
-                for j in 0..grid_n_charge {
-                    for k in 0..grid_n_charge {
-                        let posit_charge = grid_charge[i][j][k];
-                        let charge = charge_elec[i][j][k];
-
-                        V_sample += potential::V_coulomb(posit_charge, *posit_sample, charge);
-                    }
-                }
-            }
-            V_to_match_inner.push(V_sample);
-        }
-
-        V_to_match_outer.push(V_to_match_inner);
-    }
-
-    // Go low to validate high xi, not not too low, Icarus.
-    let sample_dists = [
-        3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, // 6
-        0.5, 0.45, 0.42, 0.4, 0.35, 0.3, 0.2, 0.1, 0.05,
-    ];
-
-    let mut sample_pts_all = Vec::new();
-    for dist in sample_dists {
-        sample_pts_all.push(Vec3::new(dist, 0., 0.));
-        sample_pts_all.push(Vec3::new(0., dist, 0.));
-        sample_pts_all.push(Vec3::new(0., 0., dist));
-    }
-
-    let mut V_to_match2 = Vec::new();
-
-    for posit_sample in &sample_pts_all {
-        let mut V_sample = 0.;
-
-        for (posit_nuc, charge) in charges_fixed {
-            V_sample += potential::V_coulomb(*posit_nuc, *posit_sample, *charge);
-        }
-
-        for i in 0..grid_n_charge {
-            for j in 0..grid_n_charge {
-                for k in 0..grid_n_charge {
-                    let posit_charge = grid_charge[i][j][k];
-                    let charge = charge_elec[i][j][k];
-
-                    V_sample += potential::V_coulomb(posit_charge, *posit_sample, charge);
-                }
-            }
-        }
-
-        V_to_match2.push(V_sample);
-    }
-
+    let V_to_match_outer = make_ref_V_per_xi(
+        &sample_pt_sets,
+        charges_fixed,
+        charge_elec,
+        grid_charge,
+        grid_n_charge,
+    );
+    let V_to_match = make_ref_V_flat(
+        &sample_pts_all,
+        charges_fixed,
+        charge_elec,
+        grid_charge,
+        grid_n_charge,
+    );
     const EPS: f64 = 0.0001;
 
     // `bases` here doesn't include the base STO; this helps keep indexing consistent.
@@ -425,8 +465,8 @@ pub fn find_stos(
         let mut psi_pp_other_bases = Vec::new();
 
         // For this xi, calculate psi and psi'' for the already-added bases.
-        // for pt in &sample_pt_sets[i_xi] {
-        for pt in &sample_pts_all {
+        for pt in &sample_pt_sets[i_xi] {
+            // for pt in &sample_pts_all {
             // todo: Is V linear with these? Can we simply calculate V_other directly? Try once this approach works.
             let mut psi = Cplx::new_zero();
             let mut psi_pp = Cplx::new_zero();
@@ -449,8 +489,6 @@ pub fn find_stos(
                 psi_pp += weight * basis.second_deriv(*pt);
             }
 
-            // let psi = Cplx::new_zero(); // todo temp! Experimenting to make sure absolute weight doesn' tmatter.
-            // let psi_pp = Cplx::new_zero(); // todo tmep!!
             psi_other_bases.push(psi);
             psi_pp_other_bases.push(psi_pp);
         }
