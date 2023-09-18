@@ -10,7 +10,12 @@ lin-alg2 = { path = "../lin_alg" }
 egui = "^0.19"
 
 # We use Scilib for computing H basis fns, eg with Laguerre and Legendre polynomials.
-scilib = "^0.7.0"
+scilib = "^1.0.0"
+
+# Attempting to solve linear systems of equations for basis finding
+#ndarray = "^0.15.6"
+#ndarray-linalg = "^0.16.0"
+nalgebra = "^0.32.3"
 
 # todo: Eventually ditch this tool for permutations:
 itertools = "^0.11.0"

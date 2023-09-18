@@ -143,6 +143,15 @@ impl Basis {
         }
     }
 
+    pub fn xi(&self) -> f64 {
+        match self {
+            // Self::Sto(v) => v.weight,
+            Self::H(v) => unimplemented!(),
+            Self::Gto(v) => unimplemented!(),
+            Self::Sto(v) => v.xi,
+        }
+    }
+
     pub fn weight_mut(&mut self) -> &mut f64 {
         match self {
             // Self::Sto(v) => &mut v.weight,

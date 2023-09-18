@@ -1,15 +1,5 @@
 //! Misc code fragments we no longer use, but are available for reference or re-implementation in the future.
 
-// /// Utility function to linearly map an input value to an output
-// pub fn map_linear(range_in: (f64, f64), range_out: (f64, f64), val: f64) -> f64 {
-//     // todo: You may be able to optimize calls to this by having the ranges pre-store
-//     // todo the total range vals.
-//     let portion = (val - range_in.0) / (range_in.1 - range_in.0);
-//
-//     portion * (range_out.1 - range_out.0) + range_out.0
-// }
-
-
 //
 // /// Set up Radial Basis Function (RBF) interpolation, with spherical grids centered around
 // /// nuclei, and a higher concentration of shells closer to nuclei.

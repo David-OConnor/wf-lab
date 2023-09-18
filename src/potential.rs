@@ -7,7 +7,6 @@ use crate::{
 };
 
 use lin_alg2::f64::Vec3;
-use scilib::math::bessel::j;
 
 /// Computes potential field from nuclei, by calculating Coulomb potential.
 /// Run this after changing these charges.
@@ -104,7 +103,6 @@ pub(crate) fn update_V_acting_on_elec(
     i_this_elec: usize,
     grid_n: usize,
 ) {
-    // println!("Updating V on this elec...");
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
@@ -120,7 +118,6 @@ pub(crate) fn update_V_acting_on_elec(
             }
         }
     }
-    // println!("Complete");
 }
 
 /// Update the potential field acting on a given electron. Run this after changing V nuclei,
@@ -246,8 +243,6 @@ pub(crate) fn create_V_from_an_elec(
     grid_n: usize,
     grid_n_charge: usize,
 ) {
-    // println!("Creating V from an electron...");
-
     // todo: Are there any tricks or approximations we can use to make this less computationally-intense?
     // todo: Perhaps you could create an approximate analytic function of charge density over space,
     // todo then shoot rays or something out at evenly spaced angles from the sample pt??
@@ -273,8 +268,6 @@ pub(crate) fn create_V_from_an_elec(
             }
         }
     }
-
-    // println!("V creation complete");
 }
 
 /// Single-point Coulomb potential, eg a hydrogen nuclei.
