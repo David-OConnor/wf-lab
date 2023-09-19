@@ -8,7 +8,7 @@ use crate::{
     complex_nums::Cplx,
     eigen_fns::{calc_E_on_psi, calc_V_on_psi},
     grid_setup::{new_data, new_data_real, Arr3dReal, Arr3dVec},
-    interp, num_diff, potential, util,
+    num_diff, potential, util,
     wf_ops::Q_ELEC,
 };
 
@@ -45,6 +45,21 @@ const NORM_TABLE: [(f64, f64); 19] = [
     (10., 25.39268269325724),
 ];
 
+/// Create an order-2 polynomial based on 2 or 3 calibration points.
+/// `a` is the ^2 term, `b` is the linear term, `c` is the constant term.
+/// This is a general mathematical function, and can be derived using a system of equations.
+fn create_polynomial_terms(pt0: (f64, f64), pt1: (f64, f64), pt2: (f64, f64)) -> (f64, f64, f64) {
+    let a_num = pt0.0 * (pt2.1 - pt1.1) + pt1.0 * (pt0.1 - pt2.1) + pt2.0 * (pt1.1 - pt0.1);
+
+    let a_denom = (pt0.0 - pt1.0) * (pt0.0 - pt2.0) * (pt1.0 - pt2.0);
+
+    let a = a_num / a_denom;
+    let b = (pt1.1 - pt0.1) / (pt1.0 - pt0.0) - a * (pt0.0 + pt1.0);
+    let c = pt0.1 - a * pt0.0.powi(2) - b * pt0.0;
+
+    (a, b, c)
+}
+
 pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 {
     // todo: You may be able to optimize calls to this by having the ranges pre-store
     // todo the total range vals.
@@ -58,18 +73,25 @@ pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 
 /// todo: This currently uses linear interpolation, which isn't correct. But, better than
 /// todo not interpolating.
 fn find_sto_norm(xi: f64) -> f64 {
-    for i in 0..NORM_TABLE.len() {
-        if xi < NORM_TABLE[i + 1].0 {
-            return map_linear(
-                xi,
-                (NORM_TABLE[i].0, NORM_TABLE[i + 1].0),
-                (NORM_TABLE[i].1, NORM_TABLE[i + 1].1),
-            );
+    let t_len = NORM_TABLE.len();
+
+    for i in 0..t_len {
+        // i cutoff here is so we don't hit the right end of the table.
+        if i < NORM_TABLE.len() - 2 && xi < NORM_TABLE[i + 1].0 {
+            let (a, b, c) =
+                create_polynomial_terms(NORM_TABLE[i], NORM_TABLE[i + 1], NORM_TABLE[i + 2]);
+            return a * xi.powi(2) + b * xi + c;
         }
     }
 
-    println!("Fallthrough on STO norm table");
-    NORM_TABLE[NORM_TABLE.len() - 1].1
+    println!("Fallthrough on norm table");
+    let (a, b, c) = create_polynomial_terms(
+        NORM_TABLE[t_len - 3],
+        NORM_TABLE[t_len - 2],
+        NORM_TABLE[t_len - 1],
+    );
+
+    a * xi.powi(2) + b * xi + c
 }
 
 /// Experimental; very.
@@ -636,9 +658,7 @@ pub fn find_stos(
     let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
     let weights = util::linspace((-1., 1.), 200);
 
-    // todo: norm table linear interpolation here isn't ideal.
     let base_norm = find_sto_norm(base_xi);
-    println!("BASE NORM: {} | {}", base_xi, base_norm);
 
     let base_sto = Basis::Sto(Sto {
         posit: charges_fixed[0].0, // todo: Hard-coded for a single nuc.
