@@ -14,7 +14,7 @@ use crate::{
 
 // use ndarray::prelude::*;
 // use ndarray_linalg::Solve;
-use nalgebra::{ArrayStorage, Dynamic, Matrix, VecStorage, U2, U3};
+use nalgebra::{ArrayStorage, Dmatrix, Dynamic, Matrix, OMatrix, VecStorage, U2, U3};
 
 // Norms for a given base xi. Computed numerically. These are relative to each other.
 // Note: Using norms by dividing and summing from discrete grid sizes. It appearse that it's the ratios
@@ -425,15 +425,14 @@ fn make_ref_V_flat(
 fn find_bases(
     V_to_match: &[f64],
     additional_xis: &[f64],
-    norms: &[f64],
-    weights: &[f64],
     base_sto: &Basis,
     base_xi: f64,
     E: f64,
-    base_norm: f64,
     sample_pts_all: &[Vec3],
 ) -> Vec<Basis> {
     const EPS: f64 = 0.0001;
+    let weights = util::linspace((-1., 1.), 200);
+    let base_norm = find_sto_norm(base_xi);
 
     let mut bases = Vec::new();
     for xi in additional_xis {
@@ -559,17 +558,70 @@ fn find_bases(
     bases
 }
 
+/// See Onenote: `Exploring the WF, part 7`.
+///
+/// We solve the system F W = V, where F is a matrix of
+/// psi'' / psi, with columns for samples position and rows for xi.
+/// W is the weight vector we are solving for, and V is V from charge, with h^2/2m and E included.
 fn find_bases_system_of_eqs(
     V_to_match: &[f64],
     additional_xis: &[f64],
-    weights: &[f64],
-    base_sto: &Basis,
     base_xi: f64,
     E: f64,
-    base_norm: f64,
-    sample_pts_all: &[Vec3],
+    sample_pts: &[Vec3],
 ) -> Vec<Basis> {
-    let mut bases = Vec::new();
+    type PSI_RATIO_MAT = OMatrix<f64, Dynamic, Dynamic>;
+    type V_CHARGE_VEC = OMatrix<f64, Dynamic, 1>;
+
+    let mut psi_ratio_mat = PSI_RATIO_MAT::new();
+
+    // Construct our matrix F, or psi_pp / psi ratios.
+
+    // todo: Upstream, sort out the indices; make the base part of the rest instead of having them be separate.
+    // todo: This will be broken until then.
+    let mut xis = vec![base_xi];
+    for xi in additional_xis {
+        xis.push(*xi);
+    }
+
+    // Bases, from xi, are the rows:
+    // todo: Include base xi too.
+    for (i, xi) in xis.iter().enumerate() {
+        let norm = find_sto_norm(*xi);
+        let sto = Basis::Sto(Sto {
+            posit: Vec3::new_zero(), // todo: Hard-coded for now.
+            n: 1,
+            xi: *xi,
+            weight: 1., // Weight is 1 here.
+            charge_id: 0,
+            harmonic: Default::default(),
+        });
+
+        // Sample positions are the columns.
+        for (j, posit_sample) in sample_pts.iter().enumerate() {
+            let psi = sto.value(*posit_sample);
+            let psi_pp = sto.second_deriv(*posit_sample);
+
+            psi_ratio_mat[i][j] = norm * psi_pp / psi;
+        }
+    }
+
+    println!("Psi ratio mat: {:?}", psi_ratio_mat);
+
+    let mut v_charge_vec = DMatrix::from_vec(sample_pts.len(), vec![]);
+
+    // Set up the vector V:
+    for (j, posit_sample) in sample_pts.iter().enumerate() {
+        v_charge_vec[j] = V_to_match[j] - E;
+    }
+
+    // Solve for the weights vector. https://nalgebra.org/docs/user_guide/decompositions_and_lapack
+
+    let decomp = psi_ratio_mat.lu();
+    let w = decomp
+        .solve(&v_charge_vec)
+        .expect("Linear resolution failed.");
+    println!("Weights: {:?}", w);
 
     // todo: See nalgebra Readme on BLAS etc as-required if you wish to optomize.
 
@@ -656,9 +708,6 @@ pub fn find_stos(
     // Now, add more xis:
 
     let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
-    let weights = util::linspace((-1., 1.), 200);
-
-    let base_norm = find_sto_norm(base_xi);
 
     let base_sto = Basis::Sto(Sto {
         posit: charges_fixed[0].0, // todo: Hard-coded for a single nuc.
@@ -695,11 +744,9 @@ pub fn find_stos(
     let bases = find_bases_system_of_eqs(
         &V_to_match,
         &additional_xis,
-        &weights,
         &base_sto,
         base_xi,
         E,
-        base_norm,
         &sample_pts_all,
     );
 
