@@ -14,7 +14,10 @@ use crate::{
 
 // use ndarray::prelude::*;
 // use ndarray_linalg::Solve;
-use nalgebra::{ArrayStorage, Dmatrix, Dynamic, Matrix, OMatrix, VecStorage, U2, U3};
+use crate::eigen_fns::{KE_COEFF, KE_COEFF_INV};
+use nalgebra::{
+    ArrayStorage, DMatrix, DVector, Dynamic, Matrix, OMatrix, OVector, VecStorage, U2, U3,
+};
 
 // Norms for a given base xi. Computed numerically. These are relative to each other.
 // Note: Using norms by dividing and summing from discrete grid sizes. It appearse that it's the ratios
@@ -303,6 +306,8 @@ fn find_charge_trial_wf(
 fn generate_sample_pts() -> (Vec<Vec3>, Vec<Vec<Vec3>>) {
     // tod: It's important that these sample points span points both close and far from the nuclei.
 
+    // todo: Don't hard-code this len.
+
     // let sample_dists = vec![0.1, 0.3, 0.8, 1., 1.5, 2., 3., 4., 8., 15.];
 
     // 1: 3
@@ -333,17 +338,17 @@ fn generate_sample_pts() -> (Vec<Vec3>, Vec<Vec<Vec3>>) {
 
     // todo: Factor sample pt gen to sep fn.
 
-    // Go low to validate high xi, not not too low, Icarus.
+    // Go low to validate high xi, but not too low, Icarus.
     let sample_dists = [
-        3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, // 6
-        0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
+        3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
     ];
 
     let mut sample_pts_all = Vec::new();
     for dist in sample_dists {
+        // todo: Add back in the others, but for now skipping other dims due to spherical potentials.
         sample_pts_all.push(Vec3::new(dist, 0., 0.));
-        sample_pts_all.push(Vec3::new(0., dist, 0.));
-        sample_pts_all.push(Vec3::new(0., 0., dist));
+        // sample_pts_all.push(Vec3::new(0., dist, 0.));
+        // sample_pts_all.push(Vec3::new(0., 0., dist));
     }
 
     (sample_pts_all, sample_pt_sets)
@@ -559,6 +564,7 @@ fn find_bases(
 }
 
 /// See Onenote: `Exploring the WF, part 7`.
+/// `V_to_match` indices correspond to `sample_pts`.
 ///
 /// We solve the system F W = V, where F is a matrix of
 /// psi'' / psi, with columns for samples position and rows for xi.
@@ -570,22 +576,22 @@ fn find_bases_system_of_eqs(
     E: f64,
     sample_pts: &[Vec3],
 ) -> Vec<Basis> {
-    type PSI_RATIO_MAT = OMatrix<f64, Dynamic, Dynamic>;
-    type V_CHARGE_VEC = OMatrix<f64, Dynamic, 1>;
+    let mut bases = Vec::new();
 
-    let mut psi_ratio_mat = PSI_RATIO_MAT::new();
+    // type PSI_RATIO_MAT = DMatrix<f64, Dynamic, Dynamic>;
+    // type V_CHARGE_VEC = OVector<f64, Dynamic>;
 
     // Construct our matrix F, or psi_pp / psi ratios.
 
-    // todo: Upstream, sort out the indices; make the base part of the rest instead of having them be separate.
-    // todo: This will be broken until then.
     let mut xis = vec![base_xi];
     for xi in additional_xis {
         xis.push(*xi);
     }
 
     // Bases, from xi, are the rows:
-    // todo: Include base xi too.
+
+    // Not sure how to construct these matrices, so start as a standard Vec.
+    let mut col = Vec::new();
     for (i, xi) in xis.iter().enumerate() {
         let norm = find_sto_norm(*xi);
         let sto = Basis::Sto(Sto {
@@ -597,31 +603,39 @@ fn find_bases_system_of_eqs(
             harmonic: Default::default(),
         });
 
+        let mut row = Vec::new();
+
         // Sample positions are the columns.
         for (j, posit_sample) in sample_pts.iter().enumerate() {
             let psi = sto.value(*posit_sample);
             let psi_pp = sto.second_deriv(*posit_sample);
 
-            psi_ratio_mat[i][j] = norm * psi_pp / psi;
+            row.push(norm * (psi_pp / psi).real);
         }
+        col.push(row);
     }
 
+    let mut psi_ratio_mat = DMatrix::from_vec(xis.len(), sample_pts.len(), col);
     println!("Psi ratio mat: {:?}", psi_ratio_mat);
 
-    let mut v_charge_vec = DMatrix::from_vec(sample_pts.len(), vec![]);
-
+    let mut v_charge_vec_ = Vec::new();
     // Set up the vector V:
-    for (j, posit_sample) in sample_pts.iter().enumerate() {
-        v_charge_vec[j] = V_to_match[j] - E;
+
+    for V in V_to_match {
+        // todo: CHeck teh sign on E. You still have an anomoly here. On paper, it shows - E,
+        // todo but you've been inverting this in practice to make it work.
+        v_charge_vec_.push(KE_COEFF_INV * (V + E));
     }
+
+    let v_charge_vec = DVector::from_vec(v_charge_vec_);
 
     // Solve for the weights vector. https://nalgebra.org/docs/user_guide/decompositions_and_lapack
 
-    let decomp = psi_ratio_mat.lu();
-    let w = decomp
-        .solve(&v_charge_vec)
-        .expect("Linear resolution failed.");
-    println!("Weights: {:?}", w);
+    // let decomp = psi_ratio_mat.lu();
+    // let w = decomp
+    //     .solve(&v_charge_vec)
+    //     .expect("Linear resolution failed.");
+    // println!("Weights: {:?}", w);
 
     // todo: See nalgebra Readme on BLAS etc as-required if you wish to optomize.
 
@@ -739,16 +753,7 @@ pub fn find_stos(
     // todo: 18 Sep 2023: try this - Once you have base xi, find the lin combo that solves
     // for each sample pt. One sample pt per basis. Matrix / etc approach.
 
-    // `bases` here doesn't include the base STO; this helps keep indexing consistent.
-
-    let bases = find_bases_system_of_eqs(
-        &V_to_match,
-        &additional_xis,
-        &base_sto,
-        base_xi,
-        E,
-        &sample_pts_all,
-    );
+    let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, E, &sample_pts_all);
 
     (bases, E)
 }
