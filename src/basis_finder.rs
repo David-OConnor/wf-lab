@@ -631,11 +631,11 @@ fn find_bases_system_of_eqs(
 
     // Solve for the weights vector. https://nalgebra.org/docs/user_guide/decompositions_and_lapack
 
-    // let decomp = psi_ratio_mat.lu();
-    // let w = decomp
-    //     .solve(&v_charge_vec)
-    //     .expect("Linear resolution failed.");
-    // println!("Weights: {:?}", w);
+    let decomp = psi_ratio_mat.lu();
+    let w = decomp
+        .solve(&v_charge_vec)
+        .expect("Linear resolution failed.");
+    println!("Weights: {:?}", w);
 
     // todo: See nalgebra Readme on BLAS etc as-required if you wish to optomize.
 
