@@ -16,7 +16,8 @@ use crate::{
 // use ndarray_linalg::Solve;
 use crate::eigen_fns::{KE_COEFF, KE_COEFF_INV};
 use nalgebra::{
-    ArrayStorage, DMatrix, DVector, Dynamic, Matrix, OMatrix, OVector, VecStorage, U2, U3,
+    ArrayStorage, DMatrix, DVector, Dynamic, Matrix, OMatrix, OVector, SMatrix, SVector,
+    VecStorage, U2, U3,
 };
 
 // Norms for a given base xi. Computed numerically. These are relative to each other.
@@ -585,14 +586,15 @@ fn find_bases_system_of_eqs(
 
     let mut xis = vec![base_xi];
     for xi in additional_xis {
-        xis.push(*xi);
+        if xi > &base_xi {
+            xis.push(*xi);
+        }
     }
 
-    // Bases, from xi, are the rows:
-
-    // Not sure how to construct these matrices, so start as a standard Vec.
-    let mut col = Vec::new();
-    for (i, xi) in xis.iter().enumerate() {
+    // Bases, from xi, are the rows; positions are the columns.
+    // Set this up as a column-major Vec, for use with nalgebra.
+    let mut psi_ratio_mat_ = Vec::new();
+    for xi in &xis {
         let norm = find_sto_norm(*xi);
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for now.
@@ -603,39 +605,48 @@ fn find_bases_system_of_eqs(
             harmonic: Default::default(),
         });
 
-        let mut row = Vec::new();
+        // let mut row = Vec::new();
 
         // Sample positions are the columns.
-        for (j, posit_sample) in sample_pts.iter().enumerate() {
+        for posit_sample in &sample_pts[..xis.len()] {
             let psi = sto.value(*posit_sample);
             let psi_pp = sto.second_deriv(*posit_sample);
 
-            row.push(norm * (psi_pp / psi).real);
+            // row.push(norm * (psi_pp / psi).real);
+            psi_ratio_mat_.push(norm * (psi_pp / psi).real);
         }
-        col.push(row);
+        // psi_ratio_mat_.push(row);
     }
 
-    let mut psi_ratio_mat = DMatrix::from_vec(xis.len(), sample_pts.len(), col);
-    println!("Psi ratio mat: {:?}", psi_ratio_mat);
+    let psi_ratio_mat = DMatrix::from_vec(xis.len(), xis.len(), psi_ratio_mat_);
+    // let psi_ratio_mat: SMatrix<f64, 11, 11> = SMatrix::from_vec(psi_ratio_mat_);
 
-    let mut v_charge_vec_ = Vec::new();
-    // Set up the vector V:
+    // println!("Psi ratio mat: {}", psi_ratio_mat);
 
-    for V in V_to_match {
-        // todo: CHeck teh sign on E. You still have an anomoly here. On paper, it shows - E,
-        // todo but you've been inverting this in practice to make it work.
-        v_charge_vec_.push(KE_COEFF_INV * (V + E));
-    }
+    // Set the charge vector V.
+    //         // todo: CHeck teh sign on E. You still have an anomoly here. On paper, it shows - E,
+    //         // todo but you've been inverting this in practice to make it work.
+    //         // v_charge_vec_.push(KE_COEFF_INV * (V - E));
+    let v_charge_vec_: Vec<f64> = V_to_match.iter().map(|V| KE_COEFF_INV * (V + E)).collect();
 
-    let v_charge_vec = DVector::from_vec(v_charge_vec_);
+    let v_charge_vec = DVector::from_vec(v_charge_vec_[..xis.len()].to_owned());
 
     // Solve for the weights vector. https://nalgebra.org/docs/user_guide/decompositions_and_lapack
 
     let decomp = psi_ratio_mat.lu();
-    let w = decomp
+    // let decomp = psi_ratio_mat.cholesky().unwrap();
+    let mut weights = decomp
         .solve(&v_charge_vec)
         .expect("Linear resolution failed.");
-    println!("Weights: {:?}", w);
+
+    // Normalize re base xi.
+    let base_weight = weights[0];
+    for weight in &mut weights {
+        *weight /= base_weight;
+    }
+
+    println!("Xis: {:.3?}", xis);
+    println!("Weights: {:.6}", weights);
 
     // todo: See nalgebra Readme on BLAS etc as-required if you wish to optomize.
 
