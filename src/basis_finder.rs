@@ -304,10 +304,8 @@ fn find_charge_trial_wf(
     result
 }
 
-fn generate_sample_pts() -> (Vec<Vec3>, Vec<Vec<Vec3>>) {
-    // tod: It's important that these sample points span points both close and far from the nuclei.
-
-    // todo: Don't hard-code this len.
+fn generate_sample_pts_per_xi() -> Vec<Vec<Vec3>> {
+    //  It's important that these sample points span points both close and far from the nuclei.
 
     // let sample_dists = vec![0.1, 0.3, 0.8, 1., 1.5, 2., 3., 4., 8., 15.];
 
@@ -325,7 +323,7 @@ fn generate_sample_pts() -> (Vec<Vec3>, Vec<Vec<Vec3>>) {
         0.4, 0.35, 0.3, 0.25,
     ];
 
-    let mut sample_pt_sets = Vec::new();
+    let mut result = Vec::new();
     for dist in sample_dists_per_xi {
         let mut set = Vec::new();
         // for scaler in &[0.4, 1., 1.4] {
@@ -334,25 +332,30 @@ fn generate_sample_pts() -> (Vec<Vec3>, Vec<Vec<Vec3>>) {
             set.push(Vec3::new(0., dist * scaler, 0.));
             set.push(Vec3::new(0., 0., dist * scaler));
         }
-        sample_pt_sets.push(set);
+        result.push(set);
     }
 
-    // todo: Factor sample pt gen to sep fn.
+    result
+}
+
+fn generate_sample_pts() -> Vec<Vec3> {
+    // It's important that these sample points span points both close and far from the nuclei.
 
     // Go low to validate high xi, but not too low, Icarus.
     let sample_dists = [
-        3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
+        // 3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
+        3., 2.0, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
     ];
 
-    let mut sample_pts_all = Vec::new();
+    let mut result = Vec::new();
     for dist in sample_dists {
         // todo: Add back in the others, but for now skipping other dims due to spherical potentials.
-        sample_pts_all.push(Vec3::new(dist, 0., 0.));
+        result.push(Vec3::new(dist, 0., 0.));
         // sample_pts_all.push(Vec3::new(0., dist, 0.));
         // sample_pts_all.push(Vec3::new(0., 0., dist));
     }
 
-    (sample_pts_all, sample_pt_sets)
+    result
 }
 
 /// Using a set of points to evaluate a basis at, tailored for a specifix xi.
@@ -584,18 +587,20 @@ fn find_bases_system_of_eqs(
 
     // Construct our matrix F, or psi_pp / psi ratios.
 
+    // todo: TS
     let mut xis = vec![base_xi];
+    let mut xis = vec![];
     for xi in additional_xis {
-        if xi > &base_xi {
-            xis.push(*xi);
-        }
+        // if xi > &base_xi {
+        xis.push(*xi);
+        // }
     }
 
     // Bases, from xi, are the rows; positions are the columns.
     // Set this up as a column-major Vec, for use with nalgebra.
     let mut psi_ratio_mat_ = Vec::new();
     for xi in &xis {
-        let norm = find_sto_norm(*xi);
+        let norm = Cplx::from_real(find_sto_norm(*xi));
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for now.
             n: 1,
@@ -605,17 +610,13 @@ fn find_bases_system_of_eqs(
             harmonic: Default::default(),
         });
 
-        // let mut row = Vec::new();
-
         // Sample positions are the columns.
         for posit_sample in &sample_pts[..xis.len()] {
-            let psi = sto.value(*posit_sample);
-            let psi_pp = sto.second_deriv(*posit_sample);
+            let psi = norm * sto.value(*posit_sample);
+            let psi_pp = norm * sto.second_deriv(*posit_sample);
 
-            // row.push(norm * (psi_pp / psi).real);
-            psi_ratio_mat_.push(norm * (psi_pp / psi).real);
+            psi_ratio_mat_.push((psi_pp / psi).real);
         }
-        // psi_ratio_mat_.push(row);
     }
 
     let psi_ratio_mat = DMatrix::from_vec(xis.len(), xis.len(), psi_ratio_mat_);
@@ -649,19 +650,6 @@ fn find_bases_system_of_eqs(
     println!("Weights: {:.6}", weights);
 
     // todo: See nalgebra Readme on BLAS etc as-required if you wish to optomize.
-
-    // Factors:
-    // Sample points (n x 1)
-    // V to match vs V from psi, for a given set of weights
-
-    // Solution is weights (n x 1)
-
-    // let a: Array2<f64> = array![[3., 2., -1.], [2., -2., 4.], [-2., 1., -2.]];
-    // let b: Array1<f64> = array![1., -2., 0.];
-    // let x = a.solve_into(b).unwrap();
-    //
-    // let b: SMatrix<f64, 10, 1> = asdf;
-    // let A: SMatrix<f64, 10, 10> = asdf;
 
     bases
 }
@@ -743,18 +731,19 @@ pub fn find_stos(
         harmonic: Default::default(),
     });
 
-    let (sample_pts_all, sample_pt_sets) = generate_sample_pts();
+    // let sample_pt_sets = generate_sample_pts_per_xi();
+    let sample_pts = generate_sample_pts();
 
-    let V_to_match_per_xi = make_ref_V_per_xi(
-        &sample_pt_sets,
-        charges_fixed,
-        charge_elec,
-        grid_charge,
-        grid_n_charge,
-    );
+    // let V_to_match_per_xi = make_ref_V_per_xi(
+    //     &sample_pt_sets,
+    //     charges_fixed,
+    //     charge_elec,
+    //     grid_charge,
+    //     grid_n_charge,
+    // );
 
     let V_to_match = make_ref_V_flat(
-        &sample_pts_all,
+        &sample_pts,
         charges_fixed,
         charge_elec,
         grid_charge,
@@ -764,7 +753,7 @@ pub fn find_stos(
     // todo: 18 Sep 2023: try this - Once you have base xi, find the lin combo that solves
     // for each sample pt. One sample pt per basis. Matrix / etc approach.
 
-    let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, E, &sample_pts_all);
+    let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, E, &sample_pts);
 
     (bases, E)
 }
