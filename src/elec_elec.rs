@@ -4,10 +4,9 @@
 use std::{collections::HashMap, f64::consts::FRAC_1_SQRT_2};
 
 use crate::{
-    basis_wfs::Basis,
     complex_nums::Cplx,
-    grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
-    num_diff, util,
+    grid_setup::{new_data, Arr3d, Arr3dReal},
+    num_diff,
     wf_ops::Q_ELEC,
 };
 
@@ -336,7 +335,7 @@ impl WaveFunctionMultiElec {
         // Naive Hartree product
         let on_pt = p0.index(&psi0.on_pt) * p1.index(&psi1.on_pt);
 
-        return match posit_wrt {
+        match posit_wrt {
             0 => num_diff::find_ψ_pp_meas(
                 on_pt,
                 p0.index(&psi0.x_prev) * p1.index(&psi1.on_pt),
@@ -356,7 +355,7 @@ impl WaveFunctionMultiElec {
                 p0.index(&psi0.on_pt) * p1.index(&psi1.z_next),
             ),
             _ => unimplemented!(),
-        };
+        }
     }
 
     pub fn calc_charge_density(&self, posit: Vec3) -> f64 {

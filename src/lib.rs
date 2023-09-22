@@ -23,7 +23,7 @@ pub mod util;
 pub mod wf_ops;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic};
-use grid_setup::{Arr3d, Arr3dVec};
+use grid_setup::Arr3d;
 use types::SurfacesPerElec;
 
 use lin_alg2::f64::Vec3;

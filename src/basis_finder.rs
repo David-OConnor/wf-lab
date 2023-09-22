@@ -1,6 +1,5 @@
 //! Used to find weights and Xis for STOs.
 
-use graphics::event::Force::Normalized;
 use lin_alg2::f64::Vec3;
 
 use crate::{
@@ -14,39 +13,50 @@ use crate::{
 
 // use ndarray::prelude::*;
 // use ndarray_linalg::Solve;
-use crate::eigen_fns::{KE_COEFF, KE_COEFF_INV};
-use nalgebra::{
-    ArrayStorage, DMatrix, DVector, Dynamic, Matrix, OMatrix, OVector, SMatrix, SVector,
-    VecStorage, U2, U3,
-};
+use crate::eigen_fns::KE_COEFF_INV;
+use nalgebra::{DMatrix, DVector};
 
 // Norms for a given base xi. Computed numerically. These are relative to each other.
 // Note: Using norms by dividing and summing from discrete grid sizes. It appearse that it's the ratios
 // that matter. Higher grid size, or a true analytic norm would be better.
 //
 // taken @ grid size = 200
-const NORM_TABLE: [(f64, f64); 19] = [
-    (1., 25112.383452512597),
-    // These are useful as base xis.
-    (1.1, 18876.50698245556),
-    (1.2, 14542.570125492253),
-    (1.3, 11439.026097691232),
-    (1.4, 9159.01676430535),
-    (1.5, 7446.719975215648),
-    (1.6, 6135.947110455885),
-    (1.7, 5115.598212989685),
-    (1.8, 4309.500917234906),
-    (1.9, 3664.248999866286),
-    //
-    (2., 3141.6457036898487),
-    (3., 930.9220618000895),
-    (4., 392.80528311671713),
-    (5., 201.1943766693086),
-    (6., 116.51377521465731),
-    (7., 73.45759681761108),
-    (8., 49.29721719256224),
-    (9., 34.71069659544023),
-    (10., 25.39268269325724),
+// const NORM_TABLE: [(f64, f64); 19] = [
+//     (1., 25112.383452512597),
+//     // These are useful as base xis.
+//     (1.1, 18876.50698245556),
+//     (1.2, 14542.570125492253),
+//     (1.3, 11439.026097691232),
+//     (1.4, 9159.01676430535),
+//     (1.5, 7446.719975215648),
+//     (1.6, 6135.947110455885),
+//     (1.7, 5115.598212989685),
+//     (1.8, 4309.500917234906),
+//     (1.9, 3664.248999866286),
+//     //
+//     (2., 3141.6457036898487),
+//     (3., 930.9220618000895),
+//     (4., 392.80528311671713),
+//     (5., 201.1943766693086),
+//     (6., 116.51377521465731),
+//     (7., 73.45759681761108),
+//     (8., 49.29721719256224),
+//     (9., 34.71069659544023),
+//     (10., 25.39268269325724),
+// ];
+
+// For N=30.
+const NORM_TABLE: [(f64, f64); 10] = [
+    (1., 84.92786880965572),
+    (2., 10.942926831589256),
+    (3., 3.6260051729267344),
+    (4., 1.9298933867204193),
+    (5., 1.3787825712919901),
+    (6., 1.1666246143992656),
+    (7., 1.0767825351497726),
+    (8., 1.0364654831724607),
+    (9., 1.0176794432981706),
+    (10., 1.0086981943944568),
 ];
 
 /// Create an order-2 polynomial based on 2 or 3 calibration points.
@@ -64,15 +74,6 @@ fn create_polynomial_terms(pt0: (f64, f64), pt1: (f64, f64), pt2: (f64, f64)) ->
     (a, b, c)
 }
 
-pub fn map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 {
-    // todo: You may be able to optimize calls to this by having the ranges pre-store
-    // todo the total range vals.
-    // todo: The real shape is exponential.
-    let portion = (val - range_in.0) / (range_in.1 - range_in.0);
-
-    portion * (range_out.1 - range_out.0) + range_out.0
-}
-
 /// Interpolate from our norm table.
 /// todo: This currently uses linear interpolation, which isn't correct. But, better than
 /// todo not interpolating.
@@ -88,7 +89,6 @@ fn find_sto_norm(xi: f64) -> f64 {
         }
     }
 
-    println!("Fallthrough on norm table");
     let (a, b, c) = create_polynomial_terms(
         NORM_TABLE[t_len - 3],
         NORM_TABLE[t_len - 2],
@@ -344,7 +344,9 @@ fn generate_sample_pts() -> Vec<Vec3> {
     // Go low to validate high xi, but not too low, Icarus.
     let sample_dists = [
         // 3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
-        3., 2.0, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
+        // 3., 2.0, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
+        // 1.5, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
+        3., 2., 1., 0.5, 0.25, 0.1,
     ];
 
     let mut result = Vec::new();
@@ -516,9 +518,9 @@ fn find_bases(
             for (i_pt, pt) in sample_pts_all.iter().enumerate() {
                 let weight_ = Cplx::from_real(*weight) / find_sto_norm(*xi);
 
-                let mut psi = psi_other_bases[i_pt] + weight_ * sto.value(*pt);
+                let psi = psi_other_bases[i_pt] + weight_ * sto.value(*pt);
 
-                let mut psi_pp = psi_pp_other_bases[i_pt] + weight_ * sto.second_deriv(*pt);
+                let psi_pp = psi_pp_other_bases[i_pt] + weight_ * sto.second_deriv(*pt);
 
                 let V_from_psi = calc_V_on_psi(psi, psi_pp, E);
                 // let V_to_match = V_to_match_per_xi[i_xi][i_pt];
@@ -582,15 +584,13 @@ fn find_bases_system_of_eqs(
 ) -> Vec<Basis> {
     let mut bases = Vec::new();
 
-    // type PSI_RATIO_MAT = DMatrix<f64, Dynamic, Dynamic>;
-    // type V_CHARGE_VEC = OVector<f64, Dynamic>;
-
     // Construct our matrix F, or psi_pp / psi ratios.
-
     // todo: TS
     let mut xis = vec![base_xi];
     let mut xis = vec![];
-    for xi in additional_xis {
+    for xi in &additional_xis[..6] {
+        // todo temp
+        // for xi in additional_xis { // todo temp
         // if xi > &base_xi {
         xis.push(*xi);
         // }
@@ -601,6 +601,9 @@ fn find_bases_system_of_eqs(
     let mut psi_ratio_mat_ = Vec::new();
     for xi in &xis {
         let norm = Cplx::from_real(find_sto_norm(*xi));
+
+        println!("XI: {xi} norm: {norm}");
+
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for now.
             n: 1,
@@ -622,15 +625,18 @@ fn find_bases_system_of_eqs(
     let psi_ratio_mat = DMatrix::from_vec(xis.len(), xis.len(), psi_ratio_mat_);
     // let psi_ratio_mat: SMatrix<f64, 11, 11> = SMatrix::from_vec(psi_ratio_mat_);
 
-    // println!("Psi ratio mat: {}", psi_ratio_mat);
+    println!("Psi ratio mat: {:.5}", psi_ratio_mat);
 
-    // Set the charge vector V.
+    // Set the charge vector V, of Aw = V
     //         // todo: CHeck teh sign on E. You still have an anomoly here. On paper, it shows - E,
     //         // todo but you've been inverting this in practice to make it work.
     //         // v_charge_vec_.push(KE_COEFF_INV * (V - E));
+
     let v_charge_vec_: Vec<f64> = V_to_match.iter().map(|V| KE_COEFF_INV * (V + E)).collect();
 
     let v_charge_vec = DVector::from_vec(v_charge_vec_[..xis.len()].to_owned());
+
+    println!("V VEC: {}", v_charge_vec);
 
     // Solve for the weights vector. https://nalgebra.org/docs/user_guide/decompositions_and_lapack
 
@@ -641,13 +647,15 @@ fn find_bases_system_of_eqs(
         .expect("Linear resolution failed.");
 
     // Normalize re base xi.
+    let mut weights_normalized = Vec::new();
     let base_weight = weights[0];
     for weight in &mut weights {
-        *weight /= base_weight;
+        weights_normalized.push(*weight / base_weight);
     }
 
     println!("Xis: {:.3?}", xis);
     println!("Weights: {:.6}", weights);
+    println!("Weights normalized: {:.6?}\n", weights_normalized);
 
     // todo: See nalgebra Readme on BLAS etc as-required if you wish to optomize.
 
@@ -703,7 +711,7 @@ pub fn find_stos(
     // 6: 0.63
 
     let other_elecs_charge = find_charge_trial_wf(
-        &vec![
+        &[
             (1.0, 1.),
             (2., -0.01),
             (3., -0.01),
@@ -721,15 +729,17 @@ pub fn find_stos(
     // Now, add more xis:
 
     let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
+    // todo t
+    let additional_xis = [2., 3., 4., 5., 6., 7., 8., 9., 10.];
 
-    let base_sto = Basis::Sto(Sto {
-        posit: charges_fixed[0].0, // todo: Hard-coded for a single nuc.
-        n: 1,
-        xi: base_xi,
-        weight: 1.,
-        charge_id: 0,
-        harmonic: Default::default(),
-    });
+    // let base_sto = Basis::Sto(Sto {
+    //     posit: charges_fixed[0].0, // todo: Hard-coded for a single nuc.
+    //     n: 1,
+    //     xi: base_xi,
+    //     weight: 1.,
+    //     charge_id: 0,
+    //     harmonic: Default::default(),
+    // });
 
     // let sample_pt_sets = generate_sample_pts_per_xi();
     let sample_pts = generate_sample_pts();
@@ -752,6 +762,8 @@ pub fn find_stos(
 
     // todo: 18 Sep 2023: try this - Once you have base xi, find the lin combo that solves
     // for each sample pt. One sample pt per basis. Matrix / etc approach.
+
+    println!("V to m: {:?}", V_to_match);
 
     let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, E, &sample_pts);
 

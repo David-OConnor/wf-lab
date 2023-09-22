@@ -58,8 +58,6 @@ const PSI_SCALER: f32 = 120.;
 const PSI_SQ_SCALER: f32 = 1_000.;
 const PSI_PP_SCALER: f32 = 20.;
 
-const ELEC_CHARGE_SCALER: f32 = 600.;
-// const ELEC_V_SCALER: f32 = 1100.;
 const V_SCALER: f32 = 2.;
 
 fn event_handler(

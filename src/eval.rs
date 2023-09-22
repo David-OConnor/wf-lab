@@ -1,13 +1,6 @@
 //! This module contains code related to evlauting a WF's accuracy.
 
-use lin_alg2::f64::Vec3;
-
-use crate::{
-    basis_wfs::Basis,
-    complex_nums::Cplx,
-    eigen_fns,
-    grid_setup::{Arr3d, Arr3dReal},
-};
+use crate::{complex_nums::Cplx, grid_setup::Arr3d};
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
 /// This requires normalizing the wave functions we're comparing.

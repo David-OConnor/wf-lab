@@ -3,7 +3,7 @@ use crate::{
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
     util,
-    wf_ops::{self, NUDGE_DEFAULT},
+    wf_ops::NUDGE_DEFAULT,
 };
 
 use crate::basis_wfs::Basis;
@@ -325,12 +325,11 @@ impl BasesEvaluated {
                     }
                 }
             }
-
-            let mut xi = 0.;
-            if let Basis::Sto(sto) = basis {
-                xi = sto.xi;
-            }
-
+            //
+            // let mut xi = 0.;
+            // if let Basis::Sto(sto) = basis {
+            //     xi = sto.xi;
+            // }
             // todo: Use this line, with high grid n, for finding the norm for analytic basis wfs.
             // println!("Norm for xi={}: {norm_pt}", xi);
 

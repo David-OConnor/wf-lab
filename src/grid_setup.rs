@@ -2,7 +2,6 @@
 
 use crate::{complex_nums::Cplx, util};
 
-use crate::types::PsiWDiffs1d;
 use lin_alg2::f64::Vec3;
 
 // type Arr3d = Vec<Vec<Vec<f64>>>;

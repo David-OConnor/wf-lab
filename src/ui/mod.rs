@@ -4,7 +4,7 @@ use egui::{self, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::Vec3;
 
-use crate::grid_setup::{new_data_real, Arr3dReal};
+use crate::grid_setup::new_data_real;
 use crate::{
     basis_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval, grid_setup::new_data, potential,
     render, wf_ops, ActiveElec, State,
@@ -22,7 +22,7 @@ const E_MAX: f64 = 0.2;
 
 // Wave fn weights
 pub const WEIGHT_MIN: f64 = -1.;
-pub const WEIGHT_MAX: f64 = 1.4;
+pub const WEIGHT_MAX: f64 = 1.9;
 
 const _L_MIN: f64 = -3.;
 const _L_MAX: f64 = 3.;

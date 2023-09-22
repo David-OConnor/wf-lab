@@ -66,8 +66,8 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.n,
             Self::H(v) => v.n,
-            Self::Gto(v) => unimplemented!(),
-            Self::Sto(v) => unimplemented!(),
+            Self::Gto(_v) => unimplemented!(),
+            Self::Sto(_v) => unimplemented!(),
         }
     }
 
@@ -75,8 +75,8 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.n,
             Self::H(v) => &mut v.n,
-            Self::Gto(v) => unimplemented!(),
-            Self::Sto(v) => unimplemented!(),
+            Self::Gto(_v) => unimplemented!(),
+            Self::Sto(_v) => unimplemented!(),
         }
     }
 
@@ -84,8 +84,8 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.harmonic.l,
             Self::H(v) => v.harmonic.l,
-            Self::Gto(v) => unimplemented!(),
-            Self::Sto(v) => unimplemented!(),
+            Self::Gto(_v) => unimplemented!(),
+            Self::Sto(_v) => unimplemented!(),
         }
     }
 
@@ -93,8 +93,8 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.harmonic.l,
             Self::H(v) => &mut v.harmonic.l,
-            Self::Gto(v) => unimplemented!(),
-            Self::Sto(v) => unimplemented!(),
+            Self::Gto(_v) => unimplemented!(),
+            Self::Sto(_v) => unimplemented!(),
         }
     }
 
@@ -102,8 +102,8 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.harmonic.m,
             Self::H(v) => v.harmonic.m,
-            Self::Gto(v) => unimplemented!(),
-            Self::Sto(v) => unimplemented!(),
+            Self::Gto(_v) => unimplemented!(),
+            Self::Sto(_v) => unimplemented!(),
         }
     }
 
@@ -111,8 +111,8 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.harmonic.m,
             Self::H(v) => &mut v.harmonic.m,
-            Self::Gto(v) => unimplemented!(),
-            Self::Sto(v) => unimplemented!(),
+            Self::Gto(_v) => unimplemented!(),
+            Self::Sto(_v) => unimplemented!(),
         }
     }
 
@@ -147,7 +147,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.weight,
             Self::H(v) => unimplemented!(),
-            Self::Gto(v) => unimplemented!(),
+            Self::Gto(_v) => unimplemented!(),
             Self::Sto(v) => v.xi,
         }
     }
@@ -176,7 +176,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.value(posit_sample),
             Self::H(v) => v.second_deriv(posit_sample),
-            Self::Gto(v) => unimplemented!(),
+            Self::Gto(_v) => unimplemented!(),
             Self::Sto(v) => v.second_deriv_simple_form(posit_sample),
         }
     }
@@ -191,16 +191,16 @@ impl Basis {
 
     pub fn V_p_from_psi(&self, posit_sample: Vec3) -> f64 {
         match self {
-            Self::H(v) => 0.,
-            Self::Gto(v) => unimplemented!(),
+            Self::H(_v) => 0.,
+            Self::Gto(_v) => unimplemented!(),
             Self::Sto(v) => v.V_p_from_psi(posit_sample),
         }
     }
 
     pub fn V_pp_from_psi(&self, posit_sample: Vec3) -> f64 {
         match self {
-            Self::H(v) => 0.,
-            Self::Gto(v) => unimplemented!(),
+            Self::H(_v) => 0.,
+            Self::Gto(_v) => unimplemented!(),
             Self::Sto(v) => v.V_pp_from_psi(posit_sample),
         }
     }
@@ -257,7 +257,7 @@ pub struct SphericalHarmonic {
 
 impl SphericalHarmonic {
     pub fn new(l: u16, m: i16, orientation: Quaternion) -> Self {
-        assert!(m.unsigned_abs() as u16 <= l);
+        assert!(m.unsigned_abs() <= l);
 
         Self { l, m, orientation }
     }
