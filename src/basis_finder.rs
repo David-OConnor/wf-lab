@@ -341,13 +341,15 @@ fn generate_sample_pts_per_xi() -> Vec<Vec<Vec3>> {
 fn generate_sample_pts() -> Vec<Vec3> {
     // It's important that these sample points span points both close and far from the nuclei.
 
-    // Go low to validate high xi, but not too low, Icarus.
+    // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
     let sample_dists = [
         // 3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
         // 3., 2.0, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
         // 1.5, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
-        3., 2., 1., 0.5, 0.25, 0.1,
+        5., 4., 3., 2., 1.5, 1., 0.75,  0.5,
     ];
+
+    println!("\nSample dists: {:?}", sample_dists);
 
     let mut result = Vec::new();
     for dist in sample_dists {
@@ -586,23 +588,29 @@ fn find_bases_system_of_eqs(
 
     // Construct our matrix F, or psi_pp / psi ratios.
     // todo: TS
+    let mut index_offset = 0;
     let mut xis = vec![base_xi];
-    let mut xis = vec![];
+    // let mut xis = vec![];
     for xi in &additional_xis[..6] {
-        // todo temp
-        // for xi in additional_xis { // todo temp
-        // if xi > &base_xi {
-        xis.push(*xi);
-        // }
+        if xi > &base_xi {
+            xis.push(*xi);
+        } else {
+            index_offset += 1;
+        }
     }
+
+    index_offset -= 1; // for teh base xi. todo: test this.
+
+    // For syncing with V and sample points.
+    let i_range = index_offset..index_offset + xis.len();
+
+    println!("Index offset: {:?}", index_offset);
 
     // Bases, from xi, are the rows; positions are the columns.
     // Set this up as a column-major Vec, for use with nalgebra.
     let mut psi_ratio_mat_ = Vec::new();
     for xi in &xis {
         let norm = Cplx::from_real(find_sto_norm(*xi));
-
-        println!("XI: {xi} norm: {norm}");
 
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for now.
@@ -614,7 +622,7 @@ fn find_bases_system_of_eqs(
         });
 
         // Sample positions are the columns.
-        for posit_sample in &sample_pts[..xis.len()] {
+        for posit_sample in &sample_pts[i_range.clone()] {
             let psi = norm * sto.value(*posit_sample);
             let psi_pp = norm * sto.second_deriv(*posit_sample);
 
@@ -632,9 +640,9 @@ fn find_bases_system_of_eqs(
     //         // todo but you've been inverting this in practice to make it work.
     //         // v_charge_vec_.push(KE_COEFF_INV * (V - E));
 
-    let v_charge_vec_: Vec<f64> = V_to_match.iter().map(|V| KE_COEFF_INV * (V + E)).collect();
+    let v_charge_vec_: Vec<f64> = V_to_match[i_range].iter().map(|V| KE_COEFF_INV * (V + E)).collect();
 
-    let v_charge_vec = DVector::from_vec(v_charge_vec_[..xis.len()].to_owned());
+    let v_charge_vec = DVector::from_vec(v_charge_vec_.to_owned());
 
     println!("V VEC: {}", v_charge_vec);
 
@@ -730,7 +738,7 @@ pub fn find_stos(
 
     let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
     // todo t
-    let additional_xis = [2., 3., 4., 5., 6., 7., 8., 9., 10.];
+    // let additional_xis = [2., 3., 4., 5., 6., 7., 8., 9., 10.];
 
     // let base_sto = Basis::Sto(Sto {
     //     posit: charges_fixed[0].0, // todo: Hard-coded for a single nuc.
@@ -763,7 +771,7 @@ pub fn find_stos(
     // todo: 18 Sep 2023: try this - Once you have base xi, find the lin combo that solves
     // for each sample pt. One sample pt per basis. Matrix / etc approach.
 
-    println!("V to m: {:?}", V_to_match);
+    println!("V to match: {:?}", V_to_match);
 
     let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, E, &sample_pts);
 
