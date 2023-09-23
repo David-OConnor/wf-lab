@@ -2,11 +2,44 @@
 
 use crate::{
     grid_setup::{Arr3dReal, Arr3dVec},
-    util,
     wf_ops::K_C,
 };
 
 use lin_alg2::f64::Vec3;
+
+/// Create a potential on a set of sample points, from nuclei and electrons.
+pub fn create_V_1d(
+    sample_pts: &[Vec3],
+    charges_fixed: &[(Vec3, f64)],
+    charge_elec: &Arr3dReal,
+    grid_charge: &Arr3dVec,
+    grid_n_charge: usize,
+) -> Vec<f64> {
+    let mut V_to_match = Vec::new();
+
+    for sample_pt in sample_pts {
+        let mut V_sample = 0.;
+
+        for (posit_nuc, charge) in charges_fixed {
+            V_sample += V_coulomb(*posit_nuc, *sample_pt, *charge);
+        }
+
+        for i in 0..grid_n_charge {
+            for j in 0..grid_n_charge {
+                for k in 0..grid_n_charge {
+                    let posit_charge = grid_charge[i][j][k];
+                    let charge = charge_elec[i][j][k];
+
+                    V_sample += V_coulomb(posit_charge, *sample_pt, charge);
+                }
+            }
+        }
+
+        V_to_match.push(V_sample);
+    }
+
+    V_to_match
+}
 
 /// Computes potential field from nuclei, by calculating Coulomb potential.
 /// Run this after changing these charges.
@@ -48,82 +81,6 @@ pub fn update_V_from_nuclei_1d(
 
         for (posit_charge, charge_amt) in charges_nuc.iter() {
             V_from_nuclei[i] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
-        }
-    }
-}
-
-/// Create a potential on a set of sample points, from nuclei and electrons.
-pub fn create_V_1d(
-    sample_pts: &[Vec3],
-    charges_fixed: &[(Vec3, f64)],
-    charge_elec: &Arr3dReal,
-    grid_charge: &Arr3dVec,
-    grid_n_charge: usize,
-) -> Vec<f64> {
-    let mut V_to_match = Vec::new();
-
-    for sample_pt in sample_pts {
-        let mut V_sample = 0.;
-
-        for (posit_nuc, charge) in charges_fixed {
-            V_sample += V_coulomb(*posit_nuc, *sample_pt, *charge);
-        }
-
-        for i in 0..grid_n_charge {
-            for j in 0..grid_n_charge {
-                for k in 0..grid_n_charge {
-                    let posit_charge = grid_charge[i][j][k];
-                    let charge = charge_elec[i][j][k];
-
-                    V_sample += V_coulomb(posit_charge, *sample_pt, charge);
-                }
-            }
-        }
-
-        V_to_match.push(V_sample);
-    }
-
-    V_to_match
-}
-
-/// Update the combined V; this is from nuclei, and all electrons.
-/// Must be done after individual V from individual electrons are generated.
-pub fn update_V_combined(
-    V_combined: &mut Arr3dReal,
-    V_nuc: &Arr3dReal,
-    // V_elecs: &[&Arr3dReal],
-    V_elecs: &[Arr3dReal],
-    grid_n: usize,
-) {
-    // todo: QC this.
-    // We combine electron Vs initially; this is required to prevent numerical errors. (??)
-    // let mut V_from_elecs = grid_setup::new_data_real(grid_n);
-    // for i in 0..grid_n {
-    //     for j in 0..grid_n {
-    //         for k in 0..grid_n {
-    //             for V_elec in V_elecs {
-    //                 V_from_elecs[i][j][k] += V_elec[i][j][k];
-    //             }
-    //         }
-    //     }
-    // }
-
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                V_combined[i][j][k] = V_nuc[i][j][k];
-
-                for V_elec in V_elecs {
-                    V_combined[i][j][k] += V_elec[i][j][k]
-                }
-
-                // todo temp
-                // V_combined[i][j][k] += V_elecs[0][i][j][k];
-                // V_combined[i][j][k] += V_from_elecs[i][j][k];
-
-                // println!("Nuc: {}", V_nuc[i][j][k]);
-                // println!("Elec: {}", V_from_elecs[i][j][k]);
-            }
         }
     }
 }
@@ -269,7 +226,7 @@ pub(crate) fn create_V_from_an_elec_grid(
 ///
 /// This is (at least for now) only for the 1d eval data set, to save computation. This means
 /// we can't currently visualize this potential.
-pub(crate) fn create_V_from_an_elec(
+pub(crate) fn _create_V_from_an_elec(
     V_from_this_elec: &mut [f64],
     charge_this_elec: &Arr3dReal,
     grid_posits: &[Vec3],
@@ -318,4 +275,25 @@ pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> 
     }
 
     K_C * charge / r
+}
+
+/// Update the combined V; this is from nuclei, and all electrons.
+/// Must be done after individual V from individual electrons are generated.
+pub fn _update_V_combined(
+    V_combined: &mut Arr3dReal,
+    V_nuc: &Arr3dReal,
+    V_elecs: &[Arr3dReal],
+    grid_n: usize,
+) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                V_combined[i][j][k] = V_nuc[i][j][k];
+
+                for V_elec in V_elecs {
+                    V_combined[i][j][k] += V_elec[i][j][k]
+                }
+            }
+        }
+    }
 }

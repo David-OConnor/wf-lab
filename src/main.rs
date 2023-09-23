@@ -74,7 +74,7 @@ pub struct State {
     pub charges_electron: Vec<Arr3dReal>,
     /// Also stored here vice part of per-elec structs due to borrow-limiting on struct fields.
     pub V_from_elecs: Vec<Arr3dReal>,
-    pub V_from_elecs_1d: Vec<Vec<f64>>,
+    // pub V_from_elecs_1d: Vec<Vec<f64>>,
     /// Surfaces that are not electron-specific.
     pub surfaces_shared: SurfacesShared,
     /// Computed surfaces, per electron. These span 3D space, are are quite large in memory. Contains various
@@ -88,7 +88,7 @@ pub struct State {
     /// compute their value each time we change weights...) Per-electron.
     /// todo: This should probably be in one of the surfaces.
     pub bases_evaluated: Vec<types::BasesEvaluated>,
-    pub bases_evaluated_1d: Vec<types::BasesEvaluated1d>,
+    // pub bases_evaluated_1d: Vec<types::BasesEvaluated1d>,
     /// Similar to `bases_evaluated`, but on the charge grid. We don't need diffs for this.
     /// Outer is per-electron. Inner is per-basis
     /// todo: Do we want/need per-electron here?
@@ -105,10 +105,10 @@ pub struct State {
     pub grid_n_charge: usize,
     pub grid_range_render: (f64, f64),
     pub grid_range_charge: (f64, f64),
-    /// These are the points we evaluate our psi'' score at, and where we generate net potential,
-    /// ie from electrons, at. Per-electron
-    pub eval_data_per_elec: Vec<EvalDataPerElec>,
-    pub eval_data_shared: EvalDataShared,
+    // /// These are the points we evaluate our psi'' score at, and where we generate net potential,
+    // /// ie from electrons, at. Per-electron
+    // pub eval_data_per_elec: Vec<EvalDataPerElec>,
+    // pub eval_data_shared: EvalDataShared,
     /// 1.0 is an evenly-spaced grid. A higher value spreads out the grid; high values
     /// mean increased non-linearity, with higher spacing farther from the center.
     /// This only (currently) applies to the main grid, with a uniform grid set for
@@ -278,7 +278,7 @@ pub fn init_from_grid(
     )
 }
 
-pub fn init_1d(
+pub fn _init_1d(
     bases: &[Vec<Basis>],
     charges_fixed: &[(Vec3, f64)],
     num_electrons: usize,
@@ -314,7 +314,7 @@ pub fn init_1d(
         );
     }
 
-    let norm = 1.; // todo: Figure this out!
+    let norm = 1.; // todo: Figure this out?
     let bases_evaluated_one = types::BasesEvaluated1d::new(
         &bases[0], // todo: A bit of a kludge
         &eval_data_shared.posits,
@@ -426,8 +426,8 @@ fn main() {
         num_elecs,
     );
 
-    let (eval_data_shared, eval_data_per_elec, V_from_elecs_1d, bases_evaluated_1d) =
-        init_1d(&bases, &nuclei, num_elecs);
+    // let (eval_data_shared, eval_data_per_elec, V_from_elecs_1d, bases_evaluated_1d) =
+    //     init_1d(&bases, &nuclei, num_elecs);
 
     let surface_data = [
         SurfaceData::new("V", true),
@@ -447,10 +447,10 @@ fn main() {
         charges_fixed: nuclei,
         charges_electron,
         V_from_elecs,
-        V_from_elecs_1d,
+        // V_from_elecs_1d,
         bases,
         bases_evaluated,
-        bases_evaluated_1d,
+        // bases_evaluated_1d,
         bases_evaluated_charge,
         surfaces_shared,
         surfaces_per_elec,
@@ -460,8 +460,8 @@ fn main() {
         grid_n_charge,
         grid_range_render: (grid_min_render, grid_max_render),
         grid_range_charge: (grid_min_charge, grid_max_charge),
-        eval_data_shared,
-        eval_data_per_elec,
+        // eval_data_shared,
+        // eval_data_per_elec,
         sample_factor_render: spacing_factor,
         ui_z_displayed: 0.,
         ui_active_elec: ActiveElec::PerElec(ui_active_elec),

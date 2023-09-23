@@ -15,11 +15,12 @@ use crate::{
 };
 
 pub fn update_E_or_V(
-    eval_data: &mut EvalDataPerElec,
+    // eval_data: &mut EvalDataPerElec,
     sfcs: &mut SurfacesPerElec,
     V_from_nuclei: &Arr3dReal,
-    grid_n_1d: usize,
+    // grid_n_1d: usize,
     grid_n_render: usize,
+    E: f64
 ) {
     for i in 0..grid_n_render {
         for j in 0..grid_n_render {
@@ -27,22 +28,23 @@ pub fn update_E_or_V(
                 sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
                     sfcs.psi.on_pt[i][j][k],
                     sfcs.V_acting_on_this[i][j][k],
-                    eval_data.E,
+                    // eval_data.E,
+                    E
                 )
             }
         }
     }
 
-    for i in 0..grid_n_1d {
-        eval_data.psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
-            eval_data.psi.on_pt[i],
-            eval_data.V_acting_on_this[i],
-            eval_data.E,
-        );
-    }
+    // for i in 0..grid_n_1d {
+    //     eval_data.psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
+    //         eval_data.psi.on_pt[i],
+    //         eval_data.V_acting_on_this[i],
+    //         eval_data.E,
+    //     );
+    // }
 
     // todo: Not working for some things lik eV?
-    eval_data.score = eval::score_wf_from_psi_pp(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas);
+    // eval_data.score = eval::score_wf_from_psi_pp(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas);
 
     // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
     wf_ops::calculate_v_elec(
@@ -50,7 +52,8 @@ pub fn update_E_or_V(
         &mut sfcs.aux2,
         &sfcs.psi.on_pt,
         &sfcs.psi_pp_measured,
-        eval_data.E,
+        // eval_data.E,
+        E,
         V_from_nuclei,
         grid_n_render,
     );
@@ -65,6 +68,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
 
     // Set up our basis-function based trial wave function.
     let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
+
     wf_ops::update_wf_fm_bases(
         &mut state.surfaces_per_elec[ae],
         &state.bases_evaluated[ae],
@@ -80,13 +84,13 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     };
 
     let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
-    wf_ops::update_wf_fm_bases_1d(
-        &mut state.eval_data_per_elec[ae],
-        &state.bases_evaluated_1d[ae],
-        state.eval_data_shared.grid_n,
-        &weights,
-        E,
-    );
+    // wf_ops::update_wf_fm_bases_1d(
+    //     &mut state.eval_data_per_elec[ae],
+    //     &state.bases_evaluated_1d[ae],
+    //     state.eval_data_shared.grid_n,
+    //     &weights,
+    //     E,
+    // );
 
     state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
         &state.eval_data_per_elec[ae].psi_pp_calc,
@@ -120,9 +124,9 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
         state.grid_n_render,
     );
 
-    let norm = 1.; // todo temp!!!
-    state.bases_evaluated_1d[ae] =
-        BasesEvaluated1d::new(&state.bases[ae], &state.eval_data_shared.posits, norm);
+    // let norm = 1.; // todo temp!!!
+    // state.bases_evaluated_1d[ae] =
+    //     BasesEvaluated1d::new(&state.bases[ae], &state.eval_data_shared.posits, norm);
 
     state.bases_evaluated_charge[ae] = wf_ops::arr_from_bases(
         &state.bases[ae],
@@ -165,13 +169,13 @@ pub fn update_fixed_charges(state: &mut State) {
             state.grid_n_render,
         );
 
-        potential::update_V_acting_on_elec_1d(
-            &mut state.eval_data_per_elec[elec_i].V_acting_on_this,
-            &state.eval_data_shared.V_from_nuclei,
-            &state.V_from_elecs_1d,
-            elec_i,
-            state.eval_data_shared.grid_n,
-        );
+        // potential::update_V_acting_on_elec_1d(
+        //     &mut state.eval_data_per_elec[elec_i].V_acting_on_this,
+        //     &state.eval_data_shared.V_from_nuclei,
+        //     &state.V_from_elecs_1d,
+        //     elec_i,
+        //     state.eval_data_shared.grid_n,
+        // );
     }
 }
 
@@ -198,14 +202,14 @@ pub fn create_V_from_elec(state: &mut State, scene: &mut Scene, ae: usize) {
         weights.push(basis.weight());
     }*/
 
-    potential::create_V_from_an_elec(
-        &mut state.V_from_elecs_1d[ae],
-        &state.charges_electron[ae],
-        &state.eval_data_shared.posits,
-        &state.surfaces_shared.grid_posits_charge,
-        state.eval_data_shared.grid_n,
-        state.grid_n_charge,
-    );
+    // potential::create_V_from_an_elec(
+    //     &mut state.V_from_elecs_1d[ae],
+    //     &state.charges_electron[ae],
+    //     &state.eval_data_shared.posits,
+    //     &state.surfaces_shared.grid_posits_charge,
+    //     state.eval_data_shared.grid_n,
+    //     state.grid_n_charge,
+    // );
 
     if state.create_3d_electron_V || state.create_2d_electron_V {
         potential::create_V_from_an_elec_grid(
@@ -246,13 +250,13 @@ pub fn update_V_acting_on_elec(state: &mut State, scene: &mut Scene, ae: usize) 
         );
     }
 
-    potential::update_V_acting_on_elec_1d(
-        &mut state.eval_data_per_elec[ae].V_acting_on_this,
-        &state.eval_data_shared.V_from_nuclei,
-        &state.V_from_elecs_1d,
-        ae,
-        state.eval_data_shared.grid_n,
-    );
+    // potential::update_V_acting_on_elec_1d(
+    //     &mut state.eval_data_per_elec[ae].V_acting_on_this,
+    //     &state.eval_data_shared.V_from_nuclei,
+    //     &state.V_from_elecs_1d,
+    //     ae,
+    //     state.eval_data_shared.grid_n,
+    // );
 
     if state.auto_gen_elec_V {
         state.eval_data_per_elec[ae].E = wf_ops::find_E(
@@ -304,8 +308,8 @@ pub fn update_meshes(state: &mut State, scene: &mut Scene, engine_updates: &mut 
 }
 
 /// todo: Needs rework
-pub fn combine_wfs(state: &mut State) {
-    potential::update_V_combined(
+pub fn _combine_wfs(state: &mut State) {
+    potential::_update_V_combined(
         &mut state.surfaces_shared.V_total,
         &state.surfaces_shared.V_from_nuclei,
         &state.V_from_elecs,
@@ -399,19 +403,4 @@ pub fn combine_wfs(state: &mut State) {
             }
         }
     }
-
-    // state
-    //     .surfaces_shared
-    //     .psi
-    //     .populate_psi_marginal(state.grid_n);
-    //
-
-    // // todo: June 25, 2023: Trying a diff approach, more like single-elec approach.
-    // for i in 0..state.grid_n {
-    //     for j in 0..state.grid_n {
-    //         for k in 0..state.grid_n {
-    //
-    //         }
-    //     }
-    // }
 }

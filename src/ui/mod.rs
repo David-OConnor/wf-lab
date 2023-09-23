@@ -438,14 +438,14 @@ fn basis_fn_mixer(
                                     state.grid_n_charge,
                                 );
 
-                                potential::create_V_from_an_elec(
-                                    &mut state.V_from_elecs_1d[active_elec],
-                                    &state.charges_electron[active_elec],
-                                    &state.eval_data_shared.posits,
-                                    &state.surfaces_shared.grid_posits_charge,
-                                    state.eval_data_shared.grid_n,
-                                    state.grid_n_charge,
-                                );
+                                // potential::create_V_from_an_elec(
+                                //     &mut state.V_from_elecs_1d[active_elec],
+                                //     &state.charges_electron[active_elec],
+                                //     &state.eval_data_shared.posits,
+                                //     &state.surfaces_shared.grid_posits_charge,
+                                //     state.eval_data_shared.grid_n,
+                                //     state.grid_n_charge,
+                                // );
                             }
                         }
 
@@ -486,13 +486,14 @@ fn basis_fn_mixer(
 
                         let weights: Vec<f64> =
                             state.bases[ae].iter().map(|b| b.weight()).collect();
-                        wf_ops::update_wf_fm_bases_1d(
-                            &mut state.eval_data_per_elec[ae],
-                            &state.bases_evaluated_1d[ae],
-                            state.eval_data_shared.grid_n,
-                            &weights,
-                            E,
-                        );
+
+                        // wf_ops::update_wf_fm_bases_1d(
+                        //     &mut state.eval_data_per_elec[ae],
+                        //     &state.bases_evaluated_1d[ae],
+                        //     state.eval_data_shared.grid_n,
+                        //     &weights,
+                        //     E,
+                        // );
 
                         state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
                             &state.eval_data_per_elec[ae].psi_pp_calc,
@@ -990,10 +991,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 if updated_E_or_V {
                     procedures::update_E_or_V(
-                        &mut state.eval_data_per_elec[ae],
+                        // &mut state.eval_data_per_elec[ae],
                         &mut state.surfaces_per_elec[ae],
                         &state.surfaces_shared.V_from_nuclei,
-                        state.eval_data_shared.grid_n,
+                        // state.eval_data_shared.grid_n,
                         state.grid_n_render,
                     );
                 }
@@ -1024,11 +1025,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 // Multiply wave functions together, and stores in Shared surfaces.
                 // todo: This is an approximation
-                if ui.add(egui::Button::new("Combine wavefunctions")).clicked() {
-                    procedures::combine_wfs(state);
-                    updated_meshes = true;
-                    engine_updates.entities = true;
-                }
+                // if ui.add(egui::Button::new("Combine wavefunctions")).clicked() {
+                //     procedures::combine_wfs(state);
+                //     updated_meshes = true;
+                //     engine_updates.entities = true;
+                // }
             }
         }
         // Code here runs for both multi-electron, and combined states
@@ -1041,9 +1042,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     render::update_entities(
                         &state.charges_fixed,
                         &state.surface_data,
-                        &state.eval_data_per_elec[ae].psi_pp_calc,
-                        &state.eval_data_per_elec[ae].psi_pp_meas,
-                        &state.eval_data_shared.posits,
+                        // &state.eval_data_per_elec[ae].psi_pp_calc,
+                        // &state.eval_data_per_elec[ae].psi_pp_meas,
+                        // &state.eval_data_shared.posits,
                         scene,
                     );
                 }
