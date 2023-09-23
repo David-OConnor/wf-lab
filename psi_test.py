@@ -72,6 +72,12 @@ def find_bases(
 
     weights = np.linalg.solve(mat_to_solve, np.zeros(N))
     weights_scipy = linalg.solve(mat_to_solve, np.zeros(N), assume_a='gen')
+#     weights_scipy = linalg.solve(mat_to_solve, np.zeros(N), assume_a='her')
+
+    s, v, r = np.linalg.svd(mat_to_solve)
+    print(f"\nS {s}")
+    print(f"\nV {v}")
+    print(f"\nR {r}")
 
     # Normalize re base xi.
     # base_weight = weights[0]
@@ -88,8 +94,11 @@ def find_bases(
 
     print(f"\nWeights: {weights}")
     print(f"\nWeights Scipy: {weights_scipy}")
+    print(f"\nWeights svd: {r[-1]}")
 
     print(f"\nA @ w: {mat_to_solve @ weights}\n")
+
+    print(f"det: {np.linalg.det(mat_to_solve)} inv: {np.linalg.inv(mat_to_solve)}")
 
     # todo: See nalgebra Readme on BLAS etc as-required if you wish to optomize.
 

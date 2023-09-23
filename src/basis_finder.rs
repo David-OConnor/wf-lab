@@ -15,7 +15,7 @@ use crate::eigen_fns::KE_COEFF_INV;
 use nalgebra::{DMatrix, DVector};
 
 use ndarray::prelude::*;
-use ndarray_linalg::Solve;
+use ndarray_linalg::{Solve, SVD};
 
 // Norms for a given base xi. Computed numerically. These are relative to each other.
 // Note: Using norms by dividing and summing from discrete grid sizes. It appearse that it's the ratios
@@ -313,7 +313,7 @@ fn generate_sample_pts() -> Vec<Vec3> {
         // 3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
         // 3., 2.0, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
         // 1.5, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
-        5., 4., 3., 2., 1.5, 1., 0.75, 0.5,
+        3., 2., 1.5, 1., 0.75, 0.7, 0.6, 0.55, 0.5, 0.45,
     ];
 
     // println!("\nSample dists: {:?}", sample_dists);
@@ -342,6 +342,7 @@ fn find_bases_system_of_eqs(
     E: f64,
     sample_pts: &[Vec3],
 ) -> Vec<Basis> {
+    let N_target = 6;
     let mut bases = Vec::new();
 
     // Construct our matrix F, or psi_pp / psi ratios.
@@ -349,7 +350,7 @@ fn find_bases_system_of_eqs(
     let mut index_offset = 0;
     let mut xis = vec![base_xi];
     // let mut xis = vec![];
-    for xi in &additional_xis[..4] {
+    for xi in &additional_xis[..N_target] {
         if xi > &base_xi {
             xis.push(*xi);
         } else {
@@ -409,48 +410,39 @@ fn find_bases_system_of_eqs(
         .map(|V| KE_COEFF_INV * (V + E))
         .collect();
 
-    let rhs_na = DVector::from_vec(rhs.clone());
+    // let rhs_na = DVector::from_vec(rhs.clone());
     let rhs_vec = Array::from_vec(rhs.clone());
 
     let mat_to_solve = &psi_pp_mat - Array2::from_diag(&rhs_vec).dot(&psi_mat);
 
-    println!("\nPsi mat: {:.5}", psi_mat);
-    println!("\nPsi'' mat: {:.5}", psi_pp_mat);
-    println!("\nMat to solve: {:.5}", mat_to_solve);
+    // println!("\nMat psi: {:.7}", psi_mat);
+    // println!("\nMat psi'': {:.7}", psi_pp_mat);
+    // println!("\nMat to solve: {:.7}", mat_to_solve);
+    // println!("\nrhs: {:.7}", rhs_vec);
 
-    // Set the charge vector V, of Aw = V
+    // Set the right and side, of Aw = rhs
     //         // todo: CHeck teh sign on E. You still have an anomoly here. On paper, it shows - E,
     //         // todo but you've been inverting this in practice to make it work.
-    //         // v_charge_vec_.push(KE_COEFF_INV * (V - E));
+    //         // rhs_.push(KE_COEFF_INV * (V - E));
 
-    println!("rhs: {:.5?}", rhs);
-
-    // Solve for the weights vector. https://nalgebra.org/docs/user_guide/decompositions_and_lapack
-
-    // let decomp = psi_ratio_mat_na.lu();
-    // // let decomp = psi_ratio_mat.cholesky().unwrap();
-    // let mut weights_na = decomp
-    //     .solve(&v_charge_vec_na)
-    //     .expect("Linear resolution failed.");
-
-    // println!("WEIGHTS NA: {:.5}", weights_na);
-
-    let mut weights = mat_to_solve.solve_into(Array1::zeros(N)).unwrap();
+    // you can use an iterative method, which will be more efficient for larger matrices where full svd is
+    // unfeasible. also check that rust's svd sorts singular values in non-increasing order (pretty sure it does)
+    let svd = mat_to_solve.svd(false, true).unwrap();
+    let mut weights = svd.2.unwrap().slice(s![-1, ..]).to_vec();
 
     // Normalize re base xi.
     let mut weights_normalized = Vec::new();
     let base_weight = weights[0];
-    for weight in &mut weights {
+    for weight in &weights {
         weights_normalized.push(*weight / base_weight);
     }
 
     println!("\nXis: {:.3?}", xis);
     println!("Sample pts: {:?}", &sample_pts[i_range.clone()]);
     println!("V to match: {:?}", &V_to_match[i_range.clone()]);
-    println!("\nWeights: {:.6}", weights);
-    println!("Weights normalized: {:.6?}\n", weights_normalized);
 
-    // todo: See nalgebra Readme on BLAS etc as-required if you wish to optomize.
+    println!("\nWeights: {:.6?}", weights);
+    println!("Weights normalized: {:.6?}\n", weights_normalized);
 
     bases
 }

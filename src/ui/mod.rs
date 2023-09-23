@@ -32,7 +32,7 @@ const GRID_SIZE_MIN: f64 = 0.;
 const GRID_SIZE_MAX: f64 = 40.;
 
 const ITEM_SPACING: f32 = 18.;
-const FLOAT_EDIT_WIDTH: f32 = 32.;
+const FLOAT_EDIT_WIDTH: f32 = 40.;
 
 const NUDGE_MIN: f64 = 0.;
 const NUDGE_MAX: f64 = 0.2;
