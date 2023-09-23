@@ -473,7 +473,7 @@ fn basis_fn_mixer(
                         wf_ops::update_wf_fm_bases(
                             &mut state.surfaces_per_elec[ae],
                             &state.bases_evaluated[ae],
-                            state.eval_data_per_elec[ae].E,
+                            state.surfaces_shared.E,
                             state.grid_n_render,
                             &weights,
                         );
@@ -481,7 +481,7 @@ fn basis_fn_mixer(
                         let E = if state.adjust_E_with_weights {
                             None
                         } else {
-                            Some(state.eval_data_per_elec[ae].E)
+                            Some(state.surfaces_shared.E)
                         };
 
                         let weights: Vec<f64> =
@@ -495,10 +495,10 @@ fn basis_fn_mixer(
                         //     E,
                         // );
 
-                        state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
-                            &state.eval_data_per_elec[ae].psi_pp_calc,
-                            &state.eval_data_per_elec[ae].psi_pp_meas,
-                        );
+                        // state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
+                        //     &state.eval_data_per_elec[ae].psi_pp_calc,
+                        //     &state.eval_data_per_elec[ae].psi_pp_meas,
+                        // );
 
                         // updated_meshes = true;
                     }
@@ -535,10 +535,10 @@ fn bottom_items(
             //     state.grid_n_render,
             // );
 
-            state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
-                &state.eval_data_per_elec[ae].psi_pp_calc,
-                &state.eval_data_per_elec[ae].psi_pp_meas,
-            );
+            // state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
+            //     &state.eval_data_per_elec[ae].psi_pp_calc,
+            //     &state.eval_data_per_elec[ae].psi_pp_meas,
+            // );
         }
 
         // if ui.add(egui::Button::new("Empty e- charge")).clicked() {
@@ -565,12 +565,12 @@ fn bottom_items(
         }
 
         if ui.add(egui::Button::new("Find E")).clicked() {
-            // state.eval_data_per_elec[ae].E = wf_ops::find_E(
+            // state.surfaces_shared.E = wf_ops::find_E(
             //     &mut state.eval_data_per_elec[ae],
             //     state.eval_data_shared.grid_n,
             // );
 
-            state.eval_data_per_elec[ae].E = wf_ops::E_from_trial(
+            state.surfaces_shared.E = wf_ops::E_from_trial(
                 &state.bases[ae],
                 state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
                 state.surfaces_shared.grid_posits[0][0][0],
@@ -631,7 +631,8 @@ fn bottom_items(
         );
 
         // todo: Which of these are we using?
-        state.eval_data_per_elec[ae].E = E;
+        // state.surfaces_shared.E = E;
+        state.surfaces_shared.E = E;
 
         // todo: We'd need to re-calcualte the bases here if replacing them with non-defaults.
         // state.bases[ae] = bases;
@@ -877,25 +878,37 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         match state.ui_active_elec {
             ActiveElec::PerElec(ae) => {
-                ui.heading(format!(
-                    "ψ'' score: {:.10}",
-                    state.eval_data_per_elec[ae].score
-                ));
+                // ui.heading(format!(
+                //     "ψ'' score: {:.10}",
+                //     state.eval_data_per_elec[ae].score
+                // ));
 
                 ui.add(
                     egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
                         if let Some(v_) = v {
-                            state.eval_data_per_elec[ae].E = v_;
+                            state.surfaces_shared.E = v_;
 
                             // Update psi'' calc for evaluation
-                            for i in 0..state.eval_data_shared.grid_n {
-                                state.eval_data_per_elec[ae].psi_pp_calc[i] =
-                                    eigen_fns::find_ψ_pp_calc(
-                                        state.eval_data_per_elec[ae].psi.on_pt[i],
-                                        state.eval_data_per_elec[ae].V_acting_on_this[i],
-                                        state.eval_data_per_elec[ae].E,
-                                    );
-                            }
+                            // for i in 0..state.eval_data_shared.grid_n {
+                            //     state.surfaces_shared.psi_pp_calc[i] =
+                            //         eigen_fns::find_ψ_pp_calc(
+                            //             state.surfaces_shared.psi.on_pt[i],
+                            //             state.surfaces_shared.V_acting_on_this[i],
+                            //             state.surfaces_shared.E,
+                            //         );
+                            // }
+                            
+                            // state.surfaces_shared.E = v_;
+                            // 
+                            // // Update psi'' calc for evaluation
+                            // for i in 0..state.eval_data_shared.grid_n {
+                            //     state.eval_data_per_elec[ae].psi_pp_calc[i] =
+                            //         eigen_fns::find_ψ_pp_calc(
+                            //             state.eval_data_per_elec[ae].psi.on_pt[i],
+                            //             state.eval_data_per_elec[ae].V_acting_on_this[i],
+                            //             state.surfaces_shared.E,
+                            //         );
+                            // }
 
                             updated_meshes = true;
                             updated_E_or_V = true;
@@ -917,7 +930,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             // println!("\nBasess eval {:?}", state.eval_data_per_elec[ae].psi.on_pt);
                         }
 
-                        state.eval_data_per_elec[ae].E
+                        // state.surfaces_shared.E
+                        state.surfaces_shared.E
                     })
                     .text("E"),
                 );
@@ -996,6 +1010,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         &state.surfaces_shared.V_from_nuclei,
                         // state.eval_data_shared.grid_n,
                         state.grid_n_render,
+                        state.surfaces_shared.E,
                     );
                 }
             }

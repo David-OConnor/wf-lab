@@ -72,7 +72,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     wf_ops::update_wf_fm_bases(
         &mut state.surfaces_per_elec[ae],
         &state.bases_evaluated[ae],
-        state.eval_data_per_elec[ae].E,
+        state.surfaces_shared.E,
         state.grid_n_render,
         &weights,
     );
@@ -80,7 +80,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     let E = if state.adjust_E_with_weights {
         None
     } else {
-        Some(state.eval_data_per_elec[ae].E)
+        Some(state.surfaces_shared.E)
     };
 
     let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
@@ -92,10 +92,10 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     //     E,
     // );
 
-    state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
-        &state.eval_data_per_elec[ae].psi_pp_calc,
-        &state.eval_data_per_elec[ae].psi_pp_meas,
-    );
+    // state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
+    //     &state.eval_data_per_elec[ae].psi_pp_calc,
+    //     &state.eval_data_per_elec[ae].psi_pp_meas,
+    // );
 
     // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
     let sfcs = &mut state.surfaces_per_elec[ae];
@@ -104,7 +104,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &mut sfcs.aux2,
         &sfcs.psi.on_pt,
         &sfcs.psi_pp_measured,
-        state.eval_data_per_elec[ae].E,
+        state.surfaces_shared.E,
         &state.surfaces_shared.V_from_nuclei,
         state.grid_n_render,
     );
@@ -143,12 +143,12 @@ pub fn update_fixed_charges(state: &mut State) {
         state.grid_n_render,
     );
 
-    potential::update_V_from_nuclei_1d(
-        &mut state.eval_data_shared.V_from_nuclei,
-        &state.charges_fixed,
-        &state.eval_data_shared.posits,
-        state.eval_data_shared.grid_n,
-    );
+    // potential::update_V_from_nuclei_1d(
+    //     &mut state.eval_data_shared.V_from_nuclei,
+    //     &state.charges_fixed,
+    //     &state.eval_data_shared.posits,
+    //     state.eval_data_shared.grid_n,
+    // );
 
     // Reinintialize bases due to the added charges, since we initialize bases centered
     // on the charges.
@@ -224,19 +224,19 @@ pub fn create_V_from_elec(state: &mut State, scene: &mut Scene, ae: usize) {
     }
 
     // todo: Kludge to update sphere entity locs; DRY
-    match state.ui_active_elec {
-        ActiveElec::PerElec(ae) => {
-            render::update_entities(
-                &state.charges_fixed,
-                &state.surface_data,
-                &state.eval_data_per_elec[ae].psi_pp_calc,
-                &state.eval_data_per_elec[ae].psi_pp_meas,
-                &state.eval_data_shared.posits,
-                scene,
-            );
-        }
-        ActiveElec::Combined => (),
-    }
+    // match state.ui_active_elec {
+    //     ActiveElec::PerElec(ae) => {
+    //         render::update_entities(
+    //             &state.charges_fixed,
+    //             &state.surface_data,
+    //             &state.eval_data_per_elec[ae].psi_pp_calc,
+    //             &state.eval_data_per_elec[ae].psi_pp_meas,
+    //             &state.eval_data_shared.posits,
+    //             scene,
+    //         );
+    //     }
+    //     ActiveElec::Combined => (),
+    // }
 }
 
 pub fn update_V_acting_on_elec(state: &mut State, scene: &mut Scene, ae: usize) {
@@ -259,10 +259,10 @@ pub fn update_V_acting_on_elec(state: &mut State, scene: &mut Scene, ae: usize) 
     // );
 
     if state.auto_gen_elec_V {
-        state.eval_data_per_elec[ae].E = wf_ops::find_E(
-            &mut state.eval_data_per_elec[ae],
-            state.eval_data_shared.grid_n,
-        );
+        // state.surfaces_shared.E = wf_ops::find_E(
+        //     &mut state.eval_data_per_elec[ae],
+        //     state.eval_data_shared.grid_n,
+        // );
     }
 
     // todo: Kludge to update sphere entity locs; DRY
@@ -271,9 +271,9 @@ pub fn update_V_acting_on_elec(state: &mut State, scene: &mut Scene, ae: usize) 
             render::update_entities(
                 &state.charges_fixed,
                 &state.surface_data,
-                &state.eval_data_per_elec[ae].psi_pp_calc,
-                &state.eval_data_per_elec[ae].psi_pp_meas,
-                &state.eval_data_shared.posits,
+                // &state.eval_data_per_elec[ae].psi_pp_calc,
+                // &state.eval_data_per_elec[ae].psi_pp_meas,
+                // &state.eval_data_shared.posits,
                 scene,
             );
         }
