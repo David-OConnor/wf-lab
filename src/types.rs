@@ -275,7 +275,7 @@ impl BasesEvaluated {
         }
 
         for (basis_i, basis) in bases.iter().enumerate() {
-            let mut norm_pt = 0.;
+            let mut norm = 0.;
 
             for i in 0..grid_n {
                 for j in 0..grid_n {
@@ -312,7 +312,7 @@ impl BasesEvaluated {
                         z_prev[basis_i][i][j][k] = val_z_prev;
                         z_next[basis_i][i][j][k] = val_z_next;
 
-                        norm_pt += val_pt.abs_sq();
+                        norm += val_pt.abs_sq();
 
                         psi_pp_analytic[basis_i][i][j][k] = basis.second_deriv(posit_sample);
 
@@ -333,24 +333,18 @@ impl BasesEvaluated {
             // todo: Use this line, with high grid n, for finding the norm for analytic basis wfs.
             // println!("Norm for xi={}: {norm_pt}", xi);
 
-            util::normalize_wf(&mut on_pt[basis_i], norm_pt, grid_n);
-            util::normalize_wf(&mut psi_pp_analytic[basis_i], norm_pt, grid_n);
+            // todo: FOr now, removed normalization on individual bases...
 
-            // note: Using individual norm consts appeares to produce incorrect results.
-
-            // util::normalize_wf(&mut x_prev[basis_i], norm_x_prev, grid_n);
-            // util::normalize_wf(&mut x_next[basis_i], norm_x_next, grid_n);
-            // util::normalize_wf(&mut y_prev[basis_i], norm_y_prev, grid_n);
-            // util::normalize_wf(&mut y_next[basis_i], norm_y_next, grid_n);
-            // util::normalize_wf(&mut z_prev[basis_i], norm_z_prev, grid_n);
-            // util::normalize_wf(&mut z_next[basis_i], norm_z_next, grid_n);
+            // util::normalize_wf(&mut on_pt[basis_i], norm, grid_n);
+            // util::normalize_wf(&mut psi_pp_analytic[basis_i], norm, grid_n);
             //
-            util::normalize_wf(&mut x_prev[basis_i], norm_pt, grid_n);
-            util::normalize_wf(&mut x_next[basis_i], norm_pt, grid_n);
-            util::normalize_wf(&mut y_prev[basis_i], norm_pt, grid_n);
-            util::normalize_wf(&mut y_next[basis_i], norm_pt, grid_n);
-            util::normalize_wf(&mut z_prev[basis_i], norm_pt, grid_n);
-            util::normalize_wf(&mut z_next[basis_i], norm_pt, grid_n);
+            // // note: Using individual norm consts appeares to produce incorrect results.
+            // util::normalize_wf(&mut x_prev[basis_i], norm, grid_n);
+            // util::normalize_wf(&mut x_next[basis_i], norm, grid_n);
+            // util::normalize_wf(&mut y_prev[basis_i], norm, grid_n);
+            // util::normalize_wf(&mut y_next[basis_i], norm, grid_n);
+            // util::normalize_wf(&mut z_prev[basis_i], norm, grid_n);
+            // util::normalize_wf(&mut z_next[basis_i], norm, grid_n);
         }
 
         Self {
@@ -460,6 +454,9 @@ impl BasesEvaluated1d {
                 let val_y_next = basis.value(posit_y_next);
                 let val_z_prev = basis.value(posit_z_prev);
                 let val_z_next = basis.value(posit_z_next);
+
+                // todo: FOr now, removed normalization on individual bases...
+                let norm = 1.;
 
                 on_pt[basis_i][i] = val_pt / norm;
                 x_prev[basis_i][i] = val_x_prev / norm;

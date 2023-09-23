@@ -11,10 +11,11 @@ use crate::{
     wf_ops::Q_ELEC,
 };
 
-// use ndarray::prelude::*;
-// use ndarray_linalg::Solve;
 use crate::eigen_fns::KE_COEFF_INV;
 use nalgebra::{DMatrix, DVector};
+
+use ndarray::prelude::*;
+use ndarray_linalg::Solve;
 
 // Norms for a given base xi. Computed numerically. These are relative to each other.
 // Note: Using norms by dividing and summing from discrete grid sizes. It appearse that it's the ratios
@@ -346,10 +347,10 @@ fn generate_sample_pts() -> Vec<Vec3> {
         // 3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
         // 3., 2.0, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
         // 1.5, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
-        5., 4., 3., 2., 1.5, 1., 0.75,  0.5,
+        5., 4., 3., 2., 1.5, 1., 0.75, 0.5,
     ];
 
-    println!("\nSample dists: {:?}", sample_dists);
+    // println!("\nSample dists: {:?}", sample_dists);
 
     let mut result = Vec::new();
     for dist in sample_dists {
@@ -445,7 +446,9 @@ fn find_bases(
 ) -> Vec<Basis> {
     const EPS: f64 = 0.0001;
     let weights = util::linspace((-1., 1.), 200);
+
     let base_norm = find_sto_norm(base_xi);
+    let base_norm = 1.;
 
     let mut bases = Vec::new();
     for xi in additional_xis {
@@ -491,7 +494,8 @@ fn find_bases(
                 if basis.weight().abs() < EPS {
                     continue;
                 }
-                let weight = Cplx::from_real(basis.weight()) / find_sto_norm(basis.xi());
+                // let weight = Cplx::from_real(basis.weight()) / find_sto_norm(basis.xi());
+                let weight = Cplx::from_real(basis.weight());
 
                 psi += weight * basis.value(*pt);
                 psi_pp += weight * basis.second_deriv(*pt);
@@ -518,7 +522,8 @@ fn find_bases(
 
             // for (i_pt, pt) in sample_pt_sets[i_xi].iter().enumerate() {
             for (i_pt, pt) in sample_pts_all.iter().enumerate() {
-                let weight_ = Cplx::from_real(*weight) / find_sto_norm(*xi);
+                // let weight_ = Cplx::from_real(*weight) / find_sto_norm(*xi);
+                let weight_ = Cplx::from_real(*weight);
 
                 let psi = psi_other_bases[i_pt] + weight_ * sto.value(*pt);
 
@@ -591,7 +596,7 @@ fn find_bases_system_of_eqs(
     let mut index_offset = 0;
     let mut xis = vec![base_xi];
     // let mut xis = vec![];
-    for xi in &additional_xis[..6] {
+    for xi in &additional_xis[..4] {
         if xi > &base_xi {
             xis.push(*xi);
         } else {
@@ -610,7 +615,8 @@ fn find_bases_system_of_eqs(
     // Set this up as a column-major Vec, for use with nalgebra.
     let mut psi_ratio_mat_ = Vec::new();
     for xi in &xis {
-        let norm = Cplx::from_real(find_sto_norm(*xi));
+        // let norm = Cplx::from_real(find_sto_norm(*xi));
+        // let norm = Cplx::from_real(1.);
 
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for now.
@@ -623,36 +629,47 @@ fn find_bases_system_of_eqs(
 
         // Sample positions are the columns.
         for posit_sample in &sample_pts[i_range.clone()] {
-            let psi = norm * sto.value(*posit_sample);
-            let psi_pp = norm * sto.second_deriv(*posit_sample);
+            let psi = sto.value(*posit_sample);
+            let psi_pp = sto.second_deriv(*posit_sample);
 
             psi_ratio_mat_.push((psi_pp / psi).real);
         }
     }
 
-    let psi_ratio_mat = DMatrix::from_vec(xis.len(), xis.len(), psi_ratio_mat_);
-    // let psi_ratio_mat: SMatrix<f64, 11, 11> = SMatrix::from_vec(psi_ratio_mat_);
+    let psi_ratio_mat_na = DMatrix::from_vec(xis.len(), xis.len(), psi_ratio_mat_.clone());
+    // ndarray and nalgebra use inverse transposes for construction from vec.
+    let psi_ratio_mat = Array::from_shape_vec((xis.len(), xis.len()), psi_ratio_mat_).unwrap();
+    let psi_ratio_mat = psi_ratio_mat.t();
 
-    println!("Psi ratio mat: {:.5}", psi_ratio_mat);
+    println!("\nPsi ratio mat: {:.5}", psi_ratio_mat);
+    // println!("Psi ratio mat NA: {:.5}", psi_ratio_mat_na);
 
     // Set the charge vector V, of Aw = V
     //         // todo: CHeck teh sign on E. You still have an anomoly here. On paper, it shows - E,
     //         // todo but you've been inverting this in practice to make it work.
     //         // v_charge_vec_.push(KE_COEFF_INV * (V - E));
 
-    let v_charge_vec_: Vec<f64> = V_to_match[i_range].iter().map(|V| KE_COEFF_INV * (V + E)).collect();
+    let v_charge: Vec<f64> = V_to_match[i_range.clone()]
+        .iter()
+        .map(|V| KE_COEFF_INV * (V + E))
+        .collect();
 
-    let v_charge_vec = DVector::from_vec(v_charge_vec_.to_owned());
+    let v_charge_vec_na = DVector::from_vec(v_charge.clone());
+    let v_charge_vec = Array::from_vec(v_charge);
 
     println!("V VEC: {}", v_charge_vec);
 
     // Solve for the weights vector. https://nalgebra.org/docs/user_guide/decompositions_and_lapack
 
-    let decomp = psi_ratio_mat.lu();
+    let decomp = psi_ratio_mat_na.lu();
     // let decomp = psi_ratio_mat.cholesky().unwrap();
-    let mut weights = decomp
-        .solve(&v_charge_vec)
+    let mut weights_na = decomp
+        .solve(&v_charge_vec_na)
         .expect("Linear resolution failed.");
+
+    // println!("WEIGHTS NA: {:.5}", weights_na);
+
+    let mut weights = psi_ratio_mat.solve_into(v_charge_vec).unwrap();
 
     // Normalize re base xi.
     let mut weights_normalized = Vec::new();
@@ -661,8 +678,10 @@ fn find_bases_system_of_eqs(
         weights_normalized.push(*weight / base_weight);
     }
 
-    println!("Xis: {:.3?}", xis);
-    println!("Weights: {:.6}", weights);
+    println!("\nXis: {:.3?}", xis);
+    println!("Sample pts: {:?}", &sample_pts[i_range.clone()]);
+    println!("V to match: {:?}", &V_to_match[i_range.clone()]);
+    println!("\nWeights: {:.6}", weights);
     println!("Weights normalized: {:.6?}\n", weights_normalized);
 
     // todo: See nalgebra Readme on BLAS etc as-required if you wish to optomize.

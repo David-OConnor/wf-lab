@@ -4,6 +4,8 @@ from numpy import exp
 import numpy as np
 from typing import List
 
+from scipy import linalg
+
 KE_COEFF = -(1. * 1.) / (2. * 1.);
 KE_COEFF_INV = 1. / KE_COEFF;
 
@@ -55,8 +57,6 @@ def find_bases(
     for i, xi in enumerate(xis):
         norm = NORMS[i]
 
-        print(f"XI: {xi} norm: {norm}")
-
         for j, posit_sample in enumerate(sample_pts):
             psi = norm * value(xi, posit_sample)
             psi_pp = norm * second_deriv(xi, posit_sample)
@@ -70,22 +70,29 @@ def find_bases(
 
     weights = np.linalg.solve(psi_ratio_mat, v_charge_vec)
 
+    # Scipy methods note: 'generic' seesm to work. Sym, hermitian produce bad results. `positive definite` fails.
+    # Numpy works. Generic uses the `GESV` LAPACK routine.
+    weights_scipy = linalg.solve(psi_ratio_mat, v_charge_vec, assume_a='gen')
+
     # Normalize re base xi.
     # base_weight = weights[0]
     # for i, weight in enumerate(weights):
     #     weights[i] /= base_weight
 
 
-    # w_inv_approach = np.linalg.inv(psi_ratio_mat) @ v_charge_vec
+    w_inv_approach = np.linalg.inv(psi_ratio_mat) @ v_charge_vec
     # for i, weight in enumerate(w_inv_approach):
     #     weights[i] /= base_weight
 
     print(f"\nPsi ratio mat: {psi_ratio_mat}")
-    print(f"\nWeights: {weights}")
-    print(f"\nV: {v_charge_vec}")
+    print(f"\nV (b): {v_charge_vec}")
 
-    print(f"\n A @ w: {psi_ratio_mat @ weights}")
-    # print(f"\n A @ w (inv approach): {psi_ratio_mat @ w_inv_approach}")
+    print(f"\nWeights: {weights}")
+    print(f"\nWeights Scipy: {weights_scipy}")
+
+
+    print(f"\nA @ w: {psi_ratio_mat @ weights}")
+    print(f"A @ w (inv approach): {psi_ratio_mat @ w_inv_approach}")
     # print(f"\n A^(-1) @ V: {w_inv_approach}")
 
     # todo: See nalgebra Readme on BLAS etc as-required if you wish to optomize.
@@ -96,16 +103,16 @@ def find_bases(
 
 find_bases(
     # todo: Consider calculating V from nuclei and electrons if you still have trouble.
-    [0.5, 0.6666666666666666, 1.0, 1.3333333333333333, 2.0],
-    [2., 3., 4., 5., 6.],
+    [0.5, 0.6666666666666666, 1.0],
+    [2., 3., 4.,],
     -2.,
     [
         # (5., 0., 0.),
         (4., 0., 0.),
         (3., 0., 0.),
         (2., 0., 0.),
-        (1.5, 0., 0.),
-        (1.0, 0., 0.),
+#         (1.5, 0., 0.),
+#         (1.0, 0., 0.),
         # (0.5, 0., 0.),
         # (0.25, 0., 0.),
     ],
