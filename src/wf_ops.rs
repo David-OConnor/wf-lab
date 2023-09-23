@@ -30,11 +30,11 @@ use crate::{
     eval,
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     num_diff::{self},
-    types::{EvalDataPerElec, SurfacesPerElec},
+    types::SurfacesPerElec,
     util,
 };
 
-use crate::types::{BasesEvaluated, BasesEvaluated1d, PsiWDiffs, PsiWDiffs1d};
+use crate::types::{BasesEvaluated, PsiWDiffs, PsiWDiffs1d};
 use lin_alg2::f64::Vec3;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
@@ -158,59 +158,6 @@ pub fn mix_bases_no_diffs(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize
     }
 }
 
-/// Mix bases together into a numerical wave function at each grid point, and at diffs.
-/// This is our mixer from pre-calculated basis fucntions: Create psi, including at
-/// neighboring points (used to numerically differentiate), from summing them with
-/// their weights. Basis wfs must be initialized prior to running this, and weights must
-/// be selected.
-///
-/// The resulting wave functions are normalized.
-pub fn mix_bases_1d(
-    psi: &mut PsiWDiffs1d,
-    bases_evaled: &BasesEvaluated1d,
-    grid_n: usize,
-    weights: &[f64],
-) {
-    // We don't need to normalize the result using the full procedure; the basis-wfs are already
-    // normalized, so divide by the cumulative basis weights.
-    let mut weight_total = 0.;
-
-    for weight in weights {
-        weight_total += weight.abs();
-    }
-
-    let mut norm_scaler = 1. / weight_total;
-
-    // Prevents NaNs and related complications.
-    if weight_total.abs() < 0.000001 {
-        norm_scaler = 0.;
-    }
-
-    for i in 0..grid_n {
-        psi.on_pt[i] = Cplx::new_zero();
-        psi.psi_pp_analytic[i] = Cplx::new_zero();
-        psi.x_prev[i] = Cplx::new_zero();
-        psi.x_next[i] = Cplx::new_zero();
-        psi.y_prev[i] = Cplx::new_zero();
-        psi.y_next[i] = Cplx::new_zero();
-        psi.z_prev[i] = Cplx::new_zero();
-        psi.z_next[i] = Cplx::new_zero();
-
-        for (i_basis, weight) in weights.iter().enumerate() {
-            let scaled = weight * norm_scaler;
-
-            psi.on_pt[i] += bases_evaled.on_pt[i_basis][i] * scaled;
-            psi.psi_pp_analytic[i] += bases_evaled.psi_pp_analytic[i_basis][i] * scaled;
-            psi.x_prev[i] += bases_evaled.x_prev[i_basis][i] * scaled;
-            psi.x_next[i] += bases_evaled.x_next[i_basis][i] * scaled;
-            psi.y_prev[i] += bases_evaled.y_prev[i_basis][i] * scaled;
-            psi.y_next[i] += bases_evaled.y_next[i_basis][i] * scaled;
-            psi.z_prev[i] += bases_evaled.z_prev[i_basis][i] * scaled;
-            psi.z_next[i] += bases_evaled.z_next[i_basis][i] * scaled;
-        }
-    }
-}
-
 /// This function combines mixing (pre-computed) numerical basis WFs with updating psi''.
 /// it updates E as well.
 ///
@@ -234,32 +181,6 @@ pub fn update_wf_fm_bases(
         &mut sfcs.psi_pp_calculated,
         &mut sfcs.psi_pp_measured,
         E,
-        grid_n,
-    );
-}
-
-pub fn update_wf_fm_bases_1d(
-    eval_data: &mut EvalDataPerElec,
-    basis_wfs: &BasesEvaluated1d,
-    grid_n: usize,
-    weights: &[f64],
-    E: Option<f64>,
-) {
-    mix_bases_1d(&mut eval_data.psi, basis_wfs, grid_n, weights);
-
-    eval_data.E = match E {
-        Some(E_) => E_,
-        None => find_E(eval_data, grid_n),
-    };
-
-    // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
-    // take infinitessimal differences on the analytic basis equations to find psi'' measured.
-    update_psi_pps_1d(
-        &eval_data.psi,
-        &eval_data.V_acting_on_this,
-        &mut eval_data.psi_pp_calc,
-        &mut eval_data.psi_pp_meas,
-        eval_data.E,
         grid_n,
     );
 }
@@ -334,51 +255,6 @@ pub fn update_psi_pps_1d(
         // todo experimenting
         psi_pp_meas[i] = psi.psi_pp_analytic[i];
     }
-}
-
-/// Find the E that minimizes score, by narrowing it down. Note that if the relationship
-/// between E and psi'' score isn't straightforward, this will converge on a local minimum.
-/// Note: The only part of `eval_data` we mutate is psi'' calc.
-pub fn find_E(data: &mut EvalDataPerElec, grid_n: usize) -> f64 {
-    // todo: WHere to configure these mins and maxes
-    let mut result = 0.;
-
-    let mut E_min = -4.;
-    let mut E_max = 4.;
-    let mut E_range_div2 = 2.;
-    let vals_per_iter = 8;
-
-    let num_iters = 10;
-
-    for _ in 0..num_iters {
-        let E_vals = util::linspace((E_min, E_max), vals_per_iter);
-        let mut best_score = 100_000_000.;
-        let mut best_E = 0.;
-
-        for E_trial in E_vals {
-            for i in 0..grid_n {
-                data.psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(
-                    data.psi.on_pt[i],
-                    data.V_acting_on_this[i],
-                    E_trial,
-                );
-            }
-
-            let score = eval::score_wf_from_psi_pp(&data.psi_pp_calc, &data.psi_pp_meas);
-
-            if score < best_score {
-                best_score = score;
-                best_E = E_trial;
-                result = E_trial;
-            }
-        }
-
-        E_min = best_E - E_range_div2;
-        E_max = best_E + E_range_div2;
-        E_range_div2 /= vals_per_iter as f64; // todo: May need a wider range than this.
-    }
-
-    result
 }
 
 /// [re]Create a set of basis functions, given fixed-charges representing nuclei.

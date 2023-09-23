@@ -371,9 +371,6 @@ pub fn update_meshes(
 pub fn update_entities(
     charges: &[(Vec3F64, f64)],
     surface_data: &[SurfaceData],
-    // psi_pp_calc_1d: &[Cplx],
-    // psi_pp_meas_1d: &[Cplx],
-    // posits_1d: &[Vec3F64],
     scene: &mut Scene,
 ) {
     let mut entities = Vec::new();
@@ -441,38 +438,6 @@ pub fn update_entities(
 
     // todo: Im comps if ticked
     // todo: How to handle Z comp?
-
-    // todo: This needs to be called whenever you update eleval data per elec
-    // todo as of now, it is not updated appropriately.
-    // for (i, posit) in posits_1d.iter().enumerate() {
-    //     entities.push(Entity::new(
-    //         NUM_SURFACES, // Index 1 after surfaces.
-    //         Vec3::new(
-    //             posit.x as f32,
-    //             // We invert Y and Z due to diff coord systems
-    //             // between the meshes and the renderer.
-    //             psi_pp_calc_1d[i].real as f32,
-    //             posit.y as f32,
-    //         ),
-    //         Quaternion::new_identity(),
-    //         3.,
-    //         COLOR_PSI_PP_CALC_1D,
-    //         CHARGE_SHINYNESS,
-    //     ));
-    //
-    //     entities.push(Entity::new(
-    //         NUM_SURFACES, // Index 1 after surfaces.
-    //         Vec3::new(
-    //             posit.x as f32,
-    //             psi_pp_meas_1d[i].real as f32,
-    //             posit.y as f32,
-    //         ),
-    //         Quaternion::new_identity(),
-    //         4.,
-    //         COLOR_PSI_PP_MEAS_1D,
-    //         CHARGE_SHINYNESS,
-    //     ));
-    // }
 
     scene.entities = entities;
 }
@@ -544,23 +509,16 @@ pub fn render(state: State) {
     update_meshes(
         &state.surfaces_shared,
         surfaces,
-        state.ui_z_displayed,
+        state.ui.z_displayed,
         &mut scene,
         &state.surfaces_shared.grid_posits,
-        state.mag_phase,
+        state.ui.mag_phase,
         &state.charges_electron[active_elec_init],
         state.grid_n_render,
         false,
     );
 
-    update_entities(
-        &state.charges_fixed,
-        &state.surface_data,
-        // &state.eval_data_per_elec[active_elec_init].psi_pp_calc,
-        // &state.eval_data_per_elec[active_elec_init].psi_pp_meas,
-        // &state.eval_data_shared.posits,
-        &mut scene,
-    );
+    update_entities(&state.charges_fixed, &state.surface_data, &mut scene);
 
     let input_settings = InputSettings {
         initial_controls: ControlScheme::FreeCamera,
