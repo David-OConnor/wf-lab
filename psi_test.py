@@ -6,8 +6,8 @@ from typing import List
 
 from scipy import linalg
 
-KE_COEFF = -(1. * 1.) / (2. * 1.);
-KE_COEFF_INV = 1. / KE_COEFF;
+KE_COEFF = -(1. * 1.) / (2. * 1.)
+KE_COEFF_INV = 1. / KE_COEFF
 
 NORMS = [
     # 84.92786880965572
@@ -47,53 +47,49 @@ def find_bases(
     sample_pts,
 ):
     bases = []
+    
+    N = len(sample_pts)
 
     xis = []
     for xi in additional_xis: # todo temp
         xis.append(xi)
 
-    psi_ratio_mat = np.zeros([len(sample_pts), len(sample_pts)])
+    psi_mat = np.zeros([N, N])
+    psi_pp_mat = np.zeros([N, N])
 
     for i, xi in enumerate(xis):
-        norm = NORMS[i]
-
         for j, posit_sample in enumerate(sample_pts):
-            psi = norm * value(xi, posit_sample)
-            psi_pp = norm * second_deriv(xi, posit_sample)
+            psi_mat[j][i] = value(xi, posit_sample)
+            psi_pp_mat[j][i] = second_deriv(xi, posit_sample)
 
-            psi_ratio_mat[j][i] = (psi_pp / psi)
+    rhs = np.array([KE_COEFF_INV * (V + E) for V in V_to_match])
 
+    mat_to_solve = psi_pp_mat - (np.diag(rhs) @ psi_mat)
 
-    
-
-    v_charge_vec = np.array([KE_COEFF_INV * (V + E) for V in V_to_match])
-
-    weights = np.linalg.solve(psi_ratio_mat, v_charge_vec)
-
+    # todo: This may no longer be accurate
     # Scipy methods note: 'generic' seesm to work. Sym, hermitian produce bad results. `positive definite` fails.
     # Numpy works. Generic uses the `GESV` LAPACK routine.
-    weights_scipy = linalg.solve(psi_ratio_mat, v_charge_vec, assume_a='gen')
+
+    weights = np.linalg.solve(mat_to_solve, np.zeros(N))
+    weights_scipy = linalg.solve(mat_to_solve, np.zeros(N), assume_a='gen')
 
     # Normalize re base xi.
     # base_weight = weights[0]
     # for i, weight in enumerate(weights):
     #     weights[i] /= base_weight
 
-
-    w_inv_approach = np.linalg.inv(psi_ratio_mat) @ v_charge_vec
     # for i, weight in enumerate(w_inv_approach):
     #     weights[i] /= base_weight
 
-    print(f"\nPsi ratio mat: {psi_ratio_mat}")
-    print(f"\nV (b): {v_charge_vec}")
+    print(f"\nPsi  mat: {psi_mat}")
+    print(f"\nPsi''o mat: {psi_pp_mat}")
+    print(f"\nMat to solve: {mat_to_solve}")
+    print(f"\nrhs: {rhs}")
 
     print(f"\nWeights: {weights}")
     print(f"\nWeights Scipy: {weights_scipy}")
 
-
-    print(f"\nA @ w: {psi_ratio_mat @ weights}")
-    print(f"A @ w (inv approach): {psi_ratio_mat @ w_inv_approach}")
-    # print(f"\n A^(-1) @ V: {w_inv_approach}")
+    print(f"\nA @ w: {mat_to_solve @ weights}\n")
 
     # todo: See nalgebra Readme on BLAS etc as-required if you wish to optomize.
 
@@ -117,3 +113,31 @@ find_bases(
         # (0.25, 0., 0.),
     ],
 )
+
+
+# w_a = 1.
+# w_b = 0.7
+#
+# psi_a = value(1., (2., 0., 0.))
+# psi_pp_a = second_deriv(1., (2., 0., 0.))
+# rat_a = psi_pp_a / psi_a
+# E = -1.12
+#
+# psi_b = value(2., (2., 0., 0.))
+# psi_pp_b = second_deriv(2., (2., 0., 0.))
+# rat_b = psi_pp_b / psi_b
+#
+# psi = psi_a + psi_b
+# psi_pp = psi_pp_a + psi_pp_b
+# rat_combined = psi_pp / psi
+#
+# rat_individual = rat_a + rat_b
+#
+# print(f"Rat combined: {rat_combined}, Rat individual: {rat_individual}")
+#
+# V_combined = KE_COEFF * rat_combined - E
+# V_individual = KE_COEFF * rat_individual - E
+#
+# # Combined is the correct approach.  Sum befor dividing.
+# # Dividing before summing is wrong
+# print(f"V combined: {V_combined} Individual: {V_individual}")

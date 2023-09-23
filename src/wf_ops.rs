@@ -62,7 +62,7 @@ pub enum Spin {
 // todo: You should likely split them off.
 
 /// Mix bases together into a numerical wave function at each grid point, and at diffs.
-/// This is our mixer from pre-calculated basis fucntions: Create psi, including at
+/// This is our mixer from pre-calculated basis functions: Create psi, including at
 /// neighboring points (used to numerically differentiate), from summing them with
 /// their weights. Basis wfs must be initialized prior to running this, and weights must
 /// be selected.
@@ -74,8 +74,10 @@ pub fn mix_bases(
     grid_n: usize,
     weights: &[f64],
 ) {
+    // todo: This assumption may not be correct.
     // We don't need to normalize the result using the full procedure; the basis-wfs are already
     // normalized, so divide by the cumulative basis weights.
+
     let mut weight_total = 0.;
     for weight in weights {
         weight_total += weight.abs();
@@ -87,6 +89,9 @@ pub fn mix_bases(
     if weight_total.abs() < 0.000001 {
         norm_scaler = 0.;
     }
+
+    // todo temp TS
+    let norm_scaler = 1.;
 
     for i in 0..grid_n {
         for j in 0..grid_n {
@@ -134,6 +139,9 @@ pub fn mix_bases_no_diffs(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize
     if weight_total.abs() < 0.000001 {
         norm_scaler = 0.;
     }
+
+    // todo temp TS
+    let norm_scaler = 1.;
 
     for i in 0..grid_n {
         for j in 0..grid_n {
@@ -217,9 +225,6 @@ pub fn update_wf_fm_bases(
     weights: &[f64],
 ) {
     mix_bases(&mut sfcs.psi, basis_wfs, grid_n, weights);
-
-    // sfcs.E = find_E(sfcs, grid_n);
-    // sfcs.E = 0.; // todo
 
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.

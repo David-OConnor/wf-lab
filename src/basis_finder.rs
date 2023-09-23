@@ -305,40 +305,6 @@ fn find_charge_trial_wf(
     result
 }
 
-fn generate_sample_pts_per_xi() -> Vec<Vec<Vec3>> {
-    //  It's important that these sample points span points both close and far from the nuclei.
-
-    // let sample_dists = vec![0.1, 0.3, 0.8, 1., 1.5, 2., 3., 4., 8., 15.];
-
-    // 1: 3
-    // 2: 1.8
-    // 3: 1.3
-    // 4: 1.0
-    // 5: 0.75
-    // 6: 0.63
-
-    // These sample distances correspon d to xi.
-    // todo: Hard-coded for now, starting at xi=1. Note that different base xis will throw this off!
-    let sample_dists_per_xi = [
-        3., 2., 1.5, 1., 0.75, 0.5, // 6
-        0.4, 0.35, 0.3, 0.25,
-    ];
-
-    let mut result = Vec::new();
-    for dist in sample_dists_per_xi {
-        let mut set = Vec::new();
-        // for scaler in &[0.4, 1., 1.4] {
-        for scaler in &[0.3, 0.5, 1.] {
-            set.push(Vec3::new(dist * scaler, 0., 0.));
-            set.push(Vec3::new(0., dist * scaler, 0.));
-            set.push(Vec3::new(0., 0., dist * scaler));
-        }
-        result.push(set);
-    }
-
-    result
-}
-
 fn generate_sample_pts() -> Vec<Vec3> {
     // It's important that these sample points span points both close and far from the nuclei.
 
@@ -361,219 +327,6 @@ fn generate_sample_pts() -> Vec<Vec3> {
     }
 
     result
-}
-
-/// Using a set of points to evaluate a basis at, tailored for a specifix xi.
-fn make_ref_V_per_xi(
-    sample_pt_sets: &[Vec<Vec3>],
-    charges_fixed: &[(Vec3, f64)],
-    charge_elec: &Arr3dReal,
-    grid_charge: &Arr3dVec,
-    grid_n_charge: usize,
-) -> Vec<Vec<f64>> {
-    let mut V_to_match_outer = Vec::new(); // Outer: By xi.
-
-    for sample_pts in sample_pt_sets {
-        let mut V_to_match_inner = Vec::new(); // By posit. (eg the 3 posits per dist defined above)
-
-        for posit_sample in sample_pts {
-            let mut V_sample = 0.;
-
-            for (posit_nuc, charge) in charges_fixed {
-                V_sample += potential::V_coulomb(*posit_nuc, *posit_sample, *charge);
-            }
-
-            for i in 0..grid_n_charge {
-                for j in 0..grid_n_charge {
-                    for k in 0..grid_n_charge {
-                        let posit_charge = grid_charge[i][j][k];
-                        let charge = charge_elec[i][j][k];
-
-                        V_sample += potential::V_coulomb(posit_charge, *posit_sample, charge);
-                    }
-                }
-            }
-            V_to_match_inner.push(V_sample);
-        }
-
-        V_to_match_outer.push(V_to_match_inner);
-    }
-
-    V_to_match_outer
-}
-
-/// Using a flat set of sample points.
-fn make_ref_V_flat(
-    sample_pts: &[Vec3],
-    charges_fixed: &[(Vec3, f64)],
-    charge_elec: &Arr3dReal,
-    grid_charge: &Arr3dVec,
-    grid_n_charge: usize,
-) -> Vec<f64> {
-    let mut V_to_match = Vec::new();
-
-    for sample_pt in sample_pts {
-        let mut V_sample = 0.;
-
-        for (posit_nuc, charge) in charges_fixed {
-            V_sample += potential::V_coulomb(*posit_nuc, *sample_pt, *charge);
-        }
-
-        for i in 0..grid_n_charge {
-            for j in 0..grid_n_charge {
-                for k in 0..grid_n_charge {
-                    let posit_charge = grid_charge[i][j][k];
-                    let charge = charge_elec[i][j][k];
-
-                    V_sample += potential::V_coulomb(posit_charge, *sample_pt, charge);
-                }
-            }
-        }
-
-        V_to_match.push(V_sample);
-    }
-
-    V_to_match
-}
-
-fn find_bases(
-    V_to_match: &[f64],
-    additional_xis: &[f64],
-    base_sto: &Basis,
-    base_xi: f64,
-    E: f64,
-    sample_pts_all: &[Vec3],
-) -> Vec<Basis> {
-    const EPS: f64 = 0.0001;
-    let weights = util::linspace((-1., 1.), 200);
-
-    let base_norm = find_sto_norm(base_xi);
-    let base_norm = 1.;
-
-    let mut bases = Vec::new();
-    for xi in additional_xis {
-        // if *xi <= base_xi + EPS {
-        //     continue;
-        // }
-
-        bases.push(Basis::Sto(Sto {
-            posit: Vec3::new_zero(),
-            n: 1,
-            xi: *xi,
-            weight: 0.,
-            charge_id: 0,
-            harmonic: Default::default(),
-        }))
-    }
-
-    for (i_xi, xi) in additional_xis.iter().enumerate() {
-        if *xi <= base_xi + EPS {
-            continue;
-        }
-
-        // Re-generate `psi_other_basis`, because we add a new base each time.
-        let mut psi_other_bases = Vec::new();
-        let mut psi_pp_other_bases = Vec::new();
-
-        // For this xi, calculate psi and psi'' for the already-added bases.
-        // for pt in &sample_pt_sets[i_xi] {
-        for pt in sample_pts_all {
-            // todo: Is V linear with these? Can we simply calculate V_other directly? Try once this approach works.
-            let mut psi = Cplx::new_zero();
-            let mut psi_pp = Cplx::new_zero();
-
-            const EPS: f64 = 0.00001;
-
-            // todo: DRY here between the base basis and the others.
-            let weight = Cplx::from_real(base_sto.weight()) / base_norm;
-
-            psi += weight * base_sto.value(*pt);
-            psi_pp += weight * base_sto.second_deriv(*pt);
-
-            for basis in &bases {
-                if basis.weight().abs() < EPS {
-                    continue;
-                }
-                // let weight = Cplx::from_real(basis.weight()) / find_sto_norm(basis.xi());
-                let weight = Cplx::from_real(basis.weight());
-
-                psi += weight * basis.value(*pt);
-                psi_pp += weight * basis.second_deriv(*pt);
-            }
-
-            psi_other_bases.push(psi);
-            psi_pp_other_bases.push(psi_pp);
-        }
-
-        let mut best_weight_i = 0;
-        let mut smallest_diff = 9999.;
-
-        for (i_weight, weight) in weights.iter().enumerate() {
-            let sto = Basis::Sto(Sto {
-                posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
-                n: 1,
-                xi: *xi,
-                weight: *weight,
-                charge_id: 0,
-                harmonic: Default::default(),
-            });
-
-            let mut cum_diff_this_set = 0.;
-
-            // for (i_pt, pt) in sample_pt_sets[i_xi].iter().enumerate() {
-            for (i_pt, pt) in sample_pts_all.iter().enumerate() {
-                // let weight_ = Cplx::from_real(*weight) / find_sto_norm(*xi);
-                let weight_ = Cplx::from_real(*weight);
-
-                let psi = psi_other_bases[i_pt] + weight_ * sto.value(*pt);
-
-                let psi_pp = psi_pp_other_bases[i_pt] + weight_ * sto.second_deriv(*pt);
-
-                let V_from_psi = calc_V_on_psi(psi, psi_pp, E);
-                // let V_to_match = V_to_match_per_xi[i_xi][i_pt];
-                let V_to_match = V_to_match[i_pt];
-
-                if *xi < 5. {
-                    // println!(
-                    //     "V. Xi: {}, Weight: {:.3}, From psi: {:.3}, To match: {:.3} psi {:.3} psi'' {:.3}",
-                    //     xi,
-                    //     weight,
-                    //     V_from_psi,
-                    //     V_to_match,
-                    //     // (V_from_psi - V_to_match).abs()
-                    //     psi.real,
-                    //     psi_pp.real,
-                    // );
-
-                    // println!("PREV V: {:.4}", calc_V_on_psi(psi_other_bases[i_pt], psi_pp_other_bases[i_pt], E))
-
-                    // println!("Aux. psi_other {:.6} psi_pp_other: {:.6}, psi_this: {:.6}, psi_pp_this: {:.6}\n",
-                    //          psi_other_bases[i_pt].real, psi_pp_other_bases[i_pt].real, Cplx::from_real(*weight) * sto.value(*pt).real / norm, Cplx::from_real(*weight) * sto.second_deriv(*pt).real / norm);
-                }
-
-                let this_diff = (V_from_psi - V_to_match).abs();
-
-                cum_diff_this_set += this_diff;
-            }
-
-            if cum_diff_this_set < smallest_diff {
-                best_weight_i = i_weight;
-                smallest_diff = cum_diff_this_set;
-            }
-        }
-
-        let best_weight = weights[best_weight_i];
-
-        *bases[i_xi].weight_mut() = best_weight;
-    }
-
-    for basis in &bases {
-        if let Basis::Sto(sto) = basis {
-            println!("Xi: {}, weight: {}", sto.xi, sto.weight);
-        }
-    }
-
-    bases
 }
 
 /// See Onenote: `Exploring the WF, part 7`.
@@ -604,20 +357,24 @@ fn find_bases_system_of_eqs(
         }
     }
 
+    let N = xis.len();
+
     index_offset -= 1; // for teh base xi. todo: test this.
 
     // For syncing with V and sample points.
-    let i_range = index_offset..index_offset + xis.len();
+    let i_range = index_offset..index_offset + N;
 
     println!("Index offset: {:?}", index_offset);
 
     // Bases, from xi, are the rows; positions are the columns.
     // Set this up as a column-major Vec, for use with nalgebra.
-    let mut psi_ratio_mat_ = Vec::new();
-    for xi in &xis {
-        // let norm = Cplx::from_real(find_sto_norm(*xi));
-        // let norm = Cplx::from_real(1.);
+    // Note: We are currently using ndarray, which has a row-major constructor;
+    // todo: Consider switching, although this col-maj approach prevents reconstructing the STO
+    // todo for each value.
+    let mut psi_mat_ = Vec::new();
+    let mut psi_pp_mat_ = Vec::new();
 
+    for xi in &xis {
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for now.
             n: 1,
@@ -629,47 +386,56 @@ fn find_bases_system_of_eqs(
 
         // Sample positions are the columns.
         for posit_sample in &sample_pts[i_range.clone()] {
-            let psi = sto.value(*posit_sample);
-            let psi_pp = sto.second_deriv(*posit_sample);
+            // psi_mat_.push(sto.value(*posit_sample));
+            // psi_pp_mat_.push(sto.second_deriv(*posit_sample));
 
-            psi_ratio_mat_.push((psi_pp / psi).real);
+            // todo: Real-only for now while building the algorithm, but in general, these are complex.
+            psi_mat_.push(sto.value(*posit_sample).real);
+            psi_pp_mat_.push(sto.second_deriv(*posit_sample).real);
         }
     }
 
-    let psi_ratio_mat_na = DMatrix::from_vec(xis.len(), xis.len(), psi_ratio_mat_.clone());
+    // let psi_mat_na = DMatrix::from_vec(N, N, psi_mat_.clone());
+    // let psi_pp_mat_na = DMatrix::from_vec(N, N, psi_pp_ratio_mat_.clone());
     // ndarray and nalgebra use inverse transposes for construction from vec.
-    let psi_ratio_mat = Array::from_shape_vec((xis.len(), xis.len()), psi_ratio_mat_).unwrap();
-    let psi_ratio_mat = psi_ratio_mat.t();
 
-    println!("\nPsi ratio mat: {:.5}", psi_ratio_mat);
-    // println!("Psi ratio mat NA: {:.5}", psi_ratio_mat_na);
+    let psi_mat = Array::from_shape_vec((N, N), psi_mat_).unwrap();
+    let psi_mat = psi_mat.t();
+    let psi_pp_mat = Array::from_shape_vec((N, N), psi_pp_mat_).unwrap();
+    let psi_pp_mat = psi_pp_mat.t();
+
+    let rhs: Vec<f64> = V_to_match[i_range.clone()]
+        .iter()
+        .map(|V| KE_COEFF_INV * (V + E))
+        .collect();
+
+    let rhs_na = DVector::from_vec(rhs.clone());
+    let rhs_vec = Array::from_vec(rhs.clone());
+
+    let mat_to_solve = &psi_pp_mat - Array2::from_diag(&rhs_vec).dot(&psi_mat);
+
+    println!("\nPsi mat: {:.5}", psi_mat);
+    println!("\nPsi'' mat: {:.5}", psi_pp_mat);
+    println!("\nMat to solve: {:.5}", mat_to_solve);
 
     // Set the charge vector V, of Aw = V
     //         // todo: CHeck teh sign on E. You still have an anomoly here. On paper, it shows - E,
     //         // todo but you've been inverting this in practice to make it work.
     //         // v_charge_vec_.push(KE_COEFF_INV * (V - E));
 
-    let v_charge: Vec<f64> = V_to_match[i_range.clone()]
-        .iter()
-        .map(|V| KE_COEFF_INV * (V + E))
-        .collect();
-
-    let v_charge_vec_na = DVector::from_vec(v_charge.clone());
-    let v_charge_vec = Array::from_vec(v_charge);
-
-    println!("V VEC: {}", v_charge_vec);
+    println!("rhs: {:.5?}", rhs);
 
     // Solve for the weights vector. https://nalgebra.org/docs/user_guide/decompositions_and_lapack
 
-    let decomp = psi_ratio_mat_na.lu();
-    // let decomp = psi_ratio_mat.cholesky().unwrap();
-    let mut weights_na = decomp
-        .solve(&v_charge_vec_na)
-        .expect("Linear resolution failed.");
+    // let decomp = psi_ratio_mat_na.lu();
+    // // let decomp = psi_ratio_mat.cholesky().unwrap();
+    // let mut weights_na = decomp
+    //     .solve(&v_charge_vec_na)
+    //     .expect("Linear resolution failed.");
 
     // println!("WEIGHTS NA: {:.5}", weights_na);
 
-    let mut weights = psi_ratio_mat.solve_into(v_charge_vec).unwrap();
+    let mut weights = mat_to_solve.solve_into(Array1::zeros(N)).unwrap();
 
     // Normalize re base xi.
     let mut weights_normalized = Vec::new();
@@ -779,7 +545,7 @@ pub fn find_stos(
     //     grid_n_charge,
     // );
 
-    let V_to_match = make_ref_V_flat(
+    let V_to_match = potential::create_V_1d(
         &sample_pts,
         charges_fixed,
         charge_elec,

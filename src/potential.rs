@@ -52,6 +52,40 @@ pub fn update_V_from_nuclei_1d(
     }
 }
 
+/// Create a potential on a set of sample points, from nuclei and electrons.
+pub fn create_V_1d(
+    sample_pts: &[Vec3],
+    charges_fixed: &[(Vec3, f64)],
+    charge_elec: &Arr3dReal,
+    grid_charge: &Arr3dVec,
+    grid_n_charge: usize,
+) -> Vec<f64> {
+    let mut V_to_match = Vec::new();
+
+    for sample_pt in sample_pts {
+        let mut V_sample = 0.;
+
+        for (posit_nuc, charge) in charges_fixed {
+            V_sample += V_coulomb(*posit_nuc, *sample_pt, *charge);
+        }
+
+        for i in 0..grid_n_charge {
+            for j in 0..grid_n_charge {
+                for k in 0..grid_n_charge {
+                    let posit_charge = grid_charge[i][j][k];
+                    let charge = charge_elec[i][j][k];
+
+                    V_sample += V_coulomb(posit_charge, *sample_pt, charge);
+                }
+            }
+        }
+
+        V_to_match.push(V_sample);
+    }
+
+    V_to_match
+}
+
 /// Update the combined V; this is from nuclei, and all electrons.
 /// Must be done after individual V from individual electrons are generated.
 pub fn update_V_combined(
