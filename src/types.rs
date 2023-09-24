@@ -2,7 +2,7 @@ use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
-    util,
+    util::normalize_wf,
     wf_ops::NUDGE_DEFAULT,
 };
 
@@ -21,8 +21,6 @@ pub struct SurfacesShared {
     pub V_from_nuclei: Arr3dReal,
     // todo: This may not be a good model: the wave function isn't a function of position
     // mapped to a value for multi-elecs. It's a function of a position for each elec.
-    /// `psi` etc here are combined from all individual electron wave functions.
-    // pub psi: Arr3d,
     pub psi: WaveFunctionMultiElec,
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
@@ -31,7 +29,6 @@ pub struct SurfacesShared {
     pub psi_numeric: Arr3d,
     /// In case we want to explore something like DFT
     pub charge_density_dft: Arr3dReal,
-    // pub psi_pp_score: f64,
 }
 
 impl SurfacesShared {
@@ -191,47 +188,6 @@ impl EvalDataShared {
         }
     }
 }
-//
-// /// Stores information used to evaluate a wave function at specific points.
-// #[derive(Clone)]
-// pub struct EvalDataPerElec {
-//     /// Posits are the 3D-space positions the other values are sampled at.
-//     /// V acting on
-//     pub V_acting_on_this: Vec<f64>,
-//     // pub V_from_this: Vec<f64>,
-//     // pub psi: Vec<Cplx>,
-//     pub psi: PsiWDiffs1d,
-//     pub psi_pp_calc: Vec<Cplx>,
-//     pub psi_pp_meas: Vec<Cplx>,
-//     pub E: f64, // todo: Is this a good place?
-//     pub score: f64,
-// }
-//
-// impl EvalDataPerElec {
-//     pub fn new(n: usize) -> Self {
-//         let mut V_acting_on_this = Vec::new();
-//         // let mut V_from_this = Vec::new();
-//         let mut psi_pp_calc = Vec::new();
-//         let mut psi_pp_meas = Vec::new();
-//
-//         for _ in 0..n {
-//             V_acting_on_this.push(0.);
-//             // V_from_this.push(0.);
-//             psi_pp_calc.push(Cplx::new_zero());
-//             psi_pp_meas.push(Cplx::new_zero());
-//         }
-//
-//         Self {
-//             V_acting_on_this,
-//             // V_from_this,
-//             psi: PsiWDiffs1d::init(&psi_pp_calc), // 0 Vec.
-//             psi_pp_calc,
-//             psi_pp_meas,
-//             E: 0.,
-//             score: 0.,
-//         }
-//     }
-// }
 
 /// We use this to store numerical wave functions for each basis, both at sample points, and
 /// a small amount along each axix, for calculating partial derivatives of psi''.
@@ -315,13 +271,6 @@ impl BasesEvaluated {
                         norm += val_pt.abs_sq();
 
                         psi_pp_analytic[basis_i][i][j][k] = basis.second_deriv(posit_sample);
-
-                        // norm_x_prev += val_x_prev.abs_sq();
-                        // norm_x_next += val_x_next.abs_sq();
-                        // norm_y_prev += val_y_prev.abs_sq();
-                        // norm_y_next += val_y_next.abs_sq();
-                        // norm_z_prev += val_z_prev.abs_sq();
-                        // norm_z_next += val_z_next.abs_sq();
                     }
                 }
             }
@@ -333,18 +282,16 @@ impl BasesEvaluated {
             // todo: Use this line, with high grid n, for finding the norm for analytic basis wfs.
             // println!("Norm for xi={}: {norm_pt}", xi);
 
-            // todo: FOr now, removed normalization on individual bases...
+            // normalize_wf(&mut on_pt[basis_i], norm);
+            // normalize_wf(&mut psi_pp_analytic[basis_i], norm);
 
-            // util::normalize_wf(&mut on_pt[basis_i], norm, grid_n);
-            // util::normalize_wf(&mut psi_pp_analytic[basis_i], norm, grid_n);
-            //
-            // // note: Using individual norm consts appeares to produce incorrect results.
-            // util::normalize_wf(&mut x_prev[basis_i], norm, grid_n);
-            // util::normalize_wf(&mut x_next[basis_i], norm, grid_n);
-            // util::normalize_wf(&mut y_prev[basis_i], norm, grid_n);
-            // util::normalize_wf(&mut y_next[basis_i], norm, grid_n);
-            // util::normalize_wf(&mut z_prev[basis_i], norm, grid_n);
-            // util::normalize_wf(&mut z_next[basis_i], norm, grid_n);
+            // note: Using individual norm consts for the prevs and next appears to produce incorrect results.
+            // normalize_wf(&mut x_prev[basis_i], norm);
+            // normalize_wf(&mut x_next[basis_i], norm);
+            // normalize_wf(&mut y_prev[basis_i], norm);
+            // normalize_wf(&mut y_next[basis_i], norm);
+            // normalize_wf(&mut z_prev[basis_i], norm);
+            // normalize_wf(&mut z_next[basis_i], norm);
         }
 
         Self {
@@ -388,100 +335,6 @@ impl PsiWDiffs1d {
         }
     }
 }
-
-// /// We use this to store numerical wave functions for each basis, both at sample points, and
-// /// a small amount along each axix, for calculating partial derivatives of psi''.
-// /// The outer `Vec` index corresponds to basis index. Inner corresponds to position.
-// #[derive(Clone)]
-// pub struct BasesEvaluated1d {
-//     pub on_pt: Vec<Vec<Cplx>>,
-//     pub x_prev: Vec<Vec<Cplx>>,
-//     pub x_next: Vec<Vec<Cplx>>,
-//     pub y_prev: Vec<Vec<Cplx>>,
-//     pub y_next: Vec<Vec<Cplx>>,
-//     pub z_prev: Vec<Vec<Cplx>>,
-//     pub z_next: Vec<Vec<Cplx>>,
-//     pub psi_pp_analytic: Vec<Vec<Cplx>>, // Sneaking this approach in!
-// }
-
-// impl BasesEvaluated1d {
-//     /// Create unweighted basis wave functions. Run this whenever we add or remove basis fns,
-//     /// and when changing the grid. This evaluates the analytic basis functions at
-//     /// each grid point. Each basis will be normalized in this function.
-//     /// Relatively computationally intensive.
-//     ///
-//     /// `norm` should be calculated either numerically from a full grid, or analytically
-//     /// from the basis functions.
-//     pub fn new(bases: &[Basis], grid_posits: &[Vec3], norm: f64) -> Self {
-//         let n = grid_posits.len();
-//
-//         let mut on_pt = Vec::new();
-//         let mut x_prev = Vec::new();
-//         let mut x_next = Vec::new();
-//         let mut y_prev = Vec::new();
-//         let mut y_next = Vec::new();
-//         let mut z_prev = Vec::new();
-//         let mut z_next = Vec::new();
-//         let mut psi_pp_analytic = Vec::new();
-//
-//         for _ in 0..bases.len() {
-//             on_pt.push(vec![Cplx::new_zero(); n]);
-//             psi_pp_analytic.push(vec![Cplx::new_zero(); n]);
-//             x_prev.push(vec![Cplx::new_zero(); n]);
-//             x_next.push(vec![Cplx::new_zero(); n]);
-//             y_prev.push(vec![Cplx::new_zero(); n]);
-//             y_next.push(vec![Cplx::new_zero(); n]);
-//             z_prev.push(vec![Cplx::new_zero(); n]);
-//             z_next.push(vec![Cplx::new_zero(); n]);
-//         }
-//
-//         for (basis_i, basis) in bases.iter().enumerate() {
-//             for i in 0..n {
-//                 let posit_sample = grid_posits[i];
-//
-//                 let posit_x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
-//                 let posit_x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
-//                 let posit_y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
-//                 let posit_y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
-//                 let posit_z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
-//                 let posit_z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
-//
-//                 let val_pt = basis.value(posit_sample);
-//
-//                 let val_x_prev = basis.value(posit_x_prev);
-//                 let val_x_next = basis.value(posit_x_next);
-//                 let val_y_prev = basis.value(posit_y_prev);
-//                 let val_y_next = basis.value(posit_y_next);
-//                 let val_z_prev = basis.value(posit_z_prev);
-//                 let val_z_next = basis.value(posit_z_next);
-//
-//                 // todo: FOr now, removed normalization on individual bases...
-//                 let norm = 1.;
-//
-//                 on_pt[basis_i][i] = val_pt / norm;
-//                 x_prev[basis_i][i] = val_x_prev / norm;
-//                 x_next[basis_i][i] = val_x_next / norm;
-//                 y_prev[basis_i][i] = val_y_prev / norm;
-//                 y_next[basis_i][i] = val_y_next / norm;
-//                 z_prev[basis_i][i] = val_z_prev / norm;
-//                 z_next[basis_i][i] = val_z_next / norm;
-//
-//                 psi_pp_analytic[basis_i][i] = basis.second_deriv(posit_sample) / norm;
-//             }
-//         }
-//
-//         Self {
-//             on_pt,
-//             x_prev,
-//             x_next,
-//             y_prev,
-//             y_next,
-//             z_prev,
-//             z_next,
-//             psi_pp_analytic,
-//         }
-//     }
-// }
 
 /// Group that includes psi at a point, and at points surrounding it, an infinetesimal difference
 /// in both directions along each spacial axis.

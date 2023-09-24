@@ -6,8 +6,7 @@ use lin_alg2::f64::Vec3;
 
 use crate::grid_setup::new_data_real;
 use crate::{
-    basis_finder, basis_wfs::Basis, eigen_fns, elec_elec, eval, grid_setup::new_data, potential,
-    render, wf_ops, ActiveElec, State,
+    basis_finder, basis_wfs::Basis, grid_setup::new_data, render, wf_ops, ActiveElec, State,
 };
 
 pub(crate) mod procedures;
@@ -420,7 +419,7 @@ fn basis_fn_mixer(
                                     &weights,
                                 );
 
-                                elec_elec::update_charge_density_fm_psi(
+                                wf_ops::update_charge_density_fm_psi(
                                     &mut state.charges_electron[active_elec],
                                     &psi_charge_grid,
                                     state.grid_n_charge,
@@ -574,7 +573,6 @@ fn bottom_items(
         );
 
         state.surfaces_shared.E = E;
-
 
         state.bases[ae] = bases;
         // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.

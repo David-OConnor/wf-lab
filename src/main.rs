@@ -91,7 +91,7 @@ impl Default for StateUi {
             mag_phase: false,
             adjust_E_with_weights: false,
             auto_gen_elec_V: false,
-            weight_symmetry: true,
+            weight_symmetry: false,
             create_2d_electron_V: true,
             create_3d_electron_V: false,
         }

@@ -5,7 +5,7 @@ use graphics::{EngineUpdates, Scene};
 
 use crate::{
     eigen_fns,
-    elec_elec::{self, PositIndex, WaveFunctionMultiElec},
+    elec_elec::{PositIndex, WaveFunctionMultiElec},
     grid_setup::{new_data, Arr3dReal},
     potential, render,
     types::BasesEvaluated,
@@ -25,7 +25,6 @@ pub fn update_E_or_V(
                 sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
                     sfcs.psi.on_pt[i][j][k],
                     sfcs.V_acting_on_this[i][j][k],
-                    // eval_data.E,
                     E,
                 )
             }
@@ -44,7 +43,6 @@ pub fn update_E_or_V(
         // eval_data.E,
         E,
         V_from_nuclei,
-        grid_n_render,
     );
 }
 
@@ -69,7 +67,6 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &sfcs.psi_pp_measured,
         state.surfaces_shared.E,
         &state.surfaces_shared.V_from_nuclei,
-        state.grid_n_render,
     );
 }
 
@@ -128,7 +125,7 @@ pub fn create_V_from_elec(state: &mut State, scene: &mut Scene, ae: usize) {
         &weights,
     );
 
-    elec_elec::update_charge_density_fm_psi(
+    wf_ops::update_charge_density_fm_psi(
         &mut state.charges_electron[ae],
         &psi_charge_grid,
         state.grid_n_charge,

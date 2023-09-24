@@ -27,7 +27,6 @@ use crate::{
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
     eigen_fns::{self, KE_COEFF},
-    eval,
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     num_diff::{self},
     types::SurfacesPerElec,
@@ -91,7 +90,9 @@ pub fn mix_bases(
     }
 
     // todo temp TS
-    let norm_scaler = 1.;
+    // let norm_scaler = 1.;
+
+    let mut norm = 0.;
 
     for i in 0..grid_n {
         for j in 0..grid_n {
@@ -118,9 +119,14 @@ pub fn mix_bases(
                     psi.z_prev[i][j][k] += bases_evaled.z_prev[i_basis][i][j][k] * scaled;
                     psi.z_next[i][j][k] += bases_evaled.z_next[i_basis][i][j][k] * scaled;
                 }
+
+                norm += psi.on_pt[i][j][k].abs_sq();
             }
         }
     }
+
+    util::normalize_wf(&mut psi.on_pt, norm);
+    util::normalize_wf(&mut psi.psi_pp_analytic, norm);
 }
 
 /// Eg for the psi-on-grid for charges, where we don't need to generate psi''.
@@ -141,7 +147,9 @@ pub fn mix_bases_no_diffs(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize
     }
 
     // todo temp TS
-    let norm_scaler = 1.;
+    // let norm_scaler = 1.;
+
+    let mut norm = 0.;
 
     for i in 0..grid_n {
         for j in 0..grid_n {
@@ -156,6 +164,8 @@ pub fn mix_bases_no_diffs(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize
             }
         }
     }
+
+    util::normalize_wf(psi, norm);
 }
 
 /// This function combines mixing (pre-computed) numerical basis WFs with updating psi''.
@@ -172,6 +182,7 @@ pub fn update_wf_fm_bases(
     weights: &[f64],
 ) {
     mix_bases(&mut sfcs.psi, basis_wfs, grid_n, weights);
+    // mix_bases_no_diffs(&mut sfcs.psi.on_pt, &basis_wfs.on_pt, grid_n, weights);
 
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
     // take infinitessimal differences on the analytic basis equations to find psi'' measured.
@@ -530,7 +541,7 @@ pub fn arr_from_bases(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) ->
         if let Basis::Sto(sto) = basis {
             xi = sto.xi;
         }
-        util::normalize_wf(&mut result[basis_i], norm, grid_n);
+        util::normalize_wf(&mut result[basis_i], norm);
     }
 
     result
@@ -548,8 +559,9 @@ pub fn calculate_v_elec(
     psi_pp: &Arr3d,
     E: f64,
     V_nuc: &Arr3dReal,
-    grid_n: usize,
 ) {
+    let grid_n = psi.len();
+
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
@@ -603,4 +615,29 @@ pub fn E_from_trial(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> f64 {
 
     // todo: Why do we need to flip the sign?
     KE_COEFF * (psi_pp / psi).real - V_corner
+}
+
+/// Convert an array of ψ to one of electron charge, through space. This is used to calculate potential
+/// from an electron. (And potential energy between electrons) Modifies in place
+/// to avoid unecessary allocations.
+/// `psi` must be normalized.
+pub(crate) fn update_charge_density_fm_psi(
+    charge_density: &mut Arr3dReal,
+    psi_on_charge_grid: &Arr3d,
+    grid_n_charge: usize,
+) {
+    // Note: We need to sum to 1 over *all space*, not just in the grid.
+    // We can mitigate this by using a sufficiently large grid bounds, since the WF
+    // goes to 0 at distance.
+
+    // todo: YOu may need to model in terms of areas vice points; this is likely
+    // todo a factor on irregular grids.
+
+    for i in 0..grid_n_charge {
+        for j in 0..grid_n_charge {
+            for k in 0..grid_n_charge {
+                charge_density[i][j][k] = psi_on_charge_grid[i][j][k].abs_sq() * Q_ELEC;
+            }
+        }
+    }
 }

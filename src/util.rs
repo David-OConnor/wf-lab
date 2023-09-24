@@ -180,13 +180,15 @@ pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, grid_n: usize) {
 /// Note that due to phase symmetry, there are many ways to balance the normalization of the real
 /// vice imaginary parts. Our implmentation (dividing both real and imag parts by norm square)
 /// is one way.
-pub fn normalize_wf(arr: &mut Arr3d, norm: f64, grid_n: usize) {
+pub fn normalize_wf(arr: &mut Arr3d, norm: f64) {
     const EPS: f64 = 0.000001;
     if norm.abs() < EPS {
         return;
     }
 
     let norm_sqrt = norm.sqrt();
+
+    let grid_n = arr.len();
 
     for i in 0..grid_n {
         for j in 0..grid_n {

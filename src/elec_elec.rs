@@ -5,12 +5,11 @@ use std::{collections::HashMap, f64::consts::FRAC_1_SQRT_2};
 
 use crate::{
     complex_nums::Cplx,
-    grid_setup::{new_data, Arr3d, Arr3dReal},
+    grid_setup::{new_data, Arr3d},
     num_diff,
-    wf_ops::Q_ELEC,
 };
 
-use crate::types::{BasesEvaluated, PsiWDiffs};
+use crate::types::PsiWDiffs;
 use lin_alg2::f64::Vec3;
 
 /// This struct helps keep syntax more readable
@@ -360,30 +359,5 @@ impl WaveFunctionMultiElec {
 
     pub fn calc_charge_density(&self, posit: Vec3) -> f64 {
         0.
-    }
-}
-
-/// Convert an array of ψ to one of electron charge, through space. This is used to calculate potential
-/// from an electron. (And potential energy between electrons) Modifies in place
-/// to avoid unecessary allocations.
-/// `psi` must be normalized.
-pub(crate) fn update_charge_density_fm_psi(
-    charge_density: &mut Arr3dReal,
-    psi_on_charge_grid: &Arr3d,
-    grid_n_charge: usize,
-) {
-    // Note: We need to sum to 1 over *all space*, not just in the grid.
-    // We can mitigate this by using a sufficiently large grid bounds, since the WF
-    // goes to 0 at distance.
-
-    // todo: YOu may need to model in terms of areas vice points; this is likely
-    // todo a factor on irregular grids.
-
-    for i in 0..grid_n_charge {
-        for j in 0..grid_n_charge {
-            for k in 0..grid_n_charge {
-                charge_density[i][j][k] = psi_on_charge_grid[i][j][k].abs_sq() * Q_ELEC;
-            }
-        }
     }
 }

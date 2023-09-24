@@ -438,7 +438,7 @@ fn find_bases_system_of_eqs(
         }));
     }
 
-   result
+    result
 }
 
 /// Find a wave function, composed of STOs, that match a given potential.
@@ -449,7 +449,6 @@ pub fn find_stos(
     grid_charge: &Arr3dVec,
     grid_n_charge: usize,
 ) -> (Vec<Basis>, f64) {
-    // let (base_xi, E) = find_base_xi_E(V, grid_posits);
     let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge);
     println!("\nBase xi: {}. E: {}\n", base_xi, E);
 
