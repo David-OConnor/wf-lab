@@ -49,12 +49,6 @@ pub fn update_E_or_V(
 }
 
 pub fn update_basis_weights(state: &mut State, ae: usize) {
-    // let mut weights = vec![0.; state.bases[ae].len()];
-    // // Syncing procedure pending a better API.
-    // for (i, basis) in state.bases[ae].iter().enumerate() {
-    //     weights[i] = basis.weight();
-    // }
-
     // Set up our basis-function based trial wave function.
     let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
 
@@ -77,25 +71,15 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &state.surfaces_shared.V_from_nuclei,
         state.grid_n_render,
     );
-
-    let E_from_V = wf_ops::E_from_trial(
-        &state.bases[ae],
-        state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
-        state.surfaces_shared.grid_posits[0][0][0],
-    );
-    // println!("E from V: {}", E_from_V);
 }
 
+/// Run this when we add bases, change basis parameters other than weight etc.
 pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     state.bases_evaluated[ae] = BasesEvaluated::new(
         &state.bases[ae],
         &state.surfaces_shared.grid_posits,
         state.grid_n_render,
     );
-
-    // let norm = 1.; // todo temp!!!
-    // state.bases_evaluated_1d[ae] =
-    //     BasesEvaluated1d::new(&state.bases[ae], &state.eval_data_shared.posits, norm);
 
     state.bases_evaluated_charge[ae] = wf_ops::arr_from_bases(
         &state.bases[ae],

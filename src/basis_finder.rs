@@ -343,7 +343,6 @@ fn find_bases_system_of_eqs(
     sample_pts: &[Vec3],
 ) -> Vec<Basis> {
     let N_target = 6;
-    let mut bases = Vec::new();
 
     // Construct our matrix F, or psi_pp / psi ratios.
     // todo: TS
@@ -387,18 +386,11 @@ fn find_bases_system_of_eqs(
 
         // Sample positions are the columns.
         for posit_sample in &sample_pts[i_range.clone()] {
-            // psi_mat_.push(sto.value(*posit_sample));
-            // psi_pp_mat_.push(sto.second_deriv(*posit_sample));
-
             // todo: Real-only for now while building the algorithm, but in general, these are complex.
             psi_mat_.push(sto.value(*posit_sample).real);
             psi_pp_mat_.push(sto.second_deriv(*posit_sample).real);
         }
     }
-
-    // let psi_mat_na = DMatrix::from_vec(N, N, psi_mat_.clone());
-    // let psi_pp_mat_na = DMatrix::from_vec(N, N, psi_pp_ratio_mat_.clone());
-    // ndarray and nalgebra use inverse transposes for construction from vec.
 
     let psi_mat = Array::from_shape_vec((N, N), psi_mat_).unwrap();
     let psi_mat = psi_mat.t();
@@ -410,20 +402,9 @@ fn find_bases_system_of_eqs(
         .map(|V| KE_COEFF_INV * (V + E))
         .collect();
 
-    // let rhs_na = DVector::from_vec(rhs.clone());
     let rhs_vec = Array::from_vec(rhs.clone());
 
     let mat_to_solve = &psi_pp_mat - Array2::from_diag(&rhs_vec).dot(&psi_mat);
-
-    // println!("\nMat psi: {:.7}", psi_mat);
-    // println!("\nMat psi'': {:.7}", psi_pp_mat);
-    // println!("\nMat to solve: {:.7}", mat_to_solve);
-    // println!("\nrhs: {:.7}", rhs_vec);
-
-    // Set the right and side, of Aw = rhs
-    //         // todo: CHeck teh sign on E. You still have an anomoly here. On paper, it shows - E,
-    //         // todo but you've been inverting this in practice to make it work.
-    //         // rhs_.push(KE_COEFF_INV * (V - E));
 
     // you can use an iterative method, which will be more efficient for larger matrices where full svd is
     // unfeasible. also check that rust's svd sorts singular values in non-increasing order (pretty sure it does)
@@ -444,7 +425,20 @@ fn find_bases_system_of_eqs(
     println!("\nWeights: {:.6?}", weights);
     println!("Weights normalized: {:.6?}\n", weights_normalized);
 
-    bases
+    let mut result = Vec::new();
+
+    for (i, xi) in xis.iter().enumerate() {
+        result.push(Basis::Sto(Sto {
+            posit: Vec3::new_zero(), // todo: Hard-coded for now.
+            n: 1,
+            xi: *xi,
+            weight: weights[i],
+            charge_id: 0,
+            harmonic: Default::default(),
+        }));
+    }
+
+   result
 }
 
 /// Find a wave function, composed of STOs, that match a given potential.
@@ -464,37 +458,6 @@ pub fn find_stos(
     // todo but may be easier to construct
     // let mut trial_electron_v = new_data_real(grid_elecd)
 
-    // Rough, observational area of where each Xi should match:
-    // 1: outer edge (?)5+
-    // 2: 4.5
-    // 3: 4.
-    // 4: 2.
-    // 5: 0.5
-    // 6: 0.25?
-    // 7:
-    // 8:
-    // 9:
-    // 10:
-
-    // I think maybe find the -3dB point or similar, when looking at the derivative?
-
-    // Second derivative peaks: 1/xi
-    // 1: 1
-    // 2: 0.5
-    // 3: 0.333
-    // 4: 0.25
-    // 5: 0.2
-
-    // Eyeballing a dropoff point on first derivative: (rough) This seems to match the dimple in the
-    // 3d plots.
-
-    // 1: 3
-    // 2: 1.8
-    // 3: 1.3
-    // 4: 1.0
-    // 5: 0.75
-    // 6: 0.63
-
     let other_elecs_charge = find_charge_trial_wf(
         &[
             (1.0, 1.),
@@ -511,31 +474,10 @@ pub fn find_stos(
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
 
-    // Now, add more xis:
-
     let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
-    // todo t
-    // let additional_xis = [2., 3., 4., 5., 6., 7., 8., 9., 10.];
-
-    // let base_sto = Basis::Sto(Sto {
-    //     posit: charges_fixed[0].0, // todo: Hard-coded for a single nuc.
-    //     n: 1,
-    //     xi: base_xi,
-    //     weight: 1.,
-    //     charge_id: 0,
-    //     harmonic: Default::default(),
-    // });
 
     // let sample_pt_sets = generate_sample_pts_per_xi();
     let sample_pts = generate_sample_pts();
-
-    // let V_to_match_per_xi = make_ref_V_per_xi(
-    //     &sample_pt_sets,
-    //     charges_fixed,
-    //     charge_elec,
-    //     grid_charge,
-    //     grid_n_charge,
-    // );
 
     let V_to_match = potential::create_V_1d(
         &sample_pts,
@@ -544,11 +486,6 @@ pub fn find_stos(
         grid_charge,
         grid_n_charge,
     );
-
-    // todo: 18 Sep 2023: try this - Once you have base xi, find the lin combo that solves
-    // for each sample pt. One sample pt per basis. Matrix / etc approach.
-
-    println!("V to match: {:?}", V_to_match);
 
     let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, E, &sample_pts);
 

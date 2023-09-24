@@ -96,7 +96,7 @@ fn text_edit_float(val: &mut f64, _default: f64, ui: &mut Ui) {
 fn charge_editor(
     charges: &mut Vec<(Vec3, f64)>,
     basis_fns: &mut [Basis],
-    updated_unweighted_basis_wfs: &mut bool,
+    updated_evaled_wfs: &mut bool,
     updated_basis_weights: &mut bool,
     updated_charges: &mut bool,
     updated_entities: &mut bool,
@@ -116,7 +116,7 @@ fn charge_editor(
             text_edit_float(&mut posit.z, 0., ui);
 
             if prev_posit != *posit {
-                *updated_unweighted_basis_wfs = true;
+                *updated_evaled_wfs = true;
                 *updated_basis_weights = true;
                 *updated_charges = true;
                 *updated_entities = true;
@@ -133,7 +133,7 @@ fn charge_editor(
             text_edit_float(val, crate::Q_PROT, ui);
 
             if prev_charge != *val {
-                *updated_unweighted_basis_wfs = true;
+                *updated_evaled_wfs = true;
                 *updated_basis_weights = true;
                 *updated_charges = true;
                 *updated_entities = true;
@@ -142,7 +142,7 @@ fn charge_editor(
             if ui.button(RichText::new("❌").color(Color32::RED)).clicked() {
                 // Don't remove from a collection we're iterating over.
                 charge_removed = Some(i);
-                *updated_unweighted_basis_wfs = true;
+                *updated_evaled_wfs = true;
                 *updated_basis_weights = true;
                 *updated_charges = true;
                 // Update entities due to charge sphere placement.
@@ -153,7 +153,7 @@ fn charge_editor(
 
     if let Some(charge_i_removed) = charge_removed {
         charges.remove(charge_i_removed);
-        *updated_unweighted_basis_wfs = true;
+        *updated_evaled_wfs = true;
         *updated_basis_weights = true;
         *updated_charges = true;
         *updated_entities = true;
@@ -161,7 +161,7 @@ fn charge_editor(
 
     if ui.add(egui::Button::new("Add charge")).clicked() {
         charges.push((Vec3::new_zero(), crate::Q_PROT));
-        *updated_unweighted_basis_wfs = true;
+        *updated_evaled_wfs = true;
         *updated_basis_weights = true;
         *updated_charges = true;
         *updated_entities = true;
@@ -191,15 +191,6 @@ fn basis_fn_mixer(
 
             for (basis_i, basis) in state.bases[active_elec].iter_mut().enumerate() {
                 ui.horizontal(|ui| {
-                    // Checkbox to immediately hide or show the basis.
-
-                    // if ui
-                    //     .checkbox(&mut state.bases_visible[active_elec][id], "")
-                    //     .clicked()
-                    // {
-                    //     *updated_basis_weights = true;
-                    // }
-
                     ui.spacing_mut().slider_width = SLIDER_WIDTH_ORIENTATION; // Only affects sliders in this section.
 
                     // `prev...` is to check if it changed below.
@@ -226,9 +217,6 @@ fn basis_fn_mixer(
                         *updated_basis_weights = true;
                         *updated_unweighted_basis_wfs = true;
                     }
-
-                    // todo: If the basis is the general S0 type etc, replace the n, l etc sliders with
-                    // todo chi and c, and make GO's implementation of n(), l() etc unimplemented!.
 
                     match basis {
                         Basis::H(_b) => {
@@ -492,6 +480,7 @@ fn bottom_items(
     updated_meshes: &mut bool,
     updated_basis_weights: &mut bool,
     updated_E_or_V: &mut bool,
+    updated_evaluated_wfs: &mut bool,
 ) {
     ui.horizontal(|ui| {
         if ui.add(egui::Button::new("Nudge WF")).clicked() {
@@ -584,12 +573,12 @@ fn bottom_items(
             state.grid_n_charge,
         );
 
-        // todo: Which of these are we using?
-        // state.surfaces_shared.E = E;
         state.surfaces_shared.E = E;
 
-        // todo: We'd need to re-calcualte the bases here if replacing them with non-defaults.
-        // state.bases[ae] = bases;
+
+        state.bases[ae] = bases;
+        // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.
+        *updated_evaluated_wfs = true;
 
         *updated_E_or_V = true;
         *updated_basis_weights = true;
@@ -900,6 +889,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &mut updated_meshes,
                     &mut updated_basis_weights,
                     &mut updated_E_or_V,
+                    &mut updated_evaluated_wfs,
                 );
 
                 // Code below handles various updates that were flagged above.
