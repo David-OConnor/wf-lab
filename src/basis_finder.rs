@@ -415,7 +415,8 @@ fn find_bases_system_of_eqs(
     let mut weights_normalized = Vec::new();
     let base_weight = weights[0];
     for weight in &weights {
-        weights_normalized.push(*weight / base_weight);
+        // The multiplication factor here keeps values from scaling too heavily.
+        weights_normalized.push(*weight * 0.2 / base_weight);
     }
 
     println!("\nXis: {:.3?}", xis);
@@ -432,7 +433,7 @@ fn find_bases_system_of_eqs(
             posit: Vec3::new_zero(), // todo: Hard-coded for now.
             n: 1,
             xi: *xi,
-            weight: weights[i],
+            weight: weights_normalized[i],
             charge_id: 0,
             harmonic: Default::default(),
         }));
