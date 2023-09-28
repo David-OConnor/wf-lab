@@ -313,7 +313,8 @@ fn generate_sample_pts() -> Vec<Vec3> {
         // 3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
         // 3., 2.0, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
         // 1.5, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
-        3., 2., 1.5, 1., 0.75, 0.7, 0.6, 0.55, 0.5, 0.45,
+        // 3., 2., 1.5, 1., 0.75, 0.7, 0.6, 0.55, 0.5, 0.45,
+        3., 2., 1., 0.75, 0.5, 0.45, 0.4,
     ];
 
     // println!("\nSample dists: {:?}", sample_dists);
@@ -337,34 +338,12 @@ fn generate_sample_pts() -> Vec<Vec3> {
 /// W is the weight vector we are solving for, and V is V from charge, with h^2/2m and E included.
 fn find_bases_system_of_eqs(
     V_to_match: &[f64],
-    additional_xis: &[f64],
-    base_xi: f64,
-    E: f64,
+    xis: &[f64],
     sample_pts: &[Vec3],
+    E: f64,
 ) -> Vec<Basis> {
-    let N_target = 6;
-
-    // Construct our matrix F, or psi_pp / psi ratios.
-    // todo: TS
-    let mut index_offset = 0;
-    let mut xis = vec![base_xi];
-    // let mut xis = vec![];
-    for xi in &additional_xis[..N_target] {
-        if xi > &base_xi {
-            xis.push(*xi);
-        } else {
-            index_offset += 1;
-        }
-    }
-
     let N = xis.len();
-
-    index_offset -= 1; // for teh base xi. todo: test this.
-
-    // For syncing with V and sample points.
-    let i_range = index_offset..index_offset + N;
-
-    println!("Index offset: {:?}", index_offset);
+    let i_range = 0..N;
 
     // Bases, from xi, are the rows; positions are the columns.
     // Set this up as a column-major Vec, for use with nalgebra.
@@ -374,7 +353,7 @@ fn find_bases_system_of_eqs(
     let mut psi_mat_ = Vec::new();
     let mut psi_pp_mat_ = Vec::new();
 
-    for xi in &xis {
+    for xi in xis {
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for now.
             n: 1,
@@ -474,9 +453,10 @@ pub fn find_stos(
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
 
-    let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
+    // let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
+    let xis = [1.41714, 2.37682, 4.39628, 6.52699, 7.94252];
+    let additional_xis = [2.37682, 4.39628, 6.52699, 7.94252];
 
-    // let sample_pt_sets = generate_sample_pts_per_xi();
     let sample_pts = generate_sample_pts();
 
     let V_to_match = potential::create_V_1d(
@@ -487,7 +467,10 @@ pub fn find_stos(
         grid_n_charge,
     );
 
-    let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, E, &sample_pts);
+    let E = -0.96;
+
+    // let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, &sample_pts, E);
+    let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);
 
     (bases, E)
 }

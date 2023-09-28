@@ -20,8 +20,8 @@ const E_MIN: f64 = -4.5;
 const E_MAX: f64 = 0.2;
 
 // Wave fn weights
-pub const WEIGHT_MIN: f64 = -1.;
-pub const WEIGHT_MAX: f64 = 1.9;
+pub const WEIGHT_MIN: f64 = -2.5;
+pub const WEIGHT_MAX: f64 = 2.5;
 
 const _L_MIN: f64 = -3.;
 const _L_MAX: f64 = 3.;
@@ -33,8 +33,6 @@ const GRID_SIZE_MAX: f64 = 40.;
 const ITEM_SPACING: f32 = 18.;
 const FLOAT_EDIT_WIDTH: f32 = 40.;
 
-const NUDGE_MIN: f64 = 0.;
-const NUDGE_MAX: f64 = 0.2;
 
 fn text_edit_float(val: &mut f64, _default: f64, ui: &mut Ui) {
     let mut entry = val.to_string();
@@ -482,29 +480,6 @@ fn bottom_items(
     updated_evaluated_wfs: &mut bool,
 ) {
     ui.horizontal(|ui| {
-        if ui.add(egui::Button::new("Nudge WF")).clicked() {
-            // crate::nudge::nudge_wf(
-            //     &mut state.surfaces_per_elec[active_elec],
-            //     &mut state.nudge_amount[active_elec],
-            //     &state.bases[active_elec],
-            //     &state.surfaces_shared.grid_posits,
-            //     state.grid_n_render,
-            // );
-
-            *updated_meshes = true;
-
-            // state.surfaces_per_elec[active_elec].psi_pp_score = eval::score_wf(
-            //     &state.surfaces_per_elec[active_elec].psi_pp_calculated,
-            //     &state.surfaces_per_elec[active_elec].psi_pp_measured,
-            //     state.grid_n_render,
-            // );
-
-            // state.eval_data_per_elec[ae].score = eval::score_wf_from_psi_pp(
-            //     &state.eval_data_per_elec[ae].psi_pp_calc,
-            //     &state.eval_data_per_elec[ae].psi_pp_meas,
-            // );
-        }
-
         // if ui.add(egui::Button::new("Empty e- charge")).clicked() {
         //     state.charges_electron[active_elec] = grid_setup::new_data_real(state.grid_n);
         //
@@ -688,7 +663,16 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             // Show the new active electron's meshes, if it changed.
             if state.ui.active_elec != prev_active_elec {
+                // Auto update V acting on.
+                let ae = match state.ui.active_elec {
+                    ActiveElec::Combined => 0,
+                    ActiveElec::PerElec(a) => a
+                };
+                procedures::update_V_acting_on_elec(state, scene, ae);
+
+                updated_E_or_V = true;
                 updated_meshes = true;
+
             }
 
             // if ui
@@ -836,19 +820,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         state.surfaces_shared.E
                     })
                     .text("E"),
-                );
-
-                ui.add(
-                    // -0.1 is a kludge.
-                    egui::Slider::from_get_set(NUDGE_MIN..=NUDGE_MAX, |v| {
-                        if let Some(v_) = v {
-                            state.nudge_amount[ae] = v_;
-                        }
-
-                        state.nudge_amount[ae]
-                    })
-                    .text("Nudge amount")
-                    .logarithmic(true),
                 );
 
                 ui.add_space(ITEM_SPACING);
