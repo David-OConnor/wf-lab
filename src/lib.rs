@@ -15,7 +15,6 @@ pub mod elec_elec;
 pub mod eval;
 mod grid_setup;
 pub mod interp;
-// pub mod nudge;
 mod num_diff;
 pub mod potential;
 pub mod types;

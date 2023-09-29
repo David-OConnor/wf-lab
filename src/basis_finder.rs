@@ -47,18 +47,18 @@ use ndarray_linalg::{Solve, SVD};
 // ];
 
 // For N=30.
-const NORM_TABLE: [(f64, f64); 10] = [
-    (1., 84.92786880965572),
-    (2., 10.942926831589256),
-    (3., 3.6260051729267344),
-    (4., 1.9298933867204193),
-    (5., 1.3787825712919901),
-    (6., 1.1666246143992656),
-    (7., 1.0767825351497726),
-    (8., 1.0364654831724607),
-    (9., 1.0176794432981706),
-    (10., 1.0086981943944568),
-];
+// const NORM_TABLE: [(f64, f64); 10] = [
+//     (1., 84.92786880965572),
+//     (2., 10.942926831589256),
+//     (3., 3.6260051729267344),
+//     (4., 1.9298933867204193),
+//     (5., 1.3787825712919901),
+//     (6., 1.1666246143992656),
+//     (7., 1.0767825351497726),
+//     (8., 1.0364654831724607),
+//     (9., 1.0176794432981706),
+//     (10., 1.0086981943944568),
+// ];
 
 /// Create an order-2 polynomial based on 2 or 3 calibration points.
 /// `a` is the ^2 term, `b` is the linear term, `c` is the constant term.
@@ -75,29 +75,29 @@ fn create_polynomial_terms(pt0: (f64, f64), pt1: (f64, f64), pt2: (f64, f64)) ->
     (a, b, c)
 }
 
-/// Interpolate from our norm table.
-/// todo: This currently uses linear interpolation, which isn't correct. But, better than
-/// todo not interpolating.
-fn find_sto_norm(xi: f64) -> f64 {
-    let t_len = NORM_TABLE.len();
-
-    for i in 0..t_len {
-        // i cutoff here is so we don't hit the right end of the table.
-        if i < NORM_TABLE.len() - 2 && xi < NORM_TABLE[i + 1].0 {
-            let (a, b, c) =
-                create_polynomial_terms(NORM_TABLE[i], NORM_TABLE[i + 1], NORM_TABLE[i + 2]);
-            return a * xi.powi(2) + b * xi + c;
-        }
-    }
-
-    let (a, b, c) = create_polynomial_terms(
-        NORM_TABLE[t_len - 3],
-        NORM_TABLE[t_len - 2],
-        NORM_TABLE[t_len - 1],
-    );
-
-    a * xi.powi(2) + b * xi + c
-}
+// /// Interpolate from our norm table.
+// /// todo: This currently uses linear interpolation, which isn't correct. But, better than
+// /// todo not interpolating.
+// fn find_sto_norm(xi: f64) -> f64 {
+//     let t_len = NORM_TABLE.len();
+//
+//     for i in 0..t_len {
+//         // i cutoff here is so we don't hit the right end of the table.
+//         if i < NORM_TABLE.len() - 2 && xi < NORM_TABLE[i + 1].0 {
+//             let (a, b, c) =
+//                 create_polynomial_terms(NORM_TABLE[i], NORM_TABLE[i + 1], NORM_TABLE[i + 2]);
+//             return a * xi.powi(2) + b * xi + c;
+//         }
+//     }
+//
+//     let (a, b, c) = create_polynomial_terms(
+//         NORM_TABLE[t_len - 3],
+//         NORM_TABLE[t_len - 2],
+//         NORM_TABLE[t_len - 1],
+//     );
+//
+//     a * xi.powi(2) + b * xi + c
+// }
 
 /// Experimental; very.
 fn numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dReal, E: f64) {
@@ -152,11 +152,31 @@ fn numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dRea
     // println!("V'' corner: Blue {}  Grey {}", V_pp_corner, V_pp_psi);
 }
 
+fn find_E_from_base_xi(base_xi: f64, V_corner: f64, posit_corner: Vec3) -> f64 {
+    // Now that we've identified the base Xi, use it to calculate the energy of the system.
+    // (The energy appears to be determined primarily by it.)
+    let base_sto = Basis::Sto(Sto {
+        posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
+        n: 1,
+        xi: base_xi,
+        weight: 1.,
+        charge_id: 0,
+        harmonic: Default::default(),
+    });
+
+    // todo: Helper fn for this process? Lots of DRY.
+    let psi_corner = base_sto.value(posit_corner);
+    let psi_pp_corner = base_sto.second_deriv(posit_corner);
+
+    calc_E_on_psi(psi_corner, psi_pp_corner, V_corner)
+}
+
 fn find_base_xi_E_common(
     V_corner: f64,
     posit_corner: Vec3,
     V_sample: f64,
     posit_sample: Vec3,
+    base_xi_specified: f64,
 ) -> (f64, f64) {
     // todo: Try at different ns, one the `value` and `second_deriv` there for STOs are set up appropritaely.
 
@@ -193,27 +213,15 @@ fn find_base_xi_E_common(
 
     let base_xi = trial_base_xis[best_xi_i];
 
-    // Now that we've identified the base Xi, use it to calculate the energy of the system.
-    // (The energy appears to be determined primarily by it.)
-    let base_sto = Basis::Sto(Sto {
-        posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
-        n: 1,
-        xi: base_xi,
-        weight: 1.,
-        charge_id: 0,
-        harmonic: Default::default(),
-    });
+    // todo temp?
+    let base_xi = base_xi_specified;
 
-    // todo: Helper fn for this process? Lots of DRY.
-    let psi_corner = base_sto.value(posit_corner);
-    let psi_pp_corner = base_sto.second_deriv(posit_corner);
-
-    let E = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
+    let E = find_E_from_base_xi(base_xi, V_corner, posit_corner);
 
     (base_xi, E)
 }
 
-fn find_base_xi_E(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (f64, f64) {
+fn find_base_xi_E(V: &Arr3dReal, grid_posits: &Arr3dVec, base_xi_specified: f64) -> (f64, f64) {
     // Set energy so that at a corner, (or edge, ie as close to +/- infinity as we have given a grid-based V)
     // V calculated from this basis matches the potential at this point.
     let posit_corner = grid_posits[0][0][0];
@@ -223,13 +231,14 @@ fn find_base_xi_E(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (f64, f64) {
     // todo: Very rough and hard-set!
     let V_sample = V[20][0][0];
 
-    find_base_xi_E_common(V_corner, posit_corner, V_sample, posit_sample)
+    find_base_xi_E_common(V_corner, posit_corner, V_sample, posit_sample, base_xi_specified)
 }
 
 fn find_base_xi_E_type2(
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
+    base_xi_specified: f64,
 ) -> (f64, f64) {
     let posit_corner = Vec3::new(30., 30., 30.);
     let posit_sample = Vec3::new(30., 0., 0.);
@@ -252,7 +261,7 @@ fn find_base_xi_E_type2(
         }
     }
 
-    find_base_xi_E_common(V_corner, posit_corner, V_sample, posit_sample)
+    find_base_xi_E_common(V_corner, posit_corner, V_sample, posit_sample, base_xi_specified)
 }
 
 /// Stos passed are (xi, weight)
@@ -314,7 +323,7 @@ fn generate_sample_pts() -> Vec<Vec3> {
         // 3., 2.0, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
         // 1.5, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
         // 3., 2., 1.5, 1., 0.75, 0.7, 0.6, 0.55, 0.5, 0.45,
-        3., 2., 1., 0.75, 0.5, 0.45, 0.4,
+        3., 2., 1., 0.75, 0.5, 0.45, 0.4
     ];
 
     // println!("\nSample dists: {:?}", sample_dists);
@@ -429,7 +438,12 @@ pub fn find_stos(
     grid_charge: &Arr3dVec,
     grid_n_charge: usize,
 ) -> (Vec<Basis>, f64) {
-    let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge);
+    // let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
+    // let xis = [1.41714, 2.37682, 4.39628, 6.52699, 7.94252];
+    let xis = [1.3, 2.37682, 4.39628, 6.52699, 7.94252];
+    // let additional_xis = [2.37682, 4.39628, 6.52699, 7.94252];
+
+    let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge, xis[0]);
     println!("\nBase xi: {}. E: {}\n", base_xi, E);
 
     // todo: Move this part about trial elec V A/R
@@ -453,9 +467,6 @@ pub fn find_stos(
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
 
-    // let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
-    let xis = [1.41714, 2.37682, 4.39628, 6.52699, 7.94252];
-    let additional_xis = [2.37682, 4.39628, 6.52699, 7.94252];
 
     let sample_pts = generate_sample_pts();
 
@@ -466,8 +477,6 @@ pub fn find_stos(
         grid_charge,
         grid_n_charge,
     );
-
-    let E = -0.96;
 
     // let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, &sample_pts, E);
     let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);
