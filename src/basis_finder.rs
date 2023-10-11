@@ -17,140 +17,7 @@ use nalgebra::{DMatrix, DVector};
 use ndarray::prelude::*;
 use ndarray_linalg::{Solve, SVD};
 
-// Norms for a given base xi. Computed numerically. These are relative to each other.
-// Note: Using norms by dividing and summing from discrete grid sizes. It appearse that it's the ratios
-// that matter. Higher grid size, or a true analytic norm would be better.
-//
-// taken @ grid size = 200
-// const NORM_TABLE: [(f64, f64); 19] = [
-//     (1., 25112.383452512597),
-//     // These are useful as base xis.
-//     (1.1, 18876.50698245556),
-//     (1.2, 14542.570125492253),
-//     (1.3, 11439.026097691232),
-//     (1.4, 9159.01676430535),
-//     (1.5, 7446.719975215648),
-//     (1.6, 6135.947110455885),
-//     (1.7, 5115.598212989685),
-//     (1.8, 4309.500917234906),
-//     (1.9, 3664.248999866286),
-//     //
-//     (2., 3141.6457036898487),
-//     (3., 930.9220618000895),
-//     (4., 392.80528311671713),
-//     (5., 201.1943766693086),
-//     (6., 116.51377521465731),
-//     (7., 73.45759681761108),
-//     (8., 49.29721719256224),
-//     (9., 34.71069659544023),
-//     (10., 25.39268269325724),
-// ];
 
-// For N=30.
-// const NORM_TABLE: [(f64, f64); 10] = [
-//     (1., 84.92786880965572),
-//     (2., 10.942926831589256),
-//     (3., 3.6260051729267344),
-//     (4., 1.9298933867204193),
-//     (5., 1.3787825712919901),
-//     (6., 1.1666246143992656),
-//     (7., 1.0767825351497726),
-//     (8., 1.0364654831724607),
-//     (9., 1.0176794432981706),
-//     (10., 1.0086981943944568),
-// ];
-
-/// Create an order-2 polynomial based on 2 or 3 calibration points.
-/// `a` is the ^2 term, `b` is the linear term, `c` is the constant term.
-/// This is a general mathematical function, and can be derived using a system of equations.
-fn create_polynomial_terms(pt0: (f64, f64), pt1: (f64, f64), pt2: (f64, f64)) -> (f64, f64, f64) {
-    let a_num = pt0.0 * (pt2.1 - pt1.1) + pt1.0 * (pt0.1 - pt2.1) + pt2.0 * (pt1.1 - pt0.1);
-
-    let a_denom = (pt0.0 - pt1.0) * (pt0.0 - pt2.0) * (pt1.0 - pt2.0);
-
-    let a = a_num / a_denom;
-    let b = (pt1.1 - pt0.1) / (pt1.0 - pt0.0) - a * (pt0.0 + pt1.0);
-    let c = pt0.1 - a * pt0.0.powi(2) - b * pt0.0;
-
-    (a, b, c)
-}
-
-// /// Interpolate from our norm table.
-// /// todo: This currently uses linear interpolation, which isn't correct. But, better than
-// /// todo not interpolating.
-// fn find_sto_norm(xi: f64) -> f64 {
-//     let t_len = NORM_TABLE.len();
-//
-//     for i in 0..t_len {
-//         // i cutoff here is so we don't hit the right end of the table.
-//         if i < NORM_TABLE.len() - 2 && xi < NORM_TABLE[i + 1].0 {
-//             let (a, b, c) =
-//                 create_polynomial_terms(NORM_TABLE[i], NORM_TABLE[i + 1], NORM_TABLE[i + 2]);
-//             return a * xi.powi(2) + b * xi + c;
-//         }
-//     }
-//
-//     let (a, b, c) = create_polynomial_terms(
-//         NORM_TABLE[t_len - 3],
-//         NORM_TABLE[t_len - 2],
-//         NORM_TABLE[t_len - 1],
-//     );
-//
-//     a * xi.powi(2) + b * xi + c
-// }
-
-/// Experimental; very.
-fn numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dReal, E: f64) {
-    let H = grid_posits[1][0][0].x - grid_posits[0][0][0].x;
-    let V_pp_corner = num_diff::find_pp_real(
-        V[1][1][1], V[0][1][1], V[2][1][1], V[1][0][1], V[1][2][1], V[1][1][0], V[1][1][2], H,
-    );
-
-    // todo QC this
-    let V_p_corner = (V[2][1][1] - V[0][1][1])
-        + (V[1][2][1] - V[1][0][1])
-        + (V[1][1][2] - V[1][1][0]) / (2. * H);
-
-    // let V_pp_psi = trial_base_sto.V_pp_from_psi(posit_corner_offset);
-    // let V_p_psi = trial_base_sto.V_p_from_psi(posit_corner_offset);
-
-    // todo: Let's do a cheeky numeric derivative of oV from psi until we're confident the analytic approach
-    // todo works.
-
-    // todo well, this is a mess, but it's easy enough to evaluate.
-    let posit_x_prev = grid_posits[0][1][1];
-    let posit_x_next = grid_posits[2][1][1];
-    let posit_y_prev = grid_posits[1][0][1];
-    let posit_y_next = grid_posits[1][2][1];
-    let posit_z_prev = grid_posits[1][1][0];
-    let posit_z_next = grid_posits[1][1][2];
-
-    let psi_x_prev = trial_base_sto.value(posit_x_prev);
-    let psi_pp_x_prev = trial_base_sto.second_deriv(posit_x_prev);
-    let psi_x_next = trial_base_sto.value(posit_x_next);
-    let psi_pp_x_next = trial_base_sto.second_deriv(posit_x_next);
-
-    let psi_y_prev = trial_base_sto.value(posit_y_prev);
-    let psi_pp_y_prev = trial_base_sto.second_deriv(posit_y_prev);
-    let psi_y_next = trial_base_sto.value(posit_y_next);
-    let psi_pp_y_next = trial_base_sto.second_deriv(posit_y_next);
-
-    let psi_z_prev = trial_base_sto.value(posit_z_prev);
-    let psi_pp_z_prev = trial_base_sto.second_deriv(posit_z_prev);
-    let psi_z_next = trial_base_sto.value(posit_z_next);
-    let psi_pp_z_next = trial_base_sto.second_deriv(posit_z_next);
-
-    let V_p_psi = ((calc_V_on_psi(psi_x_next, psi_pp_x_next, E)
-        - calc_V_on_psi(psi_x_prev, psi_pp_x_prev, E))
-        + (calc_V_on_psi(psi_y_next, psi_pp_y_next, E)
-            - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
-        + (calc_V_on_psi(psi_z_next, psi_pp_z_next, E)
-            - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
-        / (2. * H);
-
-    println!("V' corner: Blue {}  Grey {}", V_p_corner, V_p_psi);
-    // println!("V'' corner: Blue {}  Grey {}", V_pp_corner, V_pp_psi);
-}
 
 fn find_E_from_base_xi(base_xi: f64, V_corner: f64, posit_corner: Vec3) -> f64 {
     // Now that we've identified the base Xi, use it to calculate the energy of the system.
@@ -317,13 +184,11 @@ fn find_charge_trial_wf(
 fn generate_sample_pts() -> Vec<Vec3> {
     // It's important that these sample points span points both close and far from the nuclei.
 
+    // todo: Ideally, we don't need a square matrix, and can choose more sample points than xis.
     // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
     let sample_dists = [
-        // 3., 2.5, 2.0, 1.7, 1.3, 1.0, 0.75, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
-        // 3., 2.0, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
-        // 1.5, 1.3, 1.0, 0.63, 0.5, 0.45, 0.42, 0.4, 0.35, 0.3,
-        // 3., 2., 1.5, 1., 0.75, 0.7, 0.6, 0.55, 0.5, 0.45,
-        3., 2., 1., 0.75, 0.5, 0.45, 0.4
+        3., 2., 1.5, 0.8, 0.6, 0.4, 0.3, 0.2
+        // 10., 3., 2., 1., 0.75, 0.5, 0.45, 0.4
     ];
 
     // println!("\nSample dists: {:?}", sample_dists);
@@ -352,7 +217,7 @@ fn find_bases_system_of_eqs(
     E: f64,
 ) -> Vec<Basis> {
     let N = xis.len();
-    let i_range = 0..N;
+    // let i_range = 0..N;
 
     // Bases, from xi, are the rows; positions are the columns.
     // Set this up as a column-major Vec, for use with nalgebra.
@@ -372,20 +237,27 @@ fn find_bases_system_of_eqs(
             harmonic: Default::default(),
         });
 
+        // todo: Experimenting with non-square matrix
         // Sample positions are the columns.
-        for posit_sample in &sample_pts[i_range.clone()] {
+        // for posit_sample in &sample_pts[i_range.clone()] {
+        for posit_sample in sample_pts {
             // todo: Real-only for now while building the algorithm, but in general, these are complex.
             psi_mat_.push(sto.value(*posit_sample).real);
             psi_pp_mat_.push(sto.second_deriv(*posit_sample).real);
         }
     }
 
-    let psi_mat = Array::from_shape_vec((N, N), psi_mat_).unwrap();
+    // let psi_mat = Array::from_shape_vec((N, N), psi_mat_).unwrap();
+    let psi_mat = Array::from_shape_vec((xis.len(), sample_pts.len()), psi_mat_).unwrap();
+    // let psi_mat = Array::from_shape_vec((sample_pts.len(), xis.len()), psi_mat_).unwrap();
     let psi_mat = psi_mat.t();
-    let psi_pp_mat = Array::from_shape_vec((N, N), psi_pp_mat_).unwrap();
+    // let psi_pp_mat = Array::from_shape_vec((N, N), psi_pp_mat_).unwrap();
+    let psi_pp_mat = Array::from_shape_vec((xis.len(), sample_pts.len()), psi_pp_mat_).unwrap();
+    // let psi_pp_mat = Array::from_shape_vec((sample_pts.len(), xis.len()), psi_pp_mat_).unwrap();
     let psi_pp_mat = psi_pp_mat.t();
 
-    let rhs: Vec<f64> = V_to_match[i_range.clone()]
+    // let rhs: Vec<f64> = V_to_match[i_range.clone()]
+    let rhs: Vec<f64> = V_to_match
         .iter()
         .map(|V| KE_COEFF_INV * (V + E))
         .collect();
@@ -408,8 +280,10 @@ fn find_bases_system_of_eqs(
     }
 
     println!("\nXis: {:.3?}", xis);
-    println!("Sample pts: {:?}", &sample_pts[i_range.clone()]);
-    println!("V to match: {:?}", &V_to_match[i_range.clone()]);
+    // println!("Sample pts: {:?}", &sample_pts[i_range.clone()]);
+    // println!("V to match: {:?}", &V_to_match[i_range.clone()]);
+    println!("Sample pts: {:?}", &sample_pts);
+    println!("V to match: {:?}", &V_to_match);
 
     println!("\nWeights: {:.6?}", weights);
     println!("Weights normalized: {:.6?}\n", weights_normalized);
@@ -437,11 +311,14 @@ pub fn find_stos(
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
     grid_n_charge: usize,
+    // todo: We are experimenting with using the input xis and output for helium
+    // Note that this is an intermediate step while we manually experiment with
+    // todo convergence algos and trial WFs.
+    xis: &[f64],
 ) -> (Vec<Basis>, f64) {
     // let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
-    // let xis = [1.41714, 2.37682, 4.39628, 6.52699, 7.94252];
-    let xis = [1.3, 2.37682, 4.39628, 6.52699, 7.94252];
-    // let additional_xis = [2.37682, 4.39628, 6.52699, 7.94252];
+    // let xis = [1.41714, 2.37682, 4.39628, 6.52699, 7.94252, 5.];
+    // let xis = [1.5, 2.37682, 4.39628, 6.52699, 7.94252];
 
     let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge, xis[0]);
     println!("\nBase xi: {}. E: {}\n", base_xi, E);

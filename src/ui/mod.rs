@@ -20,9 +20,7 @@ const E_MIN: f64 = -4.5;
 const E_MAX: f64 = 0.2;
 
 // Wave fn weights
-// pub const WEIGHT_MIN: f64 = -2.5;
-// pub const WEIGHT_MAX: f64 = 2.5;
-pub const WEIGHT_MIN: f64 = -0.8;
+pub const WEIGHT_MIN: f64 = -1.7;
 pub const WEIGHT_MAX: f64 = 1.3;
 
 const _L_MIN: f64 = -3.;
@@ -398,6 +396,7 @@ fn basis_fn_mixer(
                 ui.add(
                     egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
                         if let Some(v_) = v {
+                            // todo temp removed
                             *basis.weight_mut() = v_;
                             *updated_basis_weights = true;
 
@@ -542,11 +541,14 @@ fn bottom_items(
             println!("Charge sum (should be -1): {:?}", sum);
         }
 
+        let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
+
         let (bases, E) = basis_finder::find_stos(
             &state.charges_fixed,
             &charges_other_electrons,
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_charge,
+            &xis,
         );
 
         state.surfaces_shared.E = E;

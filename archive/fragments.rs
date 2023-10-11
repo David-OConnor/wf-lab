@@ -154,3 +154,74 @@
 //         }
 //     }
 // }
+
+
+// (From `basis_finder`):
+/// Create an order-2 polynomial based on 2 or 3 calibration points.
+/// `a` is the ^2 term, `b` is the linear term, `c` is the constant term.
+/// This is a general mathematical function, and can be derived using a system of equations.
+fn _create_polynomial_terms(pt0: (f64, f64), pt1: (f64, f64), pt2: (f64, f64)) -> (f64, f64, f64) {
+    let a_num = pt0.0 * (pt2.1 - pt1.1) + pt1.0 * (pt0.1 - pt2.1) + pt2.0 * (pt1.1 - pt0.1);
+
+    let a_denom = (pt0.0 - pt1.0) * (pt0.0 - pt2.0) * (pt1.0 - pt2.0);
+
+    let a = a_num / a_denom;
+    let b = (pt1.1 - pt0.1) / (pt1.0 - pt0.0) - a * (pt0.0 + pt1.0);
+    let c = pt0.1 - a * pt0.0.powi(2) - b * pt0.0;
+
+    (a, b, c)
+}
+
+
+/// Experimental; very.
+fn _numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dReal, E: f64) {
+    let H = grid_posits[1][0][0].x - grid_posits[0][0][0].x;
+    let V_pp_corner = num_diff::find_pp_real(
+        V[1][1][1], V[0][1][1], V[2][1][1], V[1][0][1], V[1][2][1], V[1][1][0], V[1][1][2], H,
+    );
+
+    // todo QC this
+    let V_p_corner = (V[2][1][1] - V[0][1][1])
+        + (V[1][2][1] - V[1][0][1])
+        + (V[1][1][2] - V[1][1][0]) / (2. * H);
+
+    // let V_pp_psi = trial_base_sto.V_pp_from_psi(posit_corner_offset);
+    // let V_p_psi = trial_base_sto.V_p_from_psi(posit_corner_offset);
+
+    // todo: Let's do a cheeky numeric derivative of oV from psi until we're confident the analytic approach
+    // todo works.
+
+    // todo well, this is a mess, but it's easy enough to evaluate.
+    let posit_x_prev = grid_posits[0][1][1];
+    let posit_x_next = grid_posits[2][1][1];
+    let posit_y_prev = grid_posits[1][0][1];
+    let posit_y_next = grid_posits[1][2][1];
+    let posit_z_prev = grid_posits[1][1][0];
+    let posit_z_next = grid_posits[1][1][2];
+
+    let psi_x_prev = trial_base_sto.value(posit_x_prev);
+    let psi_pp_x_prev = trial_base_sto.second_deriv(posit_x_prev);
+    let psi_x_next = trial_base_sto.value(posit_x_next);
+    let psi_pp_x_next = trial_base_sto.second_deriv(posit_x_next);
+
+    let psi_y_prev = trial_base_sto.value(posit_y_prev);
+    let psi_pp_y_prev = trial_base_sto.second_deriv(posit_y_prev);
+    let psi_y_next = trial_base_sto.value(posit_y_next);
+    let psi_pp_y_next = trial_base_sto.second_deriv(posit_y_next);
+
+    let psi_z_prev = trial_base_sto.value(posit_z_prev);
+    let psi_pp_z_prev = trial_base_sto.second_deriv(posit_z_prev);
+    let psi_z_next = trial_base_sto.value(posit_z_next);
+    let psi_pp_z_next = trial_base_sto.second_deriv(posit_z_next);
+
+    let V_p_psi = ((calc_V_on_psi(psi_x_next, psi_pp_x_next, E)
+        - calc_V_on_psi(psi_x_prev, psi_pp_x_prev, E))
+        + (calc_V_on_psi(psi_y_next, psi_pp_y_next, E)
+        - calc_V_on_psi(psi_y_prev, psi_pp_y_prev, E))
+        + (calc_V_on_psi(psi_z_next, psi_pp_z_next, E)
+        - calc_V_on_psi(psi_z_prev, psi_pp_z_prev, E)))
+        / (2. * H);
+
+    println!("V' corner: Blue {}  Grey {}", V_p_corner, V_p_psi);
+    // println!("V'' corner: Blue {}  Grey {}", V_pp_corner, V_pp_psi);
+}
