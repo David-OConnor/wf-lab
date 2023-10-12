@@ -184,11 +184,10 @@ fn find_charge_trial_wf(
 fn generate_sample_pts() -> Vec<Vec3> {
     // It's important that these sample points span points both close and far from the nuclei.
 
-    // todo: Ideally, we don't need a square matrix, and can choose more sample points than xis.
     // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
     let sample_dists = [
-        3., 2., 1.5, 0.8, 0.6, 0.4, 0.3, 0.2
-        // 10., 3., 2., 1., 0.75, 0.5, 0.45, 0.4
+        // 10., 5., 3., 2., 1.5, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1
+        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.6, 0.4
     ];
 
     // println!("\nSample dists: {:?}", sample_dists);
@@ -216,9 +215,6 @@ fn find_bases_system_of_eqs(
     sample_pts: &[Vec3],
     E: f64,
 ) -> Vec<Basis> {
-    let N = xis.len();
-    // let i_range = 0..N;
-
     // Bases, from xi, are the rows; positions are the columns.
     // Set this up as a column-major Vec, for use with nalgebra.
     // Note: We are currently using ndarray, which has a row-major constructor;
@@ -247,16 +243,11 @@ fn find_bases_system_of_eqs(
         }
     }
 
-    // let psi_mat = Array::from_shape_vec((N, N), psi_mat_).unwrap();
     let psi_mat = Array::from_shape_vec((xis.len(), sample_pts.len()), psi_mat_).unwrap();
-    // let psi_mat = Array::from_shape_vec((sample_pts.len(), xis.len()), psi_mat_).unwrap();
     let psi_mat = psi_mat.t();
-    // let psi_pp_mat = Array::from_shape_vec((N, N), psi_pp_mat_).unwrap();
     let psi_pp_mat = Array::from_shape_vec((xis.len(), sample_pts.len()), psi_pp_mat_).unwrap();
-    // let psi_pp_mat = Array::from_shape_vec((sample_pts.len(), xis.len()), psi_pp_mat_).unwrap();
     let psi_pp_mat = psi_pp_mat.t();
 
-    // let rhs: Vec<f64> = V_to_match[i_range.clone()]
     let rhs: Vec<f64> = V_to_match
         .iter()
         .map(|V| KE_COEFF_INV * (V + E))
@@ -272,16 +263,30 @@ fn find_bases_system_of_eqs(
     let mut weights = svd.2.unwrap().slice(s![-1, ..]).to_vec();
 
     // Normalize re base xi.
+
+
+    // let base_weight = weights[0];
+    // let base_val = 0.2;
+
+    // This approach prevents clipping our UI sliders.
+    // todo: Rust's `max` doesn't work with floats. Manually implmementing.
+    let mut highest_weight = 0.;
+    for weight in &weights {
+        if weight.abs() > highest_weight {
+            highest_weight = *weight;
+        }
+    }
+    let base_weight = highest_weight;
+
+    let normalize_to = 1.2;
+
     let mut weights_normalized = Vec::new();
-    let base_weight = weights[0];
     for weight in &weights {
         // The multiplication factor here keeps values from scaling too heavily.
-        weights_normalized.push(*weight * 0.2 / base_weight);
+        weights_normalized.push(*weight * normalize_to / base_weight);
     }
 
     println!("\nXis: {:.3?}", xis);
-    // println!("Sample pts: {:?}", &sample_pts[i_range.clone()]);
-    // println!("V to match: {:?}", &V_to_match[i_range.clone()]);
     println!("Sample pts: {:?}", &sample_pts);
     println!("V to match: {:?}", &V_to_match);
 
@@ -320,6 +325,11 @@ pub fn find_stos(
     // let xis = [1.41714, 2.37682, 4.39628, 6.52699, 7.94252, 5.];
     // let xis = [1.5, 2.37682, 4.39628, 6.52699, 7.94252];
 
+    let mut xis = Vec::from(xis); // todo: Experimenting with adding more
+    xis.push(7.);
+    // xis.push(8.);
+    // xis.push(9.);
+
     let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge, xis[0]);
     println!("\nBase xi: {}. E: {}\n", base_xi, E);
 
@@ -343,7 +353,6 @@ pub fn find_stos(
 
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
-
 
     let sample_pts = generate_sample_pts();
 
