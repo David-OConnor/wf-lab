@@ -31,7 +31,6 @@ fn find_E_from_base_xi(base_xi: f64, V_corner: f64, posit_corner: Vec3) -> f64 {
         harmonic: Default::default(),
     });
 
-    // todo: Helper fn for this process? Lots of DRY.
     let psi_corner = base_sto.value(posit_corner);
     let psi_pp_corner = base_sto.second_deriv(posit_corner);
 
@@ -50,7 +49,10 @@ fn find_base_xi_E_common(
     let mut best_xi_i = 0;
     let mut smallest_diff = 99999.;
     // This isn't perhaps an ideal apperoach, but try it to find the baseline xi.
-    let trial_base_xis = util::linspace((1., 5.), 100);
+    let trial_base_xis = util::linspace((1., 3.), 200);
+
+    let mut Es = vec![0.; trial_base_xis.len()];
+
     for (i, trial_xi) in trial_base_xis.iter().enumerate() {
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
@@ -64,8 +66,10 @@ fn find_base_xi_E_common(
         let psi_corner = sto.value(posit_corner);
         let psi_pp_corner = sto.second_deriv(posit_corner);
         let E_ = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
+        Es[i] = E_;
 
-        // We know the corner matches from how we set E. Let's try a different point.
+        // We know the corner matches from how we set E. Let's try a different point, and
+        // see how close it is.
 
         let psi = sto.value(posit_sample);
         let psi_pp = sto.second_deriv(posit_sample);
@@ -79,10 +83,12 @@ fn find_base_xi_E_common(
     }
 
     let base_xi = trial_base_xis[best_xi_i];
+    println!("Assessed base xi: {:.3}, E there: {:.3}", base_xi, Es[best_xi_i]);
 
     // todo temp?
     let base_xi = base_xi_specified;
 
+    // Note: We calculate this above in `Es`, but not if we override it as here.
     let E = find_E_from_base_xi(base_xi, V_corner, posit_corner);
 
     (base_xi, E)
@@ -91,12 +97,13 @@ fn find_base_xi_E_common(
 fn find_base_xi_E(V: &Arr3dReal, grid_posits: &Arr3dVec, base_xi_specified: f64) -> (f64, f64) {
     // Set energy so that at a corner, (or edge, ie as close to +/- infinity as we have given a grid-based V)
     // V calculated from this basis matches the potential at this point.
+    let index_halfway = V[0].len() / 2;
+
     let posit_corner = grid_posits[0][0][0];
-    let posit_sample = grid_posits[20][0][0];
+    let posit_sample = grid_posits[index_halfway][0][0];
 
     let V_corner = V[0][0][0];
-    // todo: Very rough and hard-set!
-    let V_sample = V[20][0][0];
+    let V_sample = V[index_halfway][0][0];
 
     find_base_xi_E_common(V_corner, posit_corner, V_sample, posit_sample, base_xi_specified)
 }
@@ -107,8 +114,11 @@ fn find_base_xi_E_type2(
     grid_charge: &Arr3dVec,
     base_xi_specified: f64,
 ) -> (f64, f64) {
-    let posit_corner = Vec3::new(30., 30., 30.);
-    let posit_sample = Vec3::new(30., 0., 0.);
+    // let posit_corner = Vec3::new(30., 30., 30.);
+    // let posit_sample = Vec3::new(30., 0., 0.);
+    let posit_corner = Vec3::new(15., 15., 15.);
+    // let posit_sample = Vec3::new(5., 5., 5.);
+    let posit_sample = Vec3::new(15., 0., 0.);
 
     let mut V_corner = 0.;
     let mut V_sample = 0.;
@@ -264,7 +274,6 @@ fn find_bases_system_of_eqs(
 
     // Normalize re base xi.
 
-
     // let base_weight = weights[0];
     // let base_val = 0.2;
 
@@ -273,7 +282,7 @@ fn find_bases_system_of_eqs(
     let mut highest_weight = 0.;
     for weight in &weights {
         if weight.abs() > highest_weight {
-            highest_weight = *weight;
+            highest_weight = weight.abs();
         }
     }
     let base_weight = highest_weight;
@@ -326,7 +335,7 @@ pub fn find_stos(
     // let xis = [1.5, 2.37682, 4.39628, 6.52699, 7.94252];
 
     let mut xis = Vec::from(xis); // todo: Experimenting with adding more
-    xis.push(7.);
+    // xis.push(7.);
     // xis.push(8.);
     // xis.push(9.);
 
