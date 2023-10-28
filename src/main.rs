@@ -17,8 +17,7 @@
 
 // Which of these?
 use std::ffi;
-// use cc;
-// use libc;
+use libc;
 
 use lin_alg2::f64::Vec3;
 
@@ -277,11 +276,7 @@ pub fn init_from_grid(
     )
 }
 
-// type FfiTest = unsafe extern "C" fn(data: *mut u8, len: usize) -> c_int;
-// type FfiTest = unsafe extern "C" fn();
-
-// static mut ffiTest_: Option<FfiTest> = None;
-
+#[link(name = "cuda")]
 extern "C" {
     fn ffi_test();
 }

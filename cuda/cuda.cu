@@ -17,9 +17,8 @@ void add(int n, float *x, float *y)
 }
 
 
-// This C++ function can be called from C code
+// `extern "C" prepended allows functions to be called from C code (And therefore Rust FFI)
 extern "C" void ffi_test() {
-// void ffi_test() {
     std::cout << "FFI TEST" << std::endl;
 }
 

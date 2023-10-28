@@ -7,6 +7,6 @@
 workspace.xml
 
 # CUDA
-#*.exe
-#*.exp
-#*.lib
+*.exe
+*.exp
+*.lib
