@@ -5,3 +5,8 @@
 # Pycharm
 *.iws
 workspace.xml
+
+# CUDA
+#*.exe
+#*.exp
+#*.lib

@@ -14,6 +14,12 @@
 // You may need to interpolate to avoid quantized (not in the way we need!) positions
 // at the grid you chose. Linear is fine.
 
+
+// Which of these?
+use std::ffi;
+// use cc;
+// use libc;
+
 use lin_alg2::f64::Vec3;
 
 mod basis_finder;
@@ -271,7 +277,24 @@ pub fn init_from_grid(
     )
 }
 
+// type FfiTest = unsafe extern "C" fn(data: *mut u8, len: usize) -> c_int;
+// type FfiTest = unsafe extern "C" fn();
+
+// static mut ffiTest_: Option<FfiTest> = None;
+
+extern "C" {
+    fn ffi_test();
+}
+
+fn test_cuda_ffi() {
+    unsafe {
+        ffi_test()
+    }
+}
+
 fn main() {
+    test_cuda_ffi();
+
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 

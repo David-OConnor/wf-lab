@@ -197,7 +197,7 @@ fn generate_sample_pts() -> Vec<Vec3> {
     // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
     let sample_dists = [
         // 10., 5., 3., 2., 1.5, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1
-        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.6, 0.4
+        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.6, 0.4, 0.3
     ];
 
     // println!("\nSample dists: {:?}", sample_dists);

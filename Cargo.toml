@@ -22,4 +22,14 @@ nalgebra = "^0.32.3"
 # todo: Eventually ditch this tool for permutations:
 itertools = "^0.11.0"
 
+# todo: Should these be build-dependencies or normal? Which of the 2 do you want?
+# What about `std::ffi`?
+
+libc = "^0.2.149"
+
 # rulinalg = "^0.4" # Tempish: For adapting the RBF lib
+
+[build-dependencies]
+# For CUDA FFI
+cc = { version = "^1.0.83", features = ["parallel"] }
+
