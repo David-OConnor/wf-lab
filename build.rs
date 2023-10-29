@@ -11,16 +11,18 @@ use cc;
 /// See [These CUDA docs](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html)
 /// for info about these flags.
 fn main() {
-    // cc::Build::new()
-    //     .cuda(true)
-    //     // .cudart("static")
-    //     // todo: Is expicitly specifying gencode required?
-    //     // Generate code for RTX 2 series.
-    //     .flag("-gencode").flag("arch=compute_75,code=sm_75")
-    //     // Generate code in parallel
-    //     .flag("-t0")
-    //     .file("./cuda/cuda.cu")
-    //     .compile("cuda_test");
+    cc::Build::new()
+        // .cpp(true)
+        // .cuda(true)
+        // .cudart("shared") // todo: troubleshooting.
+        // Generate code for RTX 2 series.
+        // .flag("-gencode").flag("arch=compute_75,code=sm_75")
+        // Generate code in parallel
+        // .flag("-t0")
+        .file("./cuda/cuda.cpp")
+        .compile("cuda");
+
+    return;
 
     // todo: generate lib (so/dll?) but not bin (.exe)
     let compilation_result = Command::new("nvcc")
