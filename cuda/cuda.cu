@@ -1,5 +1,5 @@
 #include <iostream>
-#include <math.h>
+//#include <math.h>
 
 // https://developer.nvidia.com/blog/even-easier-introduction-cuda/
 
@@ -18,15 +18,15 @@
 
 
 // `extern "C" prepended allows functions to be called from C code (And therefore Rust FFI)
-//extern "C" void ffi_test() {
-void ffi_test() {
-//    std::cout << "FFI TEST" << std::endl;
-    printf("FFI TEST C");
+extern "C" void ffi_test() {
+    std::cout << "FFI TEST" << std::endl;
 }
 
 
- int main(void)
- {
+ int cudamain(void) {
+    ffi_test();
+    return 0;
+
 //   std::cout << "Hello C++; Hello Cu" << std::endl;
 //
 //     int N = 1<<20; // 1M elements

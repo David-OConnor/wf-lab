@@ -277,6 +277,7 @@ pub fn init_from_grid(
 }
 
 #[link(name = "cuda")]
+// #[link(name = "cuda", kind = "static")]
 extern "C" {
     fn ffi_test();
 }
