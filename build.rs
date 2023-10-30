@@ -10,19 +10,27 @@ use cc;
 
 /// See [These CUDA docs](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html)
 /// for info about these flags.
+///
+/// Compiles our CUDA program using Nvidia's NVCC compiler
+/// [NVCC docs and list of commands](https://docs.nvidia.com/cuda/pdf/CUDA_Compiler_Driver_NVCC.pdf)
+/// A lib using CC, in linux: https://github.com/termoshtt/link_cuda_kernel
 fn main() {
     return
+    println!("cargo:rustc-link-search=native=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2/lib/x64");
+    println!("cargo:rustc-link-search=native=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2/bin");
+    println!("cargo:rustc-link-search=native=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2");
+    println!("cargo:rustc-link-lib=cudart");
+
     // Tell Cargo that if the given file changes, to rerun this build script.
-    println!("cargo:rerun-if-changed=cuda/cuda.cu");
-    // println!("cargo:rustc-link-lib=cuda"); // todo: Is this required?
+    // println!("cargo:rerun-if-changed=cuda/cuda.cu");
     // println!("cargo:rustc-link-lib=cuda"); // todo: Is this required?
 
     cc::Build::new()
-        .cpp(true)
-        // .cuda(true)
-        // .cudart("shared") // todo: troubleshooting.
+        // .cpp(true)
+        .cuda(true)
+        .cudart("shared")
         // Generate code for RTX 2 series.
-        // .flag("-gencode").flag("arch=compute_75,code=sm_75")
+        .flag("-gencode").flag("arch=compute_75,code=sm_75")
         // Generate code in parallel // todo: Do we want this?
         // .flag("-t0")
         //         .include("...")
@@ -30,27 +38,31 @@ fn main() {
         //         .flag("-llibrary")
         //         .compile("...");
         .file("cuda/cuda.cu")
-        .compile("cuda");
+        .compile("cuda.a");
+
+    println!("cargo:rustc-link-search=native=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2/lib/x64");
+    println!("cargo:rustc-link-search=native=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2/bin");
+    println!("cargo:rustc-link-search=native=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2");
+    println!("cargo:rustc-link-lib=cudart");
 
     return;
-
     // `nvcc --shared -o libtest.so test.cu --compiler-options '-fPIC' `
+    // todo: fpic appears invalid. Try `-c` or `--lib`  in addition to `--shared`.
+    // todo: `--cduart shared` is worth trying too. (By default, it's 'static').
 
 
+    // maybe these two in seq:
+    // clang++ cuda/cuda.cpp -c -o cuda.o
+    // clang++ -shared -o cuda.lib cuda.o
 
     // todo: generate lib (so/dll?) but not bin (.exe)
     // note: with clang++, either `-shared` or `-c` seems to be required; `-shared` may be better.
     // todo: `-c` working; `-shared` not.
-    // Call: `clang++ cuda/cuda.cpp -c -o cuda.lib`
+    // Call: `clang++ cuda/cuda.cu -c -o cuda.lib`
     let compilation_result = Command::new("nvcc")
         // `nvcc .\main.cu -o main.exe`
         .args(["cuda/cuda.cu", "--lib", "-gencode", "arch=compute_75,code=sm_75", "-o", "cuda.lib" ])
         .output().expect("Problem compiling the C++/CUDA code.");
-
-    // let compilation_result = Command::new("clang++")
-    //     // `nvcc .\main.cu -o main.exe`
-    //     .args(["cuda/cuda.cpp", "-c", "-o", "cuda.lib" ])
-    //     .output().expect("Problem compiling the C++/CUDA code.");
 
     if !compilation_result.status.success() {
         panic!("Compilation problem: {:?}", compilation_result);

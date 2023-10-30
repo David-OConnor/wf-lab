@@ -276,20 +276,16 @@ pub fn init_from_grid(
     )
 }
 
-#[link(name = "cuda")]
-// #[link(name = "cuda", kind = "static")]
+// #[link(name = "cuda")]
+#[link(name = "cuda", kind = "static")]
 extern "C" {
     fn ffi_test();
 }
 
-fn test_cuda_ffi() {
-    unsafe {
-        ffi_test()
-    }
-}
-
 fn main() {
-    test_cuda_ffi();
+    unsafe {
+        ffi_test();
+    }
 
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
