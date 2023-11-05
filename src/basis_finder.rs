@@ -86,7 +86,7 @@ fn find_base_xi_E_common(
     println!("Assessed base xi: {:.3}, E there: {:.3}", base_xi, Es[best_xi_i]);
 
     // todo temp?
-    let base_xi = base_xi_specified;
+    // let base_xi = base_xi_specified;
 
     // Note: We calculate this above in `Es`, but not if we override it as here.
     let E = find_E_from_base_xi(base_xi, V_corner, posit_corner);
