@@ -4,9 +4,35 @@
 //!
 //! You must have this or equivalent in the PATH environment variable:
 //! `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.37.32822\bin\Hostx64\x64`
+//!
 
-use std::process::{Command, ExitStatus};
+
+use std::{
+    process::{Command, ExitStatus},
+    path::PathBuf,
+    env
+};
 use cc;
+
+#[derive(Copy, Clone)]
+pub enum GpuArchitecture {
+    Rtx2,
+    Rtx3,
+    Rtx4,
+}
+
+impl GpuArchitecture {
+    /// [Selecting architecture, by nVidia series](https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/)
+    pub fn gencode_val(&self) -> String {
+        let version: u8 = match self {
+            Self::Rtx2 => 75,
+            Self::Rtx3 => 86,
+            Self::Rtx4 => 89
+        };
+
+        String::from(format!("arch=compute_{version},code=sm_{version}"))
+    }
+}
 
 /// See [These CUDA docs](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html)
 /// for info about these flags.
@@ -20,40 +46,52 @@ use cc;
 /// Must set the environment vars `CXX` to `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.37.32822\bin\Hostx64\x64`
 /// or similar, and `LIBCLANG_PATH` to`C:\Program Files\LLVM\bin`
 fn main() {
+    let architecture = GpuArchitecture::Rtx2;
 
+    return
     // Tell Cargo that if the given file changes, to rerun this build script.
-    println!("cargo:rerun-if-changed=cuda/cuda.cu");
+    println!("cargo:rerun-if-changed=src/cuda.cu");
 
-    // cc::Build::new()
-    //     .cuda(true)
-    //     // .cpp(true)
-    //     .cudart("shared")  // Defaults to `static`.
-    //     // .cudart("static")  // Defaults to `static`.
-    //     // Generate code for RTX 2 series.
-    //     // .flag("-gencode").flag("arch=compute_75,code=sm_75")
-    //     // Generate code in parallel // todo: Do we want this?
-    //     .flag("-t0")
-    //     //         .include("...")
-    //     //         .flag("-Llibrary_path")
-    //     //         .flag("-llibrary")
-    //     //         .compile("...");
-    //     // .file("cuda/cuda.cu")
-    //     // .cpp_link_stdlib("stdc++")
-    //     .file("src/cuda.cu")
-    //     // .include("src")
-    //     .compile("cuda");
+    cc::Build::new()
+        .cuda(true)
+        .cudart("shared")  // Defaults to `static`.
+        // Generate code for the GPU architecture
+        .flag("-gencode").flag(&architecture.gencode_val())
+        // Generate code in parallel // todo: Do we want this?
+        .flag("-t0")
+        //         .include("...")
+        //         .flag("-Llibrary_path")
+        //         .flag("-llibrary")
+        //         .compile("...");
+        // .cpp_link_stdlib("stdc++")
+        .file("src/cuda.cu")
+        .compile("cuda");
+        // .compile("libcuda.a"); // Linux
 
     println!("cargo:rustc-link-lib=msvc");
-    println!("cargo:rustc-link-lib=cuda");
     println!("cargo:rustc-link-lib=cudart");
     println!("cargo:rustc-link-search=native=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2/lib/x64");
-    // println!("cargo:rustc-link-search=native=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2/bin");
-    // println!("cargo:rustc-link-search=native=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2");
+
+
+    // println!("cargo:rustc-link-lib=dylib=cudart");
+    // println!("cargo:rustc-link-lib=dylib=cublas");
+
+    // println!("cargo:rustc-link-search=native=/usr/local/cuda/lib64");
+    // println!("cargo:rustc-link-lib=cudart");
+    // println!("cargo:rustc-link-lib=lcudart");
+    // println!("cargo:rustc-link-lib=lcuda");
+
+
+
+
+    // println!("cargo:rustc-link-lib=cuda");
+
+    let out = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    println!("cargo:rustc-link-search={}", out.display());
 
 
     // todo: `-ptx` nvcc flag?
 
-    return;
     // `nvcc --shared -o libtest.so test.cu --compiler-options '-fPIC' `
     // `nvcc src/cuda.cu -gencode "arch=compute_75,code=sm_75" -c -o cuda.lib`
     // todo: fpic appears invalid. Try `-c` or `--lib`  in addition to `--shared`.

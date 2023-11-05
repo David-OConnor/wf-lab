@@ -16,7 +16,9 @@
 
 
 // Which of these?
-use std::ffi;
+use std::ffi::{
+    c_float, c_double
+};
 use libc;
 
 use lin_alg2::f64::Vec3;
@@ -276,14 +278,14 @@ pub fn init_from_grid(
     )
 }
 
-#[link(name = "cuda", kind = "static")]
-extern "C" {
-    fn ffi_test();
-}
+// #[link(name = "cuda", kind = "static")]
+// extern "C" {
+//     fn ffi_test();
+// }
 
 fn main() {
     unsafe {
-        ffi_test();
+        // ffi_test();
     }
 
     let posit_charge_1 = Vec3::new(0., 0., 0.);
