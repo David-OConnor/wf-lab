@@ -24,6 +24,7 @@ use libc;
 
 // sys is the raw ffi apis generated with bindgen
 // result is a very small wrapper around sys to return Result from each function
+// result is a very small wrapper around sys to return Result from each function
 // safe is a wrapper around result/sys to provide safe abstractions
 
 // use cudarc::driver::{safe, result, sys};
@@ -31,7 +32,10 @@ use libc;
 // use cudarc::cublas::{safe, result, sys};
 // use cudarc::cublaslt::{safe, result, sys};
 // use cudarc::curand::{safe, result, sys};
-use cudarc::driver::{CudaDevice, CudaSlice, DriverError};
+use cudarc::{
+    driver::{CudaDevice, CudaSlice, DriverError, LaunchConfig, LaunchAsync},
+    nvrtc::Ptx,
+};
 
 use lin_alg2::f64::Vec3;
 
@@ -298,15 +302,49 @@ pub fn init_from_grid(
 fn cudarc_test() {
     let dev = CudaDevice::new(0).unwrap();
 
+    // You can load a function from a pre-compiled PTX like so:
+    // dev.load_ptx(Ptx::from_file("./src/cuda.ptx"), "sin", &["sin_kernel"])?;
+
+    // allocate buffers
+    let N = 100;
+
+    let in_host = vec![1.0f32; N];
+    let inp = dev.htod_copy(in_host).unwrap();
+
+    // let a_dev = dev.htod_copy(a_host.into())?;
+    // let mut b_dev = a_dev.clone();
+
+    let mut out = dev.alloc_zeros::<f32>(N).unwrap();
+
+    // dev.load_ptx(Ptx::from_file("./examples/sin.ptx"), "sin", &["sin_kernel"])?;
+
+    let sin_kernel = dev.get_func("cuda", "sin_kernel").unwrap();
+
+    let cfg = LaunchConfig::for_num_elems(N as u32);
+    unsafe { sin_kernel.launch(cfg, (&mut out, &inp, N)) }.unwrap();
+
+
+    // let a_host_2 = dev.sync_reclaim(a_dev)?;
+    // let out_host = dev.sync_reclaim(b_dev)?;
+
+    // Copy back to the host:
+    let out_host: Vec<f32> = dev.dtoh_sync_copy(&out).unwrap();
+
+    println!("OUT: {:?}", out_host);
+
+    assert_eq!(out_host, [1.0; 100].map(f32::sin));
+
+
+
     // // unsafe initialization of unset memory
     // let _: CudaSlice<f32> = unsafe { dev.alloc::<f32>(10) }.unwrap();
-    //
+
     // // this will have memory initialized as 0
     // let _: CudaSlice<f64> = dev.alloc_zeros::<f64>(10).unwrap();
-    //
-    // // initialize with a rust vec
+
+    // initialize with a rust vec
     // let _: CudaSlice<usize> = dev.htod_copy(vec![0; 10]).unwrap();
-    //
+
     // // or finially, initialize with a slice. this is synchronous though.
     // let _: CudaSlice<u32> = dev.htod_sync_copy(&[1, 2, 3]).unwrap();
 }

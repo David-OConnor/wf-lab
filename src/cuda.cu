@@ -31,10 +31,18 @@ struct Vec3 {
 };
 
 
-
 // todo: We may need to use floats here vice double, or suffer a large performance hit.
 // todo: Research this.
 double VCoulomb(Vec3 posit_charge, Vec3 posit_sample, double charge) {
+// double VCoulomb(
+//     double posit_charge_x,
+//     double posit_charge_y,
+//     double posit_charge_z,
+//     double posit_sample_x,
+//     double posit_sample_y,
+//     double posit_sample_z,
+//     double charge
+//     ) {
 // double fn V_coulomb(posit_charge: std::array<int, 3>, posit_sample: std::array<int, 3>, charge: double) {
     Vec3 diff = {
        posit_charge.x - posit_sample.x,
@@ -61,39 +69,39 @@ void print(std::string text) {
 }
 
 
-extern "C" void runVCoulomb(double *posit_charge, double *posit_sample, double charge) {
-    print("Calculating coulomb potential using CDUA...");
-
-    int N = sizeof(posit_charge);
-
-    // Allocate Unified Memory -- accessible from CPU or GPU
-    // float *x, *y;
-    cudaMallocManaged(&posit_charge, N*sizeof(double));
-    cudaMallocManaged(&posit_sample, N*sizeof(double));
-
-    // initialize x and y arrays on the host
-    for (int i = 0; i < N; i++) {
-        x[i] = float(i);
-        // y[i] = 2.0f * float(i);
-    }
-
-    // The first parameter specifies the number of thread blocks. The second is the number of
-    // threads in the thread block.
-    // This must be a multiple of 32.
-    // todo: Figure out how you want to divide up the block sizes, index, stride etc.
-    int blockSize = 256;
-    int numBlocks = (N + blockSize - 1) / blockSize;
-
-    VCoulomb<<<numBlocks, blockSize>>>(posit_charge, posit_sample, charge);
-
-    // Wait for GPU to finish before accessing on host
-    cudaDeviceSynchronize();
-
-//     for (int i=0; i < 10; i++) {
-//         std::cout << "Val @ " << i << ": " << pos[i] << std::endl;
+// extern "C" void runVCoulomb(double *posit_charge, double *posit_sample, double charge) {
+//     print("Calculating coulomb potential using CDUA...");
+//
+//     int N = sizeof(posit_charge);
+//
+//     // Allocate Unified Memory -- accessible from CPU or GPU
+//     // float *x, *y;
+//     cudaMallocManaged(&posit_charge, N*sizeof(double));
+//     cudaMallocManaged(&posit_sample, N*sizeof(double));
+//
+//     // initialize x and y arrays on the host
+//     for (int i = 0; i < N; i++) {
+//         x[i] = float(i);
+//         // y[i] = 2.0f * float(i);
 //     }
-
-    // Free memory
-    cudaFree(posit_charge);
-    cudaFree(posit_sample);
- }
+//
+//     // The first parameter specifies the number of thread blocks. The second is the number of
+//     // threads in the thread block.
+//     // This must be a multiple of 32.
+//     // todo: Figure out how you want to divide up the block sizes, index, stride etc.
+//     int blockSize = 256;
+//     int numBlocks = (N + blockSize - 1) / blockSize;
+//
+//     VCoulomb<<<numBlocks, blockSize>>>(posit_charge, posit_sample, charge);
+//
+//     // Wait for GPU to finish before accessing on host
+//     cudaDeviceSynchronize();
+//
+// //     for (int i=0; i < 10; i++) {
+// //         std::cout << "Val @ " << i << ": " << pos[i] << std::endl;
+// //     }
+//
+//     // Free memory
+//     cudaFree(posit_charge);
+//     cudaFree(posit_sample);
+//  }
