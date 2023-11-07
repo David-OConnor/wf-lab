@@ -16,8 +16,8 @@ scilib = "^1.0.0"
 ndarray = "^0.15.6"
 ndarray-linalg = { version = "^0.16.0", features = ["intel-mkl-static"] }
 
-
 nalgebra = "^0.32.3"
+cudarc = "^0.9.15"
 
 # todo: Eventually ditch this tool for permutations:
 itertools = "^0.11.0"
@@ -25,16 +25,15 @@ itertools = "^0.11.0"
 # todo: Should these be build-dependencies or normal? Which of the 2 do you want?
 # What about `std::ffi`?
 
-libc = "^0.2.149"
+#libc = "^0.2.149"
 
 # rulinalg = "^0.4" # Tempish: For adapting the RBF lib
 
 # todo: Trying this
 #cuda-driver-sys = "^0.3.0"
 #cuda-runtime-sys = "^0.3.0-alpha.1"
-cudarc = "^0.9.15"
 
 [build-dependencies]
 # For CUDA FFI
-cc = { version = "^1.0.83", features = ["parallel"] }
+#cc = { version = "^1.0.83", features = ["parallel"] }
 

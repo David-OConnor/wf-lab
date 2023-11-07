@@ -24,16 +24,16 @@
 // todo potential.
 
 use crate::{
-    basis_wfs::{Basis, Sto, SphericalHarmonic},
+    basis_wfs::{Basis, SphericalHarmonic, Sto},
     complex_nums::Cplx,
     eigen_fns::{self, KE_COEFF},
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     num_diff::{self},
-    types::{SurfacesPerElec,BasesEvaluated, PsiWDiffs, PsiWDiffs1d},
+    types::{BasesEvaluated, PsiWDiffs, PsiWDiffs1d, SurfacesPerElec},
     util,
 };
 
-use lin_alg2::f64::{Vec3, Quaternion};
+use lin_alg2::f64::{Quaternion, Vec3};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;

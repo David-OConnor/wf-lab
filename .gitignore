@@ -10,3 +10,4 @@ workspace.xml
 *.exe
 *.exp
 *.lib
+*.ptx

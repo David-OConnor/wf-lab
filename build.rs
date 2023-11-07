@@ -6,13 +6,12 @@
 //! `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.37.32822\bin\Hostx64\x64`
 //!
 
-
 use std::{
-    process::{Command, ExitStatus},
+    env,
     path::PathBuf,
-    env
+    process::{Command, ExitStatus},
 };
-use cc;
+// use cc;
 
 #[derive(Copy, Clone)]
 pub enum GpuArchitecture {
@@ -27,7 +26,7 @@ impl GpuArchitecture {
         let version: u8 = match self {
             Self::Rtx2 => 75,
             Self::Rtx3 => 86,
-            Self::Rtx4 => 89
+            Self::Rtx4 => 89,
         };
 
         String::from(format!("arch=compute_{version},code=sm_{version}"))
@@ -46,10 +45,25 @@ impl GpuArchitecture {
 /// Must set the environment vars `CXX` to `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.37.32822\bin\Hostx64\x64`
 /// or similar, and `LIBCLANG_PATH` to`C:\Program Files\LLVM\bin`
 fn main() {
-    let architecture = GpuArchitecture::Rtx2;
-
     // Tell Cargo that if the given file changes, to rerun this build script.
     println!("cargo:rerun-if-changed=src/cuda.cu");
+
+    let architecture = GpuArchitecture::Rtx4;
+
+    let compilation_result = Command::new("nvcc")
+        .args([
+            "src/cuda.cu",
+            "-gencode",
+            &architecture.gencode_val(),
+            "-ptx",
+        ])
+        .output()
+        .expect("Problem compiling the CUDA module.");
+
+    if !compilation_result.status.success() {
+        panic!("Compilation problem: {:?}", compilation_result);
+    }
+    return;
 
     // cc::Build::new()
     //     .cuda(true)
@@ -71,7 +85,6 @@ fn main() {
     println!("cargo:rustc-link-lib=cudart");
     println!("cargo:rustc-link-search=native='C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2/lib/x64'");
 
-
     println!("cargo:rustc-link-lib=dylib=cudart");
     println!("cargo:rustc-link-lib=dylib=cublas");
 
@@ -80,7 +93,6 @@ fn main() {
     // println!("cargo:rustc-link-lib=lcudart");
     // println!("cargo:rustc-link-lib=lcuda");
 
-
     // println!("cargo:rustc-link-lib=cuda");
 
     return;
@@ -88,17 +100,7 @@ fn main() {
     let out = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     println!("cargo:rustc-link-search={}", out.display());
 
-
     // todo: `-ptx` nvcc flag?
 
     // `nvcc src/cuda.cu -gencode "arch=compute_75,code=sm_75" -t0 -c -o cuda.lib`
-
-    let compilation_result = Command::new("nvcc")
-        // `nvcc .\main.cu -o main.exe`
-        .args(["cuda/cuda.cu", "--lib", "-gencode", "arch=compute_75,code=sm_75", "-o", "cuda.lib" ])
-        .output().expect("Problem compiling the C++/CUDA code.");
-
-    if !compilation_result.status.success() {
-        panic!("Compilation problem: {:?}", compilation_result);
-    }
 }

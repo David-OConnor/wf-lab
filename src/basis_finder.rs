@@ -17,8 +17,6 @@ use nalgebra::{DMatrix, DVector};
 use ndarray::prelude::*;
 use ndarray_linalg::{Solve, SVD};
 
-
-
 fn find_E_from_base_xi(base_xi: f64, V_corner: f64, posit_corner: Vec3) -> f64 {
     // Now that we've identified the base Xi, use it to calculate the energy of the system.
     // (The energy appears to be determined primarily by it.)
@@ -83,7 +81,10 @@ fn find_base_xi_E_common(
     }
 
     let base_xi = trial_base_xis[best_xi_i];
-    println!("Assessed base xi: {:.3}, E there: {:.3}", base_xi, Es[best_xi_i]);
+    println!(
+        "Assessed base xi: {:.3}, E there: {:.3}",
+        base_xi, Es[best_xi_i]
+    );
 
     // todo temp?
     // let base_xi = base_xi_specified;
@@ -105,7 +106,13 @@ fn find_base_xi_E(V: &Arr3dReal, grid_posits: &Arr3dVec, base_xi_specified: f64)
     let V_corner = V[0][0][0];
     let V_sample = V[index_halfway][0][0];
 
-    find_base_xi_E_common(V_corner, posit_corner, V_sample, posit_sample, base_xi_specified)
+    find_base_xi_E_common(
+        V_corner,
+        posit_corner,
+        V_sample,
+        posit_sample,
+        base_xi_specified,
+    )
 }
 
 fn find_base_xi_E_type2(
@@ -138,7 +145,13 @@ fn find_base_xi_E_type2(
         }
     }
 
-    find_base_xi_E_common(V_corner, posit_corner, V_sample, posit_sample, base_xi_specified)
+    find_base_xi_E_common(
+        V_corner,
+        posit_corner,
+        V_sample,
+        posit_sample,
+        base_xi_specified,
+    )
 }
 
 /// Stos passed are (xi, weight)
@@ -197,7 +210,7 @@ fn generate_sample_pts() -> Vec<Vec3> {
     // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
     let sample_dists = [
         // 10., 5., 3., 2., 1.5, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1
-        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.6, 0.4, 0.3
+        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.6, 0.4, 0.3,
     ];
 
     // println!("\nSample dists: {:?}", sample_dists);
@@ -258,10 +271,7 @@ fn find_bases_system_of_eqs(
     let psi_pp_mat = Array::from_shape_vec((xis.len(), sample_pts.len()), psi_pp_mat_).unwrap();
     let psi_pp_mat = psi_pp_mat.t();
 
-    let rhs: Vec<f64> = V_to_match
-        .iter()
-        .map(|V| KE_COEFF_INV * (V + E))
-        .collect();
+    let rhs: Vec<f64> = V_to_match.iter().map(|V| KE_COEFF_INV * (V + E)).collect();
 
     let rhs_vec = Array::from_vec(rhs.clone());
 
@@ -335,9 +345,9 @@ pub fn find_stos(
     // let xis = [1.5, 2.37682, 4.39628, 6.52699, 7.94252];
 
     let mut xis = Vec::from(xis); // todo: Experimenting with adding more
-    // xis.push(7.);
-    // xis.push(8.);
-    // xis.push(9.);
+                                  // xis.push(7.);
+                                  // xis.push(8.);
+                                  // xis.push(9.);
 
     let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge, xis[0]);
     println!("\nBase xi: {}. E: {}\n", base_xi, E);

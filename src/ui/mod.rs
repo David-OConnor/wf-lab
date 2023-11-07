@@ -33,7 +33,6 @@ const GRID_SIZE_MAX: f64 = 40.;
 const ITEM_SPACING: f32 = 18.;
 const FLOAT_EDIT_WIDTH: f32 = 40.;
 
-
 fn text_edit_float(val: &mut f64, _default: f64, ui: &mut Ui) {
     let mut entry = val.to_string();
 
@@ -670,13 +669,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Auto update V acting on.
                 let ae = match state.ui.active_elec {
                     ActiveElec::Combined => 0,
-                    ActiveElec::PerElec(a) => a
+                    ActiveElec::PerElec(a) => a,
                 };
                 procedures::update_V_acting_on_elec(state, scene, ae);
 
                 updated_E_or_V = true;
                 updated_meshes = true;
-
             }
 
             // if ui

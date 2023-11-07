@@ -14,13 +14,8 @@
 // You may need to interpolate to avoid quantized (not in the way we need!) positions
 // at the grid you chose. Linear is fine.
 
-
 // Which of these?
-use std::ffi::{
-    c_float, c_double
-};
-use libc;
-
+use std::ffi::{c_double, c_float};
 
 // sys is the raw ffi apis generated with bindgen
 // result is a very small wrapper around sys to return Result from each function
@@ -33,7 +28,7 @@ use libc;
 // use cudarc::cublaslt::{safe, result, sys};
 // use cudarc::curand::{safe, result, sys};
 use cudarc::{
-    driver::{CudaDevice, CudaSlice, DriverError, LaunchConfig, LaunchAsync},
+    driver::{CudaDevice, CudaSlice, DriverError, LaunchAsync, LaunchConfig},
     nvrtc::Ptx,
 };
 
@@ -305,24 +300,34 @@ fn cudarc_test() {
     // You can load a function from a pre-compiled PTX like so:
     // dev.load_ptx(Ptx::from_file("./src/cuda.ptx"), "sin", &["sin_kernel"])?;
 
+    // let a: CudaSlice<f64> = dev.alloc_zeros::<f64>(10)?;
+    // let mut b = dev.alloc_zeros::<f64>(10)?;
+    //
+    // // you can do device to device copies of course
+    // dev.dtod_copy(&a, &mut b)?;
+
     // allocate buffers
     let N = 100;
 
-    let in_host = vec![1.0f32; N];
+    let mut in_host = vec![0.; N];
+    for i in 0..N {
+        in_host[i] = i as f32;
+    }
+
     let inp = dev.htod_copy(in_host).unwrap();
 
-    // let a_dev = dev.htod_copy(a_host.into())?;
+    // let a_dev = dev.htod_copy(a_host.into()).unwrap();
     // let mut b_dev = a_dev.clone();
 
     let mut out = dev.alloc_zeros::<f32>(N).unwrap();
 
-    // dev.load_ptx(Ptx::from_file("./examples/sin.ptx"), "sin", &["sin_kernel"])?;
+    dev.load_ptx(Ptx::from_file("./cuda.ptx"), "cuda", &["sin_kernel"])
+        .unwrap();
 
     let sin_kernel = dev.get_func("cuda", "sin_kernel").unwrap();
 
     let cfg = LaunchConfig::for_num_elems(N as u32);
     unsafe { sin_kernel.launch(cfg, (&mut out, &inp, N)) }.unwrap();
-
 
     // let a_host_2 = dev.sync_reclaim(a_dev)?;
     // let out_host = dev.sync_reclaim(b_dev)?;
@@ -331,10 +336,6 @@ fn cudarc_test() {
     let out_host: Vec<f32> = dev.dtoh_sync_copy(&out).unwrap();
 
     println!("OUT: {:?}", out_host);
-
-    assert_eq!(out_host, [1.0; 100].map(f32::sin));
-
-
 
     // // unsafe initialization of unset memory
     // let _: CudaSlice<f32> = unsafe { dev.alloc::<f32>(10) }.unwrap();
