@@ -21,6 +21,18 @@ use std::ffi::{
 };
 use libc;
 
+
+// sys is the raw ffi apis generated with bindgen
+// result is a very small wrapper around sys to return Result from each function
+// safe is a wrapper around result/sys to provide safe abstractions
+
+// use cudarc::driver::{safe, result, sys};
+// use cudarc::nvrtc::{safe, result, sys};
+// use cudarc::cublas::{safe, result, sys};
+// use cudarc::cublaslt::{safe, result, sys};
+// use cudarc::curand::{safe, result, sys};
+use cudarc::driver::{CudaDevice, CudaSlice, DriverError};
+
 use lin_alg2::f64::Vec3;
 
 mod basis_finder;
@@ -283,7 +295,24 @@ pub fn init_from_grid(
 //     fn ffi_test();
 // }
 
+fn cudarc_test() {
+    let dev = CudaDevice::new(0).unwrap();
+
+    // // unsafe initialization of unset memory
+    // let _: CudaSlice<f32> = unsafe { dev.alloc::<f32>(10) }.unwrap();
+    //
+    // // this will have memory initialized as 0
+    // let _: CudaSlice<f64> = dev.alloc_zeros::<f64>(10).unwrap();
+    //
+    // // initialize with a rust vec
+    // let _: CudaSlice<usize> = dev.htod_copy(vec![0; 10]).unwrap();
+    //
+    // // or finially, initialize with a slice. this is synchronous though.
+    // let _: CudaSlice<u32> = dev.htod_sync_copy(&[1, 2, 3]).unwrap();
+}
+
 fn main() {
+    cudarc_test();
     unsafe {
         // ffi_test();
     }

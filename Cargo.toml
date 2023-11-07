@@ -29,6 +29,11 @@ libc = "^0.2.149"
 
 # rulinalg = "^0.4" # Tempish: For adapting the RBF lib
 
+# todo: Trying this
+#cuda-driver-sys = "^0.3.0"
+#cuda-runtime-sys = "^0.3.0-alpha.1"
+cudarc = "^0.9.15"
+
 [build-dependencies]
 # For CUDA FFI
 cc = { version = "^1.0.83", features = ["parallel"] }

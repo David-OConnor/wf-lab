@@ -3,8 +3,16 @@
 
 // https://developer.nvidia.com/blog/even-easier-introduction-cuda/
 
+extern "C" __global__
+void sin_kernel(float *out, const float *inp, int numel) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < numel) {
+        out[i] = sin(inp[i]);
+    }
+}
+
 // CUDA Kernel function to add the elements of two arrays on the GPU
-// __global__
+// extern "C" __global__
 // void coulomb_parallel(float *posit_charges, float *posit_samples) {
 //     int index = blockIdx.x * blockDim.x + threadIdx.x;
 //     int stride = blockDim.x * gridDim.x;
@@ -22,9 +30,11 @@ struct Vec3 {
     double z;
 };
 
+
+
 // todo: We may need to use floats here vice double, or suffer a large performance hit.
 // todo: Research this.
-double V_coulomb(Vec3 posit_charge, Vec3 posit_sample, double charge) {
+double VCoulomb(Vec3 posit_charge, Vec3 posit_sample, double charge) {
 // double fn V_coulomb(posit_charge: std::array<int, 3>, posit_sample: std::array<int, 3>, charge: double) {
     Vec3 diff = {
        posit_charge.x - posit_sample.x,
@@ -46,50 +56,44 @@ extern "C" void ffi_test() {
     std::cout << "FFI TEST" << std::endl;
 }
 
+void print(std::string text) {
+    std::cout << text << std::endl;
+}
 
-extern "C" int cuda_main(void) {
-    ffi_test();
 
-//    std::cout << "Hello C++; Hello Cu" << std::endl;
-//
-//    int N = 1<<20; // 1M elements
-//
-//    // Allocate Unified Memory -- accessible from CPU or GPU
-//    float *x, *y;
-//    cudaMallocManaged(&x, N*sizeof(float));
-//    cudaMallocManaged(&y, N*sizeof(float));
-//
-//    // initialize x and y arrays on the host
-//    for (int i = 0; i < N; i++) {
-//        x[i] = float(i);
-//        // y[i] = 2.0f * float(i);
-//    }
-//
-//    // The first parameter specifies the number of thread blocks. The second is the number of
-//    // threads in the thread block.
-//    // This must be a multiple of 32.
-//    int blockSize = 256;
-//    int numBlocks = (N + blockSize - 1) / blockSize;
-//
-////     add<<<numBlocks, blockSize>>>(N, x, y);
-//
-//    // Wait for GPU to finish before accessing on host
-//    cudaDeviceSynchronize();
-//
-//    // Check for errors (all values should be 3.0f)
-//    // float maxError = 0.0f;
-//    // for (int i = 0; i < N; i++) {
-//    // maxError = fmax(maxError, fabs(y[i]-3.0f));
-//    // std::cout << "Max error: " << maxError << std::endl;
-//    // }
-//
-//    for (int i=0; i < 10; i++) {
-//        std::cout << "Val @ " << i << ": " << y[i] << std::endl;
-//    }
-//
-//    // Free memory
-//    cudaFree(x);
-//    cudaFree(y);
+extern "C" void runVCoulomb(double *posit_charge, double *posit_sample, double charge) {
+    print("Calculating coulomb potential using CDUA...");
 
-    return 0;
+    int N = sizeof(posit_charge);
+
+    // Allocate Unified Memory -- accessible from CPU or GPU
+    // float *x, *y;
+    cudaMallocManaged(&posit_charge, N*sizeof(double));
+    cudaMallocManaged(&posit_sample, N*sizeof(double));
+
+    // initialize x and y arrays on the host
+    for (int i = 0; i < N; i++) {
+        x[i] = float(i);
+        // y[i] = 2.0f * float(i);
+    }
+
+    // The first parameter specifies the number of thread blocks. The second is the number of
+    // threads in the thread block.
+    // This must be a multiple of 32.
+    // todo: Figure out how you want to divide up the block sizes, index, stride etc.
+    int blockSize = 256;
+    int numBlocks = (N + blockSize - 1) / blockSize;
+
+    VCoulomb<<<numBlocks, blockSize>>>(posit_charge, posit_sample, charge);
+
+    // Wait for GPU to finish before accessing on host
+    cudaDeviceSynchronize();
+
+//     for (int i=0; i < 10; i++) {
+//         std::cout << "Val @ " << i << ": " << pos[i] << std::endl;
+//     }
+
+    // Free memory
+    cudaFree(posit_charge);
+    cudaFree(posit_sample);
  }

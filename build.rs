@@ -48,33 +48,32 @@ impl GpuArchitecture {
 fn main() {
     let architecture = GpuArchitecture::Rtx2;
 
-    return
     // Tell Cargo that if the given file changes, to rerun this build script.
     println!("cargo:rerun-if-changed=src/cuda.cu");
 
-    cc::Build::new()
-        .cuda(true)
-        .cudart("shared")  // Defaults to `static`.
-        // Generate code for the GPU architecture
-        .flag("-gencode").flag(&architecture.gencode_val())
-        // Generate code in parallel // todo: Do we want this?
-        .flag("-t0")
-        //         .include("...")
-        //         .flag("-Llibrary_path")
-        //         .flag("-llibrary")
-        //         .compile("...");
-        // .cpp_link_stdlib("stdc++")
-        .file("src/cuda.cu")
-        .compile("cuda");
-        // .compile("libcuda.a"); // Linux
+    // cc::Build::new()
+    //     .cuda(true)
+    //     .cudart("shared")  // Defaults to `static`.
+    //     // Generate code for the GPU architecture
+    //     .flag("-gencode").flag(&architecture.gencode_val())
+    //     // Generate code in parallel // todo: Do we want this?
+    //     .flag("-t0")
+    //     //         .include("...")
+    //     //         .flag("-Llibrary_path")
+    //     //         .flag("-llibrary")
+    //     //         .compile("...");
+    //     // .cpp_link_stdlib("stdc++")
+    //     .file("src/cuda.cu")
+    //     .compile("cuda");
+    //     // .compile("libcuda.a"); // Linux
 
-    println!("cargo:rustc-link-lib=msvc");
+    // println!("cargo:rustc-link-lib=msvc");
     println!("cargo:rustc-link-lib=cudart");
-    println!("cargo:rustc-link-search=native=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2/lib/x64");
+    println!("cargo:rustc-link-search=native='C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.2/lib/x64'");
 
 
-    // println!("cargo:rustc-link-lib=dylib=cudart");
-    // println!("cargo:rustc-link-lib=dylib=cublas");
+    println!("cargo:rustc-link-lib=dylib=cudart");
+    println!("cargo:rustc-link-lib=dylib=cublas");
 
     // println!("cargo:rustc-link-search=native=/usr/local/cuda/lib64");
     // println!("cargo:rustc-link-lib=cudart");
@@ -82,9 +81,9 @@ fn main() {
     // println!("cargo:rustc-link-lib=lcuda");
 
 
-
-
     // println!("cargo:rustc-link-lib=cuda");
+
+    return;
 
     let out = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     println!("cargo:rustc-link-search={}", out.display());
@@ -92,20 +91,8 @@ fn main() {
 
     // todo: `-ptx` nvcc flag?
 
-    // `nvcc --shared -o libtest.so test.cu --compiler-options '-fPIC' `
-    // `nvcc src/cuda.cu -gencode "arch=compute_75,code=sm_75" -c -o cuda.lib`
-    // todo: fpic appears invalid. Try `-c` or `--lib`  in addition to `--shared`.
-    // todo: `--cduart shared` is worth trying too. (By default, it's 'static').
+    // `nvcc src/cuda.cu -gencode "arch=compute_75,code=sm_75" -t0 -c -o cuda.lib`
 
-
-    // maybe these two in seq:
-    // clang++ cuda/cuda.cpp -c -o cuda.o
-    // clang++ -shared -o cuda.lib cuda.o
-
-    // todo: generate lib (so/dll?) but not bin (.exe)
-    // note: with clang++, either `-shared` or `-c` seems to be required; `-shared` may be better.
-    // todo: `-c` working; `-shared` not.
-    // Call: `clang++ cuda/cuda.cu -c -o cuda.lib`
     let compilation_result = Command::new("nvcc")
         // `nvcc .\main.cu -o main.exe`
         .args(["cuda/cuda.cu", "--lib", "-gencode", "arch=compute_75,code=sm_75", "-o", "cuda.lib" ])
