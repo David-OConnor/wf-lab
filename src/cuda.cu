@@ -3,6 +3,7 @@
 
 // https://developer.nvidia.com/blog/even-easier-introduction-cuda/
 
+// Currently unused, in favor of operating on flat arrays.
 struct Vec3 {
     double x;
     double y;
@@ -10,13 +11,21 @@ struct Vec3 {
 };
 
 
-extern "C" __global__
-void sin_kernel(float *out, const float *inp, int N) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < N) {
-        out[i] = sin(inp[i]);
+extern "C" __global__ void matmul(float* A, float* B, float* C, int N) {
+    int ROW = blockIdx.y*blockDim.y+threadIdx.y;
+    int COL = blockIdx.x*blockDim.x+threadIdx.x;
+
+    float tmpSum = 0;
+
+    if (ROW < N && COL < N) {
+        // each thread computes one element of the block sub-matrix
+        for (int i = 0; i < N; i++) {
+            tmpSum += A[ROW * N + i] * B[i * N + COL];
+        }
     }
+    C[ROW * N + COL] = tmpSum;
 }
+
 
 
 // // todo: We may need to use floats here vice double, or suffer a large performance hit.
@@ -55,6 +64,10 @@ void coulomb_kernel(
 ) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
+    // int i_charge = blockIdx.y*blockDim.y+threadIdx.y;
+    // int i_sample = blockIdx.x*blockDim.x+threadIdx.x;
+
+
     // todo: QC rounding
     int i_charge = i / N_charges;
     int i_sample = i % N_samples;
@@ -70,7 +83,6 @@ void coulomb_kernel(
         double diff_y = posits_charge_y[i_charge] - posits_sample_y[i_sample];
         double diff_z = posits_charge_z[i_charge] - posits_sample_z[i_sample];
 
-        // todo: Does this work with CUDA?
         double r = std::sqrt(diff_x * diff_x + diff_y * diff_y + diff_z * diff_z);
 
         // c note: Omitting the f is double; including is f32.
@@ -78,9 +90,14 @@ void coulomb_kernel(
            out[i] = 0.; // todo: Is this the way to handle?
         }
 
-        out[i] = 1. * charges[i_charge] / r;
+        // out[i] = 1. * charges[i_charge] / r;
+
+        out[i_charge * N_samples + i_sample] = 1. * charges[i_charge] / r;
     }
 }
+
+// todo: We should perform this addition here without passing to the host
+// todo in between.
 
 extern "C" __global__
 void sum_coulomb_results_kernel(
@@ -95,41 +112,3 @@ void sum_coulomb_results_kernel(
         out += charges_this_pt[i];
     }
 }
-
-
-// extern "C" void runVCoulomb(double *posit_charge, double *posit_sample, double charge) {
-//     print("Calculating coulomb potential using CDUA...");
-//
-//     int N = sizeof(posit_charge);
-//
-//     // Allocate Unified Memory -- accessible from CPU or GPU
-//     // float *x, *y;
-//     cudaMallocManaged(&posit_charge, N*sizeof(double));
-//     cudaMallocManaged(&posit_sample, N*sizeof(double));
-//
-//     // initialize x and y arrays on the host
-//     for (int i = 0; i < N; i++) {
-//         x[i] = float(i);
-//         // y[i] = 2.0f * float(i);
-//     }
-//
-//     // The first parameter specifies the number of thread blocks. The second is the number of
-//     // threads in the thread block.
-//     // This must be a multiple of 32.
-//     // todo: Figure out how you want to divide up the block sizes, index, stride etc.
-//     int blockSize = 256;
-//     int numBlocks = (N + blockSize - 1) / blockSize;
-//
-//     VCoulomb<<<numBlocks, blockSize>>>(posit_charge, posit_sample, charge);
-//
-//     // Wait for GPU to finish before accessing on host
-//     cudaDeviceSynchronize();
-//
-// //     for (int i=0; i < 10; i++) {
-// //         std::cout << "Val @ " << i << ": " << pos[i] << std::endl;
-// //     }
-//
-//     // Free memory
-//     cudaFree(posit_charge);
-//     cudaFree(posit_sample);
-//  }

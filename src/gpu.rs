@@ -65,7 +65,42 @@ pub fn run_coulomb(
 
     let kernel = dev.get_func("cuda", "coulomb_kernel").unwrap();
 
+    // The first parameter specifies the number of thread blocks. The second is the number of
+    // threads in the thread block.
+    // This must be a multiple of 32.
+    // todo: Figure out how you want to divide up the block sizes, index, stride etc.
+    // int blockSize = 256;
+    // int numBlocks = (N + blockSize - 1) / blockSize;
+
+    // VCoulomb<<<numBlocks, blockSize>>>(// ...);
+
     let cfg = LaunchConfig::for_num_elems((N_CHARGES * N_SAMPLES) as u32);
+
+    // `for_num_elems`:
+    // block_dim == 1024
+    // grid_dim == (n + 1023) / 1024
+    // shared_mem_bytes == 0
+
+    const NUM_THREADS: u32 = 1024;
+    let num_blocks = (n + NUM_THREADS - 1) / NUM_THREADS;
+    // Self {
+    //     grid_dim: (num_blocks, 1, 1),
+    //     block_dim: (NUM_THREADS, 1, 1),
+    //     shared_mem_bytes: 0,
+    // }
+    //     let cfg = LaunchConfig {
+    //     grid_dim: (1, 1, 1),
+    //     block_dim: (2, 2, 1),
+    //     shared_mem_bytes: 0,
+    // };
+
+    // Custom launch config for 2-dimensional data (?)
+    // let cfg = LaunchConfig {
+    //     grid_dim: (num_blocks, 1, 1),
+    //     block_dim: (NUM_THREADS, NUM_THREADS, 1),
+    //     shared_mem_bytes: 0,
+    // };
+
 
     unsafe {
         kernel.launch(
