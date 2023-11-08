@@ -94,6 +94,17 @@ pub fn run_coulomb(
 
     println!("OUT: {:?}", out_host);
 
+    // Next step: Either here or in `potential.rs`:
+    // You have flat output of the 2d correspondances between each posit sample and posit charge.
+    // Expand into an array of arrays. (2D) etc.
+
+    // (Should we do this on CPU, or GPU? Likely GPU.)
+
+
+    // Loop over, and sum the contributions  from each charge, for the corresponding sample point.
+
+    // Map the result back  back from a flat list to a 3D list per sample point.
+
     out_host
 
     // // unsafe initialization of unset memory

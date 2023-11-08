@@ -41,7 +41,6 @@ void sin_kernel(float *out, const float *inp, int N) {
 
 
 extern "C" __global__
-// void coulomb_kernel(double *out, Vec3 *posits_charge, Vec3 *posits_sample int N, double charge) {
 void coulomb_kernel(
     double *out,
     double *posits_charge_x,
@@ -80,6 +79,20 @@ void coulomb_kernel(
         }
 
         out[i] = 1. * charges[i_charge] / r;
+    }
+}
+
+extern "C" __global__
+void sum_coulomb_results_kernel(
+    // For a given sample point, sum coulomb calculations from a number of charge points.
+    double out,
+    double *charges_this_pt,
+    int N_charges
+) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < N_charges) {
+        out += charges_this_pt[i];
     }
 }
 
