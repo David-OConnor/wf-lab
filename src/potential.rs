@@ -1,11 +1,15 @@
 //! Contains code related to creating and combining potentials.
 
+use std::sync::Arc;
+
+use cudarc::driver::CudaDevice;
+use lin_alg2::f64::Vec3;
+
 use crate::{
+    gpu,
     grid_setup::{Arr3dReal, Arr3dVec},
     wf_ops::K_C,
 };
-
-use lin_alg2::f64::Vec3;
 
 /// Create a potential on a set of sample points, from nuclei and electrons.
 pub fn create_V_1d(
@@ -135,23 +139,22 @@ pub(crate) fn update_V_acting_on_elec_1d(
     println!("Complete");
 }
 
-/// Helper fn to deal with 2d vs 3d electron V
+/// Helper fn to deal with 2d vs 3d electron V. Calculates Coulomb potential at every charge point,
+/// at a single sample point.
 fn V_from_grid_inner(
     V_from_this_elec: &mut Arr3dReal,
     charge_this_elec: &Arr3dReal,
     grid_posits: &Arr3dVec,
     grid_posits_charge: &Arr3dVec,
     grid_n_charge: usize,
-    i_sample: usize,
-    j_sample: usize,
-    k_sample: usize,
+    posit: (usize, usize, usize),
 ) {
-    let posit_sample = grid_posits[i_sample][j_sample][k_sample];
+    let posit_sample = grid_posits[posit.0][posit.1][posit.2];
 
     // Iterate through this electron's (already computed) charge at every position in space,
     // comparing it to this position.
 
-    V_from_this_elec[i_sample][j_sample][k_sample] = 0.;
+    V_from_this_elec[posit.0][posit.1][posit.2] = 0.;
 
     for i_charge in 0..grid_n_charge {
         for j_charge in 0..grid_n_charge {
@@ -159,7 +162,7 @@ fn V_from_grid_inner(
                 let posit_charge = grid_posits_charge[i_charge][j_charge][k_charge];
                 let charge = charge_this_elec[i_charge][j_charge][k_charge];
 
-                V_from_this_elec[i_sample][j_sample][k_sample] +=
+                V_from_this_elec[posit.0][posit.1][posit.2] +=
                     V_coulomb(posit_charge, posit_sample, charge);
             }
         }
@@ -169,7 +172,10 @@ fn V_from_grid_inner(
 /// Update the V associated with a single electron's charge.
 /// This must be run after the charge from this electron is created from the wave function square.
 /// We expect the loop over charge positions to be larger than the one over V positions.
-pub(crate) fn create_V_from_an_elec_grid(
+///
+/// This is computationally intensive. The `twod_only` option can alleviate this by only
+/// evaluating potential points on one plane.
+pub(crate) fn create_V_from_elec_grid(
     V_from_this_elec: &mut Arr3dReal,
     charge_this_elec: &Arr3dReal,
     grid_posits: &Arr3dVec,
@@ -191,9 +197,7 @@ pub(crate) fn create_V_from_an_elec_grid(
                     grid_posits,
                     grid_posits_charge,
                     grid_n_charge,
-                    i_sample,
-                    j_sample,
-                    k_sample,
+                    (i_sample, j_sample, k_sample),
                 )
             } else {
                 for k_sample in 0..grid_n {
@@ -203,14 +207,60 @@ pub(crate) fn create_V_from_an_elec_grid(
                         grid_posits,
                         grid_posits_charge,
                         grid_n_charge,
-                        i_sample,
-                        j_sample,
-                        k_sample,
+                        (i_sample, j_sample, k_sample),
                     )
                 }
             }
         }
     }
+
+    println!("V creation complete");
+}
+
+/// See `create_V_from_elec_grid`.
+pub(crate) fn create_V_from_elec_grid_gpu(
+    dev: &Arc<CudaDevice>,
+    V_from_this_elec: &mut Arr3dReal,
+    charge_this_elec: &Arr3dReal,
+    grid_posits: &Arr3dVec,
+    grid_posits_charge: &Arr3dVec,
+    grid_n: usize,
+    grid_n_charge: usize,
+    twod_only: bool,
+) {
+    println!("Creating V from an electron on grid (GPU)...");
+
+    let mut posits_charge = Vec::new();
+    let mut charges = Vec::new();
+
+    for i_charge in 0..grid_n_charge {
+        for j_charge in 0..grid_n_charge {
+            for k_charge in 0..grid_n_charge {
+                posits_charge.push(grid_posits_charge[i_charge][j_charge][k_charge]);
+                charges.push(charge_this_elec[i_charge][j_charge][k_charge]);
+            }
+        }
+    }
+
+    let mut posits_sample = Vec::new();
+
+    for i_sample in 0..grid_n {
+        for j_sample in 0..grid_n {
+            if twod_only {
+                // This makes it grid_n times faster, but only creates one Z-slice.
+                let k_sample = grid_n / 2 + 1;
+                posits_sample.push(grid_posits[i_sample][j_sample][k_sample]);
+            } else {
+                for k_sample in 0..grid_n {
+                    posits_sample.push(grid_posits[i_sample][j_sample][k_sample]);
+                }
+            }
+        }
+    }
+
+    let result_flat = gpu::run_coulomb(dev, &posits_charge, &posits_sample, &charges);
+
+    println!("Results flat: {:?}", result_flat);
 
     println!("V creation complete");
 }

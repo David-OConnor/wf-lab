@@ -22,18 +22,4 @@ cudarc = "^0.9.15"
 # todo: Eventually ditch this tool for permutations:
 itertools = "^0.11.0"
 
-# todo: Should these be build-dependencies or normal? Which of the 2 do you want?
-# What about `std::ffi`?
-
-#libc = "^0.2.149"
-
 # rulinalg = "^0.4" # Tempish: For adapting the RBF lib
-
-# todo: Trying this
-#cuda-driver-sys = "^0.3.0"
-#cuda-runtime-sys = "^0.3.0-alpha.1"
-
-[build-dependencies]
-# For CUDA FFI
-#cc = { version = "^1.0.83", features = ["parallel"] }
-

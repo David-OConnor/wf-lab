@@ -48,7 +48,7 @@ fn main() {
     // Tell Cargo that if the given file changes, to rerun this build script.
     println!("cargo:rerun-if-changed=src/cuda.cu");
 
-    let architecture = GpuArchitecture::Rtx4;
+    let architecture = GpuArchitecture::Rtx2;
 
     let compilation_result = Command::new("nvcc")
         .args([

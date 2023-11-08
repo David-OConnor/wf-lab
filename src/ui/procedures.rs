@@ -132,7 +132,9 @@ pub fn create_V_from_elec(state: &mut State, scene: &mut Scene, ae: usize) {
     );
 
     if state.ui.create_3d_electron_V || state.ui.create_2d_electron_V {
-        potential::create_V_from_an_elec_grid(
+        // potential::create_V_from_elec_grid(
+        potential::create_V_from_elec_grid_gpu(
+            &state.cuda_dev,
             &mut state.V_from_elecs[ae],
             &state.charges_electron[ae],
             &state.surfaces_shared.grid_posits,

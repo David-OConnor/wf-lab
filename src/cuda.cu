@@ -3,28 +3,6 @@
 
 // https://developer.nvidia.com/blog/even-easier-introduction-cuda/
 
-
-extern "C" __global__
-void sin_kernel(float *out, const float *inp, int numel) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < numel) {
-        out[i] = sin(inp[i]);
-    }
-}
-
-// CUDA Kernel function to add the elements of two arrays on the GPU
-// extern "C" __global__
-// void coulomb_parallel(float *posit_charges, float *posit_samples) {
-//     int index = blockIdx.x * blockDim.x + threadIdx.x;
-//     int stride = blockDim.x * gridDim.x;
-//
-//     // for (int i = index; i < n; i+= stride)
-//     //     y[i] = x[i] + y[i];
-//     // todo: Check for out of bounds
-//     y[index] = x[index] * 2.0f;
-// }
-
-
 struct Vec3 {
     double x;
     double y;
@@ -32,41 +10,77 @@ struct Vec3 {
 };
 
 
-// todo: We may need to use floats here vice double, or suffer a large performance hit.
-// todo: Research this.
-double VCoulomb(Vec3 posit_charge, Vec3 posit_sample, double charge) {
-// double VCoulomb(
-//     double posit_charge_x,
-//     double posit_charge_y,
-//     double posit_charge_z,
-//     double posit_sample_x,
-//     double posit_sample_y,
-//     double posit_sample_z,
-//     double charge
-//     ) {
-// double fn V_coulomb(posit_charge: std::array<int, 3>, posit_sample: std::array<int, 3>, charge: double) {
-    Vec3 diff = {
-       posit_charge.x - posit_sample.x,
-       posit_charge.y - posit_sample.y,
-       posit_charge.z - posit_sample.z,
-    };
-    double r = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-
-    // c note: Omitting the f is double; including is f32.
-    if (r < 0.0000000000001) {
-        return 0.; // todo: Is this the way to handle?
+extern "C" __global__
+void sin_kernel(float *out, const float *inp, int N) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < N) {
+        out[i] = sin(inp[i]);
     }
-
-    return 1. * charge / r;
 }
 
-// `extern "C" prepended allows functions to be called from C code (And therefore Rust FFI)
-extern "C" void ffi_test() {
-    std::cout << "FFI TEST" << std::endl;
-}
 
-void print(std::string text) {
-    std::cout << text << std::endl;
+// // todo: We may need to use floats here vice double, or suffer a large performance hit.
+// // todo: Research this.
+// double VCoulomb(Vec3 posit_charge, Vec3 posit_sample, double charge) {
+//     Vec3 diff = {
+//        posit_charge.x - posit_sample.x,
+//        posit_charge.y - posit_sample.y,
+//        posit_charge.z - posit_sample.z,
+//     };
+//
+//     // todo: Does this work with CUDA?
+//     double r = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+//
+//     // c note: Omitting the f is double; including is f32.
+//     if (r < 0.0000000000001) {
+//         return 0.; // todo: Is this the way to handle?
+//     }
+//
+//     return 1. * charge / r;
+// }
+
+
+extern "C" __global__
+// void coulomb_kernel(double *out, Vec3 *posits_charge, Vec3 *posits_sample int N, double charge) {
+void coulomb_kernel(
+    double *out,
+    double *posits_charge_x,
+    double *posits_charge_y,
+    double *posits_charge_z,
+    double *posits_sample_x,
+    double *posits_sample_y,
+    double *posits_sample_z,
+    double *charges,
+    int N_charges,
+    int N_samples
+) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // todo: QC rounding
+    int i_charge = i / N_charges;
+    int i_sample = i % N_samples;
+
+    // int stride = blockDim.x * gridDim.x;
+    // for (int i = index; i < n; i+= stride)
+    //     y[i] = x[i] + y[i];
+    // todo: Check for out of bounds
+//     y[index] = x[index] * 2.0f;
+
+    if (i_charge < N_charges && i_sample < N_samples) {
+        double diff_x = posits_charge_x[i_charge] - posits_sample_x[i_sample];
+        double diff_y = posits_charge_y[i_charge] - posits_sample_y[i_sample];
+        double diff_z = posits_charge_z[i_charge] - posits_sample_z[i_sample];
+
+        // todo: Does this work with CUDA?
+        double r = std::sqrt(diff_x * diff_x + diff_y * diff_y + diff_z * diff_z);
+
+        // c note: Omitting the f is double; including is f32.
+        if (r < 0.0000000000001) {
+           out[i] = 0.; // todo: Is this the way to handle?
+        }
+
+        out[i] = 1. * charges[i_charge] / r;
+    }
 }
 
 

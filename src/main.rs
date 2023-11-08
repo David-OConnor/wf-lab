@@ -27,10 +27,9 @@ use std::ffi::{c_double, c_float};
 // use cudarc::cublas::{safe, result, sys};
 // use cudarc::cublaslt::{safe, result, sys};
 // use cudarc::curand::{safe, result, sys};
-use cudarc::{
-    driver::{CudaDevice, CudaSlice, DriverError, LaunchAsync, LaunchConfig},
-    nvrtc::Ptx,
-};
+use std::sync::Arc;
+
+use cudarc::{driver::CudaDevice, nvrtc::Ptx};
 
 use lin_alg2::f64::Vec3;
 
@@ -40,6 +39,7 @@ mod complex_nums;
 mod eigen_fns;
 mod elec_elec;
 mod eval;
+mod gpu;
 mod grid_setup;
 mod interp;
 mod num_diff;
@@ -117,6 +117,7 @@ impl Default for StateUi {
 }
 
 pub struct State {
+    pub cuda_dev: Arc<CudaDevice>,
     /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
     /// due to electrons are stored in `Surfaces`.
     pub charges_fixed: Vec<(Vec3, f64)>,
@@ -289,72 +290,13 @@ pub fn init_from_grid(
     )
 }
 
-// #[link(name = "cuda", kind = "static")]
-// extern "C" {
-//     fn ffi_test();
-// }
-
-fn cudarc_test() {
-    let dev = CudaDevice::new(0).unwrap();
-
-    // You can load a function from a pre-compiled PTX like so:
-    // dev.load_ptx(Ptx::from_file("./src/cuda.ptx"), "sin", &["sin_kernel"])?;
-
-    // let a: CudaSlice<f64> = dev.alloc_zeros::<f64>(10)?;
-    // let mut b = dev.alloc_zeros::<f64>(10)?;
-    //
-    // // you can do device to device copies of course
-    // dev.dtod_copy(&a, &mut b)?;
-
-    // allocate buffers
-    let N = 100;
-
-    let mut in_host = vec![0.; N];
-    for i in 0..N {
-        in_host[i] = i as f32;
-    }
-
-    let inp = dev.htod_copy(in_host).unwrap();
-
-    // let a_dev = dev.htod_copy(a_host.into()).unwrap();
-    // let mut b_dev = a_dev.clone();
-
-    let mut out = dev.alloc_zeros::<f32>(N).unwrap();
-
-    dev.load_ptx(Ptx::from_file("./cuda.ptx"), "cuda", &["sin_kernel"])
-        .unwrap();
-
-    let sin_kernel = dev.get_func("cuda", "sin_kernel").unwrap();
-
-    let cfg = LaunchConfig::for_num_elems(N as u32);
-    unsafe { sin_kernel.launch(cfg, (&mut out, &inp, N)) }.unwrap();
-
-    // let a_host_2 = dev.sync_reclaim(a_dev)?;
-    // let out_host = dev.sync_reclaim(b_dev)?;
-
-    // Copy back to the host:
-    let out_host: Vec<f32> = dev.dtoh_sync_copy(&out).unwrap();
-
-    println!("OUT: {:?}", out_host);
-
-    // // unsafe initialization of unset memory
-    // let _: CudaSlice<f32> = unsafe { dev.alloc::<f32>(10) }.unwrap();
-
-    // // this will have memory initialized as 0
-    // let _: CudaSlice<f64> = dev.alloc_zeros::<f64>(10).unwrap();
-
-    // initialize with a rust vec
-    // let _: CudaSlice<usize> = dev.htod_copy(vec![0; 10]).unwrap();
-
-    // // or finially, initialize with a slice. this is synchronous though.
-    // let _: CudaSlice<u32> = dev.htod_sync_copy(&[1, 2, 3]).unwrap();
-}
-
 fn main() {
-    cudarc_test();
-    unsafe {
-        // ffi_test();
-    }
+    let cuda_dev = CudaDevice::new(0).unwrap();
+
+    // This is compiled in `build.rs`.
+    cuda_dev
+        .load_ptx(Ptx::from_file("./cuda.ptx"), "cuda", &["coulomb_kernel"])
+        .unwrap();
 
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
@@ -438,6 +380,7 @@ fn main() {
     ];
 
     let state = State {
+        cuda_dev,
         charges_fixed: nuclei,
         charges_electron,
         V_from_elecs,
