@@ -22,6 +22,16 @@ use std::ffi::{c_double, c_float};
 // result is a very small wrapper around sys to return Result from each function
 // safe is a wrapper around result/sys to provide safe abstractions
 
+
+
+
+// Focus; Lighter-weight models
+// https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB
+// https://github.com/biubug6/Pytorch_Retinaface
+
+
+
+
 // use cudarc::driver::{safe, result, sys};
 // use cudarc::nvrtc::{safe, result, sys};
 // use cudarc::cublas::{safe, result, sys};

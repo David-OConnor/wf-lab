@@ -51,25 +51,36 @@ extern "C" __global__ void matmul(float* A, float* B, float* C, int N) {
 
 extern "C" __global__
 void coulomb_kernel(
-    double *out,
-    double *posits_charge_x,
-    double *posits_charge_y,
-    double *posits_charge_z,
-    double *posits_sample_x,
-    double *posits_sample_y,
-    double *posits_sample_z,
-    double *charges,
+//     double *out,
+//     double *posits_charge_x,
+//     double *posits_charge_y,
+//     double *posits_charge_z,
+//     double *posits_sample_x,
+//     double *posits_sample_y,
+//     double *posits_sample_z,
+//     double *charges,
+    float *out,
+    float *posits_charge_x,
+    float *posits_charge_y,
+    float *posits_charge_z,
+    float *posits_sample_x,
+    float *posits_sample_y,
+    float *posits_sample_z,
+    float *charges,
     int N_charges,
     int N_samples
 ) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // int i_charge = blockIdx.y*blockDim.y+threadIdx.y;
-    // int i_sample = blockIdx.x*blockDim.x+threadIdx.x;
+    // todo: Consider using a grid to make the code more readable,
+    // but for now, flat is fine.
+
+//     int i_charge = blockIdx.y*blockDim.y+threadIdx.y;
+//     int i_sample = blockIdx.x*blockDim.x+threadIdx.x;
 
 
     // todo: QC rounding
-    int i_charge = i / N_charges;
+    int i_charge = i / N_samples;
     int i_sample = i % N_samples;
 
     // int stride = blockDim.x * gridDim.x;
@@ -79,20 +90,24 @@ void coulomb_kernel(
 //     y[index] = x[index] * 2.0f;
 
     if (i_charge < N_charges && i_sample < N_samples) {
-        double diff_x = posits_charge_x[i_charge] - posits_sample_x[i_sample];
-        double diff_y = posits_charge_y[i_charge] - posits_sample_y[i_sample];
-        double diff_z = posits_charge_z[i_charge] - posits_sample_z[i_sample];
+//      double diff_x = posits_charge_x[i_charge] - posits_sample_x[i_sample];
+//      double diff_y = posits_charge_y[i_charge] - posits_sample_y[i_sample];
+//      double diff_z = posits_charge_z[i_charge] - posits_sample_z[i_sample];
+        float diff_x = posits_charge_x[i_charge] - posits_sample_x[i_sample];
+        float diff_y = posits_charge_y[i_charge] - posits_sample_y[i_sample];
+        float diff_z = posits_charge_z[i_charge] - posits_sample_z[i_sample];
 
-        double r = std::sqrt(diff_x * diff_x + diff_y * diff_y + diff_z * diff_z);
+//         double r = std::sqrt(diff_x * diff_x + diff_y * diff_y + diff_z * diff_z);
+        float r = std::sqrt(diff_x * diff_x + diff_y * diff_y + diff_z * diff_z);
 
         // c note: Omitting the f is double; including is f32.
-        if (r < 0.0000000000001) {
+//         if (r < 0.0000000000001) {
+        if (r < 0.0000000000001f) {
            out[i] = 0.; // todo: Is this the way to handle?
         }
 
-        // out[i] = 1. * charges[i_charge] / r;
-
-        out[i_charge * N_samples + i_sample] = 1. * charges[i_charge] / r;
+        out[i] = 1. * charges[i_charge] / r;
+//         out[i_charge * N_samples + i_sample] = 1. * charges[i_charge] / r;
     }
 }
 
@@ -103,12 +118,13 @@ extern "C" __global__
 void sum_coulomb_results_kernel(
     // For a given sample point, sum coulomb calculations from a number of charge points.
     double out,
-    double *charges_this_pt,
-    int N_charges
+    double *coulomb_combos,
+    int N_charges,
+    int N_samples
 ) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (i < N_charges) {
-        out += charges_this_pt[i];
+//         out[lkj] += coulomb_combos[i];
     }
 }

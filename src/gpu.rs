@@ -9,16 +9,17 @@ use lin_alg2::f64::Vec3;
 fn allocate_vec3s(
     dev: &Arc<CudaDevice>,
     data: &[Vec3],
-) -> (CudaSlice<f64>, CudaSlice<f64>, CudaSlice<f64>) {
+// ) -> (CudaSlice<f64>, CudaSlice<f64>, CudaSlice<f64>) {
+) -> (CudaSlice<f32>, CudaSlice<f32>, CudaSlice<f32>) {
     let mut x = Vec::new();
     let mut y = Vec::new();
     let mut z = Vec::new();
 
     // todo: Ref etcs; you are making a double copy here.
     for v in data {
-        x.push(v.x);
-        y.push(v.y);
-        z.push(v.z);
+        x.push(v.x as f32);
+        y.push(v.y as f32);
+        z.push(v.z as f32);
     }
 
     (
@@ -53,15 +54,19 @@ pub fn run_coulomb(
     let (posit_charges_x, posit_charges_y, posit_charges_z) = allocate_vec3s(&dev, posit_charges);
     let (posit_samples_x, posit_samples_y, posit_samples_z) = allocate_vec3s(&dev, posit_samples);
 
-    let mut charges_gpu = dev.alloc_zeros::<f64>(N_CHARGES).unwrap();
+    let charges: Vec<f32> = charges.iter().map(|c| *c as f32).collect();
+
+    // let mut charges_gpu = dev.alloc_zeros::<f64>(N_CHARGES).unwrap();
+    let mut charges_gpu = dev.alloc_zeros::<f32>(N_CHARGES).unwrap();
     // dev.htod_sync_copy_into(charges, &mut charges_gpu).unwrap();
-    dev.htod_sync_copy_into(charges, &mut charges_gpu).unwrap();
+    dev.htod_sync_copy_into(&charges, &mut charges_gpu).unwrap();
 
     // let a_dev = dev.htod_copy(a_host.into()).unwrap();
     // let mut b_dev = a_dev.clone();
 
     // todo: You will likely need 32-bit floats for performance purposes.
-    let mut out = dev.alloc_zeros::<f64>(N_CHARGES * N_SAMPLES).unwrap();
+    // let mut coulomb_combos = dev.alloc_zeros::<f64>(N_CHARGES * N_SAMPLES).unwrap();
+    let mut coulomb_combos = dev.alloc_zeros::<f32>(N_CHARGES * N_SAMPLES).unwrap();
 
     let kernel = dev.get_func("cuda", "coulomb_kernel").unwrap();
 
@@ -82,7 +87,8 @@ pub fn run_coulomb(
     // shared_mem_bytes == 0
 
     const NUM_THREADS: u32 = 1024;
-    let num_blocks = (n + NUM_THREADS - 1) / NUM_THREADS;
+    // let num_blocks = (n + NUM_THREADS - 1) / NUM_THREADS;
+
     // Self {
     //     grid_dim: (num_blocks, 1, 1),
     //     block_dim: (NUM_THREADS, 1, 1),
@@ -101,12 +107,16 @@ pub fn run_coulomb(
     //     shared_mem_bytes: 0,
     // };
 
+    //     dim3 threadsPerBlock(16, 16);
+    //     dim3 numBlocks(N / threadsPerBlock.x, N / threadsPerBlock.y);
+    //     MatAdd<<<numBlocks, threadsPerBlock>>>(A, B, C);
+
 
     unsafe {
         kernel.launch(
             cfg,
             (
-                &mut out,
+                &mut coulomb_combos,
                 &posit_charges_x,
                 &posit_charges_y,
                 &posit_charges_z,
@@ -121,13 +131,82 @@ pub fn run_coulomb(
     }
     .unwrap();
 
-    // let a_host_2 = dev.sync_reclaim(a_dev)?;
-    // let out_host = dev.sync_reclaim(b_dev)?;
-
     // Copy back to the host:
-    let out_host = dev.dtoh_sync_copy(&out).unwrap();
+    let coulomb_combos_flat = dev.dtoh_sync_copy(&coulomb_combos).unwrap();
 
-    println!("OUT: {:?}", out_host);
+    // println!("coulomb combos_flat: {:?}", coulomb_combos_flat);
+    // Expected result. // (charge, sample)
+    // (0, 0): 1.
+    // (0, 1): 0.5
+    // (0, 2): 0.333
+    // (1, 0): 2.
+    // (1, 1):2.
+    // (1, 2): 0.666
+
+    // 1., 0.5, 0.333, 2., 2., 0.666?  # This is the result we're getting.
+    // 1., 2., 0.5, 2., 0.333, 0.666?
+
+    println!("GPU coulomb data collected");
+
+    // should be indexes 0+3, 1+4, 2+5
+    // todo: Kernel for this A/R.
+    let mut per_sample_flat = Vec::new();
+    for i_sample in 0..N_SAMPLES {
+        let mut charge_this_pt = 0.;
+        for i_charge in 0..N_CHARGES {
+            charge_this_pt += coulomb_combos_flat[i_charge * N_SAMPLES + i_sample];
+        }
+        per_sample_flat.push(charge_this_pt as f64);
+    }
+
+    println!("Sum complete");
+
+    // print!("Per sample flat: {:?}", per_sample_flat);
+    // We are not getting this; we're getting [1.5, 2.3333333333333335, 2.6666666666666665]
+    // Expected:
+    // S0: 3.
+    // S1: 2.5
+    // S2: 1.
+
+    per_sample_flat
+
+
+
+    // Now, convert
+
+    // todo: For now, handle the rest on CPU. Come back to GPU once this is working.
+
+    // todo: Come back to this.
+    // {
+    //     let mut charges_at_each_sample_posit = dev.alloc_zeros::<f64>(N_SAMPLES).unwrap();
+    //
+    //     // Now, add, for each sample point, all appropriate charges
+    //     // todo: Be careful about indexes and/or grids!
+    //     let kernel = dev.get_func("cuda", "sum_coulomb_results_kernel").unwrap();
+    //
+    //     let cfg = LaunchConfig::for_num_elems((N_CHARGES * N_SAMPLES) as u32);
+    //     unsafe {
+    //         kernel.launch(
+    //             cfg,
+    //             (
+    //                 &mut charges_at_each_sample_posit,
+    //                 &coulomb_combos,
+    //                 N_CHARGES,
+    //                 N_SAMPLES,
+    //             ),
+    //         )
+    //     }
+    //         .unwrap();
+    //
+    //     // let a_host_2 = dev.sync_reclaim(a_dev)?;
+    //     // let out_host = dev.sync_reclaim(b_dev)?;
+    //
+
+    // }
+
+    // todo: Don't do this copy to CPU then back!
+
+    // println!("OUT: {:?}", coulomb_combos_flat);
 
     // Next step: Either here or in `potential.rs`:
     // You have flat output of the 2d correspondances between each posit sample and posit charge.
@@ -140,7 +219,7 @@ pub fn run_coulomb(
 
     // Map the result back  back from a flat list to a 3D list per sample point.
 
-    out_host
+    // coulomb_combos_flat
 
     // // unsafe initialization of unset memory
     // let _: CudaSlice<f32> = unsafe { dev.alloc::<f32>(10) }.unwrap();

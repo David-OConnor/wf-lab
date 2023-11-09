@@ -258,9 +258,50 @@ pub(crate) fn create_V_from_elec_grid_gpu(
         }
     }
 
-    let result_flat = gpu::run_coulomb(dev, &posits_charge, &posits_sample, &charges);
+    // todo: Troubleshooting packing/unpacking etc
+    // let posits_charge = vec![
+    //     Vec3::new(0., 0., 0.),
+    //     Vec3::new(1.5, 0., 0.),
+    // ];
+    // let posits_sample = vec![
+    //     Vec3::new(1., 0., 0.),
+    //     Vec3::new(2., 0., 0.),
+    //     Vec3::new(3., 0., 0.),
+    // ];
+    //
+    // let charges = vec![1., 1.];
 
-    println!("Results flat: {:?}", result_flat);
+    // Expected result. // (charge, sample)
+    // (0, 0): 1.
+    // (0, 1): 0.5
+    // (0, 2): 0.333
+    // (1, 0): 2.
+    // (1, 1):2.
+    // (1, 2): 0.666
+
+    let per_sample_flat = gpu::run_coulomb(dev, &posits_charge, &posits_sample, &charges);
+
+    // 1., 0.5, 0.333, 2., 2., 0.666?
+    // 1., 2., 0.5, 2., 0.333, 0.666?
+    // todo: Sum on the each charge per sample
+
+    // todo: Re-pack here, or in `gpu::run_coulomb`? Probably here
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            if twod_only {
+                let k = grid_n / 2 + 1;
+                let i_flat = i * grid_n + j; // QC etc
+                V_from_this_elec[i][j][k] = per_sample_flat[i_flat];
+            } else {
+                for k in 0..grid_n {
+                    let i_flat = i * grid_n + j * grid_n + k; // QC etc
+                    V_from_this_elec[i][j][k] = per_sample_flat[i_flat];
+                }
+            }
+        }
+    }
+
+    // print!("Repacked: {:?}", per_sample_flat);
 
     println!("V creation complete");
 }
