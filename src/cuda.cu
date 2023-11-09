@@ -1,14 +1,7 @@
-#include <iostream>
-#include <math.h>
+// #include <iostream>
+// #include <math.h>
 
 // https://developer.nvidia.com/blog/even-easier-introduction-cuda/
-
-// Currently unused, in favor of operating on flat arrays.
-struct Vec3 {
-    double x;
-    double y;
-    double z;
-};
 
 
 extern "C" __global__ void matmul(float* A, float* B, float* C, int N) {
@@ -27,27 +20,23 @@ extern "C" __global__ void matmul(float* A, float* B, float* C, int N) {
 }
 
 
+__device__
+float coulomb(float3 a, float3 b, float charge) {
+    float3 diff;
+    diff.x = a.x - b.x;
+    diff.y = a.y - b.y;
+    diff.z = a.z - b.z;
 
-// // todo: We may need to use floats here vice double, or suffer a large performance hit.
-// // todo: Research this.
-// double VCoulomb(Vec3 posit_charge, Vec3 posit_sample, double charge) {
-//     Vec3 diff = {
-//        posit_charge.x - posit_sample.x,
-//        posit_charge.y - posit_sample.y,
-//        posit_charge.z - posit_sample.z,
-//     };
-//
-//     // todo: Does this work with CUDA?
-//     double r = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-//
-//     // c note: Omitting the f is double; including is f32.
-//     if (r < 0.0000000000001) {
-//         return 0.; // todo: Is this the way to handle?
-//     }
-//
-//     return 1. * charge / r;
-// }
+    float r = sqrtf(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
 
+    // c note: Omitting the f is double; including is f32.
+//         if (r < 0.0000000000001) {
+    if (r < 0.0000000000001f) {
+       return 0.; // todo: Is this the way to handle?
+    }
+
+    return 1.f * charge / r;
+}
 
 extern "C" __global__
 void coulomb_kernel(
@@ -66,6 +55,8 @@ void coulomb_kernel(
     float *posits_sample_x,
     float *posits_sample_y,
     float *posits_sample_z,
+//     float3 *posits_charge,
+//     float3 *posits_sample,
     float *charges,
     int N_charges,
     int N_samples
@@ -78,10 +69,22 @@ void coulomb_kernel(
 //     int i_charge = blockIdx.y*blockDim.y+threadIdx.y;
 //     int i_sample = blockIdx.x*blockDim.x+threadIdx.x;
 
-
     // todo: QC rounding
     int i_charge = i / N_samples;
     int i_sample = i % N_samples;
+    
+    float3 posit_charge;
+    posit_charge.x = posits_charge_x[i_charge];
+    posit_charge.y = posits_charge_y[i_charge];
+    posit_charge.z = posits_charge_z[i_charge];
+
+    float3 posit_sample;
+    posit_sample.x = posits_sample_x[i_sample];
+    posit_sample.y = posits_sample_y[i_sample];
+    posit_sample.z = posits_sample_z[i_sample];
+
+//     float3 posit_charge = posits_charge[i_charge];
+//     float3 posit_sample = posits_sample[i_sample];
 
     // int stride = blockDim.x * gridDim.x;
     // for (int i = index; i < n; i+= stride)
@@ -90,24 +93,7 @@ void coulomb_kernel(
 //     y[index] = x[index] * 2.0f;
 
     if (i_charge < N_charges && i_sample < N_samples) {
-//      double diff_x = posits_charge_x[i_charge] - posits_sample_x[i_sample];
-//      double diff_y = posits_charge_y[i_charge] - posits_sample_y[i_sample];
-//      double diff_z = posits_charge_z[i_charge] - posits_sample_z[i_sample];
-        float diff_x = posits_charge_x[i_charge] - posits_sample_x[i_sample];
-        float diff_y = posits_charge_y[i_charge] - posits_sample_y[i_sample];
-        float diff_z = posits_charge_z[i_charge] - posits_sample_z[i_sample];
-
-//         double r = std::sqrt(diff_x * diff_x + diff_y * diff_y + diff_z * diff_z);
-        float r = std::sqrt(diff_x * diff_x + diff_y * diff_y + diff_z * diff_z);
-
-        // c note: Omitting the f is double; including is f32.
-//         if (r < 0.0000000000001) {
-        if (r < 0.0000000000001f) {
-           out[i] = 0.; // todo: Is this the way to handle?
-        }
-
-        out[i] = 1. * charges[i_charge] / r;
-//         out[i_charge * N_samples + i_sample] = 1. * charges[i_charge] / r;
+        out[i] = coulomb(posit_charge, posit_sample, charges[i_charge]);
     }
 }
 
@@ -128,3 +114,70 @@ void sum_coulomb_results_kernel(
 //         out[lkj] += coulomb_combos[i];
     }
 }
+
+__device__
+float3 bodyBodyInteraction(float4 bi, float4 bj, float3 ai) {
+    float3 r;
+    // r_ij  [3 FLOPS]
+    r.x = bj.x - bi.x;
+    r.y = bj.y - bi.y;
+    r.z = bj.z - bi.z;
+
+    // distSqr = dot(r_ij, r_ij) + EPS^2  [6 FLOPS]
+    float EPS2  = 0.0000000001f;
+    float distSqr = r.x * r.x + r.y * r.y + r.z * r.z + EPS2;
+
+    // invDistCube =1/distSqr^(3/2)  [4 FLOPS (2 mul, 1 sqrt, 1 inv)]
+    float distSixth = distSqr * distSqr * distSqr;
+    float invDistCube = 1.0f/sqrtf(distSixth);
+
+    // s = m_j * invDistCube [1 FLOP]
+    float s = bj.w * invDistCube;
+
+    // a_i =  a_i + s * r_ij [6 FLOPS]
+    ai.x += r.x * s;
+    ai.y += r.y * s;
+    ai.z += r.z * s;
+    return ai;
+}
+
+// __device__
+// float3 tile_calculation(float4 myPosition, float3 accel) {
+//     int i;
+//
+//     extern __shared__
+//     float4[] shPosition;
+//
+//     for (i = 0; i < blockDim.x; i++) {
+//         accel = bodyBodyInteraction(myPosition, shPosition[i], accel);
+//     }
+//     return accel;
+// }
+//
+// __global__ void calculate_forces(void *devX, void *devA) {
+//    extern __shared__ float4[]
+//    shPosition;
+//
+//    float4 *globalX = (float4 *)devX;
+//    float4 *globalA = (float4 *)devA;
+//    float4 myPosition;
+//    int i, tile;
+//
+//    float3 acc = {0.0f, 0.0f, 0.0f};
+//
+//    int gtid = blockIdx.x * blockDim.x + threadIdx.x;
+//    myPosition = globalX[gtid];
+//
+//    for (i = 0, tile = 0; i < N; i += p, tile++) {
+//         int idx = tile * blockDim.x + threadIdx.x;
+//             shPosition[threadIdx.x] = globalX[idx];
+//             __syncthreads();
+//             acc = tile_calculation(myPosition, acc);
+//             __syncthreads();
+//         }
+//
+//    // Save the result in global memory for the integration step.
+//    float4 acc4 = {acc.x, acc.y, acc.z, 0.0f};
+//    globalA[gtid] = acc4;
+//
+// }

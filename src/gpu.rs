@@ -1,30 +1,48 @@
 //! GPU computation, via CUDA (not for graphics)
+//!
+//! nbody exmaple from nvidia: https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-31-fast-n-body-simulation-cuda
 
 use std::sync::Arc;
 
 use cudarc::driver::{CudaDevice, CudaSlice, DriverError, LaunchAsync, LaunchConfig};
 use lin_alg2::f64::Vec3;
 
+#[repr(C)]
+struct Float3 {
+    x: f32,
+    y: f32,
+    z: f32,
+}
+
 /// Convert a collection of `Vec3`s into Cuda arrays of their components.
 fn allocate_vec3s(
     dev: &Arc<CudaDevice>,
     data: &[Vec3],
-// ) -> (CudaSlice<f64>, CudaSlice<f64>, CudaSlice<f64>) {
+    // ) -> (CudaSlice<f64>, CudaSlice<f64>, CudaSlice<f64>) {
 ) -> (CudaSlice<f32>, CudaSlice<f32>, CudaSlice<f32>) {
+    // ) -> CudaSlice<f32> {
     let mut x = Vec::new();
     let mut y = Vec::new();
     let mut z = Vec::new();
+
+    // let mut result = Vec::new();
 
     // todo: Ref etcs; you are making a double copy here.
     for v in data {
         x.push(v.x as f32);
         y.push(v.y as f32);
         z.push(v.z as f32);
+
+        // result.push(Float3{
+        //     x: v.x as f32,
+        //     y: v.y as f32,
+        //     z: v.z as f32,
+        // });
     }
 
+    // dev.htod_copy(result).unwrap()
+
     (
-        // todo: Explore other Cudarc data copying approaches
-        // dev.dtoh_sync_copy(x).unwrap(),
         dev.htod_copy(x).unwrap(),
         dev.htod_copy(y).unwrap(),
         dev.htod_copy(z).unwrap(),
@@ -53,6 +71,8 @@ pub fn run_coulomb(
 
     let (posit_charges_x, posit_charges_y, posit_charges_z) = allocate_vec3s(&dev, posit_charges);
     let (posit_samples_x, posit_samples_y, posit_samples_z) = allocate_vec3s(&dev, posit_samples);
+    // let posit_charges_ = allocate_vec3s(&dev, posit_charges);
+    // let posit_samples_ = allocate_vec3s(&dev, posit_samples);
 
     let charges: Vec<f32> = charges.iter().map(|c| *c as f32).collect();
 
@@ -111,12 +131,13 @@ pub fn run_coulomb(
     //     dim3 numBlocks(N / threadsPerBlock.x, N / threadsPerBlock.y);
     //     MatAdd<<<numBlocks, threadsPerBlock>>>(A, B, C);
 
-
     unsafe {
         kernel.launch(
             cfg,
             (
                 &mut coulomb_combos,
+                // &posit_charges_,
+                // &posit_samples_,
                 &posit_charges_x,
                 &posit_charges_y,
                 &posit_charges_z,
@@ -170,8 +191,6 @@ pub fn run_coulomb(
 
     per_sample_flat
 
-
-
     // Now, convert
 
     // todo: For now, handle the rest on CPU. Come back to GPU once this is working.
@@ -213,7 +232,6 @@ pub fn run_coulomb(
     // Expand into an array of arrays. (2D) etc.
 
     // (Should we do this on CPU, or GPU? Likely GPU.)
-
 
     // Loop over, and sum the contributions  from each charge, for the corresponding sample point.
 
