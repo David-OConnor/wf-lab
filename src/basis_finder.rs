@@ -1,5 +1,8 @@
 //! Used to find weights and Xis for STOs.
 
+use std::sync::Arc;
+
+use cudarc::driver::CudaDevice;
 use lin_alg2::f64::Vec3;
 
 use crate::{
@@ -331,6 +334,7 @@ fn find_bases_system_of_eqs(
 /// Find a wave function, composed of STOs, that match a given potential.
 // pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
 pub fn find_stos(
+    cuda_dev: &Arc<CudaDevice>,
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
@@ -375,7 +379,16 @@ pub fn find_stos(
 
     let sample_pts = generate_sample_pts();
 
-    let V_to_match = potential::create_V_1d(
+    // let V_to_match = potential::create_V_1d(
+    //     &sample_pts,
+    //     charges_fixed,
+    //     charge_elec,
+    //     grid_charge,
+    //     grid_n_charge,
+    // );
+
+    let V_to_match = potential::create_V_1d_gpu(
+        cuda_dev,
         &sample_pts,
         charges_fixed,
         charge_elec,

@@ -543,6 +543,7 @@ fn bottom_items(
         let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
 
         let (bases, E) = basis_finder::find_stos(
+            &state.cuda_dev,
             &state.charges_fixed,
             &charges_other_electrons,
             &state.surfaces_shared.grid_posits_charge,

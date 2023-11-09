@@ -141,7 +141,6 @@ pub fn run_coulomb(
 
     println!("GPU coulomb data collected");
 
-    // should be indexes 0+3, 1+4, 2+5
     // todo: Kernel for this A/R.
     let mut per_sample_flat = Vec::new();
     for i_sample in 0..n_samples {
