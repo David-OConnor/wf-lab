@@ -40,60 +40,34 @@ float coulomb(float3 a, float3 b, float charge) {
 
 extern "C" __global__
 void coulomb_kernel(
-//     double *out,
-//     double *posits_charge_x,
-//     double *posits_charge_y,
-//     double *posits_charge_z,
-//     double *posits_sample_x,
-//     double *posits_sample_y,
-//     double *posits_sample_z,
-//     double *charges,
     float *out,
-    float *posits_charge_x,
-    float *posits_charge_y,
-    float *posits_charge_z,
-    float *posits_sample_x,
-    float *posits_sample_y,
-    float *posits_sample_z,
-//     float3 *posits_charge,
-//     float3 *posits_sample,
+    float3 *posits_charge,
+    float3 *posits_sample,
     float *charges,
     int N_charges,
     int N_samples
 ) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
 
-    // todo: Consider using a grid to make the code more readable,
-    // but for now, flat is fine.
+    for (int i = index; i < N_charges * N_samples; i+= stride) {
+//         int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-//     int i_charge = blockIdx.y*blockDim.y+threadIdx.y;
-//     int i_sample = blockIdx.x*blockDim.x+threadIdx.x;
+        // todo: Consider using a grid to make the code more readable,
+        // but for now, flat is fine.
 
-    // todo: QC rounding
-    int i_charge = i / N_samples;
-    int i_sample = i % N_samples;
-    
-    float3 posit_charge;
-    posit_charge.x = posits_charge_x[i_charge];
-    posit_charge.y = posits_charge_y[i_charge];
-    posit_charge.z = posits_charge_z[i_charge];
+    //     int i_charge = blockIdx.y*blockDim.y+threadIdx.y;
+    //     int i_sample = blockIdx.x*blockDim.x+threadIdx.x;
 
-    float3 posit_sample;
-    posit_sample.x = posits_sample_x[i_sample];
-    posit_sample.y = posits_sample_y[i_sample];
-    posit_sample.z = posits_sample_z[i_sample];
+        int i_charge = i / N_samples;
+        int i_sample = i % N_samples;
 
-//     float3 posit_charge = posits_charge[i_charge];
-//     float3 posit_sample = posits_sample[i_sample];
+        float3 posit_charge = posits_charge[i_charge];
+        float3 posit_sample = posits_sample[i_sample];
 
-    // int stride = blockDim.x * gridDim.x;
-    // for (int i = index; i < n; i+= stride)
-    //     y[i] = x[i] + y[i];
-    // todo: Check for out of bounds
-//     y[index] = x[index] * 2.0f;
-
-    if (i_charge < N_charges && i_sample < N_samples) {
-        out[i] = coulomb(posit_charge, posit_sample, charges[i_charge]);
+        if (i_charge < N_charges && i_sample < N_samples) {
+            out[i] = coulomb(posit_charge, posit_sample, charges[i_charge]);
+        }
     }
 }
 
