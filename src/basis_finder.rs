@@ -213,7 +213,8 @@ fn generate_sample_pts() -> Vec<Vec3> {
     // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
     let sample_dists = [
         // 10., 5., 3., 2., 1.5, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1
-        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.6, 0.4, 0.3,
+        // 10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.4, 0.3,
+        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6,
     ];
 
     // println!("\nSample dists: {:?}", sample_dists);
@@ -379,7 +380,7 @@ pub fn find_stos(
 
     let sample_pts = generate_sample_pts();
 
-    let V_to_match = potential::create_V_1d_gpu(
+    let V_to_match = potential::create_V_1d(
         cuda_dev,
         &sample_pts,
         charges_fixed,

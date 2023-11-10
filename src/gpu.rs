@@ -1,27 +1,24 @@
 //! GPU computation, via CUDA (not for graphics)
 //!
-//! nbody exmaple from nvidia: https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-31-fast-n-body-simulation-cuda
-//! third party n-body example: https://github.com/harrism/mini-nbody
+//!
+//!
 use std::sync::Arc;
 
-use cudarc::driver::{CudaDevice, CudaSlice, DriverError, LaunchAsync, LaunchConfig};
+use cudarc::driver::{CudaDevice, CudaSlice, LaunchAsync, LaunchConfig};
 use lin_alg2::f64::Vec3;
 
-// #[repr(C)]
-// struct Float3 {
-//     x: f32,
-//     y: f32,
-//     z: f32,
-// }
+// todo: Can we use f64s on the GPU without a significant performance hit?
+// todo: From experiments, it's signifantly slower; we'll see if it's worth it.
+type FDev = f64;
 
 /// Convert a collection of `Vec3`s into Cuda arrays of their components.
-fn alloc_vec3s(dev: &Arc<CudaDevice>, data: &[Vec3]) -> CudaSlice<f32> {
+fn alloc_vec3s(dev: &Arc<CudaDevice>, data: &[Vec3]) -> CudaSlice<FDev> {
     let mut result = Vec::new();
     // todo: Ref etcs A/R; you are making a double copy here.
     for v in data {
-        result.push(v.x as f32);
-        result.push(v.y as f32);
-        result.push(v.z as f32);
+        result.push(v.x as FDev);
+        result.push(v.y as FDev);
+        result.push(v.z as FDev);
     }
     dev.htod_copy(result).unwrap()
 }
@@ -42,17 +39,14 @@ pub fn run_coulomb_without_addition(
     let posit_charges_ = alloc_vec3s(&dev, posit_charges);
     let posit_samples_ = alloc_vec3s(&dev, posit_samples);
 
-    let charges: Vec<f32> = charges.iter().map(|c| *c as f32).collect();
+    // let charges: Vec<f32> = charges.iter().map(|c| *c as f32).collect();
 
-    // let mut charges_gpu = dev.alloc_zeros::<f64>(N_CHARGES).unwrap();
-    let mut charges_gpu = dev.alloc_zeros::<f32>(n_charges).unwrap();
+    let mut charges_gpu = dev.alloc_zeros::<FDev>(n_charges).unwrap();
     dev.htod_sync_copy_into(&charges, &mut charges_gpu).unwrap();
 
     let n = n_charges * n_samples;
 
-    // todo: You will likely need 32-bit floats for performance purposes.
-    // let mut coulomb_combos = dev.alloc_zeros::<f64>(N_CHARGES * N_SAMPLES).unwrap();
-    let mut coulomb_combos = dev.alloc_zeros::<f32>(n).unwrap();
+    let mut coulomb_combos = dev.alloc_zeros::<FDev>(n).unwrap();
 
     let kernel = dev
         .get_func("cuda", "coulomb_kernel_without_addition")
@@ -149,12 +143,12 @@ pub fn run_coulomb(
     let posit_charges_ = alloc_vec3s(&dev, posit_charges);
     let posit_samples_ = alloc_vec3s(&dev, posit_samples);
 
-    let charges: Vec<f32> = charges.iter().map(|c| *c as f32).collect();
+    // let charges: Vec<f32> = charges.iter().map(|c| *c as f32).collect();
 
-    let mut charges_gpu = dev.alloc_zeros::<f32>(n_charges).unwrap();
+    let mut charges_gpu = dev.alloc_zeros::<FDev>(n_charges).unwrap();
     dev.htod_sync_copy_into(&charges, &mut charges_gpu).unwrap();
 
-    let mut V_per_sample = dev.alloc_zeros::<f32>(n_samples).unwrap();
+    let mut V_per_sample = dev.alloc_zeros::<FDev>(n_samples).unwrap();
 
     let kernel = dev.get_func("cuda", "coulomb_kernel").unwrap();
 
@@ -190,5 +184,6 @@ pub fn run_coulomb(
 
     println!("GPU coulomb data collected");
 
-    result.iter().map(|v| *v as f64).collect()
+    // result.iter().map(|v| *v as f32).collect()
+    result
 }

@@ -66,7 +66,7 @@ const NUM_SURFACES: usize = 11;
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_CHARGE: f64 = 10.;
 const GRID_MAX_RENDER: f64 = 5.;
-const GRID_N_DEFAULT: usize = 30;
+const GRID_N_DEFAULT: usize = 40;
 const GRID_N_CHARGE_DEFAULT: usize = 70;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
