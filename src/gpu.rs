@@ -15,7 +15,7 @@ use lin_alg2::f64::Vec3;
 // }
 
 /// Convert a collection of `Vec3`s into Cuda arrays of their components.
-fn allocate_vec3s(dev: &Arc<CudaDevice>, data: &[Vec3]) -> CudaSlice<f32> {
+fn alloc_vec3s(dev: &Arc<CudaDevice>, data: &[Vec3]) -> CudaSlice<f32> {
     let mut result = Vec::new();
     // todo: Ref etcs A/R; you are making a double copy here.
     for v in data {
@@ -26,38 +26,27 @@ fn allocate_vec3s(dev: &Arc<CudaDevice>, data: &[Vec3]) -> CudaSlice<f32> {
     dev.htod_copy(result).unwrap()
 }
 
-/// Run coulomb attraction via the GPU.
-pub fn run_coulomb(
+/// Run coulomb attraction via the GPU. Calculates coulomb potentials between all combinations
+/// of sample points and charge points, using a GPU kernel. Sums all charge points for a given
+/// sample, and returns a potential-per-sample Vec.
+pub fn run_coulomb_without_addition(
     dev: &Arc<CudaDevice>,
     posit_charges: &[Vec3],
     posit_samples: &[Vec3],
     charges: &[f64], // Corresponds 1:1 with `posit_charges`.
 ) -> Vec<f64> {
-    // You can load a function from a pre-compiled PTX like so:
-    // dev.load_ptx(Ptx::from_file("./src/cuda.ptx"), "sin", &["sin_kernel"])?;
-
-    // let a: CudaSlice<f64> = dev.alloc_zeros::<f64>(10)?;
-    // let mut b = dev.alloc_zeros::<f64>(10)?;
-    //
-    // // you can do device to device copies of course
-    // dev.dtod_copy(&a, &mut b)?;
-
     // allocate buffers
     let n_charges = posit_charges.len();
     let n_samples = posit_samples.len();
 
-    let posit_charges_ = allocate_vec3s(&dev, posit_charges);
-    let posit_samples_ = allocate_vec3s(&dev, posit_samples);
+    let posit_charges_ = alloc_vec3s(&dev, posit_charges);
+    let posit_samples_ = alloc_vec3s(&dev, posit_samples);
 
     let charges: Vec<f32> = charges.iter().map(|c| *c as f32).collect();
 
     // let mut charges_gpu = dev.alloc_zeros::<f64>(N_CHARGES).unwrap();
     let mut charges_gpu = dev.alloc_zeros::<f32>(n_charges).unwrap();
-    // dev.htod_sync_copy_into(charges, &mut charges_gpu).unwrap();
     dev.htod_sync_copy_into(&charges, &mut charges_gpu).unwrap();
-
-    // let a_dev = dev.htod_copy(a_host.into()).unwrap();
-    // let mut b_dev = a_dev.clone();
 
     let n = n_charges * n_samples;
 
@@ -65,7 +54,9 @@ pub fn run_coulomb(
     // let mut coulomb_combos = dev.alloc_zeros::<f64>(N_CHARGES * N_SAMPLES).unwrap();
     let mut coulomb_combos = dev.alloc_zeros::<f32>(n).unwrap();
 
-    let kernel = dev.get_func("cuda", "coulomb_kernel").unwrap();
+    let kernel = dev
+        .get_func("cuda", "coulomb_kernel_without_addition")
+        .unwrap();
 
     // The first parameter specifies the number of thread blocks. The second is the number of
     // threads in the thread block.
@@ -99,11 +90,11 @@ pub fn run_coulomb(
     // };
 
     // Custom launch config for 2-dimensional data (?)
-    let cfg = LaunchConfig {
-        grid_dim: (num_blocks, 1, 1),
-        block_dim: (NUM_THREADS, 1, 1),
-        shared_mem_bytes: 0,
-    };
+    // let cfg = LaunchConfig {
+    //     grid_dim: (num_blocks, 1, 1),
+    //     block_dim: (NUM_THREADS, 1, 1),
+    //     shared_mem_bytes: 0,
+    // };
 
     //     dim3 threadsPerBlock(16, 16);
     //     dim3 numBlocks(N / threadsPerBlock.x, N / threadsPerBlock.y);
@@ -124,20 +115,7 @@ pub fn run_coulomb(
     }
     .unwrap();
 
-    // Copy back to the host:
     let coulomb_combos_flat = dev.dtoh_sync_copy(&coulomb_combos).unwrap();
-
-    // println!("coulomb combos_flat: {:?}", coulomb_combos_flat);
-    // Expected result. // (charge, sample)
-    // (0, 0): 1.
-    // (0, 1): 0.5
-    // (0, 2): 0.333
-    // (1, 0): 2.
-    // (1, 1):2.
-    // (1, 2): 0.666
-
-    // 1., 0.5, 0.333, 2., 2., 0.666?  # This is the result we're getting.
-    // 1., 2., 0.5, 2., 0.333, 0.666?
 
     println!("GPU coulomb data collected");
 
@@ -152,73 +130,65 @@ pub fn run_coulomb(
     }
 
     println!("Sum complete");
-
-    // print!("Per sample flat: {:?}", per_sample_flat);
-    // We are not getting this; we're getting [1.5, 2.3333333333333335, 2.6666666666666665]
-    // Expected:
-    // S0: 3.
-    // S1: 2.5
-    // S2: 1.
-
     per_sample_flat
+}
 
-    // Now, convert
+/// Run coulomb attraction via the GPU. Computes per-sample potentials in paralle on the GPU; runs
+/// the per-charge logic serial in the same kernel. This prevents needing to compute the sum on the CPU
+/// afterwards. Returns a potential-per-sample Vec. Same API as the parallel+CPU approach above.
+pub fn run_coulomb(
+    dev: &Arc<CudaDevice>,
+    posit_charges: &[Vec3],
+    posit_samples: &[Vec3],
+    charges: &[f64], // Corresponds 1:1 with `posit_charges`.
+) -> Vec<f64> {
+    // allocate buffers
+    let n_charges = posit_charges.len();
+    let n_samples = posit_samples.len();
 
-    // todo: For now, handle the rest on CPU. Come back to GPU once this is working.
+    let posit_charges_ = alloc_vec3s(&dev, posit_charges);
+    let posit_samples_ = alloc_vec3s(&dev, posit_samples);
 
-    // todo: Come back to this.
-    // {
-    //     let mut charges_at_each_sample_posit = dev.alloc_zeros::<f64>(N_SAMPLES).unwrap();
-    //
-    //     // Now, add, for each sample point, all appropriate charges
-    //     // todo: Be careful about indexes and/or grids!
-    //     let kernel = dev.get_func("cuda", "sum_coulomb_results_kernel").unwrap();
-    //
-    //     let cfg = LaunchConfig::for_num_elems((N_CHARGES * N_SAMPLES) as u32);
-    //     unsafe {
-    //         kernel.launch(
-    //             cfg,
-    //             (
-    //                 &mut charges_at_each_sample_posit,
-    //                 &coulomb_combos,
-    //                 N_CHARGES,
-    //                 N_SAMPLES,
-    //             ),
-    //         )
-    //     }
-    //         .unwrap();
-    //
-    //     // let a_host_2 = dev.sync_reclaim(a_dev)?;
-    //     // let out_host = dev.sync_reclaim(b_dev)?;
-    //
+    let charges: Vec<f32> = charges.iter().map(|c| *c as f32).collect();
 
-    // }
+    let mut charges_gpu = dev.alloc_zeros::<f32>(n_charges).unwrap();
+    dev.htod_sync_copy_into(&charges, &mut charges_gpu).unwrap();
 
-    // todo: Don't do this copy to CPU then back!
+    let mut V_per_sample = dev.alloc_zeros::<f32>(n_samples).unwrap();
 
-    // println!("OUT: {:?}", coulomb_combos_flat);
+    let kernel = dev.get_func("cuda", "coulomb_kernel").unwrap();
 
-    // Next step: Either here or in `potential.rs`:
-    // You have flat output of the 2d correspondances between each posit sample and posit charge.
-    // Expand into an array of arrays. (2D) etc.
+    const NUM_THREADS: u32 = 1024;
+    // const NUM_THREADS: u32 = 1;
+    let num_blocks = (n_samples as u32 + NUM_THREADS - 1) / NUM_THREADS;
 
-    // (Should we do this on CPU, or GPU? Likely GPU.)
+    let cfg = LaunchConfig::for_num_elems(n_samples as u32);
 
-    // Loop over, and sum the contributions  from each charge, for the corresponding sample point.
+    // Custom launch config for 2-dimensional data (?)
+    let cfg = LaunchConfig {
+        grid_dim: (num_blocks, 1, 1),
+        block_dim: (NUM_THREADS, 1, 1),
+        shared_mem_bytes: 0,
+    };
 
-    // Map the result back  back from a flat list to a 3D list per sample point.
+    unsafe {
+        kernel.launch(
+            cfg,
+            (
+                &mut V_per_sample,
+                &posit_charges_,
+                &posit_samples_,
+                &charges_gpu,
+                n_charges,
+                n_samples,
+            ),
+        )
+    }
+    .unwrap();
 
-    // coulomb_combos_flat
+    let result = dev.dtoh_sync_copy(&V_per_sample).unwrap();
 
-    // // unsafe initialization of unset memory
-    // let _: CudaSlice<f32> = unsafe { dev.alloc::<f32>(10) }.unwrap();
+    println!("GPU coulomb data collected");
 
-    // // this will have memory initialized as 0
-    // let _: CudaSlice<f64> = dev.alloc_zeros::<f64>(10).unwrap();
-
-    // initialize with a rust vec
-    // let _: CudaSlice<usize> = dev.htod_copy(vec![0; 10]).unwrap();
-
-    // // or finially, initialize with a slice. this is synchronous though.
-    // let _: CudaSlice<u32> = dev.htod_sync_copy(&[1, 2, 3]).unwrap();
+    result.iter().map(|v| *v as f64).collect()
 }

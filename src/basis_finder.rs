@@ -379,14 +379,6 @@ pub fn find_stos(
 
     let sample_pts = generate_sample_pts();
 
-    // let V_to_match = potential::create_V_1d(
-    //     &sample_pts,
-    //     charges_fixed,
-    //     charge_elec,
-    //     grid_charge,
-    //     grid_n_charge,
-    // );
-
     let V_to_match = potential::create_V_1d_gpu(
         cuda_dev,
         &sample_pts,

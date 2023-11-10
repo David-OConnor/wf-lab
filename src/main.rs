@@ -67,7 +67,7 @@ const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_CHARGE: f64 = 10.;
 const GRID_MAX_RENDER: f64 = 5.;
 const GRID_N_DEFAULT: usize = 30;
-const GRID_N_CHARGE_DEFAULT: usize = 60;
+const GRID_N_CHARGE_DEFAULT: usize = 70;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -299,7 +299,11 @@ fn main() {
 
     // This is compiled in `build.rs`.
     cuda_dev
-        .load_ptx(Ptx::from_file("./cuda.ptx"), "cuda", &["coulomb_kernel"])
+        .load_ptx(
+            Ptx::from_file("./cuda.ptx"),
+            "cuda",
+            &["coulomb_kernel", "coulomb_kernel_without_addition"],
+        )
         .unwrap();
 
     let posit_charge_1 = Vec3::new(0., 0., 0.);

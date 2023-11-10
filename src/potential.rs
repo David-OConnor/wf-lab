@@ -11,6 +11,10 @@ use crate::{
     wf_ops::K_C,
 };
 
+// We use this to prevent numerical anomolies and divide-by-0 errors in coulomb interactions, where
+// the positions are very close to each other.
+const SOFTENING_FACTOR: f64 = 0.00000000001;
+
 /// Utility function used to flatten position and charge data prior to sending
 /// to the GPU. todo: Could use for position too if it werent for the charge values being included.
 fn flatten_charge(
@@ -75,23 +79,21 @@ pub fn create_V_1d_gpu(
     posits_charge: &Arr3dVec,
     grid_n_charge: usize,
 ) -> Vec<f64> {
-    let mut V_to_match = Vec::new();
-
     let (posits_charge_flat, charges_flat) =
         flatten_charge(posits_charge, charges_elec, grid_n_charge);
 
     // Calculate the charge from electrons using the GPU
-    let mut per_sample_flat =
+    let mut V_per_sample =
         gpu::run_coulomb(cuda_dev, &posits_charge_flat, &posits_sample, &charges_flat);
 
     // Add the charge from nucleii.
     for (i, sample_pt) in posits_sample.iter().enumerate() {
         for (posit_nuc, charge_nuc) in charges_fixed {
-            per_sample_flat[i] += V_coulomb(*posit_nuc, *sample_pt, *charge_nuc);
+            V_per_sample[i] += V_coulomb(*posit_nuc, *sample_pt, *charge_nuc);
         }
     }
 
-    per_sample_flat
+    V_per_sample
 }
 
 /// Computes potential field from nuclei, by calculating Coulomb potential.
@@ -329,11 +331,7 @@ pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> 
     let diff = posit_sample - posit_charge;
     let r = diff.magnitude();
 
-    if r < 0.0000000000001 {
-        return 0.; // todo: Is this the way to handle?
-    }
-
-    K_C * charge / r
+    K_C * charge / (r + SOFTENING_FACTOR)
 }
 
 /// Update the combined V; this is from nuclei, and all electrons.
