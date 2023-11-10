@@ -540,6 +540,6 @@ pub fn render(state: State) {
         render_handler,
         event_handler,
         crate::ui::ui_handler,
-        include_str!("shader_compute.wgsl"),
+        // include_str!("shader_compute.wgsl"),
     );
 }

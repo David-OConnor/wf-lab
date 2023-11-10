@@ -1,15 +1,15 @@
 //! GPU computation, via CUDA (not for graphics)
 //!
-//!
+//! Note: We are currently using f64s on the GPU. This induces a roughly 10-20x performance
+//! hit compared to f32. We'll switch to f32 as required, but this is still much faster
+//! than performing coulomb operations on the CPU.
 //!
 use std::sync::Arc;
 
 use cudarc::driver::{CudaDevice, CudaSlice, LaunchAsync, LaunchConfig};
 use lin_alg2::f64::Vec3;
 
-// todo: Can we use f64s on the GPU without a significant performance hit?
-// todo: From experiments, it's signifantly slower; we'll see if it's worth it.
-type FDev = f64;
+type FDev = f64; // This makes switching between f32 and f64 easier.
 
 /// Convert a collection of `Vec3`s into Cuda arrays of their components.
 fn alloc_vec3s(dev: &Arc<CudaDevice>, data: &[Vec3]) -> CudaSlice<FDev> {

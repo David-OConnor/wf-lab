@@ -3,16 +3,19 @@
 
 // https://developer.nvidia.com/blog/even-easier-introduction-cuda/
 
+// Allows easy switching between float and double.
+#define dtype double
+#define dtype3 double3
+
 __device__
-const double SOFTENING_FACTOR = 0.000000000001;
+const dtype SOFTENING_FACTOR = 0.000000000001;
 
-
-// extern "C" __global__ void matmul(double* A, double* B, double* C, int N) {
+// extern "C" __global__ void matmul(dtype* A, dtype* B, dtype* C, int N) {
 //     // Syntax example using 2D inputs.
 //     size_t ROW = blockIdx.y * blockDim.y + threadIdx.y;
 //     size_t COL = blockIdx.x * blockDim.x + threadIdx.x;
 //
-//     double tmpSum = 0;
+//     dtype tmpSum = 0;
 //
 //     if (ROW < N && COL < N) {
 //         // each thread computes one element of the block sub-matrix
@@ -25,13 +28,13 @@ const double SOFTENING_FACTOR = 0.000000000001;
 
 
 __device__
-double coulomb(double3 a, double3 b, double charge) {
-    double3 diff;
+dtype coulomb(dtype3 a, dtype3 b, dtype charge) {
+    dtype3 diff;
     diff.x = a.x - b.x;
     diff.y = a.y - b.y;
     diff.z = a.z - b.z;
 
-    double r = sqrtf(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+    dtype r = sqrtf(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
 
     return 1. * charge / (r + SOFTENING_FACTOR);
 }
@@ -42,10 +45,10 @@ double coulomb(double3 a, double3 b, double charge) {
 
 extern "C" __global__
 void coulomb_kernel(
-    double *out,
-    double3 *posits_charge,
-    double3 *posits_sample,
-    double *charges,
+    dtype *out,
+    dtype3 *posits_charge,
+    dtype3 *posits_sample,
+    dtype *charges,
     size_t N_charges,
     size_t N_samples
 ) {
@@ -61,8 +64,8 @@ void coulomb_kernel(
         // Compute the sum serially, as it may not be possible to naively apply it in parallel,
         // and we may still be saturing GPU cores given the large number of samples.
         for (size_t i_charge = 0; i_charge < N_charges; i_charge++) {
-            double3 posit_charge = posits_charge[i_charge];
-            double3 posit_sample = posits_sample[i_sample];
+            dtype3 posit_charge = posits_charge[i_charge];
+            dtype3 posit_sample = posits_sample[i_sample];
 
             if (i_sample < N_samples) {
                 out[i_sample] += coulomb(posit_charge, posit_sample, charges[i_charge]);
@@ -74,10 +77,10 @@ void coulomb_kernel(
 
 extern "C" __global__
 void coulomb_kernel_without_addition(
-    double *out,
-    double3 *posits_charge,
-    double3 *posits_sample,
-    double *charges,
+    dtype *out,
+    dtype3 *posits_charge,
+    dtype3 *posits_sample,
+    dtype *charges,
     size_t N_charges,
     size_t N_samples
 ) {
@@ -96,8 +99,8 @@ void coulomb_kernel_without_addition(
         size_t i_charge = i / N_samples;
         size_t i_sample = i % N_samples;
 
-        double3 posit_charge = posits_charge[i_charge];
-        double3 posit_sample = posits_sample[i_sample];
+        dtype3 posit_charge = posits_charge[i_charge];
+        dtype3 posit_sample = posits_sample[i_sample];
 
         if (i_charge < N_charges && i_sample < N_samples) {
             out[i] = coulomb(posit_charge, posit_sample, charges[i_charge]);
