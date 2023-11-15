@@ -4,11 +4,16 @@
 // https://developer.nvidia.com/blog/even-easier-introduction-cuda/
 
 // Allows easy switching between float and double.
-#define dtype double
-#define dtype3 double3
+// #define dtype double
+// #define dtype3 double3
+#define dtype float
+#define dtype3 float3
 
 __device__
-const dtype SOFTENING_FACTOR = 0.000000000001;
+const dtype SOFTENING_FACTOR = 0.000000000001f;
+
+// todo: Cuda's `threadIdx` can be 1D, 2D, or 3D. 2D may be a better fit here.
+// 1D with packing/unpacking is fine, but 2D would be perhaps cleaner. Experiment.
 
 // extern "C" __global__ void matmul(dtype* A, dtype* B, dtype* C, int N) {
 //     // Syntax example using 2D inputs.
@@ -28,20 +33,17 @@ const dtype SOFTENING_FACTOR = 0.000000000001;
 
 
 __device__
-dtype coulomb(dtype3 a, dtype3 b, dtype charge) {
+dtype coulomb(dtype3 q0, dtype3 q1, dtype charge) {
     dtype3 diff;
-    diff.x = a.x - b.x;
-    diff.y = a.y - b.y;
-    diff.z = a.z - b.z;
+    diff.x = q0.x - q1.x;
+    diff.y = q0.y - q1.y;
+    diff.z = q0.z - q1.z;
 
-    dtype r = sqrtf(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+    dtype r = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+//     dtype r = sqrtf(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
 
-    return 1. * charge / (r + SOFTENING_FACTOR);
+    return 1.f * charge / (r + SOFTENING_FACTOR);
 }
-
-
-// todo: Cuda's `threadIdx` can be 1D, 2D, or 3D. 2D may be a better fit here.
-// 1D with packing/unpacking is fine, but 2D would be perhaps cleaner. Experiment.
 
 extern "C" __global__
 void coulomb_kernel(
@@ -62,7 +64,7 @@ void coulomb_kernel(
 
     for (size_t i_sample = index; i_sample < N_samples; i_sample += stride) {
         // Compute the sum serially, as it may not be possible to naively apply it in parallel,
-        // and we may still be saturing GPU cores given the large number of samples.
+        // and we may still be saturating GPU cores given the large number of samples.
         for (size_t i_charge = 0; i_charge < N_charges; i_charge++) {
             dtype3 posit_charge = posits_charge[i_charge];
             dtype3 posit_sample = posits_sample[i_sample];

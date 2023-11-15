@@ -115,10 +115,9 @@ pub(crate) fn update_V_acting_on_elec_1d(
 
 /// See `create_V`. This assumes the sample positions are flattened already, vice arranged in
 /// 3D grids. Note that it returns a result, vice modifying in place.
-pub fn create_V_1d(
+pub(crate) fn create_V_1d_from_elec(
     cuda_dev: &Arc<CudaDevice>,
     posits_sample: &[Vec3],
-    charges_fixed: &[(Vec3, f64)],
     charges_elec: &Arr3dReal,
     posits_charge: &Arr3dVec,
     grid_n_charge: usize,
@@ -130,25 +129,15 @@ pub fn create_V_1d(
     let mut V_per_sample =
         gpu::run_coulomb(cuda_dev, &posits_charge_flat, &posits_sample, &charges_flat);
 
-    // Add the charge from nucleii.
-    for (i, sample_pt) in posits_sample.iter().enumerate() {
-        for (posit_nuc, charge_nuc) in charges_fixed {
-            V_per_sample[i] += V_coulomb(*posit_nuc, *sample_pt, *charge_nuc);
-        }
-    }
-
     V_per_sample
 }
-
-// todo: Note: The above and below functions are not symmetric: Both due to returning a value vice
-// todo modifying in place, and due to where nuc charges are handled.
 
 /// Update the V associated with a single electron's charge.
 /// This must be run after the charge from this electron is created from the wave function square.
 /// We use the GPU, due to the large number of operations involved (3d set of sample points interacting
 /// we each of a 3d set of charge points). We leave the option to calculate sample points only on
 /// a 2D grid, but this may not be necessary given how fast the full operation is on GPU.
-pub(crate) fn create_V(
+pub(crate) fn create_V_from_elec(
     cuda_dev: &Arc<CudaDevice>,
     V_from_this_elec: &mut Arr3dReal,
     posits_sample: &Arr3dVec,
@@ -165,6 +154,7 @@ pub(crate) fn create_V(
 
     let mut posits_sample_flat = Vec::new();
 
+    // Flatten sample positions, prior to passing to the kernel.
     for i_sample in 0..grid_n {
         for j_sample in 0..grid_n {
             if twod_only {
@@ -186,16 +176,19 @@ pub(crate) fn create_V(
         &charges_flat,
     );
 
-    // Repack here, vice in `gpu::run_coulomb`, since we use `run_coulomb` for flat sample input as well.
+    let grid_n_sq = grid_n.pow(2);
+
+    // Repack into a 3D array. We do it here, vice in `gpu::run_coulomb`, since we use `run_coulomb`
+    // for flat sample input as well.
     for i in 0..grid_n {
         for j in 0..grid_n {
             if twod_only {
                 let k = grid_n / 2 + 1;
-                let i_flat = i * grid_n + j; // QC etc
+                let i_flat = i * grid_n + j;
                 V_from_this_elec[i][j][k] = V_per_sample_flat[i_flat];
             } else {
                 for k in 0..grid_n {
-                    let i_flat = i * grid_n + j * grid_n + k; // QC etc
+                    let i_flat = i * grid_n_sq + j * grid_n + k;
                     V_from_this_elec[i][j][k] = V_per_sample_flat[i_flat];
                 }
             }
@@ -211,25 +204,4 @@ pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> 
     let r = diff.magnitude();
 
     K_C * charge / (r + SOFTENING_FACTOR)
-}
-
-/// Update the combined V; this is from nuclei, and all electrons.
-/// Must be done after individual V from individual electrons are generated.
-pub fn _update_V_combined(
-    V_combined: &mut Arr3dReal,
-    V_nuc: &Arr3dReal,
-    V_elecs: &[Arr3dReal],
-    grid_n: usize,
-) {
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                V_combined[i][j][k] = V_nuc[i][j][k];
-
-                for V_elec in V_elecs {
-                    V_combined[i][j][k] += V_elec[i][j][k]
-                }
-            }
-        }
-    }
 }

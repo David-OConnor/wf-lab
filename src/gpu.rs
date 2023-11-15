@@ -5,11 +5,13 @@
 //! than performing coulomb operations on the CPU.
 //!
 use std::sync::Arc;
+use std::time::Instant;
 
 use cudarc::driver::{CudaDevice, CudaSlice, LaunchAsync, LaunchConfig};
 use lin_alg2::f64::Vec3;
 
-type FDev = f64; // This makes switching between f32 and f64 easier.
+// type FDev = f64; // This makes switching between f32 and f64 easier.
+type FDev = f32; // This makes switching between f32 and f64 easier.
 
 /// Convert a collection of `Vec3`s into Cuda arrays of their components.
 fn alloc_vec3s(dev: &Arc<CudaDevice>, data: &[Vec3]) -> CudaSlice<FDev> {
@@ -39,7 +41,7 @@ pub fn run_coulomb_without_addition(
     let posit_charges_ = alloc_vec3s(&dev, posit_charges);
     let posit_samples_ = alloc_vec3s(&dev, posit_samples);
 
-    // let charges: Vec<f32> = charges.iter().map(|c| *c as f32).collect();
+    let charges: Vec<FDev> = charges.iter().map(|c| *c as FDev).collect();
 
     let mut charges_gpu = dev.alloc_zeros::<FDev>(n_charges).unwrap();
     dev.htod_sync_copy_into(&charges, &mut charges_gpu).unwrap();
@@ -136,6 +138,8 @@ pub fn run_coulomb(
     posit_samples: &[Vec3],
     charges: &[f64], // Corresponds 1:1 with `posit_charges`.
 ) -> Vec<f64> {
+    let start = Instant::now();
+
     // allocate buffers
     let n_charges = posit_charges.len();
     let n_samples = posit_samples.len();
@@ -143,7 +147,8 @@ pub fn run_coulomb(
     let posit_charges_ = alloc_vec3s(&dev, posit_charges);
     let posit_samples_ = alloc_vec3s(&dev, posit_samples);
 
-    // let charges: Vec<f32> = charges.iter().map(|c| *c as f32).collect();
+    // Note: This step is not required when using f64ss.
+    let charges: Vec<FDev> = charges.iter().map(|c| *c as FDev).collect();
 
     let mut charges_gpu = dev.alloc_zeros::<FDev>(n_charges).unwrap();
     dev.htod_sync_copy_into(&charges, &mut charges_gpu).unwrap();
@@ -182,8 +187,17 @@ pub fn run_coulomb(
 
     let result = dev.dtoh_sync_copy(&V_per_sample).unwrap();
 
-    println!("GPU coulomb data collected");
+    // Some profiling numbers for certain grid sizes.
+    // 2D, f32: 99.144 ms
+    // 3D, f32: 400.06 ms
+    // 2D, f64: 1_658 ms
+    // 3D, f64: 1_643 ms
+    // 300 ms for both large and small sizes on f32 with std::sqrt???
 
-    // result.iter().map(|v| *v as f32).collect()
-    result
+    let time_diff = Instant::now() - start;
+    println!("GPU coulomb data collected. Time: {:?}", time_diff);
+
+    // This step is not required when using f64.
+    result.iter().map(|v| *v as f64).collect()
+    // result
 }

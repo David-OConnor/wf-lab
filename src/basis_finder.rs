@@ -10,15 +10,15 @@ use crate::{
     complex_nums::Cplx,
     eigen_fns::{calc_E_on_psi, calc_V_on_psi},
     grid_setup::{new_data, new_data_real, Arr3dReal, Arr3dVec},
-    num_diff, potential, util,
+    potential, util,
     wf_ops::Q_ELEC,
 };
 
 use crate::eigen_fns::KE_COEFF_INV;
-use nalgebra::{DMatrix, DVector};
 
+use crate::potential::V_coulomb;
 use ndarray::prelude::*;
-use ndarray_linalg::{Solve, SVD};
+use ndarray_linalg::SVD;
 
 fn find_E_from_base_xi(base_xi: f64, V_corner: f64, posit_corner: Vec3) -> f64 {
     // Now that we've identified the base Xi, use it to calculate the energy of the system.
@@ -309,12 +309,12 @@ fn find_bases_system_of_eqs(
         weights_normalized.push(*weight * normalize_to / base_weight);
     }
 
-    println!("\nXis: {:.3?}", xis);
-    println!("Sample pts: {:?}", &sample_pts);
-    println!("V to match: {:?}", &V_to_match);
+    // println!("\nXis: {:.3?}", xis);
+    // println!("Sample pts: {:?}", &sample_pts);
+    // println!("V to match: {:?}", &V_to_match);
 
-    println!("\nWeights: {:.6?}", weights);
-    println!("Weights normalized: {:.6?}\n", weights_normalized);
+    // println!("\nWeights: {:.6?}", weights);
+    // println!("Weights normalized: {:.6?}\n", weights_normalized);
 
     let mut result = Vec::new();
 
@@ -355,6 +355,8 @@ pub fn find_stos(
                                   // xis.push(9.);
 
     let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge, xis[0]);
+
+    xis[0] = base_xi;
     println!("\nBase xi: {}. E: {}\n", base_xi, E);
 
     // todo: Move this part about trial elec V A/R
@@ -380,14 +382,20 @@ pub fn find_stos(
 
     let sample_pts = generate_sample_pts();
 
-    let V_to_match = potential::create_V_1d(
+    let mut V_to_match = potential::create_V_1d_from_elec(
         cuda_dev,
         &sample_pts,
-        charges_fixed,
         charge_elec,
         grid_charge,
         grid_n_charge,
     );
+
+    // Add the charge from nucleii.
+    for (i, sample_pt) in sample_pts.iter().enumerate() {
+        for (posit_nuc, charge_nuc) in charges_fixed {
+            V_to_match[i] += V_coulomb(*posit_nuc, *sample_pt, *charge_nuc);
+        }
+    }
 
     // let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, &sample_pts, E);
     let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);

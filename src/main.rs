@@ -10,12 +10,9 @@
 //! This program explores solving the wave equation for
 //! arbitrary potentials. It visualizes the wave function in 3d, with user interaction.
 
-// When applying your force via electorn density (Sim code; maybe not this lib),
+// When applying your force via electron density (Sim code; maybe not this lib),
 // You may need to interpolate to avoid quantized (not in the way we need!) positions
 // at the grid you chose. Linear is fine.
-
-// Which of these?
-use std::ffi::{c_double, c_float};
 
 // sys is the raw ffi apis generated with bindgen
 // result is a very small wrapper around sys to return Result from each function
@@ -66,8 +63,8 @@ const NUM_SURFACES: usize = 11;
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_CHARGE: f64 = 10.;
 const GRID_MAX_RENDER: f64 = 5.;
-const GRID_N_DEFAULT: usize = 40;
-const GRID_N_CHARGE_DEFAULT: usize = 70;
+const GRID_N_DEFAULT: usize = 60;
+const GRID_N_CHARGE_DEFAULT: usize = 81;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -148,8 +145,8 @@ pub struct State {
     /// Outer is per-electron. Inner is per-basis
     /// todo: Do we want/need per-electron here?
     pub bases_evaluated_charge: Vec<Vec<Arr3d>>,
-    /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
-    pub nudge_amount: Vec<f64>,
+    // /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
+    // pub nudge_amount: Vec<f64>,
     pub surface_data: [SurfaceData; NUM_SURFACES],
     pub grid_n_render: usize,
     /// This charge grid is generally denser than the main grid. This allows more fidelity for
@@ -397,7 +394,7 @@ fn main() {
         bases_evaluated_charge,
         surfaces_shared,
         surfaces_per_elec,
-        nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],
+        // nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],
         surface_data,
         grid_n_render: grid_n,
         grid_n_charge,

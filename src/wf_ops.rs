@@ -33,6 +33,7 @@ use crate::{
     util,
 };
 
+use crate::grid_setup::new_data_real;
 use lin_alg2::f64::{Quaternion, Vec3};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
@@ -41,8 +42,6 @@ pub const Q_PROT: f64 = 1.;
 pub const Q_ELEC: f64 = -1.;
 pub const M_ELEC: f64 = 1.;
 pub const ħ: f64 = 1.;
-
-pub(crate) const NUDGE_DEFAULT: f64 = 0.01;
 
 // Compute these statically, to avoid continuous calls during excecution.
 
@@ -312,20 +311,6 @@ pub fn initialize_bases(
                 harmonic: Default::default(),
             }));
         }
-
-        // for n in [1, 2, 3, 4] {
-        //     bases.push(Basis::H(HOrbital {
-        //         posit: *nuc_posit,
-        //         n,
-        //         harmonic: SphericalHarmonic {
-        //             l: 0,
-        //             m: 0,
-        //             orientation: Quaternion::new_identity(),
-        //         },
-        //         weight: 0.,
-        //         charge_id,
-        //     }));
-        // }
     }
 
     // for n in 1..max_n + 1 {
@@ -504,4 +489,31 @@ pub(crate) fn update_charge_density_fm_psi(
             }
         }
     }
+}
+
+/// Combine electron charges into a single array, not to include the electron acted on.
+pub(crate) fn combine_electron_charges(
+    elec_id: usize,
+    charges_electron: &[Arr3dReal],
+    grid_n_charge: usize,
+) -> Arr3dReal {
+    let mut result = new_data_real(grid_n_charge);
+
+    for (i_charge, charge_from_elec) in charges_electron.iter().enumerate() {
+        if i_charge == elec_id {
+            continue;
+        }
+        let mut sum = 0.; // todo confirming
+        for i in 0..grid_n_charge {
+            for j in 0..grid_n_charge {
+                for k in 0..grid_n_charge {
+                    result[i][j][k] += charge_from_elec[i][j][k];
+                    sum += charge_from_elec[i][j][k];
+                }
+            }
+        }
+        println!("Charge sum (should be -1): {:?}", sum);
+    }
+
+    result
 }

@@ -198,7 +198,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                                state.charges_fixed.iter().enumerate()
+                            state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -427,7 +427,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                    .text("Wt"),
+                        .text("Wt"),
                 );
             }
 
@@ -521,31 +521,15 @@ fn bottom_items(
     });
 
     if ui.add(egui::Button::new("Find STO bases")).clicked() {
-        // todo: Place this somewhere? `potential module`?
-        let mut charges_other_electrons = new_data_real(state.grid_n_charge);
-
-        for (i_charge, charge_from_elec) in state.charges_electron.iter().enumerate() {
-            if i_charge == ae {
-                continue;
-            }
-            let mut sum = 0.; // todo confirming
-            for i in 0..state.grid_n_charge {
-                for j in 0..state.grid_n_charge {
-                    for k in 0..state.grid_n_charge {
-                        charges_other_electrons[i][j][k] += charge_from_elec[i][j][k];
-                        sum += charge_from_elec[i][j][k];
-                    }
-                }
-            }
-            println!("Charge sum (should be -1): {:?}", sum);
-        }
+        let charges_other_elecs =
+            wf_ops::combine_electron_charges(ae, &state.charges_electron, state.grid_n_charge);
 
         let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
 
         let (bases, E) = basis_finder::find_stos(
             &state.cuda_dev,
             &state.charges_fixed,
-            &charges_other_electrons,
+            &charges_other_elecs,
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_charge,
             &xis,
@@ -554,6 +538,56 @@ fn bottom_items(
         state.surfaces_shared.E = E;
 
         state.bases[ae] = bases;
+        // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.
+        *updated_evaluated_wfs = true;
+
+        *updated_E_or_V = true;
+        *updated_basis_weights = true;
+        *updated_meshes = true;
+    }
+
+    if ui.add(egui::Button::new("He solver")).clicked() {
+        // todo: DRY with above.
+
+        for i in 0..8 {
+            let elec_id = i % 2;
+
+            let charges_other_elecs =
+                wf_ops::combine_electron_charges(elec_id, &state.charges_electron, state.grid_n_charge);
+
+            let xis: Vec<f64> = state.bases[elec_id].iter().map(|b| b.xi()).collect();
+
+            let (bases, E) = basis_finder::find_stos(
+                &state.cuda_dev,
+                &state.charges_fixed,
+                &charges_other_elecs,
+                &state.surfaces_shared.grid_posits_charge,
+                state.grid_n_charge,
+                &xis,
+            );
+
+            state.surfaces_shared.E = E;
+            state.bases[elec_id] = bases;
+            state.ui.active_elec = ActiveElec::PerElec(elec_id);
+
+            // Code in this block is what's run each event loop if the falgs `updated_E_or_V` etc are set.
+            {
+                procedures::update_evaluated_wfs(state, elec_id);
+
+                procedures::update_basis_weights(state, elec_id);
+
+                procedures::update_E_or_V(
+                    // &mut state.eval_data_per_elec[elec_id],
+                    &mut state.surfaces_per_elec[elec_id],
+                    &state.surfaces_shared.V_from_nuclei,
+                    // state.eval_data_shared.grid_n,
+                    state.grid_n_render,
+                    state.surfaces_shared.E,
+                );
+            }
+
+            procedures::create_V_from_elec(state, scene, elec_id);
+        }
         // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.
         *updated_evaluated_wfs = true;
 
@@ -770,7 +804,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.ui.z_displayed
                 },
             )
-            .text("Z slice"),
+                .text("Z slice"),
         );
 
         ui.add(
@@ -782,7 +816,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui.visual_rotation
             })
-            .text("Visual rotation"),
+                .text("Visual rotation"),
         );
 
         ui.add(
@@ -801,7 +835,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_range_render.1
             })
-            .text("Grid range"),
+                .text("Grid range"),
         );
 
         match state.ui.active_elec {
@@ -822,7 +856,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -912,7 +946,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 // Multiply wave functions together, and stores in Shared surfaces.

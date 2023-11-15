@@ -58,7 +58,7 @@ const PSI_SCALER: f32 = 120.;
 const PSI_SQ_SCALER: f32 = 1_000.;
 const PSI_PP_SCALER: f32 = 20.;
 
-const V_SCALER: f32 = 2.;
+const V_SCALER: f32 = 1.;
 
 fn event_handler(
     _state: &mut State,

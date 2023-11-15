@@ -2,8 +2,6 @@ use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
-    util::normalize_wf,
-    wf_ops::NUDGE_DEFAULT,
 };
 
 use crate::basis_wfs::Basis;
@@ -141,7 +139,7 @@ impl SurfacesPerElec {
         for i in 0..n_grid {
             for j in 0..n_grid {
                 for k in 0..n_grid {
-                    default_nudges[i][j][k] = NUDGE_DEFAULT;
+                    // default_nudges[i][j][k] = NUDGE_DEFAULT;
                 }
             }
         }

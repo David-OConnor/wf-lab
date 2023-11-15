@@ -31,9 +31,6 @@ pub fn update_E_or_V(
         }
     }
 
-    // todo: Not working for some things lik eV?
-    // eval_data.score = eval::score_wf_from_psi_pp(&eval_data.psi_pp_calc, &eval_data.psi_pp_meas);
-
     // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
     wf_ops::calculate_v_elec(
         &mut sfcs.aux1,
@@ -46,8 +43,8 @@ pub fn update_E_or_V(
     );
 }
 
+/// Set up our basis-function based trial wave function.
 pub fn update_basis_weights(state: &mut State, ae: usize) {
-    // Set up our basis-function based trial wave function.
     let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
 
     wf_ops::update_wf_fm_bases(
@@ -132,7 +129,7 @@ pub fn create_V_from_elec(state: &mut State, scene: &mut Scene, ae: usize) {
     );
 
     if state.ui.create_3d_electron_V || state.ui.create_2d_electron_V {
-        potential::create_V(
+        potential::create_V_from_elec(
             &state.cuda_dev,
             &mut state.V_from_elecs[ae],
             &state.surfaces_shared.grid_posits,
@@ -200,12 +197,12 @@ pub fn update_meshes(state: &mut State, scene: &mut Scene, engine_updates: &mut 
 
 /// todo: Needs rework
 pub fn _combine_wfs(state: &mut State) {
-    potential::_update_V_combined(
-        &mut state.surfaces_shared.V_total,
-        &state.surfaces_shared.V_from_nuclei,
-        &state.V_from_elecs,
-        state.grid_n_render,
-    );
+    // potential::_update_V_combined(
+    //     &mut state.surfaces_shared.V_total,
+    //     &state.surfaces_shared.V_from_nuclei,
+    //     &state.V_from_elecs,
+    //     state.grid_n_render,
+    // );
 
     let mut per_elec_wfs = Vec::new();
     for sfc in &state.surfaces_per_elec {
