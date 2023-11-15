@@ -33,6 +33,7 @@ const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
 
 const PI_SQRT_INV: f64 = 0.5641895835477563;
+// const PI_SQRT_INV: f64 = 1. / PI.sqrt();
 
 // todo: Remove this enum if you use STOs as the only basis
 #[derive(Clone, Debug)]
@@ -387,9 +388,9 @@ impl Gto {
     /// Does not include weight.
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         let diff = posit_sample - self.posit;
-        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+        let r_sq = diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2);
 
-        Cplx::from_real((-self.alpha * r.powi(2)).exp())
+        Cplx::from_real((-self.alpha * r_sq).exp())
     }
 }
 
@@ -420,8 +421,7 @@ impl Sto {
 
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         // todo: This currently ignores the spherical harmonic part; add that!
-        let diff = posit_sample - self.posit;
-        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+        let r = (posit_sample - self.posit).magnitude();
 
         // Note: Divide xi bo A_0 if setting that to something other than 1.
         // todo: Confirm quantum number `n` isn't part of this term if you start using it.
@@ -454,7 +454,6 @@ impl Sto {
         // todo: Put this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * e^(-\xi * sqrt(x^2 + y^2 + z^2)) with respect to x`
         // todo: Much messier form.
         // todo: Modify accordingly.
-
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 

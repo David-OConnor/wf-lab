@@ -9,6 +9,7 @@ use std::time::Instant;
 
 use cudarc::driver::{CudaDevice, CudaSlice, LaunchAsync, LaunchConfig};
 use lin_alg2::f64::Vec3;
+use crate::basis_wfs::{Basis, Sto};
 
 // type FDev = f64; // This makes switching between f32 and f64 easier.
 type FDev = f32; // This makes switching between f32 and f64 easier.
@@ -25,127 +26,23 @@ fn alloc_vec3s(dev: &Arc<CudaDevice>, data: &[Vec3]) -> CudaSlice<FDev> {
     dev.htod_copy(result).unwrap()
 }
 
-/// Run coulomb attraction via the GPU. Calculates coulomb potentials between all combinations
-/// of sample points and charge points, using a GPU kernel. Sums all charge points for a given
-/// sample, and returns a potential-per-sample Vec.
-pub fn run_coulomb_without_addition(
-    dev: &Arc<CudaDevice>,
-    posit_charges: &[Vec3],
-    posit_samples: &[Vec3],
-    charges: &[f64], // Corresponds 1:1 with `posit_charges`.
-) -> Vec<f64> {
-    // allocate buffers
-    let n_charges = posit_charges.len();
-    let n_samples = posit_samples.len();
-
-    let posit_charges_ = alloc_vec3s(&dev, posit_charges);
-    let posit_samples_ = alloc_vec3s(&dev, posit_samples);
-
-    let charges: Vec<FDev> = charges.iter().map(|c| *c as FDev).collect();
-
-    let mut charges_gpu = dev.alloc_zeros::<FDev>(n_charges).unwrap();
-    dev.htod_sync_copy_into(&charges, &mut charges_gpu).unwrap();
-
-    let n = n_charges * n_samples;
-
-    let mut coulomb_combos = dev.alloc_zeros::<FDev>(n).unwrap();
-
-    let kernel = dev
-        .get_func("cuda", "coulomb_kernel_without_addition")
-        .unwrap();
-
-    // The first parameter specifies the number of thread blocks. The second is the number of
-    // threads in the thread block.
-    // This must be a multiple of 32.
-    // todo: Figure out how you want to divide up the block sizes, index, stride etc.
-    // int blockSize = 256;
-    // int numBlocks = (N + blockSize - 1) / blockSize;
-
-    // VCoulomb<<<numBlocks, blockSize>>>(// ...);
-
-    let cfg = LaunchConfig::for_num_elems(n as u32);
-
-    // `for_num_elems`:
-    // block_dim == 1024
-    // grid_dim == (n + 1023) / 1024
-    // shared_mem_bytes == 0
-
-    const NUM_THREADS: u32 = 1024;
-    // const NUM_THREADS: u32 = 1;
-    let num_blocks = (n as u32 + NUM_THREADS - 1) / NUM_THREADS;
-
-    // Self {
-    //     grid_dim: (num_blocks, 1, 1),
-    //     block_dim: (NUM_THREADS, 1, 1),
-    //     shared_mem_bytes: 0,
-    // }
-    //     let cfg = LaunchConfig {
-    //     grid_dim: (1, 1, 1),
-    //     block_dim: (2, 2, 1),
-    //     shared_mem_bytes: 0,
-    // };
-
-    // Custom launch config for 2-dimensional data (?)
-    // let cfg = LaunchConfig {
-    //     grid_dim: (num_blocks, 1, 1),
-    //     block_dim: (NUM_THREADS, 1, 1),
-    //     shared_mem_bytes: 0,
-    // };
-
-    //     dim3 threadsPerBlock(16, 16);
-    //     dim3 numBlocks(N / threadsPerBlock.x, N / threadsPerBlock.y);
-    //     MatAdd<<<numBlocks, threadsPerBlock>>>(A, B, C);
-
-    unsafe {
-        kernel.launch(
-            cfg,
-            (
-                &mut coulomb_combos,
-                &posit_charges_,
-                &posit_samples_,
-                &charges_gpu,
-                n_charges,
-                n_samples,
-            ),
-        )
-    }
-    .unwrap();
-
-    let coulomb_combos_flat = dev.dtoh_sync_copy(&coulomb_combos).unwrap();
-
-    println!("GPU coulomb data collected");
-
-    // todo: Kernel for this A/R.
-    let mut per_sample_flat = Vec::new();
-    for i_sample in 0..n_samples {
-        let mut charge_this_pt = 0.;
-        for i_charge in 0..n_charges {
-            charge_this_pt += coulomb_combos_flat[i_charge * n_samples + i_sample];
-        }
-        per_sample_flat.push(charge_this_pt as f64);
-    }
-
-    println!("Sum complete");
-    per_sample_flat
-}
-
 /// Run coulomb attraction via the GPU. Computes per-sample potentials in paralle on the GPU; runs
 /// the per-charge logic serial in the same kernel. This prevents needing to compute the sum on the CPU
 /// afterwards. Returns a potential-per-sample Vec. Same API as the parallel+CPU approach above.
 pub fn run_coulomb(
     dev: &Arc<CudaDevice>,
-    posit_charges: &[Vec3],
-    posit_samples: &[Vec3],
+    posits_charge: &[Vec3],
+    posits_sample: &[Vec3],
     charges: &[f64], // Corresponds 1:1 with `posit_charges`.
 ) -> Vec<f64> {
     let start = Instant::now();
 
     // allocate buffers
-    let n_charges = posit_charges.len();
-    let n_samples = posit_samples.len();
+    let n_charges = posits_charge.len();
+    let n_samples = posits_sample.len();
 
-    let posit_charges_ = alloc_vec3s(&dev, posit_charges);
-    let posit_samples_ = alloc_vec3s(&dev, posit_samples);
+    let posit_charges_ = alloc_vec3s(&dev, posits_charge);
+    let posits_sample_ = alloc_vec3s(&dev, posits_sample);
 
     // Note: This step is not required when using f64ss.
     let charges: Vec<FDev> = charges.iter().map(|c| *c as FDev).collect();
@@ -176,7 +73,7 @@ pub fn run_coulomb(
             (
                 &mut V_per_sample,
                 &posit_charges_,
-                &posit_samples_,
+                &posits_sample_,
                 &charges_gpu,
                 n_charges,
                 n_samples,
@@ -200,4 +97,115 @@ pub fn run_coulomb(
     // This step is not required when using f64.
     result.iter().map(|v| *v as f64).collect()
     // result
+}
+
+/// Compute STO value and second derivative at a collection of sample points.
+/// Assumes N=1 and real values for now.
+pub fn calc_sto_vals_derivs_multiple_bases(
+    dev: &Arc<CudaDevice>,
+    bases: &[Sto],
+    posits_sample: &[Vec3],
+    posit_nuc: Vec3,
+) -> (Vec<f64>, Vec<f64>) {
+    // allocate buffers
+    let n_samples = posits_sample.len();
+    let n_bases = bases.len();
+
+    let mut xis = Vec::new();
+    let mut weights = Vec::new();
+    for basis in bases {
+        xis.push(basis.xi as FDev);
+        weights.push(basis.weight as FDev);
+    }
+
+    let posits_sample_ = alloc_vec3s(&dev, posits_sample);
+
+    let mut psi = dev.alloc_zeros::<FDev>(n_samples).unwrap();
+    let mut psi_pp = dev.alloc_zeros::<FDev>(n_samples).unwrap();
+    let mut xis_gpu = dev.alloc_zeros::<FDev>(n_bases).unwrap();
+    let mut weights_gpu = dev.alloc_zeros::<FDev>(n_bases).unwrap();
+
+    dev.htod_sync_copy_into(&xis, &mut xis_gpu).unwrap();
+    dev.htod_sync_copy_into(&weights, &mut weights_gpu).unwrap();
+
+    let kernel = dev.get_func("cuda", "sto_val_and_second_deriv_kernel_multiple_bases").unwrap();
+    let cfg = LaunchConfig::for_num_elems(n_samples as u32);
+
+    unsafe {
+        kernel.launch(
+            cfg,
+            (
+
+                &mut psi,
+                &mut psi_pp,
+                &posits_sample_,
+                posit_nuc, // todo: Serialize
+                &xis_gpu,
+                &weights_gpu,
+                n_samples,
+                n_bases,
+            ),
+        )
+    }
+        .unwrap();
+
+    let result_psi = dev.dtoh_sync_copy(&psi).unwrap();
+    let result_psi_pp = dev.dtoh_sync_copy(&psi_pp).unwrap();
+
+    // This step is not required when using f64.
+    (
+        result_psi.iter().map(|v| *v as f64).collect(),
+        result_psi_pp.iter().map(|v| *v as f64).collect(),
+    )
+}
+
+/// Compute STO value and second derivative at a collection of sample points.
+/// Assumes N=1 and real values for now.
+pub fn calc_sto_vals_derivs(
+    dev: &Arc<CudaDevice>,
+    xi: f64,
+    posits_sample: &[Vec3],
+    posit_nuc: Vec3,
+) -> (Vec<f64>, Vec<f64>) {
+    // allocate buffers
+    let n_samples = posits_sample.len();
+
+    let mut xis = Vec::new();
+    let mut weights = Vec::new();
+
+    let posits_sample_ = alloc_vec3s(&dev, posits_sample);
+
+    let mut psi = dev.alloc_zeros::<FDev>(n_samples).unwrap();
+    let mut psi_pp = dev.alloc_zeros::<FDev>(n_samples).unwrap();
+
+    dev.htod_sync_copy_into(&xis, &mut xis_gpu).unwrap();
+    dev.htod_sync_copy_into(&weights, &mut weights_gpu).unwrap();
+
+    let kernel = dev.get_func("cuda", "sto_val_and_second_deriv_kernel").unwrap();
+    let cfg = LaunchConfig::for_num_elems(n_samples as u32);
+
+    unsafe {
+        kernel.launch(
+            cfg,
+            (
+
+                &mut psi,
+                &mut psi_pp,
+                &posits_sample_,
+                posit_nuc, // todo: Serialize
+                xi,
+                n_samples,
+            ),
+        )
+    }
+        .unwrap();
+
+    let result_psi = dev.dtoh_sync_copy(&psi).unwrap();
+    let result_psi_pp = dev.dtoh_sync_copy(&psi_pp).unwrap();
+
+    // This step is not required when using f64.
+    (
+        result_psi.iter().map(|v| *v as f64).collect(),
+        result_psi_pp.iter().map(|v| *v as f64).collect(),
+    )
 }

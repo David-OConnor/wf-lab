@@ -299,7 +299,13 @@ fn main() {
         .load_ptx(
             Ptx::from_file("./cuda.ptx"),
             "cuda",
-            &["coulomb_kernel", "coulomb_kernel_without_addition"],
+            &[
+                "coulomb_kernel",
+                "sto_val_kernel",
+                "sto_second_deriv_kernel",
+                "sto_val_and_second_deriv_kernel_multiple_bases",
+                "sto_val_and_second_deriv_kernel",
+            ],
         )
         .unwrap();
 

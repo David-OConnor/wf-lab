@@ -3,15 +3,7 @@
 
 use graphics::{EngineUpdates, Scene};
 
-use crate::{
-    eigen_fns,
-    elec_elec::{PositIndex, WaveFunctionMultiElec},
-    grid_setup::{new_data, Arr3dReal},
-    potential, render,
-    types::BasesEvaluated,
-    types::SurfacesPerElec,
-    wf_ops, ActiveElec, State,
-};
+use crate::{eigen_fns, elec_elec::{PositIndex, WaveFunctionMultiElec}, grid_setup::{new_data, Arr3dReal}, potential, render, types::BasesEvaluated, types::SurfacesPerElec, wf_ops, ActiveElec, State, basis_finder};
 
 pub fn update_E_or_V(
     sfcs: &mut SurfacesPerElec,
@@ -37,7 +29,6 @@ pub fn update_E_or_V(
         &mut sfcs.aux2,
         &sfcs.psi.on_pt,
         &sfcs.psi_pp_measured,
-        // eval_data.E,
         E,
         V_from_nuclei,
     );
@@ -111,7 +102,7 @@ pub fn update_fixed_charges(state: &mut State) {
     }
 }
 
-pub fn create_V_from_elec(state: &mut State, scene: &mut Scene, ae: usize) {
+pub fn create_V_from_elec(state: &mut State, ae: usize) {
     let mut psi_charge_grid = new_data(state.grid_n_charge);
 
     let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
@@ -277,4 +268,81 @@ pub fn _combine_wfs(state: &mut State) {
             }
         }
     }
+}
+
+/// Each loop run, make sure we are only updating things relevant for these calculations.
+/// Notably, we need to update our 3D charge grid using the central dogma, but not the 3D sample grid.
+pub(crate) fn he_solver(state: &mut State) {
+    for i in 0..8 {
+        println!("A");
+        let elec_id = i % 2;
+
+        let charges_other_elecs =
+            wf_ops::combine_electron_charges(elec_id, &state.charges_electron, state.grid_n_charge);
+
+        let xis: Vec<f64> = state.bases[elec_id].iter().map(|b| b.xi()).collect();
+
+        let (bases, E) = basis_finder::find_stos(
+            &state.cuda_dev,
+            &state.charges_fixed,
+            &charges_other_elecs,
+            &state.surfaces_shared.grid_posits_charge,
+            state.grid_n_charge,
+            &xis,
+        );
+
+        state.surfaces_shared.E = E;
+        state.bases[elec_id] = bases;
+        state.ui.active_elec = ActiveElec::PerElec(elec_id);
+
+        println!("B");
+        // Code in this block is what's run each event loop if the falgs `updated_E_or_V` etc are set.
+        {
+            // todo: This is the long-running step.
+            // todo: Only update the WF values for the base xi. And, only for the sample points,
+            // todo and charge points in question.
+
+            // This is the part of `update_evaluated_wfs` relevant for our charge grid only.
+            // We don't need our sample grid here.
+            // procedures::update_evaluated_wfs(state, elec_id);
+            state.bases_evaluated_charge[elec_id] = wf_ops::arr_from_bases(
+                &state.bases[elec_id],
+                &state.surfaces_shared.grid_posits_charge,
+                state.grid_n_charge,
+            );
+
+            println!("C");
+            update_basis_weights(state, elec_id);
+
+            println!("D");
+        }
+
+        // todo: We should run this once at the end, but only need 1d
+        // todo data inter-loop.
+        // procedures::create_V_from_elec(state,  elec_id);
+        // We broke out the innards of `create_V_from_elec`, and removed the 2D/3D grid part below.
+        // todo: Continue to tweak:
+        {
+            let mut psi_charge_grid = new_data(state.grid_n_charge);
+
+            let weights: Vec<f64> = state.bases[elec_id].iter().map(|b| b.weight()).collect();
+            wf_ops::mix_bases_no_diffs(
+                &mut psi_charge_grid,
+                &state.bases_evaluated_charge[elec_id],
+                state.grid_n_charge,
+                &weights,
+            );
+
+            wf_ops::update_charge_density_fm_psi(
+                &mut state.charges_electron[elec_id],
+                &psi_charge_grid,
+                state.grid_n_charge,
+            );
+            println!("E");
+        }
+    }
+
+    // Update the 2D or 3D V grids once, at the end.
+    create_V_from_elec(state, 0);
+    create_V_from_elec(state, 1);
 }

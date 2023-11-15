@@ -490,7 +490,7 @@ fn bottom_items(
             .add(egui::Button::new("Create V from this elec"))
             .clicked()
         {
-            procedures::create_V_from_elec(state, scene, ae);
+            procedures::create_V_from_elec(state,  ae);
         }
 
         if ui
@@ -547,47 +547,8 @@ fn bottom_items(
     }
 
     if ui.add(egui::Button::new("He solver")).clicked() {
-        // todo: DRY with above.
+        procedures::he_solver(state);
 
-        for i in 0..8 {
-            let elec_id = i % 2;
-
-            let charges_other_elecs =
-                wf_ops::combine_electron_charges(elec_id, &state.charges_electron, state.grid_n_charge);
-
-            let xis: Vec<f64> = state.bases[elec_id].iter().map(|b| b.xi()).collect();
-
-            let (bases, E) = basis_finder::find_stos(
-                &state.cuda_dev,
-                &state.charges_fixed,
-                &charges_other_elecs,
-                &state.surfaces_shared.grid_posits_charge,
-                state.grid_n_charge,
-                &xis,
-            );
-
-            state.surfaces_shared.E = E;
-            state.bases[elec_id] = bases;
-            state.ui.active_elec = ActiveElec::PerElec(elec_id);
-
-            // Code in this block is what's run each event loop if the falgs `updated_E_or_V` etc are set.
-            {
-                procedures::update_evaluated_wfs(state, elec_id);
-
-                procedures::update_basis_weights(state, elec_id);
-
-                procedures::update_E_or_V(
-                    // &mut state.eval_data_per_elec[elec_id],
-                    &mut state.surfaces_per_elec[elec_id],
-                    &state.surfaces_shared.V_from_nuclei,
-                    // state.eval_data_shared.grid_n,
-                    state.grid_n_render,
-                    state.surfaces_shared.E,
-                );
-            }
-
-            procedures::create_V_from_elec(state, scene, elec_id);
-        }
         // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.
         *updated_evaluated_wfs = true;
 
