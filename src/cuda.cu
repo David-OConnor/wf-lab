@@ -144,7 +144,7 @@ void sto_val_kernel(
 
 // Note that this is for the radial component only, with n=1. Real.
 extern "C" __global__
-void sto_second_deriv_kernel(
+void sto_deriv_kernel(
     dtype *out,
     dtype3 *posits_sample,
     dtype3 posit_nuc,
@@ -160,27 +160,47 @@ void sto_second_deriv_kernel(
 }
 
 extern "C" __global__
-void sto_val_and_second_deriv_kernel(
+void sto_val_deriv_kernel(
     dtype *out_val,
     dtype *out_second_deriv,
     dtype3 *posits_sample,
     dtype3 posit_nuc,
     dtype xi,
-    size_t N_samples,
+    size_t N_samples
 ) {
     size_t index = blockIdx.x * blockDim.x + threadIdx.x;
     size_t stride = blockDim.x * gridDim.x;
 
     for (size_t i_sample = index; i_sample < N_samples; i_sample += stride) {
-        out_val[i_sample] += sto_val(posits_sample[i_sample], posit_nuc, xi, 1)
-        out_second_deriv[i_sample] += sto_second_deriv(posits_sample[i_sample], posit_nuc, xis)
+        out_val[i_sample] += sto_val(posits_sample[i_sample], posit_nuc, xi, 1);
+        out_second_deriv[i_sample] += sto_second_deriv(posits_sample[i_sample], posit_nuc, xi);
+    }
+}
+
+extern "C" __global__
+void sto_val_multiple_bases_kernel(
+    dtype *out_val,
+    dtype3 *posits_sample,
+    dtype3 *posits_nuc,
+    dtype *xis,
+    dtype *weights,
+    size_t N_samples,
+    size_t N_bases
+) {
+    size_t index = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t stride = blockDim.x * gridDim.x;
+
+    for (size_t i_sample = index; i_sample < N_samples; i_sample += stride) {
+        for (size_t i_basis = 0; i_basis < N_bases; i_basis++) {
+            out_val[i_sample] += sto_val(posits_sample[i_sample], posits_nuc[i_basis], xis[i_basis], 1) * weights[i_basis];
+        }
     }
 }
 
 
 // Combines these 2 operations, as they're likely to be done on the same data set.
 extern "C" __global__
-void sto_val_and_second_deriv_kernel_multiple_bases(
+void sto_val_deriv_multiple_bases_kernel(
     dtype *out_val,
     dtype *out_second_deriv,
     dtype3 *posits_sample,
@@ -188,13 +208,12 @@ void sto_val_and_second_deriv_kernel_multiple_bases(
     dtype *xis,
     dtype *weights,
     size_t N_samples,
-    size_t N_bases,
+    size_t N_bases
 ) {
     size_t index = blockIdx.x * blockDim.x + threadIdx.x;
     size_t stride = blockDim.x * gridDim.x;
 
     for (size_t i_sample = index; i_sample < N_samples; i_sample += stride) {
-
         for (size_t i_basis = 0; i_basis < N_bases; i_basis++) {
             out_val[i_sample] += sto_val(posits_sample[i_sample], posit_nuc, xis[i_basis], 1) * weights[i_basis];
             out_second_deriv[i_sample] += sto_second_deriv(posits_sample[i_sample], posit_nuc, xis[i_basis]) * weights[i_basis];

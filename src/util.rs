@@ -1,4 +1,4 @@
-use crate::grid_setup::{Arr3d, Arr3dReal};
+use crate::grid_setup::{Arr3d, Arr3dReal, Arr3dVec};
 
 use lin_alg2::f64::Vec3;
 
@@ -200,3 +200,60 @@ pub fn normalize_wf(arr: &mut Arr3d, norm: f64) {
     }
     // norm_sqrt
 }
+
+/// Flatten 3D data, prior passing to a GPU kernel.
+pub(crate) fn flatten_arr(vals_3d: &Arr3dVec, grid_n: usize) -> Vec<Vec3> {
+    let mut result = Vec::new();
+
+    for i_sample in 0..grid_n {
+        for j_sample in 0..grid_n {
+            for k_sample in 0..grid_n {
+                result.push(vals_3d[i_sample][j_sample][k_sample]);
+            }
+        }
+    }
+
+    result
+}
+
+/// Unflatted 3D data, after getting results from a GPU kernel.
+pub(crate) fn unflatten_arr(result: &mut Arr3dReal, vals_flat: &[f64], grid_n: usize) {
+    let grid_n_sq = grid_n.pow(2);
+
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                let i_flat = i * grid_n_sq + j * grid_n + k;
+                result[i][j][k] = vals_flat[i_flat];
+            }
+        }
+    }
+}
+//
+// pub(crate) fn flatten_arr_vec(vals_3d: &Arr3dVec, grid_n: usize) -> Vec<Vec3> {
+//     let mut result = Vec::new();
+//
+//     // Flatten sample positions, prior to passing to the kernel.
+//     for i_sample in 0..grid_n {
+//         for j_sample in 0..grid_n {
+//             for k_sample in 0..grid_n {
+//                 result.push(vals_3d[i_sample][j_sample][k_sample]);
+//             }
+//         }
+//     }
+//
+//     result
+// }
+//
+// pub(crate) fn unflatten_arr_vec(result: &mut Arr3dVec, vals_flat: &[Vec3], grid_n: usize) {
+//     let grid_n_sq = grid_n.pow(2);
+//
+//     for i in 0..grid_n {
+//         for j in 0..grid_n {
+//             for k in 0..grid_n {
+//                 let i_flat = i * grid_n_sq + j * grid_n + k;
+//                 result[i][j][k] = vals_flat[i_flat];
+//             }
+//         }
+//     }
+// }

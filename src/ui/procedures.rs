@@ -3,7 +3,15 @@
 
 use graphics::{EngineUpdates, Scene};
 
-use crate::{eigen_fns, elec_elec::{PositIndex, WaveFunctionMultiElec}, grid_setup::{new_data, Arr3dReal}, potential, render, types::BasesEvaluated, types::SurfacesPerElec, wf_ops, ActiveElec, State, basis_finder};
+use crate::{
+    basis_finder, eigen_fns,
+    elec_elec::{PositIndex, WaveFunctionMultiElec},
+    grid_setup::{new_data, Arr3dReal},
+    potential, render,
+    types::BasesEvaluated,
+    types::SurfacesPerElec,
+    wf_ops, ActiveElec, State,
+};
 
 pub fn update_E_or_V(
     sfcs: &mut SurfacesPerElec,
@@ -66,7 +74,8 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
         state.grid_n_render,
     );
 
-    state.bases_evaluated_charge[ae] = wf_ops::arr_from_bases(
+    state.bases_evaluated_charge[ae] = wf_ops::create_psi_from_bases(
+        &state.cuda_dev,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits_charge,
         state.grid_n_charge,
@@ -296,7 +305,7 @@ pub(crate) fn he_solver(state: &mut State) {
         state.ui.active_elec = ActiveElec::PerElec(elec_id);
 
         println!("B");
-        // Code in this block is what's run each event loop if the falgs `updated_E_or_V` etc are set.
+        // Code in this block is what's run each event loop if the flags `updated_E_or_V` etc are set.
         {
             // todo: This is the long-running step.
             // todo: Only update the WF values for the base xi. And, only for the sample points,
@@ -305,7 +314,9 @@ pub(crate) fn he_solver(state: &mut State) {
             // This is the part of `update_evaluated_wfs` relevant for our charge grid only.
             // We don't need our sample grid here.
             // procedures::update_evaluated_wfs(state, elec_id);
-            state.bases_evaluated_charge[elec_id] = wf_ops::arr_from_bases(
+
+            state.bases_evaluated_charge[elec_id] = wf_ops::create_psi_from_bases(
+                &state.cuda_dev,
                 &state.bases[elec_id],
                 &state.surfaces_shared.grid_posits_charge,
                 state.grid_n_charge,
@@ -326,6 +337,7 @@ pub(crate) fn he_solver(state: &mut State) {
             let mut psi_charge_grid = new_data(state.grid_n_charge);
 
             let weights: Vec<f64> = state.bases[elec_id].iter().map(|b| b.weight()).collect();
+
             wf_ops::mix_bases_no_diffs(
                 &mut psi_charge_grid,
                 &state.bases_evaluated_charge[elec_id],

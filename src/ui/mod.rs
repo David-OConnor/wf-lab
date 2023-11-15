@@ -198,7 +198,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                            state.charges_fixed.iter().enumerate()
+                                state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -427,7 +427,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                        .text("Wt"),
+                    .text("Wt"),
                 );
             }
 
@@ -490,7 +490,7 @@ fn bottom_items(
             .add(egui::Button::new("Create V from this elec"))
             .clicked()
         {
-            procedures::create_V_from_elec(state,  ae);
+            procedures::create_V_from_elec(state, ae);
         }
 
         if ui
@@ -604,6 +604,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     surfaces_shared,
                     surfaces_per_elec,
                 ) = crate::init_from_grid(
+                    &state.cuda_dev,
                     state.grid_range_render,
                     state.grid_range_charge,
                     state.sample_factor_render,
@@ -765,7 +766,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.ui.z_displayed
                 },
             )
-                .text("Z slice"),
+            .text("Z slice"),
         );
 
         ui.add(
@@ -777,7 +778,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui.visual_rotation
             })
-                .text("Visual rotation"),
+            .text("Visual rotation"),
         );
 
         ui.add(
@@ -796,7 +797,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_range_render.1
             })
-                .text("Grid range"),
+            .text("Grid range"),
         );
 
         match state.ui.active_elec {
@@ -817,7 +818,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                        .text("E"),
+                    .text("E"),
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -907,7 +908,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                        .text("E"),
+                    .text("E"),
                 );
 
                 // Multiply wave functions together, and stores in Shared surfaces.

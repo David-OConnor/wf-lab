@@ -24,17 +24,20 @@
 // todo potential.
 
 use crate::{
-    basis_wfs::{Basis, SphericalHarmonic, Sto},
+    basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
     eigen_fns::{self, KE_COEFF},
+    gpu,
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     num_diff::{self},
     types::{BasesEvaluated, PsiWDiffs, PsiWDiffs1d, SurfacesPerElec},
     util,
 };
+use cudarc::driver::CudaDevice;
+use std::sync::Arc;
 
 use crate::grid_setup::new_data_real;
-use lin_alg2::f64::{Quaternion, Vec3};
+use lin_alg2::f64::Vec3;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -362,37 +365,48 @@ pub fn initialize_bases(
     // }
 }
 
-/// Similar to `BasisWfs::new` but without the diffs.
-pub fn arr_from_bases(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) -> Vec<Arr3d> {
-    let mut result = Vec::new();
+/// Create psi using basis functions. Only creates psi; doesn't create
+/// its derivatives, and combines from all bases. We use this primarily as part of the central dogma
+/// pipeline; ie for creating charge from the electron cloud.
+/// todo: This currently keeps the bases unmixed. Do we want 2 variants: One mixed, one unmixed?
+pub fn create_psi_from_bases(
+    dev: &Arc<CudaDevice>,
+    bases: &[Basis],
+    grid_posits: &Arr3dVec,
+    grid_n: usize,
+) -> Vec<Arr3d> {
+    // let mut bases_s = Vec::new();
+    // for basis in bases {
+    //     if let Basis::Sto(sto) = basis {
+    //         bases_s.push(sto.clone());
+    //     } else {
+    //         panic!("Non STO basis passed to GPU");
+    //     }
+    // }
 
+    let mut result = Vec::new();
     for _ in 0..bases.len() {
         result.push(new_data(grid_n));
     }
 
+    let posits_flat = util::flatten_arr(grid_posits, grid_n);
+
     for (basis_i, basis) in bases.iter().enumerate() {
-        let mut norm = 0.;
+        // todo: Normalize!
+        let psi_flat = gpu::sto_vals(dev, basis.xi(), &posits_flat, basis.posit());
+
+        // This is similar to util::unflatten, but with coercing to cplx.
+        let grid_n_sq = grid_n.pow(2);
 
         for i in 0..grid_n {
             for j in 0..grid_n {
                 for k in 0..grid_n {
-                    let posit_sample = grid_posits[i][j][k];
-
-                    let val = basis.value(posit_sample);
-
-                    result[basis_i][i][j][k] = val;
-                    norm += val.abs_sq();
+                    let i_flat = i * grid_n_sq + j * grid_n + k;
+                    result[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
                 }
             }
         }
-
-        let mut xi = 0.;
-        if let Basis::Sto(sto) = basis {
-            xi = sto.xi;
-        }
-        util::normalize_wf(&mut result[basis_i], norm);
     }
-
     result
 }
 

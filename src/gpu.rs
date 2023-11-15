@@ -7,9 +7,9 @@
 use std::sync::Arc;
 use std::time::Instant;
 
+use crate::basis_wfs::Sto;
 use cudarc::driver::{CudaDevice, CudaSlice, LaunchAsync, LaunchConfig};
 use lin_alg2::f64::Vec3;
-use crate::basis_wfs::{Basis, Sto};
 
 // type FDev = f64; // This makes switching between f32 and f64 easier.
 type FDev = f32; // This makes switching between f32 and f64 easier.
@@ -41,8 +41,8 @@ pub fn run_coulomb(
     let n_charges = posits_charge.len();
     let n_samples = posits_sample.len();
 
-    let posit_charges_ = alloc_vec3s(&dev, posits_charge);
-    let posits_sample_ = alloc_vec3s(&dev, posits_sample);
+    let posit_charges_gpus = alloc_vec3s(&dev, posits_charge);
+    let posits_sample_gpu = alloc_vec3s(&dev, posits_sample);
 
     // Note: This step is not required when using f64ss.
     let charges: Vec<FDev> = charges.iter().map(|c| *c as FDev).collect();
@@ -72,8 +72,8 @@ pub fn run_coulomb(
             cfg,
             (
                 &mut V_per_sample,
-                &posit_charges_,
-                &posits_sample_,
+                &posit_charges_gpus,
+                &posits_sample_gpu,
                 &charges_gpu,
                 n_charges,
                 n_samples,
@@ -101,45 +101,48 @@ pub fn run_coulomb(
 
 /// Compute STO value and second derivative at a collection of sample points.
 /// Assumes N=1 and real values for now.
-pub fn calc_sto_vals_derivs_multiple_bases(
+pub(crate) fn sto_vals_derivs_multiple_bases(
     dev: &Arc<CudaDevice>,
     bases: &[Sto],
     posits_sample: &[Vec3],
-    posit_nuc: Vec3,
 ) -> (Vec<f64>, Vec<f64>) {
-    // allocate buffers
     let n_samples = posits_sample.len();
     let n_bases = bases.len();
 
+    let mut posits_nuc = Vec::new();
     let mut xis = Vec::new();
     let mut weights = Vec::new();
     for basis in bases {
+        posits_nuc.push(basis.posit);
         xis.push(basis.xi as FDev);
         weights.push(basis.weight as FDev);
     }
 
-    let posits_sample_ = alloc_vec3s(&dev, posits_sample);
+    let posits_sample_gpu = alloc_vec3s(&dev, posits_sample);
 
     let mut psi = dev.alloc_zeros::<FDev>(n_samples).unwrap();
     let mut psi_pp = dev.alloc_zeros::<FDev>(n_samples).unwrap();
+
+    let posits_nuc_gpu = alloc_vec3s(&dev, &posits_nuc);
     let mut xis_gpu = dev.alloc_zeros::<FDev>(n_bases).unwrap();
     let mut weights_gpu = dev.alloc_zeros::<FDev>(n_bases).unwrap();
 
     dev.htod_sync_copy_into(&xis, &mut xis_gpu).unwrap();
     dev.htod_sync_copy_into(&weights, &mut weights_gpu).unwrap();
 
-    let kernel = dev.get_func("cuda", "sto_val_and_second_deriv_kernel_multiple_bases").unwrap();
+    let kernel = dev
+        .get_func("cuda", "sto_val_deriv_multiple_bases_kernel")
+        .unwrap();
     let cfg = LaunchConfig::for_num_elems(n_samples as u32);
 
     unsafe {
         kernel.launch(
             cfg,
             (
-
                 &mut psi,
                 &mut psi_pp,
-                &posits_sample_,
-                posit_nuc, // todo: Serialize
+                &posits_sample_gpu,
+                &posits_nuc_gpu,
                 &xis_gpu,
                 &weights_gpu,
                 n_samples,
@@ -147,7 +150,7 @@ pub fn calc_sto_vals_derivs_multiple_bases(
             ),
         )
     }
-        .unwrap();
+    .unwrap();
 
     let result_psi = dev.dtoh_sync_copy(&psi).unwrap();
     let result_psi_pp = dev.dtoh_sync_copy(&psi_pp).unwrap();
@@ -159,46 +162,133 @@ pub fn calc_sto_vals_derivs_multiple_bases(
     )
 }
 
-/// Compute STO value and second derivative at a collection of sample points.
-/// Assumes N=1 and real values for now.
-pub fn calc_sto_vals_derivs(
+// todo: DRY with above
+pub(crate) fn sto_vals_multiple_bases(
     dev: &Arc<CudaDevice>,
-    xi: f64,
+    bases: &[Sto],
     posits_sample: &[Vec3],
-    posit_nuc: Vec3,
-) -> (Vec<f64>, Vec<f64>) {
-    // allocate buffers
+) -> Vec<f64> {
     let n_samples = posits_sample.len();
+    let n_bases = bases.len();
 
+    let mut posits_nuc = Vec::new();
     let mut xis = Vec::new();
     let mut weights = Vec::new();
 
-    let posits_sample_ = alloc_vec3s(&dev, posits_sample);
+    for basis in bases {
+        posits_nuc.push(basis.posit);
+        xis.push(basis.xi as FDev);
+        weights.push(basis.weight as FDev);
+    }
+
+    let posits_sample_gpu = alloc_vec3s(&dev, posits_sample);
 
     let mut psi = dev.alloc_zeros::<FDev>(n_samples).unwrap();
-    let mut psi_pp = dev.alloc_zeros::<FDev>(n_samples).unwrap();
+
+    let posits_nuc_gpu = alloc_vec3s(&dev, &posits_nuc);
+    let mut xis_gpu = dev.alloc_zeros::<FDev>(n_bases).unwrap();
+    let mut weights_gpu = dev.alloc_zeros::<FDev>(n_bases).unwrap();
 
     dev.htod_sync_copy_into(&xis, &mut xis_gpu).unwrap();
     dev.htod_sync_copy_into(&weights, &mut weights_gpu).unwrap();
 
-    let kernel = dev.get_func("cuda", "sto_val_and_second_deriv_kernel").unwrap();
+    let kernel = dev
+        .get_func("cuda", "sto_val_multiple_bases_kernel")
+        .unwrap();
     let cfg = LaunchConfig::for_num_elems(n_samples as u32);
 
     unsafe {
         kernel.launch(
             cfg,
             (
+                &mut psi,
+                &posits_sample_gpu,
+                &posits_nuc_gpu,
+                &xis_gpu,
+                &weights_gpu,
+                n_samples,
+                n_bases,
+            ),
+        )
+    }
+    .unwrap();
 
+    let result_psi = dev.dtoh_sync_copy(&psi).unwrap();
+
+    // This step is not required when using f64.
+    result_psi.iter().map(|v| *v as f64).collect()
+}
+
+/// Compute STO value and second derivative at a collection of sample points.
+/// Assumes N=1 and real values for now.
+pub(crate) fn sto_vals(
+    dev: &Arc<CudaDevice>,
+    xi: f64,
+    posits_sample: &[Vec3],
+    posit_nuc: Vec3,
+) -> Vec<f64> {
+    // todo: Big DRY
+    let n_samples = posits_sample.len();
+
+    let posits_sample_ = alloc_vec3s(&dev, posits_sample);
+
+    let mut psi = dev.alloc_zeros::<FDev>(n_samples).unwrap();
+    let posit_nuc_gpu = dev
+        .htod_sync_copy(&[posit_nuc.x, posit_nuc.y, posit_nuc.z])
+        .unwrap();
+
+    let kernel = dev.get_func("cuda", "sto_val_kernel").unwrap();
+    let cfg = LaunchConfig::for_num_elems(n_samples as u32);
+
+    unsafe {
+        kernel.launch(
+            cfg,
+            (&mut psi, &posits_sample_, &posit_nuc_gpu, xi, n_samples),
+        )
+    }
+    .unwrap();
+
+    let result_psi = dev.dtoh_sync_copy(&psi).unwrap();
+
+    // This step is not required when using f64.
+    result_psi.iter().map(|v| *v as f64).collect()
+}
+
+/// Compute STO value and second derivative at a collection of sample points.
+/// Assumes N=1 and real values for now.
+pub(crate) fn sto_vals_derivs(
+    dev: &Arc<CudaDevice>,
+    xi: f64,
+    posits_sample: &[Vec3],
+    posit_nuc: Vec3,
+) -> (Vec<f64>, Vec<f64>) {
+    let n_samples = posits_sample.len();
+
+    let posits_sample_ = alloc_vec3s(&dev, posits_sample);
+
+    let mut psi = dev.alloc_zeros::<FDev>(n_samples).unwrap();
+    let mut psi_pp = dev.alloc_zeros::<FDev>(n_samples).unwrap();
+    let posit_nuc_gpu = dev
+        .htod_sync_copy(&[posit_nuc.x, posit_nuc.y, posit_nuc.z])
+        .unwrap();
+
+    let kernel = dev.get_func("cuda", "sto_val_deriv_kernel").unwrap();
+    let cfg = LaunchConfig::for_num_elems(n_samples as u32);
+
+    unsafe {
+        kernel.launch(
+            cfg,
+            (
                 &mut psi,
                 &mut psi_pp,
                 &posits_sample_,
-                posit_nuc, // todo: Serialize
+                &posit_nuc_gpu,
                 xi,
                 n_samples,
             ),
         )
     }
-        .unwrap();
+    .unwrap();
 
     let result_psi = dev.dtoh_sync_copy(&psi).unwrap();
     let result_psi_pp = dev.dtoh_sync_copy(&psi_pp).unwrap();

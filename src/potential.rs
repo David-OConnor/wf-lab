@@ -154,6 +154,7 @@ pub(crate) fn create_V_from_elec(
 
     let mut posits_sample_flat = Vec::new();
 
+    // Similar to `util::flatten_arr`, but With the 2d option.
     // Flatten sample positions, prior to passing to the kernel.
     for i_sample in 0..grid_n {
         for j_sample in 0..grid_n {
@@ -178,6 +179,7 @@ pub(crate) fn create_V_from_elec(
 
     let grid_n_sq = grid_n.pow(2);
 
+    // Similar to `util::unflatten_arr`, but With the 2d option.
     // Repack into a 3D array. We do it here, vice in `gpu::run_coulomb`, since we use `run_coulomb`
     // for flat sample input as well.
     for i in 0..grid_n {

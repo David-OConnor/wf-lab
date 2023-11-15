@@ -182,6 +182,7 @@ impl SurfaceData {
 
 /// Run this whenever n changes. Ie, at init, or when n changes in the GUI.
 pub fn init_from_grid(
+    cuda_dev: &Arc<CudaDevice>,
     grid_range: (f64, f64),
     grid_range_charge: (f64, f64),
     spacing_factor: f64,
@@ -250,7 +251,8 @@ pub fn init_from_grid(
         grid_n,
     );
 
-    let bases_evaluated_charge_one = wf_ops::arr_from_bases(
+    let bases_evaluated_charge_one = wf_ops::create_psi_from_bases(
+        cuda_dev,
         &bases[0], // todo: A bit of a kludge
         &surfaces_shared.grid_posits_charge,
         grid_n_charge,
@@ -302,9 +304,10 @@ fn main() {
             &[
                 "coulomb_kernel",
                 "sto_val_kernel",
-                "sto_second_deriv_kernel",
-                "sto_val_and_second_deriv_kernel_multiple_bases",
-                "sto_val_and_second_deriv_kernel",
+                "sto_deriv_kernel",
+                "sto_val_deriv_multiple_bases_kernel",
+                "sto_val_multiple_bases_kernel",
+                "sto_val_deriv_kernel",
             ],
         )
         .unwrap();
@@ -366,6 +369,7 @@ fn main() {
         surfaces_shared,
         surfaces_per_elec,
     ) = init_from_grid(
+        &cuda_dev,
         (grid_min_render, grid_max_render),
         (grid_min_charge, grid_max_charge),
         spacing_factor,
