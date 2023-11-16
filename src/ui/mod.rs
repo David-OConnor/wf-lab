@@ -410,7 +410,7 @@ fn basis_fn_mixer(
                                 // todo eg in SurfacesPerElec.
                                 let mut psi_charge_grid = new_data(state.grid_n_charge);
 
-                                wf_ops::mix_bases_no_diffs(
+                                wf_ops::mix_bases(
                                     &mut psi_charge_grid,
                                     &state.bases_evaluated_charge[active_elec],
                                     state.grid_n_charge,

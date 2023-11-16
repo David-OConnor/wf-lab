@@ -251,10 +251,6 @@ pub(crate) fn sto_vals(
             (
                 &mut psi,
                 &posits_sample_gpu,
-                // todo t TS. Once this is sorted out, put back as it was.
-                // posit_nuc.x as FDev,
-                // posit_nuc.y as FDev,
-                // posit_nuc.z as FDev,
                 &posit_nuc_gpu,
                 xi as FDev,
                 n_samples,
@@ -264,16 +260,6 @@ pub(crate) fn sto_vals(
     .unwrap();
 
     let result_psi = dev.dtoh_sync_copy(&psi).unwrap();
-
-    println!(
-        "Posit sample: {} {} {}",
-        posits_sample[0].x, posits_sample[100].x, posits_sample[10000].x
-    );
-    println!("Posit nuc: {} {} {}", posit_nuc.x, posit_nuc.y, posit_nuc.z);
-    println!(
-        "Result sample: {} {} {}",
-        result_psi[0], result_psi[100], result_psi[10000]
-    );
 
     // This step is not required when using f64.
     result_psi.iter().map(|v| *v as f64).collect()

@@ -57,7 +57,7 @@ dtype coulomb(dtype3 q0, dtype3 q1, dtype charge) {
 // Note that this is for the radial component only, with n=1. Real. See CPU side for a ref.
 __device__
 dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint8_t n) {
-    dtype N = PI_SQRT_INV * std::pow(xi, 1.5);
+    dtype N = PI_SQRT_INV * std::pow(xi, 1.5f);
 
     dtype r = calc_dist(posit_sample, posit_nuc);
 

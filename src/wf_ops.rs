@@ -68,7 +68,7 @@ pub enum Spin {
 /// be selected.
 ///
 /// The resulting wave functions are normalized.
-pub fn mix_bases(
+pub fn mix_bases_w_diffs(
     psi: &mut PsiWDiffs,
     bases_evaled: &BasesEvaluated,
     grid_n: usize,
@@ -132,7 +132,7 @@ pub fn mix_bases(
 
 /// Eg for the psi-on-grid for charges, where we don't need to generate psi''.
 // todo: DRY
-pub fn mix_bases_no_diffs(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize, weights: &[f64]) {
+pub fn mix_bases(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize, weights: &[f64]) {
     // We don't need to normalize the result using the full procedure; the basis-wfs are already
     // normalized, so divide by the cumulative basis weights.
     let mut weight_total = 0.;
@@ -143,14 +143,9 @@ pub fn mix_bases_no_diffs(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize
     let mut norm_scaler = 1. / weight_total;
 
     // Prevents NaNs and related complications.
-    if weight_total.abs() < 0.000001 {
+    if weight_total.abs() < 0.00000001 {
         norm_scaler = 0.;
     }
-
-    // todo temp TS
-    // let norm_scaler = 1.;
-
-    let mut norm = 0.;
 
     for i in 0..grid_n {
         for j in 0..grid_n {
@@ -165,9 +160,43 @@ pub fn mix_bases_no_diffs(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize
             }
         }
     }
-
-    util::normalize_wf(psi, norm);
 }
+
+/// 2 in one, to remove an unecessarly loop.
+pub fn mix_bases_update_charge_density(psi: &mut Arr3d, charge_density: &mut Arr3dReal, bases_evaled: &[Arr3d], grid_n: usize, weights: &[f64]) {
+    // We don't need to normalize the result using the full procedure; the basis-wfs are already
+    // normalized, so divide by the cumulative basis weights.
+    let mut weight_total = 0.;
+    for weight in weights {
+        weight_total += weight.abs();
+    }
+
+    let mut norm_scaler = 1. / weight_total;
+
+    // Prevents NaNs and related complications.
+    if weight_total.abs() < 0.00000001 {
+        norm_scaler = 0.;
+    }
+
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                psi[i][j][k] = Cplx::new_zero();
+
+                for (i_basis, weight) in weights.iter().enumerate() {
+                    let scaled = weight * norm_scaler;
+
+                    psi[i][j][k] += bases_evaled[i_basis][i][j][k] * scaled;
+                }
+                charge_density[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
+            }
+        }
+    }
+}
+
+
+
+
 
 /// This function combines mixing (pre-computed) numerical basis WFs with updating psi''.
 /// it updates E as well.
@@ -182,7 +211,7 @@ pub fn update_wf_fm_bases(
     grid_n: usize,
     weights: &[f64],
 ) {
-    mix_bases(&mut sfcs.psi, basis_wfs, grid_n, weights);
+    mix_bases_w_diffs(&mut sfcs.psi, basis_wfs, grid_n, weights);
     // mix_bases_no_diffs(&mut sfcs.psi.on_pt, &basis_wfs.on_pt, grid_n, weights);
 
     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
@@ -235,37 +264,6 @@ pub fn update_psi_pps(
                 psi_pp_meas[i][j][k] = psi.psi_pp_analytic[i][j][k];
             }
         }
-    }
-}
-
-pub fn update_psi_pps_1d(
-    // We split these arguments up instead of using surfaces to control mutability.
-    psi: &PsiWDiffs1d,
-    V: &[f64],
-    psi_pp_calc: &mut [Cplx],
-    psi_pp_meas: &mut [Cplx],
-    E: f64,
-    grid_n: usize,
-) {
-    for i in 0..grid_n {
-        psi_pp_calc[i] = eigen_fns::find_ψ_pp_calc(psi.on_pt[i], V[i], E);
-
-        // Calculate psi'' based on a numerical derivative of psi
-        // in 3D.
-        // We can compute ψ'' measured this in the same loop here, since we're using an analytic
-        // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-        psi_pp_meas[i] = num_diff::find_ψ_pp_meas(
-            psi.on_pt[i],
-            psi.x_prev[i],
-            psi.x_next[i],
-            psi.y_prev[i],
-            psi.y_next[i],
-            psi.z_prev[i],
-            psi.z_next[i],
-        );
-
-        // todo experimenting
-        psi_pp_meas[i] = psi.psi_pp_analytic[i];
     }
 }
 
@@ -375,15 +373,6 @@ pub fn create_psi_from_bases(
     grid_posits: &Arr3dVec,
     grid_n: usize,
 ) -> Vec<Arr3d> {
-    // let mut bases_s = Vec::new();
-    // for basis in bases {
-    //     if let Basis::Sto(sto) = basis {
-    //         bases_s.push(sto.clone());
-    //     } else {
-    //         panic!("Non STO basis passed to GPU");
-    //     }
-    // }
-
     let mut result = Vec::new();
     for _ in 0..bases.len() {
         result.push(new_data(grid_n));
@@ -394,31 +383,22 @@ pub fn create_psi_from_bases(
     for (basis_i, basis) in bases.iter().enumerate() {
         let psi_flat = gpu::sto_vals(dev, basis.xi(), &posits_flat, basis.posit());
 
+        let mut norm = 0.;
+
         // This is similar to util::unflatten, but with coercing to cplx.
         let grid_n_sq = grid_n.pow(2);
-
-        let mut norm = 0.;
 
         for i in 0..grid_n {
             for j in 0..grid_n {
                 for k in 0..grid_n {
                     let i_flat = i * grid_n_sq + j * grid_n + k;
                     result[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
-                    norm += result[basis_i][i][j][k].abs_sq();
+                    norm += result[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
                 }
             }
         }
 
-        // Normalize.
-        if norm > 0.00000000001 {
-            for i in 0..grid_n {
-                for j in 0..grid_n {
-                    for k in 0..grid_n {
-                        result[basis_i][i][j][k] = result[basis_i][i][j][k] / norm;
-                    }
-                }
-            }
-        }
+        util::normalize_wf(&mut result[basis_i], norm);
     }
     result
 }
