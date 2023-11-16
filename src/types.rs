@@ -120,9 +120,9 @@ pub struct SurfacesPerElec {
     pub psi: PsiWDiffs,
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
-    /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
-    /// between psi'' measured and calcualted, which is complex.
-    pub nudge_amounts: Arr3dReal,
+    // /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
+    // /// between psi'' measured and calcualted, which is complex.
+    // pub nudge_amounts: Arr3dReal,
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3dReal,
     pub aux2: Arr3dReal,
@@ -135,15 +135,6 @@ impl SurfacesPerElec {
         let data = new_data(n_grid);
         let data_real = new_data_real(n_grid);
 
-        let mut default_nudges = data_real.clone();
-        for i in 0..n_grid {
-            for j in 0..n_grid {
-                for k in 0..n_grid {
-                    // default_nudges[i][j][k] = NUDGE_DEFAULT;
-                }
-            }
-        }
-
         // Set up a regular grid using this; this will allow us to convert to an irregular grid
         // later, once we've verified this works.
 
@@ -155,7 +146,7 @@ impl SurfacesPerElec {
             psi,
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
-            nudge_amounts: default_nudges,
+            // nudge_amounts: default_nudges,
             aux1: data_real.clone(),
             aux2: data_real.clone(),
             aux3: data_real,

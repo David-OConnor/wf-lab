@@ -227,14 +227,19 @@ pub(crate) fn sto_vals(
     posits_sample: &[Vec3],
     posit_nuc: Vec3,
 ) -> Vec<f64> {
-    // todo: Big DRY
+    // todo: DRY
     let n_samples = posits_sample.len();
 
-    let posits_sample_ = alloc_vec3s(&dev, posits_sample);
+    let posits_sample_gpu = alloc_vec3s(&dev, posits_sample);
 
     let mut psi = dev.alloc_zeros::<FDev>(n_samples).unwrap();
+
     let posit_nuc_gpu = dev
-        .htod_sync_copy(&[posit_nuc.x, posit_nuc.y, posit_nuc.z])
+        .htod_sync_copy(&[
+            posit_nuc.x as FDev,
+            posit_nuc.y as FDev,
+            posit_nuc.z as FDev,
+        ])
         .unwrap();
 
     let kernel = dev.get_func("cuda", "sto_val_kernel").unwrap();
@@ -243,12 +248,32 @@ pub(crate) fn sto_vals(
     unsafe {
         kernel.launch(
             cfg,
-            (&mut psi, &posits_sample_, &posit_nuc_gpu, xi, n_samples),
+            (
+                &mut psi,
+                &posits_sample_gpu,
+                // todo t TS. Once this is sorted out, put back as it was.
+                // posit_nuc.x as FDev,
+                // posit_nuc.y as FDev,
+                // posit_nuc.z as FDev,
+                &posit_nuc_gpu,
+                xi as FDev,
+                n_samples,
+            ),
         )
     }
     .unwrap();
 
     let result_psi = dev.dtoh_sync_copy(&psi).unwrap();
+
+    println!(
+        "Posit sample: {} {} {}",
+        posits_sample[0].x, posits_sample[100].x, posits_sample[10000].x
+    );
+    println!("Posit nuc: {} {} {}", posit_nuc.x, posit_nuc.y, posit_nuc.z);
+    println!(
+        "Result sample: {} {} {}",
+        result_psi[0], result_psi[100], result_psi[10000]
+    );
 
     // This step is not required when using f64.
     result_psi.iter().map(|v| *v as f64).collect()
@@ -264,12 +289,16 @@ pub(crate) fn sto_vals_derivs(
 ) -> (Vec<f64>, Vec<f64>) {
     let n_samples = posits_sample.len();
 
-    let posits_sample_ = alloc_vec3s(&dev, posits_sample);
+    let posits_sample_gpu = alloc_vec3s(&dev, posits_sample);
 
     let mut psi = dev.alloc_zeros::<FDev>(n_samples).unwrap();
     let mut psi_pp = dev.alloc_zeros::<FDev>(n_samples).unwrap();
     let posit_nuc_gpu = dev
-        .htod_sync_copy(&[posit_nuc.x, posit_nuc.y, posit_nuc.z])
+        .htod_sync_copy(&[
+            posit_nuc.x as FDev,
+            posit_nuc.y as FDev,
+            posit_nuc.z as FDev,
+        ])
         .unwrap();
 
     let kernel = dev.get_func("cuda", "sto_val_deriv_kernel").unwrap();
@@ -281,9 +310,9 @@ pub(crate) fn sto_vals_derivs(
             (
                 &mut psi,
                 &mut psi_pp,
-                &posits_sample_,
+                &posits_sample_gpu,
                 &posit_nuc_gpu,
-                xi,
+                xi as FDev,
                 n_samples,
             ),
         )

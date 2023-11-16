@@ -392,17 +392,30 @@ pub fn create_psi_from_bases(
     let posits_flat = util::flatten_arr(grid_posits, grid_n);
 
     for (basis_i, basis) in bases.iter().enumerate() {
-        // todo: Normalize!
         let psi_flat = gpu::sto_vals(dev, basis.xi(), &posits_flat, basis.posit());
 
         // This is similar to util::unflatten, but with coercing to cplx.
         let grid_n_sq = grid_n.pow(2);
+
+        let mut norm = 0.;
 
         for i in 0..grid_n {
             for j in 0..grid_n {
                 for k in 0..grid_n {
                     let i_flat = i * grid_n_sq + j * grid_n + k;
                     result[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
+                    norm += result[basis_i][i][j][k].abs_sq();
+                }
+            }
+        }
+
+        // Normalize.
+        if norm > 0.00000000001 {
+            for i in 0..grid_n {
+                for j in 0..grid_n {
+                    for k in 0..grid_n {
+                        result[basis_i][i][j][k] = result[basis_i][i][j][k] / norm;
+                    }
                 }
             }
         }
