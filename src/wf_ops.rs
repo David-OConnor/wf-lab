@@ -290,16 +290,16 @@ pub fn initialize_bases(
         // See Sebens, for weights under equation 24; this is for Helium.
 
         for (xi, weight) in [
-            (1.41714, 0.76837),
-            (2.37682, 0.22346),
-            (4.39628, 0.04082),
-            (6.52699, -0.00994),
-            (7.94252, 0.00230),
-            // (1., 1.),
+            // (1.41714, 0.76837),
+            // (2.37682, 0.22346),
+            // (4.39628, 0.04082),
+            // (6.52699, -0.00994),
+            // (7.94252, 0.00230),
+            (1., 1.),
             // (1.7, 0.),
             // (1.6, 0.),
-            // (2., 0.),
-            // (3., 0.),
+            (2., 0.),
+            (3., 0.),
             // (4., 0.),
             // (5., 0.),
             // (6., 0.),
@@ -307,14 +307,16 @@ pub fn initialize_bases(
             // (8., 0.),
             // (9., 0.),
         ] {
-            bases.push(Basis::Sto(Sto {
-                posit: *nuc_posit,
-                n: 1,
-                xi,
-                weight,
-                charge_id,
-                harmonic: Default::default(),
-            }));
+            for n in 1..3 {
+                bases.push(Basis::Sto(Sto {
+                    posit: *nuc_posit,
+                    n,
+                    xi,
+                    weight,
+                    charge_id,
+                    harmonic: Default::default(),
+                }));
+            }
         }
     }
 
