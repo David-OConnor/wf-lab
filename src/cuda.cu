@@ -1,6 +1,8 @@
 // #include <math.h>
 #include <initializer_list>
 
+// todo: Consider separate files for coulomb, and STO calculations.
+
 // https://developer.nvidia.com/blog/even-easier-introduction-cuda/
 
 // Allows easy switching between float and double.
@@ -33,6 +35,22 @@ const dtype PI_SQRT_INV = 0.5641895835477563f;
 //     }
 //     C[ROW * N + COL] = tmpSum;
 // }
+
+__device__
+dtype laguerre_0(uint16_t n, dtype alpha, dtype x) {
+    return 1.
+}
+
+__device__
+dtype laguerre_1(uint16_t n, dtype alpha, dtype x) {
+    return alpha + 1. - x;
+}
+
+__device__
+dtype laguerre_2(uint16_t n, dtype alpha, dtype x) {
+    return std::exp(x, 2) / 2. - (alpha + 2.) * x + (alpha + 1.) * (alpha + 2.) / 2.;
+}
+// todo: More A/R.
 
 
 __device__

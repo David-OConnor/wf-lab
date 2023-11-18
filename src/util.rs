@@ -71,36 +71,39 @@ pub fn _spherical_to_cart(ctr: Vec3, θ: f64, φ: f64, r: f64) -> Vec3 {
 ///
 /// Wikipedia has info on generating arbitrary ones:
 /// https://en.wikipedia.org/wiki/Laguerre_polynomials
-pub(crate) fn _make_laguerre(n: u16, alhpa: f64) -> impl Fn(f64) -> f64 {
-    // todo: For now, we've just hard-coded some values for low n.
+///
+/// Typical notation: Lₙ^(α). Note that the non-general polynomials are the same as the general, with α=0.
+pub(crate) fn make_laguerre(n: u16, α: f64) -> impl Fn(f64) -> f64 {
+    // It appears normal functions won't work because they can't capture n; use a closure.
+    move |x| match n {
+        0 => 1.,
+        1 => α + 1. - x,
+        2 => x.powi(2) / 2. - (α + 2.) * x + (α + 1.) * (α + 2.) / 2.,
+        3 => {
+            -x.powi(3) / 6. + (α + 3) * x.powi(2) / 2. - (α + 2.) * (α + 3.) * x / 2.
+                + (α + 1.) * (α + 2.) * (α + 3.) / 6.
+        }
 
-    // todo: You may need the generalized Laguerre polynomial; QC this.
-
-    // todo: It may actually be a generalized Lagureer run on 2r/(n A_0)
-
-    fn result(x: f64) -> f64 {
-        x + 1.
+        _ => unimplemented!(),
     }
 
-    result
-
-    // match n {
+    // move |x| match n {
     //     0 => 1.,
     //     1 => 1. - x,
-    //     2 => 1. / 2. * (x.powi(2) - 4. * x + 2),
+    //     2 => 0.5 * (x.powi(2) - 4. * x + 2.),
     //     3 => 1. / 6. * (-x.powi(3) + 9. * x.powi(2) - 18. * x + 6.),
-    //     4 => 1. / factorial(4) * (x.powi(4) - 16. * x.powi(3) + 72. * x.powi(2) - 96. * x + 24.),
+    //     4 => 1. / factorial(4) as f64 * (x.powi(4) - 16. * x.powi(3) + 72. * x.powi(2) - 96. * x + 24.),
     //     5 => {
-    //         1. / factorial(5)
-    //             * (-x.powi(5) * 25. * x.powi(4) - 200. * x.powi(3) + 600. * x.powi(2) - 600. * x
-    //                 + 120.)
+    //         1. / factorial(5) as f64
+    //             * (-x.powi(5) + 25. * x.powi(4) - 200. * x.powi(3) + 600. * x.powi(2) - 600. * x
+    //             + 120.)
     //     }
     //     6 => {
-    //         1. / factorial(6)
+    //         1. / factorial(6) as f64
     //             * (x.powi(6) - 36. * x.powi(5) + 450. * x.powi(4) - 2_400. * x.powi(3)
-    //                 + 5_400. * x.powi(2)
-    //                 - 4_320 * x
-    //                 + 720.)
+    //             + 5_400. * x.powi(2)
+    //             - 4_320. * x
+    //             + 720.)
     //     }
     //     _ => unimplemented!(),
     // }
