@@ -385,7 +385,7 @@ pub fn create_psi_from_bases(
     let posits_flat = util::flatten_arr(grid_posits, grid_n);
 
     for (basis_i, basis) in bases.iter().enumerate() {
-        let psi_flat = gpu::sto_vals(dev, basis.xi(), &posits_flat, basis.posit());
+        let psi_flat = gpu::sto_vals(dev, basis.xi(), basis.n(), &posits_flat, basis.posit());
 
         let mut norm = 0.;
 
@@ -423,7 +423,7 @@ pub fn create_psi_from_bases_mix_update_charge_density(
     let posits_flat = util::flatten_arr(grid_posits, grid_n);
 
     for (basis_i, basis) in bases.iter().enumerate() {
-        let psi_flat = gpu::sto_vals(dev, basis.xi(), &posits_flat, basis.posit());
+        let psi_flat = gpu::sto_vals(dev, basis.xi(), basis.n(), &posits_flat, basis.posit());
 
         let mut norm = 0.;
 

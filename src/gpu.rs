@@ -111,10 +111,12 @@ pub(crate) fn sto_vals_derivs_multiple_bases(
 
     let mut posits_nuc = Vec::new();
     let mut xis = Vec::new();
+    let mut ns = Vec::new();
     let mut weights = Vec::new();
     for basis in bases {
         posits_nuc.push(basis.posit);
         xis.push(basis.xi as FDev);
+        ns.push(basis.n);
         weights.push(basis.weight as FDev);
     }
 
@@ -125,9 +127,11 @@ pub(crate) fn sto_vals_derivs_multiple_bases(
 
     let posits_nuc_gpu = alloc_vec3s(&dev, &posits_nuc);
     let mut xis_gpu = dev.alloc_zeros::<FDev>(n_bases).unwrap();
+    let mut ns_gpu = dev.alloc_zeros::<u16>(n_bases).unwrap();
     let mut weights_gpu = dev.alloc_zeros::<FDev>(n_bases).unwrap();
 
     dev.htod_sync_copy_into(&xis, &mut xis_gpu).unwrap();
+    dev.htod_sync_copy_into(&ns, &mut ns_gpu).unwrap();
     dev.htod_sync_copy_into(&weights, &mut weights_gpu).unwrap();
 
     let kernel = dev
@@ -144,6 +148,7 @@ pub(crate) fn sto_vals_derivs_multiple_bases(
                 &posits_sample_gpu,
                 &posits_nuc_gpu,
                 &xis_gpu,
+                &ns_gpu,
                 &weights_gpu,
                 n_samples,
                 n_bases,
@@ -173,11 +178,13 @@ pub(crate) fn sto_vals_multiple_bases(
 
     let mut posits_nuc = Vec::new();
     let mut xis = Vec::new();
+    let mut ns = Vec::new();
     let mut weights = Vec::new();
 
     for basis in bases {
         posits_nuc.push(basis.posit);
         xis.push(basis.xi as FDev);
+        ns.push(basis.n);
         weights.push(basis.weight as FDev);
     }
 
@@ -187,9 +194,11 @@ pub(crate) fn sto_vals_multiple_bases(
 
     let posits_nuc_gpu = alloc_vec3s(&dev, &posits_nuc);
     let mut xis_gpu = dev.alloc_zeros::<FDev>(n_bases).unwrap();
+    let mut ns_gpu = dev.alloc_zeros::<u16>(n_bases).unwrap();
     let mut weights_gpu = dev.alloc_zeros::<FDev>(n_bases).unwrap();
 
     dev.htod_sync_copy_into(&xis, &mut xis_gpu).unwrap();
+    dev.htod_sync_copy_into(&ns, &mut ns_gpu).unwrap();
     dev.htod_sync_copy_into(&weights, &mut weights_gpu).unwrap();
 
     let kernel = dev
@@ -205,6 +214,7 @@ pub(crate) fn sto_vals_multiple_bases(
                 &posits_sample_gpu,
                 &posits_nuc_gpu,
                 &xis_gpu,
+                &ns_gpu,
                 &weights_gpu,
                 n_samples,
                 n_bases,
@@ -224,6 +234,7 @@ pub(crate) fn sto_vals_multiple_bases(
 pub(crate) fn sto_vals(
     dev: &Arc<CudaDevice>,
     xi: f64,
+    n: u16,
     posits_sample: &[Vec3],
     posit_nuc: Vec3,
 ) -> Vec<f64> {
@@ -253,6 +264,7 @@ pub(crate) fn sto_vals(
                 &posits_sample_gpu,
                 &posit_nuc_gpu,
                 xi as FDev,
+                n,
                 n_samples,
             ),
         )
@@ -270,6 +282,7 @@ pub(crate) fn sto_vals(
 pub(crate) fn sto_vals_derivs(
     dev: &Arc<CudaDevice>,
     xi: f64,
+    n: u16,
     posits_sample: &[Vec3],
     posit_nuc: Vec3,
 ) -> (Vec<f64>, Vec<f64>) {
@@ -299,6 +312,7 @@ pub(crate) fn sto_vals_derivs(
                 &posits_sample_gpu,
                 &posit_nuc_gpu,
                 xi as FDev,
+                n,
                 n_samples,
             ),
         )

@@ -413,7 +413,7 @@ impl Sto {
         // todo: Confirm quantum number `n` isn't part of this term if you start using it.
         let N = PI_SQRT_INV * self.xi.powf(1.5);
 
-        // todo: An analytic second deriv will get messier with higher N.
+        let exp_term = (-self.xi * r / (self.n as f64)).exp();
 
         //   let L = Poly::laguerre((n - l - 1).into(), 2 * l + 1);
         // // let L = util::make_laguerre(n - l - 1, 2 * l + 1.);
@@ -425,37 +425,33 @@ impl Sto {
 
         let radial = Cplx::from_real(
             // Note: We're leaving out A_0, since it's 1.
-            N * r.powi((self.n - 1).into()) * (-self.xi * r / (self.n as f64)).exp(),
+            N * r.powi((self.n - 1).into()) * exp_term,
         );
 
         radial
     }
 
     /// Analytic second derivative using analytic basis functions.
-    /// See OneNote: `Exploring the WF, part 6`.
+    /// See OneNote: `Exploring the WF, part 6`. Hardcoded for n=1.
+    /// todo: Deprecate A/R
     pub fn second_deriv_n1(&self, posit_sample: Vec3) -> Cplx {
         // todo: This currently ignores the spherical harmonic part; add that!
-        // todo: It also assumes n = 1.
 
-        // todo: Put this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * e^(-\xi * sqrt(x^2 + y^2 + z^2)) with respect to x`
-        // todo: Much messier form.
-        // todo: Modify accordingly.
+        // Enter this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * e^(-\xi * sqrt(x^2 + y^2 + z^2)) with respect to x`
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
         let N = PI_SQRT_INV * self.xi.powf(1.5);
         // Note: This variant uses the same form as our `value` fn, but assumes n = 1.
 
-        // todo: An analytic second deriv will get messier with higher N.
-
         let exp_term = (-self.xi * r).exp();
 
         let mut result = 0.;
 
         // Each part is the second deriv WRT to an orthogonal axis.
-        for coord in &[diff.x, diff.y, diff.z] {
-            result += self.xi.powi(2) * coord.powi(2) * exp_term / r.powi(2);
-            result += self.xi * coord.powi(2) * exp_term / r.powi(3);
+        for x in &[diff.x, diff.y, diff.z] {
+            result += self.xi.powi(2) * x.powi(2) * exp_term / r.powi(2);
+            result += self.xi * x.powi(2) * exp_term / r.powi(3);
             result -= self.xi * exp_term / r;
         }
 
@@ -469,15 +465,13 @@ impl Sto {
     pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
         // todo: This currently ignores the spherical harmonic part; add that!
 
-        // todo: Put this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * sqrt(x^2 + y^2 + z^2)^(n-1) * e^(-\xi * sqrt(x^2 + y^2 + z^2) / n) with respect to x`
-        // todo: Much messier form.
-        // todo: Modify accordingly.
+        // Enter this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * sqrt(x^2 + y^2 + z^2)^(n-1) * e^(-\xi * sqrt(x^2 + y^2 + z^2) / n) with respect to x`
 
+        // code-shorteners, to help make these long equations easier to read. And precomputing  some terms.
         let diff = posit_sample - self.posit;
         let r_sq = diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2);
-        let r = (r_sq).sqrt();
+        let r = r_sq.sqrt();
 
-        // code-shorteners, to help make these long equations easier to read.
         let n = self.n as f64;
         let xi = self.xi;
 
@@ -490,24 +484,27 @@ impl Sto {
 
         // Each part is the second deriv WRT to an orthogonal axis.
         for x in &[diff.x, diff.y, diff.z] {
+            let x_sq = x.powi(2);
+
             let term0 = xi.powi(2) * x.powi(2) * exp_term / (n.powi(2) * r_sq)
-                + xi * x.powi(2) * exp_term / (n * r.powi(3))
-                + xi * exp_term / (n * r);
+                + xi * x_sq * exp_term / (n * r.powi(3))
+                - xi * exp_term / (n * r);
 
             let term1 = -2.
                 * (n - 1.)
                 * xi.powf(5. / 2.)
-                * x.powi(2)
+                * x_sq
                 * r_sq.powf((n - 1.) / 2. - 1.5)
                 * exp_term
                 * PI_SQRT_INV
                 / n;
 
+            // The part to the left and right of the parenthesis.
             let term2a = PI_SQRT_INV * xi.powf(1.5) * exp_term;
 
             // (The portion inside the parenthesis, as described by Wolfram Alpha)
             let term2b =
-                2. * ((n - 1.) / 2. - 1.) * (n - 1.) * x.powi(2) * r_sq.powf((n - 1.) / 2. - 2.)
+                2. * ((n - 1.) / 2. - 1.) * (n - 1.) * x_sq * r_sq.powf((n - 1.) / 2. - 2.)
                     + (n - 1.) * r_sq.powf((n - 1.) / 2. - 1.);
 
             result += term0_coeff * term0 + term1 + term2a * term2b;
@@ -527,9 +524,9 @@ impl Sto {
 
         let mut result = 0.;
 
-        for coord in &[diff.x, diff.y, diff.z] {
-            result += self.xi.powi(2) * coord.powi(2) / r.powi(2);
-            result += self.xi * coord.powi(2) / r.powi(3);
+        for x in &[diff.x, diff.y, diff.z] {
+            result += self.xi.powi(2) * x.powi(2) / r.powi(2);
+            result += self.xi * x.powi(2) / r.powi(3);
             result -= self.xi / r;
         }
 
