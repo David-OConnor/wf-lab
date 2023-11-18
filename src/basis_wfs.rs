@@ -14,6 +14,7 @@
 // - second derivative term only in WF -- Is there a tie in to general relatively and gravity?
 // - Metric (or other) tensor per point in space?
 
+use std::f64::consts::PI;
 
 use scilib::{self, math::polynomial::Poly};
 // todo: There's also a WIP scilib Quantum lib that can do these H orbital calculations
@@ -23,8 +24,8 @@ use lin_alg2::f64::{Quaternion, Vec3};
 
 use crate::{
     complex_nums::{Cplx, IM},
-    util::{self, factorial},
     eigen_fns::KE_COEFF,
+    util::{self, factorial},
 };
 
 // Hartree units.
@@ -419,12 +420,13 @@ impl Sto {
             let norm_term = (norm_term_num / norm_term_denom).sqrt();
 
             // let L = Poly::laguerre((n - l - 1).into(), 2 * l + 1);
-            let L = util::make_laguerre(n - l - 1, 2 * l + 1.);
+            let L = util::make_laguerre(n - l - 1, 2 * l + 1);
 
             norm_term
                 * (-r / (nf * A_0)).exp()
                 * (2. * r / (nf * A_0)).powi(l.into())
-                * L.compute(2. * r / (nf * A_0))
+                // * L.compute(2. * r / (nf * A_0))
+                * L(2. * r / (nf * A_0))
         });
 
         // return Cplx::from_real({
@@ -492,7 +494,7 @@ impl Sto {
     /// Analytic second derivative using analytic basis functions.
     /// See OneNote: `Exploring the WF, part 6`. Hardcoded for n=1.
     /// todo: Deprecate A/R
-    pub fn second_deriv_n1(&self, posit_sample: Vec3) -> Cplx {
+    pub fn _second_deriv_n1(&self, posit_sample: Vec3) -> Cplx {
         // todo: This currently ignores the spherical harmonic part; add that!
 
         // Enter this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * e^(-\xi * sqrt(x^2 + y^2 + z^2)) with respect to x`
@@ -709,12 +711,13 @@ impl HOrbital {
         let norm_term = (norm_term_num / norm_term_denom).sqrt();
 
         // let L = Poly::laguerre((n - l - 1).into(), 2 * l + 1);
-        let L = util::make_laguerre(n - l - 1, 2 * l + 1.);
+        let L = util::make_laguerre(n - l - 1, 2 * l + 1);
 
         return norm_term
             * (-r / (nf * A_0)).exp()
             * (2. * r / (nf * A_0)).powi(l.into())
-            * L.compute(2. * r / (nf * A_0));
+            // * L.compute(2. * r / (nf * A_0));
+            * L(2. * r / (nf * A_0));
 
         // Approach 2: Hard-coded for low n.
 

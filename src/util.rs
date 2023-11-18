@@ -73,14 +73,15 @@ pub fn _spherical_to_cart(ctr: Vec3, θ: f64, φ: f64, r: f64) -> Vec3 {
 /// https://en.wikipedia.org/wiki/Laguerre_polynomials
 ///
 /// Typical notation: Lₙ^(α). Note that the non-general polynomials are the same as the general, with α=0.
-pub(crate) fn make_laguerre(n: u16, α: f64) -> impl Fn(f64) -> f64 {
+pub(crate) fn make_laguerre(n: u16, α: u16) -> impl Fn(f64) -> f64 {
+    let α = α as f64;
     // It appears normal functions won't work because they can't capture n; use a closure.
     move |x| match n {
         0 => 1.,
         1 => α + 1. - x,
         2 => x.powi(2) / 2. - (α + 2.) * x + (α + 1.) * (α + 2.) / 2.,
         3 => {
-            -x.powi(3) / 6. + (α + 3) * x.powi(2) / 2. - (α + 2.) * (α + 3.) * x / 2.
+            -x.powi(3) / 6. + (α + 3.) * x.powi(2) / 2. - (α + 2.) * (α + 3.) * x / 2.
                 + (α + 1.) * (α + 2.) * (α + 3.) / 6.
         }
 

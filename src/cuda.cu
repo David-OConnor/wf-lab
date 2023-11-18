@@ -1,20 +1,11 @@
 // #include <math.h>
 #include <initializer_list>
 
-// todo: Consider separate files for coulomb, and STO calculations.
+#include "util.cu"
 
 // https://developer.nvidia.com/blog/even-easier-introduction-cuda/
 
-// Allows easy switching between float and double.
-// #define dtype double
-// #define dtype3 double3
-#define dtype float
-#define dtype3 float3
 
-__device__
-const dtype SOFTENING_FACTOR = 0.000000000001f;
-__device__
-const dtype PI_SQRT_INV = 0.5641895835477563f;
 // const double PI_SQRT_INV = 1 / std::sqrt(M_PI);
 
 // todo: Cuda's `threadIdx` can be 1D, 2D, or 3D. 2D may be a better fit here.
@@ -36,51 +27,43 @@ const dtype PI_SQRT_INV = 0.5641895835477563f;
 //     C[ROW * N + COL] = tmpSum;
 // }
 
-__device__
-dtype laguerre_0(uint16_t n, dtype alpha, dtype x) {
-    return 1.
-}
-
-__device__
-dtype laguerre_1(uint16_t n, dtype alpha, dtype x) {
-    return alpha + 1. - x;
-}
-
-__device__
-dtype laguerre_2(uint16_t n, dtype alpha, dtype x) {
-    return std::exp(x, 2) / 2. - (alpha + 2.) * x + (alpha + 1.) * (alpha + 2.) / 2.;
-}
-// todo: More A/R.
-
-
-__device__
-dtype calc_dist(dtype3 point0, dtype3 point1) {
-    dtype3 diff;
-    diff.x = point0.x - point1.x;
-    diff.y = point0.y - point1.y;
-    diff.z = point0.z - point1.z;
-
-    return std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-}
-
-
-__device__
-dtype coulomb(dtype3 q0, dtype3 q1, dtype charge) {
-    dtype r = calc_dist(q0, q1);
-
-    return 1.f * charge / (r + SOFTENING_FACTOR);
-}
-
 
 // Note that this is for the radial component only, with n=1. Real. See CPU side for a ref.
 __device__
 dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n) {
-    dtype N = PI_SQRT_INV * std::pow(xi, 1.5f);
-
+//     dtype N = PI_SQRT_INV * std::pow(xi, 1.5f);
+//
     dtype r = calc_dist(posit_sample, posit_nuc);
+//
+//     dtype radial = N * std::pow(r, n - 1) * std::exp(-xi * r / n);
+//     return radial;
 
-    dtype radial = N * std::pow(r, n - 1) * std::exp(-xi * r / n);
-    return radial;
+    uint16_t l = 0;
+
+    dtype norm_term_num = std::pow(2. / (n * A_0), 3) * factorial(n - l - 1);
+    dtype norm_term_denom = (2 * n * std::pow(factorial(n + l), 3));
+    dtype norm_term = std::sqrt(norm_term_num / norm_term_denom);
+
+
+    dtype laguerre_term;
+    uint16_t lg_l = n - l - 1;
+    uint16_t lg_r = 2 * l + 1;
+    dtype lg_input = 2.f * r / (n * A_0);
+
+    if (n == 0) {
+        laguerre_term = laguerre_0(lg_l, lg_r, lg_input);
+    }
+    if (n == 1) {
+        laguerre_term = laguerre_1(lg_l, lg_r, lg_input);
+    }
+    if (n == 2) {
+        laguerre_term = laguerre_2(lg_l, lg_r, lg_input);
+    }
+
+    return norm_term
+        * std::exp(-r / (n * A_0))
+        * std::pow(2.f * r / (n * A_0), l)
+        * laguerre_term;
 }
 
 
