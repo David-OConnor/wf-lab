@@ -290,14 +290,16 @@ pub(crate) fn he_solver(state: &mut State) {
         let charges_other_elecs =
             wf_ops::combine_electron_charges(elec_id, &state.charges_electron, state.grid_n_charge);
 
+        let sample_pts = basis_finder::generate_sample_pts();
         let xis: Vec<f64> = state.bases[elec_id].iter().map(|b| b.xi()).collect();
 
-        let (bases, E) = basis_finder::find_stos(
+        let (bases, E) = basis_finder::run(
             &state.cuda_dev,
             &state.charges_fixed,
             &charges_other_elecs,
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_charge,
+            &sample_pts,
             &xis,
         );
 
@@ -308,6 +310,14 @@ pub(crate) fn he_solver(state: &mut State) {
         // todo: Consider combining these 2 things: evaluating the WF at each basis, and
         // todo mixing the bases. The clincher is how to handle normalization. Maybe normalize the charge
         // todo density grid after the fact?
+        // wf_ops::create_psi_from_bases_mix_update_charge_density(
+        //     &state.cuda_dev,
+        //     &mut state.charges_electron[elec_id],
+        //     &state.bases[elec_id],
+        //     &state.surfaces_shared.grid_posits_charge,
+        //     state.grid_n_charge,
+        // );
+
         state.bases_evaluated_charge[elec_id] = wf_ops::create_psi_from_bases(
             &state.cuda_dev,
             &state.bases[elec_id],

@@ -524,14 +524,17 @@ fn bottom_items(
         let charges_other_elecs =
             wf_ops::combine_electron_charges(ae, &state.charges_electron, state.grid_n_charge);
 
+        let sample_pts = basis_finder::generate_sample_pts();
         let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
 
-        let (bases, E) = basis_finder::find_stos(
+
+        let (bases, E) = basis_finder::run(
             &state.cuda_dev,
             &state.charges_fixed,
             &charges_other_elecs,
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_charge,
+            &sample_pts,
             &xis,
         );
 
@@ -551,7 +554,6 @@ fn bottom_items(
 
         // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.
         *updated_evaluated_wfs = true;
-
         *updated_E_or_V = true;
         *updated_basis_weights = true;
         *updated_meshes = true;

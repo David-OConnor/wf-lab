@@ -43,7 +43,7 @@ fn find_base_xi_E_common(
     posit_corner: Vec3,
     V_sample: f64,
     posit_sample: Vec3,
-    base_xi_specified: f64,
+    // base_xi_specified: f64,
 ) -> (f64, f64) {
     // todo: Try at different ns, one the `value` and `second_deriv` there for STOs are set up appropritaely.
 
@@ -98,7 +98,9 @@ fn find_base_xi_E_common(
     (base_xi, E)
 }
 
-fn find_base_xi_E(V: &Arr3dReal, grid_posits: &Arr3dVec, base_xi_specified: f64) -> (f64, f64) {
+fn find_base_xi_E(V: &Arr3dReal, grid_posits: &Arr3dVec,
+                  // base_xi_specified: f64
+) -> (f64, f64) {
     // Set energy so that at a corner, (or edge, ie as close to +/- infinity as we have given a grid-based V)
     // V calculated from this basis matches the potential at this point.
     let index_halfway = V[0].len() / 2;
@@ -114,7 +116,7 @@ fn find_base_xi_E(V: &Arr3dReal, grid_posits: &Arr3dVec, base_xi_specified: f64)
         posit_corner,
         V_sample,
         posit_sample,
-        base_xi_specified,
+        // base_xi_specified,
     )
 }
 
@@ -122,7 +124,7 @@ fn find_base_xi_E_type2(
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
-    base_xi_specified: f64,
+    // base_xi_specified: f64,
 ) -> (f64, f64) {
     // let posit_corner = Vec3::new(30., 30., 30.);
     // let posit_sample = Vec3::new(30., 0., 0.);
@@ -153,7 +155,7 @@ fn find_base_xi_E_type2(
         posit_corner,
         V_sample,
         posit_sample,
-        base_xi_specified,
+        // base_xi_specified,
     )
 }
 
@@ -207,7 +209,7 @@ fn find_charge_trial_wf(
     result
 }
 
-fn generate_sample_pts() -> Vec<Vec3> {
+pub fn generate_sample_pts() -> Vec<Vec3> {
     // It's important that these sample points span points both close and far from the nuclei.
 
     // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
@@ -284,12 +286,7 @@ fn find_bases_system_of_eqs(
     // you can use an iterative method, which will be more efficient for larger matrices where full svd is
     // unfeasible. also check that rust's svd sorts singular values in non-increasing order (pretty sure it does)
     let svd = mat_to_solve.svd(false, true).unwrap();
-    let mut weights = svd.2.unwrap().slice(s![-1, ..]).to_vec();
-
-    // Normalize re base xi.
-
-    // let base_weight = weights[0];
-    // let base_val = 0.2;
+    let weights = svd.2.unwrap().slice(s![-1, ..]).to_vec();
 
     // This approach prevents clipping our UI sliders.
     // todo: Rust's `max` doesn't work with floats. Manually implmementing.
@@ -309,13 +306,6 @@ fn find_bases_system_of_eqs(
         weights_normalized.push(*weight * normalize_to / base_weight);
     }
 
-    // println!("\nXis: {:.3?}", xis);
-    // println!("Sample pts: {:?}", &sample_pts);
-    // println!("V to match: {:?}", &V_to_match);
-
-    // println!("\nWeights: {:.6?}", weights);
-    // println!("Weights normalized: {:.6?}\n", weights_normalized);
-
     let mut result = Vec::new();
 
     for (i, xi) in xis.iter().enumerate() {
@@ -333,8 +323,7 @@ fn find_bases_system_of_eqs(
 }
 
 /// Find a wave function, composed of STOs, that match a given potential.
-// pub fn find_stos(V: &Arr3dReal, grid_posits: &Arr3dVec) -> (Vec<Basis>, f64) {
-pub fn find_stos(
+pub fn run(
     cuda_dev: &Arc<CudaDevice>,
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
@@ -343,44 +332,41 @@ pub fn find_stos(
     // todo: We are experimenting with using the input xis and output for helium
     // Note that this is an intermediate step while we manually experiment with
     // todo convergence algos and trial WFs.
+    sample_pts: &[Vec3],
     xis: &[f64],
 ) -> (Vec<Basis>, f64) {
-    // let additional_xis = [1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
-    // let xis = [1.41714, 2.37682, 4.39628, 6.52699, 7.94252, 5.];
-    // let xis = [1.5, 2.37682, 4.39628, 6.52699, 7.94252];
-
     let mut xis = Vec::from(xis); // todo: Experimenting with adding more
                                   // xis.push(7.);
                                   // xis.push(8.);
                                   // xis.push(9.);
 
-    let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge, xis[0]);
+    let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge);
+                                            // xis[0]);
 
     xis[0] = base_xi;
     println!("\nBase xi: {}. E: {}\n", base_xi, E);
 
-    // todo: Move this part about trial elec V A/R
-    // todo: Frame in terms of a trial psi via STOs instead? Equivlanet. Less direct,
-    // todo but may be easier to construct
-    // let mut trial_electron_v = new_data_real(grid_elecd)
+    // Code regarding trial wave functions. We are currently not using it, assuming we can converge
+    // on a solution from an arbitrary starting point. This seems acceptable for Helium.
+    {
+        // let mut trial_electron_v = new_data_real(grid_elecd)
 
-    let other_elecs_charge = find_charge_trial_wf(
-        &[
-            (1.0, 1.),
-            (2., -0.01),
-            (3., -0.01),
-            (4., -0.01),
-            (5., -0.01),
-            (6., -0.01),
-        ],
-        grid_charge,
-        grid_n_charge,
-    );
+        // let other_elecs_charge = find_charge_trial_wf(
+        //     &[
+        //         (1.0, 1.),
+        //         (2., -0.01),
+        //         (3., -0.01),
+        //         (4., -0.01),
+        //         (5., -0.01),
+        //         (6., -0.01),
+        //     ],
+        //     grid_charge,
+        //     grid_n_charge,
+        // );
+    }
 
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
-
-    let sample_pts = generate_sample_pts();
 
     let mut V_to_match = potential::create_V_1d_from_elec(
         cuda_dev,

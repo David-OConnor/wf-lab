@@ -294,6 +294,8 @@ pub fn initialize_bases(
             (6.52699, -0.00994),
             (7.94252, 0.00230),
             // (1., 1.),
+            // (1.7, 0.),
+            // (1.6, 0.),
             // (2., 0.),
             // (3., 0.),
             // (4., 0.),
@@ -394,6 +396,48 @@ pub fn create_psi_from_bases(
                     let i_flat = i * grid_n_sq + j * grid_n + k;
                     result[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
                     norm += result[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
+                }
+            }
+        }
+
+        util::normalize_wf(&mut result[basis_i], norm);
+    }
+    result
+}
+
+/// Another loop-saving combo.
+pub fn create_psi_from_bases_mix_update_charge_density(
+    dev: &Arc<CudaDevice>,
+    charge_density: &mut Arr3dReal,
+    bases: &[Basis],
+    grid_posits: &Arr3dVec,
+    grid_n: usize,
+) -> Vec<Arr3d> {
+    let mut result = Vec::new();
+    for _ in 0..bases.len() {
+        result.push(new_data(grid_n));
+    }
+
+    let posits_flat = util::flatten_arr(grid_posits, grid_n);
+
+    for (basis_i, basis) in bases.iter().enumerate() {
+        let psi_flat = gpu::sto_vals(dev, basis.xi(), &posits_flat, basis.posit());
+
+        let mut norm = 0.;
+
+        // This is similar to util::unflatten, but with coercing to cplx.
+        let grid_n_sq = grid_n.pow(2);
+
+        for i in 0..grid_n {
+            for j in 0..grid_n {
+                for k in 0..grid_n {
+                    let i_flat = i * grid_n_sq + j * grid_n + k;
+
+                    result[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
+                    norm += result[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
+
+                    // todo: Figure out if this is feasible given the normalization
+                    // charge_density[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
                 }
             }
         }

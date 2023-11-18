@@ -64,7 +64,7 @@ const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_CHARGE: f64 = 10.;
 const GRID_MAX_RENDER: f64 = 5.;
 const GRID_N_DEFAULT: usize = 60;
-const GRID_N_CHARGE_DEFAULT: usize = 81;
+const GRID_N_CHARGE_DEFAULT: usize = 61;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -203,7 +203,10 @@ pub fn init_from_grid(
 
     let sfcs_one_elec = SurfacesPerElec::new(grid_n);
 
-    let mut surfaces_per_elec = vec![sfcs_one_elec.clone(), sfcs_one_elec];
+    let mut surfaces_per_elec = Vec::new();
+    for _ in 0..num_electrons {
+        surfaces_per_elec.push(sfcs_one_elec.clone());
+    }
 
     let mut surfaces_shared = SurfacesShared::new(
         grid_range,
@@ -316,7 +319,8 @@ fn main() {
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let nuclei = vec![
-        (posit_charge_1, Q_PROT * 2.), // helium
+        // (posit_charge_1, Q_PROT * 2.), // helium
+        (posit_charge_1, Q_PROT * 3.), // lithium
                                        // (posit_charge_1, Q_PROT * 1.), // Hydrogen
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
@@ -326,7 +330,7 @@ fn main() {
 
     let ui_active_elec = 0;
 
-    let num_elecs = 2;
+    let num_elecs = 3;
 
     // Outer of these is per-elec.
     let mut bases = Vec::new();
