@@ -163,7 +163,13 @@ pub fn mix_bases(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize, weights
 }
 
 /// 2 in one, to remove an unecessarly loop.
-pub fn mix_bases_update_charge_density(psi: &mut Arr3d, charge_density: &mut Arr3dReal, bases_evaled: &[Arr3d], grid_n: usize, weights: &[f64]) {
+pub fn mix_bases_update_charge_density(
+    psi: &mut Arr3d,
+    charge_density: &mut Arr3dReal,
+    bases_evaled: &[Arr3d],
+    grid_n: usize,
+    weights: &[f64],
+) {
     // We don't need to normalize the result using the full procedure; the basis-wfs are already
     // normalized, so divide by the cumulative basis weights.
     let mut weight_total = 0.;
@@ -193,10 +199,6 @@ pub fn mix_bases_update_charge_density(psi: &mut Arr3d, charge_density: &mut Arr
         }
     }
 }
-
-
-
-
 
 /// This function combines mixing (pre-computed) numerical basis WFs with updating psi''.
 /// it updates E as well.

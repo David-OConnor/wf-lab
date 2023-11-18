@@ -319,8 +319,8 @@ fn main() {
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let nuclei = vec![
-        // (posit_charge_1, Q_PROT * 2.), // helium
-        (posit_charge_1, Q_PROT * 3.), // lithium
+        (posit_charge_1, Q_PROT * 2.), // helium
+                                       // (posit_charge_1, Q_PROT * 3.), // lithium
                                        // (posit_charge_1, Q_PROT * 1.), // Hydrogen
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
@@ -330,7 +330,7 @@ fn main() {
 
     let ui_active_elec = 0;
 
-    let num_elecs = 3;
+    let num_elecs = 2;
 
     // Outer of these is per-elec.
     let mut bases = Vec::new();

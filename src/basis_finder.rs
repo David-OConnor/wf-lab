@@ -98,8 +98,10 @@ fn find_base_xi_E_common(
     (base_xi, E)
 }
 
-fn find_base_xi_E(V: &Arr3dReal, grid_posits: &Arr3dVec,
-                  // base_xi_specified: f64
+fn find_base_xi_E(
+    V: &Arr3dReal,
+    grid_posits: &Arr3dVec,
+    // base_xi_specified: f64
 ) -> (f64, f64) {
     // Set energy so that at a corner, (or edge, ie as close to +/- infinity as we have given a grid-based V)
     // V calculated from this basis matches the potential at this point.
@@ -341,7 +343,7 @@ pub fn run(
                                   // xis.push(9.);
 
     let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge);
-                                            // xis[0]);
+    // xis[0]);
 
     xis[0] = base_xi;
     println!("\nBase xi: {}. E: {}\n", base_xi, E);

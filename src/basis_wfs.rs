@@ -33,7 +33,6 @@ const A_0: f64 = 1.;
 const Z_H: f64 = 1.;
 
 const PI_SQRT_INV: f64 = 0.5641895835477563;
-// const PI_SQRT_INV: f64 = 1. / PI.sqrt();
 
 // todo: Remove this enum if you use STOs as the only basis
 #[derive(Clone, Debug)]
@@ -406,19 +405,6 @@ pub struct Sto {
 }
 
 impl Sto {
-    // /// This constructs an STO from a simple form, characterized by a coefficient, and
-    // /// exp(-xi r).
-    // /// todo: You may need to take into account forms that resemble S2 orbitals etc.
-    // pub fn from_weight_xi(weight: f64, xi: f64, posit: Vec3) -> Self {
-    //     Self {
-    //         posit,
-    //         n,
-    //         xi,
-    //         harmonic: SphericalHarmonic::new(),
-    //         weight,
-    //     }
-    // }
-
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         // todo: This currently ignores the spherical harmonic part; add that!
         let r = (posit_sample - self.posit).magnitude();
@@ -447,7 +433,7 @@ impl Sto {
 
     /// Analytic second derivative using analytic basis functions.
     /// See OneNote: `Exploring the WF, part 6`.
-    pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
+    pub fn second_deriv_n1(&self, posit_sample: Vec3) -> Cplx {
         // todo: This currently ignores the spherical harmonic part; add that!
         // todo: It also assumes n = 1.
 
@@ -474,6 +460,60 @@ impl Sto {
         }
 
         let radial = Cplx::from_real(N * result);
+
+        radial
+    }
+
+    /// Analytic second derivative using analytic basis functions.
+    /// See OneNote: `Exploring the WF, part 6`.
+    pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
+        // todo: This currently ignores the spherical harmonic part; add that!
+
+        // todo: Put this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * sqrt(x^2 + y^2 + z^2)^(n-1) * e^(-\xi * sqrt(x^2 + y^2 + z^2) / n) with respect to x`
+        // todo: Much messier form.
+        // todo: Modify accordingly.
+
+        let diff = posit_sample - self.posit;
+        let r_sq = diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2);
+        let r = (r_sq).sqrt();
+
+        // code-shorteners, to help make these long equations easier to read.
+        let n = self.n as f64;
+        let xi = self.xi;
+
+        let exp_term = (-xi * r / n).exp();
+
+        let N = PI_SQRT_INV * xi.powf(1.5);
+        let term0_coeff = N * r_sq.powf((n - 1.) / 2.);
+
+        let mut result = 0.;
+
+        // Each part is the second deriv WRT to an orthogonal axis.
+        for x in &[diff.x, diff.y, diff.z] {
+            let term0 = xi.powi(2) * x.powi(2) * exp_term / (n.powi(2) * r_sq)
+                + xi * x.powi(2) * exp_term / (n * r.powi(3))
+                + xi * exp_term / (n * r);
+
+            let term1 = -2.
+                * (n - 1.)
+                * xi.powf(5. / 2.)
+                * x.powi(2)
+                * r_sq.powf((n - 1.) / 2. - 1.5)
+                * exp_term
+                * PI_SQRT_INV
+                / n;
+
+            let term2a = PI_SQRT_INV * xi.powf(1.5) * exp_term;
+
+            // (The portion inside the parenthesis, as described by Wolfram Alpha)
+            let term2b =
+                2. * ((n - 1.) / 2. - 1.) * (n - 1.) * x.powi(2) * r_sq.powf((n - 1.) / 2. - 2.)
+                    + (n - 1.) * r_sq.powf((n - 1.) / 2. - 1.);
+
+            result += term0_coeff * term0 + term1 + term2a * term2b;
+        }
+
+        let radial = Cplx::from_real(result);
 
         radial
     }

@@ -527,7 +527,6 @@ fn bottom_items(
         let sample_pts = basis_finder::generate_sample_pts();
         let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
 
-
         let (bases, E) = basis_finder::run(
             &state.cuda_dev,
             &state.charges_fixed,
