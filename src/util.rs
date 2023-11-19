@@ -1,5 +1,6 @@
 use crate::grid_setup::{Arr3d, Arr3dReal, Arr3dVec};
 
+use crate::complex_nums::Cplx;
 use lin_alg2::f64::Vec3;
 
 /// Create a set of values in a given range, with a given number of values.
@@ -223,7 +224,7 @@ pub(crate) fn flatten_arr(vals_3d: &Arr3dVec, grid_n: usize) -> Vec<Vec3> {
 }
 
 /// Unflatted 3D data, after getting results from a GPU kernel.
-pub(crate) fn unflatten_arr(result: &mut Arr3dReal, vals_flat: &[f64], grid_n: usize) {
+pub(crate) fn unflatten_arr_real(result: &mut Arr3dReal, vals_flat: &[f64], grid_n: usize) {
     let grid_n_sq = grid_n.pow(2);
 
     for i in 0..grid_n {
@@ -231,6 +232,21 @@ pub(crate) fn unflatten_arr(result: &mut Arr3dReal, vals_flat: &[f64], grid_n: u
             for k in 0..grid_n {
                 let i_flat = i * grid_n_sq + j * grid_n + k;
                 result[i][j][k] = vals_flat[i_flat];
+            }
+        }
+    }
+}
+
+/// Unflatted 3D data, after getting results from a GPU kernel.
+pub(crate) fn unflatten_arr(result: &mut Arr3d, vals_flat: &[f64], grid_n: usize) {
+    let grid_n_sq = grid_n.pow(2);
+    // todo: DRY. And currently accepts f3d, but converts to Cplx.
+
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                let i_flat = i * grid_n_sq + j * grid_n + k;
+                result[i][j][k] = Cplx::from_real(vals_flat[i_flat]);
             }
         }
     }

@@ -409,7 +409,6 @@ impl Sto {
         // todo: This currently ignores the spherical harmonic part; add that!
         let r = (posit_sample - self.posit).magnitude();
 
-        // todo: Experimenting using lessons learned from H orbitals, to get  this working.
         return Cplx::from_real({
             let n = self.n;
             let nf = n as f64;
@@ -530,7 +529,13 @@ impl Sto {
         // code-shorteners, to help make these long equations easier to read. And precomputing  some terms.
         let diff = posit_sample - self.posit;
         let r_sq = diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2);
+
+        if r_sq < 0.00000000001 {
+            return Cplx::new_zero();
+        }
+
         let r = r_sq.sqrt();
+
 
         let n = self.n as f64;
         let xi = self.xi;

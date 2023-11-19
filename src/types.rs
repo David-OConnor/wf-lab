@@ -1,12 +1,17 @@
+use cudarc::driver::CudaDevice;
+use std::sync::Arc;
+
+use lin_alg2::f64::Vec3;
+
 use crate::{
+    basis_wfs::Basis,
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
+    gpu,
     grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
+    util,
 };
-
-use crate::basis_wfs::Basis;
-use crate::num_diff::H;
-use lin_alg2::f64::Vec3;
+use crate::basis_wfs::Basis::H;
 
 pub struct SurfacesShared {
     /// Represents points on a grid, for our non-uniform grid.
@@ -59,52 +64,14 @@ impl SurfacesShared {
             grid_posits_charge,
             V_total: data_real.clone(),
             V_from_nuclei: data_real.clone(),
-            // psi: data.clone(),
             psi: WaveFunctionMultiElec::new(num_elecs, n_grid),
-            // psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
             psi_pp_calculated: data.clone(),
             E: -0.50,
             psi_numeric: data,
             charge_density_dft: data_real,
-            // psi_pp_score: 1.,
         }
     }
-    //
-    // /// Update `psi` etc from that of individual electrons
-    // /// Relevant for combining from multiplie elecs
-    // pub fn combine_psi_parts(&mut self, per_elec: &[SurfacesPerElec], E: &[f64], grid_n: usize) {
-    //     // Todo: V. Before you update psi_pp_calc.
-    //
-    //     for i in 0..grid_n {
-    //         for j in 0..grid_n {
-    //             for k in 0..grid_n {
-    //                 self.psi[i][j][k] = Cplx::new_zero();
-    //
-    //                 for (part_i, part) in per_elec.iter().enumerate() {
-    //                     self.psi[i][j][k] += part.psi.on_pt[i][j][k];
-    //
-    //                     // todo: Come back to this once you figure out how to handle V here.
-    //                     // todo: Maybe you don't have psi_pp_calc here.
-    //                     // self.psi_pp_calculated[i][j][k] =
-    //                     //     eigen_fns::find_ψ_pp_calc(&self.psi, &self.V, E[part_i], i, j, k)
-    //                 }
-    //             }
-    //         }
-    //     }
-    //
-    //     num_diff::find_ψ_pp_meas_fm_grid_irreg(
-    //         &self.psi,
-    //         &mut self.psi_pp_measured,
-    //         &self.grid_posits,
-    //         grid_n,
-    //     );
-    //
-    //     // todo: What to do with score?
-    //     // let score = wf_ops::score_wf(self); // todo
-    //
-    //     // todo: You probably need a score_total and e_total in state.
-    // }
 }
 
 /// Represents important data, in describe 3D arrays.
@@ -120,9 +87,6 @@ pub struct SurfacesPerElec {
     pub psi: PsiWDiffs,
     pub psi_pp_calculated: Arr3d,
     pub psi_pp_measured: Arr3d,
-    // /// Individual nudge amounts, per point of ψ. Real, since it's scaled by the diff
-    // /// between psi'' measured and calcualted, which is complex.
-    // pub nudge_amounts: Arr3dReal,
     /// Aux surfaces are for misc visualizations
     pub aux1: Arr3dReal,
     pub aux2: Arr3dReal,
@@ -141,12 +105,10 @@ impl SurfacesPerElec {
         let psi = PsiWDiffs::init(&data);
 
         Self {
-            // V_from_this: data_real.clone(),
             V_acting_on_this: data_real.clone(),
             psi,
             psi_pp_calculated: data.clone(),
             psi_pp_measured: data.clone(),
-            // nudge_amounts: default_nudges,
             aux1: data_real.clone(),
             aux2: data_real.clone(),
             aux3: data_real,
@@ -184,13 +146,13 @@ impl EvalDataShared {
 #[derive(Clone)]
 pub struct BasesEvaluated {
     pub on_pt: Vec<Arr3d>,
+    pub psi_pp_analytic: Vec<Arr3d>,
     pub x_prev: Vec<Arr3d>,
     pub x_next: Vec<Arr3d>,
     pub y_prev: Vec<Arr3d>,
     pub y_next: Vec<Arr3d>,
     pub z_prev: Vec<Arr3d>,
     pub z_next: Vec<Arr3d>,
-    pub psi_pp_analytic: Vec<Arr3d>, // Sneaking this approach in!
 }
 
 impl BasesEvaluated {
@@ -198,7 +160,15 @@ impl BasesEvaluated {
     /// and when changing the grid. This evaluates the analytic basis functions at
     /// each grid point. Each basis will be normalized in this function.
     /// Relatively computationally intensive.
-    pub fn new(bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) -> Self {
+    ///
+    /// Update Nov 2023: This initializer only updates `psi` and `psi_pp_analytic`: Compute
+    /// numerical diffs after.
+    pub fn initialize_with_psi(
+        device: &Arc<CudaDevice>,
+        bases: &[Basis],
+        grid_posits: &Arr3dVec,
+        grid_n: usize,
+    ) -> Self {
         let mut on_pt = Vec::new();
         let mut psi_pp_analytic = Vec::new();
         let mut x_prev = Vec::new();
@@ -222,6 +192,49 @@ impl BasesEvaluated {
         for (basis_i, basis) in bases.iter().enumerate() {
             let mut norm = 0.;
 
+            let posits_flat = util::flatten_arr(grid_posits, grid_n);
+
+            let (psi_flat, psi_pp_flat) =
+                gpu::sto_vals_derivs(device, basis.xi(), basis.n(), &posits_flat, basis.posit());
+
+            util::unflatten_arr(&mut on_pt[basis_i], &psi_flat, grid_n);
+            util::unflatten_arr(&mut psi_pp_analytic[basis_i], &psi_pp_flat, grid_n);
+
+            //todo: Normalize?
+            // on_pt[basis_i] = util::normalize_wf(&mut on_pt[basis_i], norm);
+            // psi_pp_analytic[basis_i] = util::normalize_wf(&mut on_pt[basis_i], norm);
+
+            // CPU version below.
+            // for i in 0..grid_n {
+            //     for j in 0..grid_n {
+            //         for k in 0..grid_n {
+            //             let posit_sample = grid_posits[i][j][k];
+            //
+            //             // todo: CUDA here.
+            //             on_pt[basis_i][i][j][k] = basis.value(posit_sample);
+            //             psi_pp_analytic[basis_i][i][j][k] = basis.second_deriv(posit_sample);
+            //
+            //             // todo: Do you want to normalize?
+            //             // norm += val_pt.abs_sq();
+            //         }
+            //     }
+            // }
+        }
+
+        Self {
+            on_pt,
+            x_prev,
+            x_next,
+            y_prev,
+            y_next,
+            z_prev,
+            z_next,
+            psi_pp_analytic,
+        }
+    }
+
+    pub fn update_psi_pp_numerics(&mut self, bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) {
+        for (basis_i, basis) in bases.iter().enumerate() {
             for i in 0..grid_n {
                 for j in 0..grid_n {
                     for k in 0..grid_n {
@@ -240,8 +253,6 @@ impl BasesEvaluated {
                         let posit_z_next =
                             Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
 
-                        let val_pt = basis.value(posit_sample);
-
                         let val_x_prev = basis.value(posit_x_prev);
                         let val_x_next = basis.value(posit_x_next);
                         let val_y_prev = basis.value(posit_y_prev);
@@ -249,49 +260,16 @@ impl BasesEvaluated {
                         let val_z_prev = basis.value(posit_z_prev);
                         let val_z_next = basis.value(posit_z_next);
 
-                        on_pt[basis_i][i][j][k] = val_pt;
+                        // todo: Divide by norm A/R.
                         x_prev[basis_i][i][j][k] = val_x_prev;
                         x_next[basis_i][i][j][k] = val_x_next;
                         y_prev[basis_i][i][j][k] = val_y_prev;
                         y_next[basis_i][i][j][k] = val_y_next;
                         z_prev[basis_i][i][j][k] = val_z_prev;
                         z_next[basis_i][i][j][k] = val_z_next;
-
-                        norm += val_pt.abs_sq();
-
-                        psi_pp_analytic[basis_i][i][j][k] = basis.second_deriv(posit_sample);
                     }
                 }
             }
-            //
-            // let mut xi = 0.;
-            // if let Basis::Sto(sto) = basis {
-            //     xi = sto.xi;
-            // }
-            // todo: Use this line, with high grid n, for finding the norm for analytic basis wfs.
-            // println!("Norm for xi={}: {norm_pt}", xi);
-
-            // normalize_wf(&mut on_pt[basis_i], norm);
-            // normalize_wf(&mut psi_pp_analytic[basis_i], norm);
-
-            // note: Using individual norm consts for the prevs and next appears to produce incorrect results.
-            // normalize_wf(&mut x_prev[basis_i], norm);
-            // normalize_wf(&mut x_next[basis_i], norm);
-            // normalize_wf(&mut y_prev[basis_i], norm);
-            // normalize_wf(&mut y_next[basis_i], norm);
-            // normalize_wf(&mut z_prev[basis_i], norm);
-            // normalize_wf(&mut z_next[basis_i], norm);
-        }
-
-        Self {
-            on_pt,
-            x_prev,
-            x_next,
-            y_prev,
-            y_next,
-            z_prev,
-            z_next,
-            psi_pp_analytic,
         }
     }
 }

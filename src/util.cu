@@ -1,5 +1,6 @@
 // This module contains constants and utility functions related to the kernels we use.
 
+
 // Allows easy switching between float and double.
 // #define dtype double
 // #define dtype3 double3

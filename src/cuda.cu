@@ -1,31 +1,8 @@
 // #include <math.h>
 #include <initializer_list>
 
+// todo: Header file.
 #include "util.cu"
-
-// https://developer.nvidia.com/blog/even-easier-introduction-cuda/
-
-
-// const double PI_SQRT_INV = 1 / std::sqrt(M_PI);
-
-// todo: Cuda's `threadIdx` can be 1D, 2D, or 3D. 2D may be a better fit here.
-// 1D with packing/unpacking is fine, but 2D would be perhaps cleaner. Experiment.
-
-// extern "C" __global__ void matmul(dtype* A, dtype* B, dtype* C, int N) {
-//     // Syntax example using 2D inputs.
-//     size_t ROW = blockIdx.y * blockDim.y + threadIdx.y;
-//     size_t COL = blockIdx.x * blockDim.x + threadIdx.x;
-//
-//     dtype tmpSum = 0;
-//
-//     if (ROW < N && COL < N) {
-//         // each thread computes one element of the block sub-matrix
-//         for (size_t i = 0; i < N; i++) {
-//             tmpSum += A[ROW * N + i] * B[i * N + COL];
-//         }
-//     }
-//     C[ROW * N + COL] = tmpSum;
-// }
 
 
 // Note that this is for the radial component only, with n=1. Real. See CPU side for a ref.
@@ -103,6 +80,11 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
     diff.z = posit_sample.z - posit_nuc.z;
 
     dtype r_sq = std::pow(diff.x, 2) + std::pow(diff.y, 2) + std::pow(diff.z, 2);
+
+    if (r_sq < 0.000000001) {
+        return 0.;
+    }
+
     dtype r = std::sqrt(r_sq);
 
     dtype exp_term = std::exp(-xi * r / n);
@@ -138,6 +120,11 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
                 + (n - 1.f) * std::pow(r_sq, (n - 1.f) / 2.f - 1.f);
 
         result += term0_coeff * term0 + term1 + term2a * term2b;
+//         result += term0_coeff * term0;// fails
+//         result += term0_coeff  + term1 + term2a * term2b; // fail
+//             result += term0_coeff +  term2a * term2b; // pass. terms 1 and 0 fail
+//             result += term1;
+//             result += term0;
     }
 
     return result;
@@ -226,8 +213,10 @@ void sto_val_deriv_kernel(
     size_t stride = blockDim.x * gridDim.x;
 
     for (size_t i_sample = index; i_sample < N_samples; i_sample += stride) {
-        out_val[i_sample] += sto_val(posits_sample[i_sample], posit_nuc, xi, n);
-        out_second_deriv[i_sample] += sto_second_deriv(posits_sample[i_sample], posit_nuc, xi, n);
+        out_val[i_sample] = sto_val(posits_sample[i_sample], posit_nuc, xi, n);
+
+        // todo: Put back once you figure out what's going wrong.
+        // out_second_deriv[i_sample] = sto_second_deriv(posits_sample[i_sample], posit_nuc, xi, n);
     }
 }
 

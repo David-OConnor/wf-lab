@@ -88,11 +88,11 @@ pub fn psi_from_pt_charges(
     // Set up the potential, ψ, and ψ'' (measured and calculated) for the potential from input charges,
     potential::update_V_from_nuclei(&mut V_shared, charges_fixed, &grid_posits, grid_n);
 
-    let bases_unweighted = types::BasesEvaluated::new(bases, &grid_posits, grid_n);
+    // let bases_unweighted = types::BasesEvaluated::initialize_with_psi(bases, &grid_posits, grid_n);
 
     // Set up our basis-function based trial wave function.
     let weights: Vec<f64> = bases.iter().map(|b| b.weight()).collect();
-    wf_ops::update_wf_fm_bases(&mut sfcs, &bases_unweighted, E, grid_n, &weights);
+    // wf_ops::update_wf_fm_bases(&mut sfcs, &bases_unweighted, E, grid_n, &weights);
 
     sfcs.psi.on_pt.clone()
 }

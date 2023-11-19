@@ -108,7 +108,6 @@ pub fn update_grid_posits(
 pub fn new_data(n: usize) -> Arr3d {
     let mut z = Vec::new();
     z.resize(n, Cplx::new_zero());
-    // z.resize(N, 0.);
 
     let mut y = Vec::new();
     y.resize(n, z);

@@ -248,7 +248,8 @@ pub fn init_from_grid(
         );
     }
 
-    let bases_evaluated_one = types::BasesEvaluated::new(
+    let bases_evaluated_one = types::BasesEvaluated::initialize_with_psi(
+        &cuda_dev,
         &bases[0], // todo: A bit of a kludge
         &surfaces_shared.grid_posits,
         grid_n,

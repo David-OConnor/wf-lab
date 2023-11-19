@@ -292,6 +292,7 @@ pub(crate) fn sto_vals_derivs(
 
     let mut psi = dev.alloc_zeros::<FDev>(n_samples).unwrap();
     let mut psi_pp = dev.alloc_zeros::<FDev>(n_samples).unwrap();
+
     let posit_nuc_gpu = dev
         .htod_sync_copy(&[
             posit_nuc.x as FDev,

@@ -68,7 +68,8 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
 
 /// Run this when we add bases, change basis parameters other than weight etc.
 pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
-    state.bases_evaluated[ae] = BasesEvaluated::new(
+    state.bases_evaluated[ae] = BasesEvaluated::initialize_with_psi(
+        &state.cuda_dev,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits,
         state.grid_n_render,
