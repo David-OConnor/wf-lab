@@ -84,10 +84,8 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
         }
     }
 
-
     return result;
 }
-
 
 
 // In this approach, we parallelize operations per sample, but run the
@@ -172,10 +170,10 @@ void sto_val_deriv_kernel(
     size_t stride = blockDim.x * gridDim.x;
 
     for (size_t i_sample = index; i_sample < N_samples; i_sample += stride) {
-        out_val[i_sample] = sto_val(posits_sample[i_sample], posit_nuc, xi, n);
+        // out_val[i_sample] = sto_val(posits_sample[i_sample], posit_nuc, xi, n);
 
         // todo: Put back once you figure out what's going wrong.
-        // out_second_deriv[i_sample] = sto_second_deriv(posits_sample[i_sample], posit_nuc, xi, n);
+        out_second_deriv[i_sample] = sto_second_deriv(posits_sample[i_sample], posit_nuc, xi, n);
     }
 }
 
