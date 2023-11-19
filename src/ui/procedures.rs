@@ -75,8 +75,10 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
         state.grid_n_render,
     );
 
-    state.bases_evaluated_charge[ae] = wf_ops::create_psi_from_bases(
+    wf_ops::create_psi_from_bases(
         &state.dev,
+        &mut state.bases_evaluated_charge[ae],
+        None,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits_charge,
         state.grid_n_charge,
@@ -319,8 +321,10 @@ pub(crate) fn he_solver(state: &mut State) {
         //     state.grid_n_charge,
         // );
 
-        state.bases_evaluated_charge[elec_id] = wf_ops::create_psi_from_bases(
+        wf_ops::create_psi_from_bases(
             &state.dev,
+            &mut state.bases_evaluated_charge[elec_id],
+            None,
             &state.bases[elec_id],
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_charge,

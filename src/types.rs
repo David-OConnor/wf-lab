@@ -196,43 +196,17 @@ impl BasesEvaluated {
             z_next.push(empty.clone());
         }
 
-        for (basis_i, basis) in bases.iter().enumerate() {
-            let mut norm = 0.;
+        // todo: TS asymetric psipp; forcing CPU.
+        let dev = &ComputationDevice::Cpu;
 
-            let posits_flat = util::flatten_arr(grid_posits, grid_n);
-
-            // todo: getting "out of resources" errors when attempting the combined kernel.
-            // let (psi_flat, psi_pp_flat) =
-            //     gpu::sto_vals_derivs(device, basis.xi(), basis.n(), &posits_flat, basis.posit());
-
-            // let psi_flat = gpu::sto_vals_or_derivs(
-            //     device,
-            //     basis.xi(),
-            //     basis.n(),
-            //     &posits_flat,
-            //     basis.posit(),
-            //     false,
-            // );
-            //
-            // let psi_pp_flat = gpu::sto_vals_or_derivs(
-            //     device,
-            //     basis.xi(),
-            //     basis.n(),
-            //     &posits_flat,
-            //     basis.posit(),
-            //     true,
-            // );
-            //
-            // util::unflatten_arr(&mut on_pt[basis_i], &psi_flat, grid_n);
-            // util::unflatten_arr(&mut psi_pp_analytic[basis_i], &psi_pp_flat, grid_n);
-
-            // todo: TS asymetric psipp
-            // wf_ops::sto_vals_derivs_cpu(&mut on_pt[basis_i], &mut psi_pp_analytic[basis_i], &grid_posits, basis, grid_n)
-
-            //todo: Normalize?
-            // on_pt[basis_i] = util::normalize_wf(&mut on_pt[basis_i], norm);
-            // psi_pp_analytic[basis_i] = util::normalize_wf(&mut on_pt[basis_i], norm);
-        }
+        wf_ops::create_psi_from_bases(
+            dev,
+            &mut on_pt,
+            Some(&mut psi_pp_analytic),
+            bases,
+            grid_posits,
+            grid_n,
+        );
 
         Self {
             on_pt,

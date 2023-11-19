@@ -70,7 +70,7 @@ pub enum Spin {
 /// be selected.
 ///
 /// The resulting wave functions are normalized.
-pub fn mix_bases_w_diffs(
+pub(crate) fn mix_bases_w_diffs(
     psi: &mut PsiWDiffs,
     bases_evaled: &BasesEvaluated,
     grid_n: usize,
@@ -208,6 +208,7 @@ pub fn mix_bases_update_charge_density(
 /// - Computes a trial ψ from basis functions. Computes it at each grid point, as well as
 /// the 6 offset ones along the 3 axis used to numerically differentiate.
 /// - Computes ψ'' calculated, and measured from the trial ψ
+/// todo: This function needs a rework or removal.
 pub fn update_wf_fm_bases(
     sfcs: &mut SurfacesPerElec,
     basis_wfs: &BasesEvaluated,
@@ -373,26 +374,25 @@ pub fn initialize_bases(
 
 /// Create psi using basis functions. Only creates psi; doesn't create
 /// its derivatives, and combines from all bases. We use this primarily as part of the central dogma
-/// pipeline; ie for creating charge from the electron cloud.
+/// pipeline; ie for creating charge from the electron cloud. We may also use it for the render grid.
 /// todo: This currently keeps the bases unmixed. Do we want 2 variants: One mixed, one unmixed?
 pub fn create_psi_from_bases(
     dev: &ComputationDevice,
+    psi: &mut [Arr3d],
+    mut psi_pp: Option<&mut [Arr3d]>,
     bases: &[Basis],
     grid_posits: &Arr3dVec,
     grid_n: usize,
-) -> Vec<Arr3d> {
-    let mut result = Vec::new();
-    for _ in 0..bases.len() {
-        result.push(new_data(grid_n));
-    }
+) {
+    let mut norm = 0.;
 
-    let posits_flat = util::flatten_arr(grid_posits, grid_n);
+    match dev {
+        ComputationDevice::Gpu(cuda_dev) => {
+            let posits_flat = util::flatten_arr(grid_posits, grid_n);
 
-    for (basis_i, basis) in bases.iter().enumerate() {
-        let mut norm = 0.;
-
-        match dev {
-            ComputationDevice::Gpu(cuda_dev) => {
+            // This basis loop is instead the dev selection so we don't calc posits_flat on CPU.
+            // Unfortunately, it adds duplicated code.
+            for (basis_i, basis) in bases.iter().enumerate() {
                 let psi_flat = gpu::sto_vals_or_derivs(
                     cuda_dev,
                     basis.xi(),
@@ -402,25 +402,61 @@ pub fn create_psi_from_bases(
                     false,
                 );
 
-                // This is similar to util::unflatten, but with coercing to cplx.
+                // todo: Use the combined kernnel once you sort out out-of-resources.
+                let psi_pp_flat = if let Some(_) = psi_pp {
+                    Some(gpu::sto_vals_or_derivs(
+                        cuda_dev,
+                        basis.xi(),
+                        basis.n(),
+                        &posits_flat,
+                        basis.posit(),
+                        true,
+                    ))
+                } else {
+                    None
+                };
+
                 let grid_n_sq = grid_n.pow(2);
 
+                // This is similar to util::unflatten, but with norm involved.
+                // todo: Try to use unflatten.
                 for i in 0..grid_n {
                     for j in 0..grid_n {
                         for k in 0..grid_n {
                             let i_flat = i * grid_n_sq + j * grid_n + k;
-                            result[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
-                            norm += result[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
+                            psi[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
+
+                            if let Some(pp) = psi_pp.as_mut() {
+                                pp[basis_i][i][j][k] =
+                                    Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
+                            }
+
+                            norm += psi[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
                         }
                     }
                 }
+                util::normalize_wf(&mut psi[basis_i], norm);
             }
-            ComputationDevice::Cpu => unimplemented!(),
         }
+        ComputationDevice::Cpu => {
+            for (basis_i, basis) in bases.iter().enumerate() {
+                for i in 0..grid_n {
+                    for j in 0..grid_n {
+                        for k in 0..grid_n {
+                            let posit_sample = grid_posits[i][j][k];
 
-        util::normalize_wf(&mut result[basis_i], norm);
+                            if let Some(ref mut pp) = psi_pp {
+                                pp[basis_i][i][j][k] = basis.second_deriv(posit_sample);
+                            }
+                            psi[basis_i][i][j][k] = basis.value(posit_sample);
+                            norm += psi[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
+                        }
+                    }
+                }
+                util::normalize_wf(&mut psi[basis_i], norm);
+            }
+        }
     }
-    result
 }
 
 /// Another loop-saving combo.
@@ -607,12 +643,8 @@ pub(crate) fn sto_vals_derivs_cpu(
             for k in 0..grid_n {
                 let posit_sample = grid_posits[i][j][k];
 
-                // todo: CUDA here.
                 psi[i][j][k] = basis.value(posit_sample);
                 psi_pp[i][j][k] = basis.second_deriv(posit_sample);
-
-                // todo: Do you want to normalize?
-                // norm += val_pt.abs_sq();
             }
         }
     }

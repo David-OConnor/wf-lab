@@ -46,6 +46,8 @@ mod ui;
 mod util;
 mod wf_ops;
 
+use crate::grid_setup::new_data;
+use crate::types::BasesEvaluated;
 use crate::{
     basis_wfs::Basis,
     grid_setup::{Arr3d, Arr3dReal},
@@ -56,9 +58,9 @@ use crate::{
 const NUM_SURFACES: usize = 11;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
+const GRID_MAX_RENDER: f64 = 12.;
 const GRID_MAX_CHARGE: f64 = 15.;
-const GRID_MAX_RENDER: f64 = 8.;
-const GRID_N_DEFAULT: usize = 60;
+const GRID_N_RENDER_DEFAULT: usize = 50;
 const GRID_N_CHARGE_DEFAULT: usize = 61;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
@@ -183,13 +185,13 @@ pub fn init_from_grid(
     spacing_factor: f64,
     grid_n: usize,
     grid_n_charge: usize,
-    bases: &[Vec<Basis>],
+    bases_per_elec: &[Vec<Basis>],
     charges_fixed: &[(Vec3, f64)],
     num_electrons: usize,
 ) -> (
     Vec<Arr3dReal>,
     Vec<Arr3dReal>,
-    Vec<types::BasesEvaluated>,
+    Vec<BasesEvaluated>,
     Vec<Vec<Arr3d>>,
     SurfacesShared,
     Vec<SurfacesPerElec>,
@@ -243,20 +245,6 @@ pub fn init_from_grid(
         );
     }
 
-    let bases_evaluated_one = types::BasesEvaluated::initialize_with_psi(
-        dev,
-        &bases[0], // todo: A bit of a kludge
-        &surfaces_shared.grid_posits,
-        grid_n,
-    );
-
-    let bases_evaluated_charge_one = wf_ops::create_psi_from_bases(
-        dev,
-        &bases[0], // todo: A bit of a kludge
-        &surfaces_shared.grid_posits_charge,
-        grid_n_charge,
-    );
-
     // These must be initialized from wave functions later.
     let mut bases_evaluated = Vec::new();
     let mut bases_evaluated_charge = Vec::new();
@@ -267,19 +255,45 @@ pub fn init_from_grid(
     for i_elec in 0..num_electrons {
         charges_electron.push(grid_setup::new_data_real(grid_n_charge));
         V_from_elecs.push(arr_real.clone());
-        bases_evaluated.push(bases_evaluated_one.clone());
-        bases_evaluated_charge.push(bases_evaluated_charge_one.clone());
+
+        let mut bec_this_elec = Vec::new();
+
+        for bases_this_elec in bases_per_elec {
+            // Handle the charge-grid-evaluated psi.
+            bec_this_elec.push(new_data(grid_n_charge));
+        }
+
+        let bases_eval_this_elec = BasesEvaluated::initialize_with_psi(
+            dev,
+            &bases_per_elec[0], // todo temp
+            &surfaces_shared.grid_posits,
+            grid_n,
+        );
+        // let weights: Vec<f64> = bases_this_elec.iter().map(|b| b.weight()).collect();
+        // wf_ops::mix_bases(&mut surfaces_per_elec[i_elec].psi.on_pt, &bases_evaluated[i_elec],grid_n, &weights);
 
         // Set up our basis-function based trial wave function.
-        // todo: Handle the multi-electron case instead of hard-coding 0.
-        let weights: Vec<f64> = bases[0].iter().map(|b| b.weight()).collect();
+        let weights: Vec<f64> = bases_per_elec[0].iter().map(|b| b.weight()).collect(); // todo: 0 is temp
+
         wf_ops::update_wf_fm_bases(
             &mut surfaces_per_elec[i_elec],
-            &bases_evaluated[i_elec],
-            -0.5,
+            &bases_eval_this_elec,
+            -0.5, // todo: Param etc?
             grid_n,
             &weights,
         );
+
+        bases_evaluated.push(bases_eval_this_elec);
+
+        // todo: Not working; index error.
+        // wf_ops::create_psi_from_bases(
+        //     dev,
+        //     &mut bec_this_elec,
+        //     &bases_per_elec[i_elec],
+        //     &surfaces_shared.grid_posits_charge,
+        //     grid_n_charge,
+        // );
+        bases_evaluated_charge.push(bec_this_elec);
     }
 
     (
@@ -294,7 +308,6 @@ pub fn init_from_grid(
 
 fn main() {
     // todo: Check if GPU is available. If so, use GPU dev. If note, use CPU.
-
     let dev = if true {
         // This is compiled in `build.rs`.
         let cuda_dev = CudaDevice::new(0).unwrap();
@@ -312,8 +325,11 @@ fn main() {
                 ],
             )
             .unwrap();
+
+        println!("Using the GPU for computations.");
         ComputationDevice::Gpu(cuda_dev)
     } else {
+        println!("Using the CPU for computations.");
         ComputationDevice::Cpu
     };
 
@@ -364,7 +380,7 @@ fn main() {
     // Currently, must be one as long as used with elec-elec charge.
     let spacing_factor = SPACING_FACTOR_DEFAULT;
 
-    let grid_n = GRID_N_DEFAULT;
+    let grid_n = GRID_N_RENDER_DEFAULT;
     let grid_n_charge = GRID_N_CHARGE_DEFAULT;
 
     let (

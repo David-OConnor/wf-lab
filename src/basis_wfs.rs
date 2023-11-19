@@ -154,7 +154,6 @@ impl Basis {
 
     pub fn weight_mut(&mut self) -> &mut f64 {
         match self {
-            // Self::Sto(v) => &mut v.weight,
             Self::H(v) => &mut v.weight,
             Self::Gto(v) => &mut v.weight,
             Self::Sto(v) => &mut v.weight,
@@ -163,10 +162,8 @@ impl Basis {
 
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         match self {
-            // Self::Sto(v) => v.value(posit_sample),
             Self::H(v) => v.value(posit_sample),
             Self::Gto(v) => v.value(posit_sample),
-            // Self::Sto(v) => v.value(posit_sample),
             Self::Sto(v) => v.value(posit_sample),
         }
     }
@@ -174,7 +171,6 @@ impl Basis {
     /// Note: We must normalize afterwards.
     pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
         match self {
-            Self::Sto(v) => v.second_deriv(posit_sample),
             Self::H(v) => v.second_deriv(posit_sample),
             Self::Gto(_v) => unimplemented!(),
             Self::Sto(v) => v.second_deriv(posit_sample),
