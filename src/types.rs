@@ -196,8 +196,27 @@ impl BasesEvaluated {
 
             let posits_flat = util::flatten_arr(grid_posits, grid_n);
 
-            let (psi_flat, psi_pp_flat) =
-                gpu::sto_vals_derivs(device, basis.xi(), basis.n(), &posits_flat, basis.posit());
+            // todo: getting "out of resources" errors when attempting the combined kernel.
+            // let (psi_flat, psi_pp_flat) =
+            //     gpu::sto_vals_derivs(device, basis.xi(), basis.n(), &posits_flat, basis.posit());
+
+            let psi_flat = gpu::sto_vals_or_derivs(
+                device,
+                basis.xi(),
+                basis.n(),
+                &posits_flat,
+                basis.posit(),
+                false,
+            );
+
+            let psi_pp_flat = gpu::sto_vals_or_derivs(
+                device,
+                basis.xi(),
+                basis.n(),
+                &posits_flat,
+                basis.posit(),
+                true,
+            );
 
             util::unflatten_arr(&mut on_pt[basis_i], &psi_flat, grid_n);
             util::unflatten_arr(&mut psi_pp_analytic[basis_i], &psi_pp_flat, grid_n);

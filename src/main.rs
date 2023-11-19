@@ -307,8 +307,8 @@ fn main() {
             "cuda",
             &[
                 "coulomb_kernel",
-                "sto_val_kernel",
-                "sto_deriv_kernel",
+                "sto_val_or_deriv_kernel",
+                "sto_deriv_kernel", // todo: Temp workaround for out-of-resources errors.
                 "sto_val_deriv_multiple_bases_kernel",
                 "sto_val_multiple_bases_kernel",
                 "sto_val_deriv_kernel",

@@ -449,7 +449,7 @@ impl Sto {
         let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
         let norm_term = (norm_term_num / norm_term_denom).sqrt();
 
-        let exp_term = (-self.xi * r / (nf* A_0)).exp();
+        let exp_term = (-self.xi * r / (nf * A_0)).exp();
 
         // Note: [The OP here](https://chemistry.stackexchange.com/questions/164478/why-are-slater-type-orbitals-used-for-atomic-calculations-instead-of-hydrogen-li)
         // contains a different form; worth examining. It includes both xi and the Laguerre term,
@@ -457,8 +457,7 @@ impl Sto {
 
         let L = util::make_laguerre(n - l - 1, 2 * l + 1);
 
-        let polynomial_term = (2. * r / (nf * A_0)).powi(l.into())
-            * L(2. * r / (nf * A_0));
+        let polynomial_term = (2. * r / (nf * A_0)).powi(l.into()) * L(2. * r / (nf * A_0));
         // n=0: L(x) = 1.
         // n=1: L(x) = α + 1. - x,
         // n=2: L(x) = x.powi(2) / 2. - (α + 2.) * x + (α + 1.) * (α + 2.) / 2.,
@@ -487,9 +486,7 @@ impl Sto {
         // WA's image output. Then manually replace (x^+y^2+z^2) with r_sq etc, and replace using
         // `exp_term` and `s_sq` as well.
 
-        norm_term
-            * polynomial_term
-            * exp_term
+        norm_term * polynomial_term * exp_term
     }
 
     /// Analytic second derivative using analytic basis functions.

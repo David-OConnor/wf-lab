@@ -231,12 +231,13 @@ pub(crate) fn sto_vals_multiple_bases(
 
 /// Compute STO value and second derivative at a collection of sample points.
 /// Assumes N=1 and real values for now.
-pub(crate) fn sto_vals(
+pub(crate) fn sto_vals_or_derivs(
     dev: &Arc<CudaDevice>,
     xi: f64,
     n: u16,
     posits_sample: &[Vec3],
     posit_nuc: Vec3,
+    deriv: bool,
 ) -> Vec<f64> {
     // todo: DRY
     let n_samples = posits_sample.len();
@@ -253,7 +254,13 @@ pub(crate) fn sto_vals(
         ])
         .unwrap();
 
-    let kernel = dev.get_func("cuda", "sto_val_kernel").unwrap();
+    // if/else here a workaround for out of resources error.
+    let kernel = if deriv {
+        dev.get_func("cuda", "sto_deriv_kernel").unwrap()
+    } else {
+        dev.get_func("cuda", "sto_val_or_deriv_kernel").unwrap()
+    };
+
     let cfg = LaunchConfig::for_num_elems(n_samples as u32);
 
     unsafe {
@@ -265,6 +272,7 @@ pub(crate) fn sto_vals(
                 &posit_nuc_gpu,
                 xi as FDev,
                 n,
+                // deriv,
                 n_samples,
             ),
         )

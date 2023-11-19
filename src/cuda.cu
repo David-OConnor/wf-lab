@@ -66,21 +66,28 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
 
         if (n == 1 && l == 0) {
             double term1 = -(16.0 * xi * x_sq * exp_term) / (std::pow(n, 3) * r);
+
             double term2 = (4.0 * r_sq * ((std::pow(xi, 2) * x_sq * exp_term) / (std::pow(n, 2) * r_sq) +
                     (xi * x_sq * exp_term) / (n * std::pow(r_sq, 1.5)) - (xi * exp_term) / (n * r))) / std::pow(n, 2);
+
             double term3 = (8.0 * exp_term) / std::pow(n, 2);
 
             result += term1 + term2 + term3;
         } else if (n == 2 && l == 0) {
             double term1 = -(8.0 * xi * x * (-x_sq + 4.0 * x - 3.0 * x_sq - r_sq) * exp_term) / (std::pow(n, 3) * r);
+
             double term2 = (4.0 * (2.0 - x) * r * (
                     (std::pow(xi, 2) * x_sq * exp_term) / (std::pow(n, 2) * r) +
                     (xi * x_sq * exp_term) / (n * std::pow(r, 3.0/2.0)) -
                     (xi * exp_term) / (n * r)
                 )) / std::pow(n, 2);
+
             double term3 = (4.0 * (2.0 * (2.0 - x) - 4.0 * x) * exp_term) / std::pow(n, 2);
 
+            // todo: All 3 terms are showing as asymetric...
             result += term1 + term2 + term3;
+//             result += term3; // todo tS
+//             result += 1.;
         }
     }
 
@@ -119,25 +126,32 @@ void coulomb_kernel(
 }
 
 
+// Note that this is for the radial component only, with n=1. Real.
 extern "C" __global__
-void sto_val_kernel(
+void sto_val_or_deriv_kernel(
     dtype *out,
     dtype3 *posits_sample,
     dtype3 posit_nuc,
     dtype xi,
     uint16_t n,
+//     bool deriv,
     size_t N_samples
 ) {
     size_t index = blockIdx.x * blockDim.x + threadIdx.x;
     size_t stride = blockDim.x * gridDim.x;
 
+    bool deriv = false; // todo TS OUT OF RESOURCES.
+
     for (size_t i = index; i < N_samples; i += stride) {
-        out[i] = sto_val(posits_sample[i], posit_nuc, xi, 1);
+        if (deriv == true) {
+            out[i] = sto_second_deriv(posits_sample[i], posit_nuc, xi, n);
+        } else {
+            out[i] = sto_val(posits_sample[i], posit_nuc, xi, n);
+        }
     }
 }
 
-
-// Note that this is for the radial component only, with n=1. Real.
+// Temp workaround for out-of-resources error on the combined or or and ones.
 extern "C" __global__
 void sto_deriv_kernel(
     dtype *out,
@@ -170,9 +184,7 @@ void sto_val_deriv_kernel(
     size_t stride = blockDim.x * gridDim.x;
 
     for (size_t i_sample = index; i_sample < N_samples; i_sample += stride) {
-        // out_val[i_sample] = sto_val(posits_sample[i_sample], posit_nuc, xi, n);
-
-        // todo: Put back once you figure out what's going wrong.
+        out_val[i_sample] = sto_val(posits_sample[i_sample], posit_nuc, xi, n);
         out_second_deriv[i_sample] = sto_second_deriv(posits_sample[i_sample], posit_nuc, xi, n);
     }
 }
