@@ -435,7 +435,6 @@ impl Sto {
         self.harmonic.value(θ, ϕ)
     }
 
-
     pub fn radial(&self, posit_sample: Vec3) -> f64 {
         // todo: This currently ignores the spherical harmonic part; add that!
         let r = (posit_sample - self.posit).magnitude();
@@ -539,15 +538,13 @@ impl Sto {
         let nf = n as f64;
         let xi = self.xi;
 
+        let exp_term = (-xi * r / nf).exp();
+
         // todo: These normalization terms may be inappropriate when not paired with a spherical harmonic.
-        //C+P from `value`.
+        // C+P from `radial`.
         let norm_term_num = (2. / (nf * A_0)).powi(3) * factorial(n - l - 1) as f64;
         let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
         let norm_term = (norm_term_num / norm_term_denom).sqrt();
-
-        let exp_term = (-xi * r / n).exp();
-
-        let N = PI_SQRT_INV * xi.powf(1.5);
 
         let mut result = 0.;
 
@@ -560,36 +557,44 @@ impl Sto {
             // todo variants better. Or, perhaps not.
 
             if n == 1 && l == 0 {
-                let term1 = -(16.0 * xi * x_sq * exp_term) / (n.powi(3) * r);
+                let term1 = -(16.0 * xi * x_sq * exp_term) / (nf.powi(3) * r);
 
-                let term2 = (4.0 * r_sq * ((xi.powi(2) * x_sq * exp_term) / (n.powi(2) * r_sq) +
-                    (xi * x_sq * exp_term) / (n * r_sq.powf(1.5)) - (xi * exp_term) / (n * r))) / n.powi(2);
+                let term2 = (4.0
+                    * r_sq
+                    * ((xi.powi(2) * x_sq * exp_term) / (nf.powi(2) * r_sq)
+                        + (xi * x_sq * exp_term) / (nf * r_sq.powf(1.5))
+                        - (xi * exp_term) / (nf * r)))
+                    / nf.powi(2);
 
-                let term3 = (8.0 * exp_term) / n.powi(2);
-
-                result += term1 + term2 + term3;
-            }
-
-            else if n == 2 && l == 0 {
-                let term1 = -(8.0 * xi * x * (-x_sq + 2.0 * (2.0 - x) * x - y.powi(2) - z.powi(2)) * exp_term) / (n.powi(3) * r);
-                let term2 = (4.0 * (2.0 - x) * r * (
-                    (xi.powi(2) * x_sq * exp_term) / (n.powi(2) * r) +
-                        (xi * x_sq * exp_term) / (n * r.powf(3.0/2.0)) -
-                        (xi * exp_term) / (n * r)
-                )) / n.powi(2);
-                let term3 = (4.0 * (2.0 * (2.0 - x) - 4.0 * x) * exp_term) / n.powi(2);
+                let term3 = (8.0 * exp_term) / nf.powi(2);
 
                 result += term1 + term2 + term3;
-            }
+            } else if n == 2 && l == 0 {
+                // Re-arranging to remove standalone y and z terms with r_sq.
+                // let term1 = -(8.0 * xi * x * (-x_sq + 2.0 * (2.0 - x) * x - y.powi(2) - z.powi(2)) * exp_term) / (n.powi(3) * r);
+                // -x_sq + 2x * (2-x) - y^2...
+                // -x_sq + 4x - 4x^2 - y^2 - z^2
+                // -x_sq + 4x - 3x^2 - x^2 - y^2 - z^2
+                let term1 = -(8.0 * xi * x * (-x_sq + 4. * x - 3. * x_sq - r_sq) * exp_term)
+                    / (nf.powi(3) * r);
 
-            else {
+                let term2 = (4.0
+                    * (2.0 - x)
+                    * r
+                    * ((xi.powi(2) * x_sq * exp_term) / (nf.powi(2) * r)
+                        + (xi * x_sq * exp_term) / (nf * r.powf(3.0 / 2.0))
+                        - (xi * exp_term) / (nf * r)))
+                    / nf.powi(2);
+
+                let term3 = (4.0 * (2.0 * (2.0 - x) - 4.0 * x) * exp_term) / nf.powi(2);
+
+                result += term1 + term2 + term3;
+            } else {
                 unimplemented!("Second deriv unimplemented for this n and l.")
             }
-
         }
 
         Cplx::from_real(norm_term * result)
-
     }
 
     /// Saves some minor computations over calculating them individually, due to

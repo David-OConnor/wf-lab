@@ -44,33 +44,6 @@ dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n) {
 }
 
 
-// Note that this is for the radial component only, with n=1. Real. See CPU side for a ref.
-// todo: Deprecate A/R
-__device__
-dtype sto_second_deriv_n1(dtype3 posit_sample, dtype3 posit_nuc, dtype xi) {
-    dtype N = PI_SQRT_INV * pow(xi, 1.5);
-
-    dtype3 diff;
-    diff.x = posit_sample.x - posit_nuc.x;
-    diff.y = posit_sample.y - posit_nuc.y;
-    diff.z = posit_sample.z - posit_nuc.z;
-
-    dtype r = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-
-    dtype exp_term = std::exp(-xi * r);
-
-    dtype result = 0.;
-
-    for (dtype x : {diff.x, diff.y, diff.z}) {
-        result += std::pow(xi, 2) * std::pow(x, 2) * exp_term / std::pow(r, 2);
-        result += xi * std::pow(x, 2) * exp_term / std::pow(r, 3);
-        result -= xi * exp_term / r;
-    }
-
-    dtype radial = N * result;
-    return radial;
-}
-
 // Note that this is for the radial component only. Real. See CPU side for a ref.
 __device__
 dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n) {
@@ -87,45 +60,39 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
 
     dtype r = std::sqrt(r_sq);
 
+    uint16_t l = 0;
+
     dtype exp_term = std::exp(-xi * r / n);
 
-    dtype N = PI_SQRT_INV * std::pow(xi, 1.5f);
-    dtype term0_coeff = N * std::pow(r_sq, (n - 1.f) / 2.f);
+    double norm_term_num = std::pow(2.0 / n, 3) * factorial(n - l - 1);
+    double norm_term_denom = std::pow(2 * n * factorial(n + l), 3);
+    double norm_term = std::sqrt(norm_term_num / norm_term_denom);
 
-    dtype result = 0.f;
+    dtype result = 0.;
 
-    // Each part is the second deriv WRT to an orthogonal axis.
-    for (dtype x : {diff.x, diff.y, diff.z}) {
-        dtype x_sq = std::pow(x, 2);
+    for (auto x : {diff.x, diff.y, diff.z}) {
+        double x_sq = std::pow(x, 2);
 
-        dtype term0 = std::pow(xi, 2) * std::pow(x, 2) * exp_term / (std::pow(n, 2) * r_sq)
-            + xi * x_sq * exp_term / (n * std::pow(r, 3))
-            - xi * exp_term / (n * r);
+        if (n == 1 && l == 0) {
+            double term1 = -(16.0 * xi * x_sq * exp_term) / (std::pow(n, 3) * r);
+            double term2 = (4.0 * r_sq * ((std::pow(xi, 2) * x_sq * exp_term) / (std::pow(n, 2) * r_sq) +
+                    (xi * x_sq * exp_term) / (n * std::pow(r_sq, 1.5)) - (xi * exp_term) / (n * r))) / std::pow(n, 2);
+            double term3 = (8.0 * exp_term) / std::pow(n, 2);
 
-        dtype term1 = -2.f
-            * (n - 1.f)
-            * std::pow(xi, 5.f / 2.f)
-            * x_sq
-            * std::pow(r_sq, (n - 1.f) / 2.f - 1.5f)
-            * exp_term
-            * PI_SQRT_INV
-            / n;
+            result += term1 + term2 + term3;
+        } else if (n == 2 && l == 0) {
+            double term1 = -(8.0 * xi * x * (-x_sq + 4.0 * x - 3.0 * x_sq - r_sq) * exp_term) / (std::pow(n, 3) * r);
+            double term2 = (4.0 * (2.0 - x) * r * (
+                    (std::pow(xi, 2) * x_sq * exp_term) / (std::pow(n, 2) * r) +
+                    (xi * x_sq * exp_term) / (n * std::pow(r, 3.0/2.0)) -
+                    (xi * exp_term) / (n * r)
+                )) / std::pow(n, 2);
+            double term3 = (4.0 * (2.0 * (2.0 - x) - 4.0 * x) * exp_term) / std::pow(n, 2);
 
-        // The part to the left and right of the parenthesis.
-        dtype term2a = PI_SQRT_INV * std::pow(xi, 1.5f) * exp_term;
-
-        // (The portion inside the parenthesis, as described by Wolfram Alpha)
-        dtype term2b =
-            2.f * ((n - 1.f) / 2.f - 1.f) * (n - 1.f) * x_sq * std::pow(r_sq, (n - 1.f) / 2.f - 2.f)
-                + (n - 1.f) * std::pow(r_sq, (n - 1.f) / 2.f - 1.f);
-
-        result += term0_coeff * term0 + term1 + term2a * term2b;
-//         result += term0_coeff * term0;// fails
-//         result += term0_coeff  + term1 + term2a * term2b; // fail
-//             result += term0_coeff +  term2a * term2b; // pass. terms 1 and 0 fail
-//             result += term1;
-//             result += term0;
+            result += term1 + term2 + term3;
+        }
     }
+
 
     return result;
 }

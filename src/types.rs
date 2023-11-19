@@ -8,11 +8,10 @@ use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
     gpu,
-    num_diff::H,
     grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
+    num_diff::H,
     util,
 };
-
 
 pub struct SurfacesShared {
     /// Represents points on a grid, for our non-uniform grid.
@@ -236,7 +235,12 @@ impl BasesEvaluated {
         }
     }
 
-    pub fn update_psi_pp_numerics(&mut self, bases: &[Basis], grid_posits: &Arr3dVec, grid_n: usize) {
+    pub fn update_psi_pp_numerics(
+        &mut self,
+        bases: &[Basis],
+        grid_posits: &Arr3dVec,
+        grid_n: usize,
+    ) {
         for (basis_i, basis) in bases.iter().enumerate() {
             for i in 0..grid_n {
                 for j in 0..grid_n {
