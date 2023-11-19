@@ -8,10 +8,11 @@ use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
     gpu,
+    num_diff::H,
     grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
     util,
 };
-use crate::basis_wfs::Basis::H;
+
 
 pub struct SurfacesShared {
     /// Represents points on a grid, for our non-uniform grid.
@@ -178,15 +179,17 @@ impl BasesEvaluated {
         let mut z_prev = Vec::new();
         let mut z_next = Vec::new();
 
+        let empty = new_data(grid_n);
+
         for _ in 0..bases.len() {
-            on_pt.push(new_data(grid_n));
-            psi_pp_analytic.push(new_data(grid_n));
-            x_prev.push(new_data(grid_n));
-            x_next.push(new_data(grid_n));
-            y_prev.push(new_data(grid_n));
-            y_next.push(new_data(grid_n));
-            z_prev.push(new_data(grid_n));
-            z_next.push(new_data(grid_n));
+            on_pt.push(empty.clone());
+            psi_pp_analytic.push(empty.clone());
+            x_prev.push(empty.clone());
+            x_next.push(empty.clone());
+            y_prev.push(empty.clone());
+            y_next.push(empty.clone());
+            z_prev.push(empty.clone());
+            z_next.push(empty.clone());
         }
 
         for (basis_i, basis) in bases.iter().enumerate() {
@@ -261,12 +264,12 @@ impl BasesEvaluated {
                         let val_z_next = basis.value(posit_z_next);
 
                         // todo: Divide by norm A/R.
-                        x_prev[basis_i][i][j][k] = val_x_prev;
-                        x_next[basis_i][i][j][k] = val_x_next;
-                        y_prev[basis_i][i][j][k] = val_y_prev;
-                        y_next[basis_i][i][j][k] = val_y_next;
-                        z_prev[basis_i][i][j][k] = val_z_prev;
-                        z_next[basis_i][i][j][k] = val_z_next;
+                        self.x_prev[basis_i][i][j][k] = val_x_prev;
+                        self.x_next[basis_i][i][j][k] = val_x_next;
+                        self.y_prev[basis_i][i][j][k] = val_y_prev;
+                        self.y_next[basis_i][i][j][k] = val_y_next;
+                        self.z_prev[basis_i][i][j][k] = val_z_prev;
+                        self.z_next[basis_i][i][j][k] = val_z_next;
                     }
                 }
             }

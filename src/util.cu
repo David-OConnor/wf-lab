@@ -19,12 +19,10 @@ dtype laguerre_0(uint16_t n, uint16_t alpha, dtype x) {
     return 1.f;
 }
 
-
 __device__
 dtype laguerre_1(uint16_t n, uint16_t alpha, dtype x) {
     return alpha + 1.f - x;
 }
-
 
 __device__
 dtype laguerre_2(uint16_t n, uint16_t alpha, dtype x) {

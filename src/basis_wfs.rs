@@ -406,125 +406,123 @@ pub struct Sto {
 
 impl Sto {
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
-        // todo: This currently ignores the spherical harmonic part; add that!
-        let r = (posit_sample - self.posit).magnitude();
-
-        return Cplx::from_real({
-            let n = self.n;
-            let nf = n as f64;
-            let l = 0;
-
-            let norm_term_num = (2. / (nf * A_0)).powi(3) * factorial(n - l - 1) as f64;
-            let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
-            let norm_term = (norm_term_num / norm_term_denom).sqrt();
-
-            // let L = Poly::laguerre((n - l - 1).into(), 2 * l + 1);
-            let L = util::make_laguerre(n - l - 1, 2 * l + 1);
-
-            norm_term
-                * (-r / (nf * A_0)).exp()
-                * (2. * r / (nf * A_0)).powi(l.into())
-                // * L.compute(2. * r / (nf * A_0))
-                * L(2. * r / (nf * A_0))
-        });
-
-        // return Cplx::from_real({
-        //     let n = self.n;
-        //     let l = 0;
-        //     // N is the normalization constant for the radial part
-        //     let ρ = Z_H * r / A_0; // always r.
-        //     let c = (Z_H * A_0).powf(3. / 2.); // always 1
-        //
-        //     let part1 = match n {
-        //         1 => 2.,
-        //         2 => match l {
-        //             0 => 2. * (2. - ρ),           // todo: z/a0 vice / 2a0?
-        //             1 => 1. / 3.0_f64.sqrt() * ρ, // z/a0 vs /3a0?
-        //             _ => panic!(),
-        //         },
-        //         // compare to this: https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Map%3A_Physical_Chemistry_for_the_Biosciences_(Chang)/11%3A_Quantum_Mechanics_and_Atomic_Structure/11.10%3A_The_Schrodinger_Wave_Equation_for_the_Hydrogen_Atom
-        //         3 => match l {
-        //             0 => 2. / 27. * (27. - 18. * ρ + 2. * ρ.powi(2)),
-        //             1 => 1. / (81. * 3.0_f64.sqrt()) * (6. - ρ.powi(2)),
-        //             2 => 1. / (81. * 15.0_f64.sqrt()) * ρ.powi(2),
-        //             _ => panic!(),
-        //         },
-        //         _ => unimplemented!(), // todo: More
-        //     };
-        //
-        //     let part2 = (-ρ / n as f64).exp();
-        //
-        //     part1 * part2 * c
-        // });
-
-        // Note: Divide xi bo A_0 if setting that to something other than 1.
-        // todo: Confirm quantum number `n` isn't part of this term if you start using it.
-        // ξ^(3/2) / √π
-        let N = PI_SQRT_INV * self.xi.powf(1.5);
-
-        // Note: Try ChatGPT: "User
-        // What is the formula for the radial component of a slater-type-orbital, given distance from nucleus r,
-        // and the n quantum number. Assume quantum numbers l and m are 0."
-        // You get a more complicated N, involving a double factorial.
-
-        // e^(-ξr/n)
-        // todo: Which?
-        let exp_term = (-self.xi * r / (self.n as f64)).exp();
-        // e^(-ξr)
-        // let exp_term = (-self.xi * r).exp();
-
-        //   let L = Poly::laguerre((n - l - 1).into(), 2 * l + 1);
-        // // let L = util::make_laguerre(n - l - 1, 2 * l + 1.);
-        //
-        // return
-        //     * (-r / (n as f64 * A_0)).exp()
-        //     * (2. * r / (n as f64 * A_0)).powi(l.into())
-        //     * L.compute(2. * r / (n as f64 * A_0));
-
-        // r^(n-1)
-        let radial = Cplx::from_real(
-            // Note: We're leaving out A_0, since it's 1.
-            N * r.powi((self.n - 1).into()) * exp_term,
-        );
-
-        radial
+        // Cplx::from_real(self.radial(posit_sample)) * self.angular(posit_sample)
+        Cplx::from_real(self.radial(posit_sample))
     }
 
-    /// Analytic second derivative using analytic basis functions.
-    /// See OneNote: `Exploring the WF, part 6`. Hardcoded for n=1.
-    /// todo: Deprecate A/R
-    pub fn _second_deriv_n1(&self, posit_sample: Vec3) -> Cplx {
-        // todo: This currently ignores the spherical harmonic part; add that!
+    /// Calculate the angular portion of a basis function's value at a given point.
+    /// Does not include weight.
+    /// https://quantummechanics.ucsd.edu/ph130a/130_notes/node233.html
+    pub fn angular(&self, posit_sample: Vec3) -> Cplx {
+        const EPS: f64 = 0.000000001;
+        // todo: COnsider re-adding if aplicable to save computation, if you end up with lots of 0ed bases.
+        // if self.weight.abs() < EPS {
+        //     return Cplx::new_zero(); // saves some computation.
+        // }
 
-        // Enter this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * e^(-\xi * sqrt(x^2 + y^2 + z^2)) with respect to x`
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
-        let N = PI_SQRT_INV * self.xi.powf(1.5);
-        // Note: This variant uses the same form as our `value` fn, but assumes n = 1.
+        let diff = self.harmonic.orientation.inverse().rotate_vec(diff);
 
-        let exp_term = (-self.xi * r).exp();
+        // We use the "physics" (ISO) convention described here, where phi
+        // covers the full way around, and theta goes half a turn from
+        // the top.
 
-        let mut result = 0.;
+        let θ = (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z);
+        let ϕ = diff.y.atan2(diff.x);
 
-        // Each part is the second deriv WRT to an orthogonal axis.
-        for x in &[diff.x, diff.y, diff.z] {
-            result += self.xi.powi(2) * x.powi(2) * exp_term / r.powi(2);
-            result += self.xi * x.powi(2) * exp_term / r.powi(3);
-            result -= self.xi * exp_term / r;
-        }
-
-        let radial = Cplx::from_real(N * result);
-
-        radial
+        self.harmonic.value(θ, ϕ)
     }
+
+
+    pub fn radial(&self, posit_sample: Vec3) -> f64 {
+        // todo: This currently ignores the spherical harmonic part; add that!
+        let r = (posit_sample - self.posit).magnitude();
+
+        let n = self.n;
+        // let l = self.l; // todo
+        let l = 0;
+        let nf = n as f64;
+
+        // todo: These normalization terms may be inappropriate when not paired with a spherical harmonic.
+        let norm_term_num = (2. / (nf * A_0)).powi(3) * factorial(n - l - 1) as f64;
+        let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
+        let norm_term = (norm_term_num / norm_term_denom).sqrt();
+
+        let L = util::make_laguerre(n - l - 1, 2 * l + 1);
+        // n=0: L(x) = 1.
+        // n=1: L(x) = α + 1. - x,
+        // n=2: L(x) = x.powi(2) / 2. - (α + 2.) * x + (α + 1.) * (α + 2.) / 2.,
+
+        // If n=1, l=0, L= 1.
+        // If n=2, l=0, L = 2. - x
+        // If n=3, l=0, L = x^2 / 2 - 3x + 3
+
+        // For n=1 second deriv, try this in Wolfram Alpha:
+        // todo: Confirm this is how you apply xi.
+        // n=1, l=0
+        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 * 1*(2*r/n) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
+        // n=2, l=0
+        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 * (2-x)*(2*r/n) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
+        // n=3, l=0
+        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 * (x^2 / 2 - 3x + 3)*(2*r/n) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
+
+        // Example ChatGPT query:
+        // "Please calculate the second derivative of C * exp(-r * \xi / n) * (2 * r / n)^1 *
+        // 1*(2*r/n) with respect to x where r=sqrt(x^2 + y^2 + z^2). Please output the result in
+        // the form of a rust function. Please use the variable `r` in the resulting code when
+        // possible, vice splitting it into its x, y, and z components.
+
+        // Note: ChatGPT appears not to output a form that doesn't include x or y directly; use WolframAlpha,and
+        // ask ChatGPT to convert its plain text version to Rust. You could alternatively screenshot
+        // WA's image output. Then manually replace (x^+y^2+z^2) with r_sq etc, and replace using
+        // `exp_term` and `s_sq` as well.
+
+        norm_term
+            * (-r * self.xi / (nf * A_0)).exp() // todo: Is this where xi goes?
+            * (2. * r / (nf * A_0)).powi(l.into())
+            * L(2. * r / (nf * A_0))
+    }
+    //
+    // /// Analytic second derivative using analytic basis functions.
+    // /// See OneNote: `Exploring the WF, part 6`. Hardcoded for n=1.
+    // /// todo: Deprecate A/R
+    // pub fn _second_deriv_n1(&self, posit_sample: Vec3) -> Cplx {
+    //     // todo: This currently ignores the spherical harmonic part; add that!
+    //
+    //     // Enter this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * e^(-\xi * r) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
+    //     let diff = posit_sample - self.posit;
+    //     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+    //
+    //     let N = PI_SQRT_INV * self.xi.powf(1.5);
+    //     // Note: This variant uses the same form as our `value` fn, but assumes n = 1.
+    //
+    //     let exp_term = (-self.xi * r).exp();
+    //
+    //     let mut result = 0.;
+    //
+    //     // Each part is the second deriv WRT to an orthogonal axis.
+    //     for x in &[diff.x, diff.y, diff.z] {
+    //         result += self.xi.powi(2) * x.powi(2) * exp_term / r.powi(2);
+    //         result += self.xi * x.powi(2) * exp_term / r.powi(3);
+    //         result -= self.xi * exp_term / r;
+    //     }
+    //
+    //     let radial = Cplx::from_real(N * result);
+    //
+    //     radial
+    // }
 
     /// Analytic second derivative using analytic basis functions.
     /// See OneNote: `Exploring the WF, part 6`.
+    ///
+    /// See also `value()`, for information on appropriate ChatGPT queries to calculate
+    /// this analytic second derivative.
     pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
         // todo: This currently ignores the spherical harmonic part; add that!
 
-        // Enter this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * sqrt(x^2 + y^2 + z^2)^(n-1) * e^(-\xi * sqrt(x^2 + y^2 + z^2) / n) with respect to x`
+        // Enter this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * r^(n-1) * e^(-\xi * r / n) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
 
         // code-shorteners, to help make these long equations easier to read. And precomputing  some terms.
         let diff = posit_sample - self.posit;
@@ -533,56 +531,72 @@ impl Sto {
         if r_sq < 0.00000000001 {
             return Cplx::new_zero();
         }
-
         let r = r_sq.sqrt();
 
-
-        let n = self.n as f64;
+        let n = self.n;
+        // let l = self.l; // todo
+        let l = 0;
+        let nf = n as f64;
         let xi = self.xi;
+
+        // todo: These normalization terms may be inappropriate when not paired with a spherical harmonic.
+        //C+P from `value`.
+        let norm_term_num = (2. / (nf * A_0)).powi(3) * factorial(n - l - 1) as f64;
+        let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
+        let norm_term = (norm_term_num / norm_term_denom).sqrt();
 
         let exp_term = (-xi * r / n).exp();
 
         let N = PI_SQRT_INV * xi.powf(1.5);
-        let term0_coeff = N * r_sq.powf((n - 1.) / 2.);
 
         let mut result = 0.;
 
         // Each part is the second deriv WRT to an orthogonal axis.
         for x in &[diff.x, diff.y, diff.z] {
             let x_sq = x.powi(2);
+            // n=1, l=0.
+            // todo: Higher n and l
+            // todo: It may be possible to get a form from WA that unifies the different Laguerre  polynomial
+            // todo variants better. Or, perhaps not.
 
-            let term0 = xi.powi(2) * x.powi(2) * exp_term / (n.powi(2) * r_sq)
-                + xi * x_sq * exp_term / (n * r.powi(3))
-                - xi * exp_term / (n * r);
+            if n == 1 && l == 0 {
+                let term1 = -(16.0 * xi * x_sq * exp_term) / (n.powi(3) * r);
 
-            let term1 = -2.
-                * (n - 1.)
-                * xi.powf(5. / 2.)
-                * x_sq
-                * r_sq.powf((n - 1.) / 2. - 1.5)
-                * exp_term
-                * PI_SQRT_INV
-                / n;
+                let term2 = (4.0 * r_sq * ((xi.powi(2) * x_sq * exp_term) / (n.powi(2) * r_sq) +
+                    (xi * x_sq * exp_term) / (n * r_sq.powf(1.5)) - (xi * exp_term) / (n * r))) / n.powi(2);
 
-            // The part to the left and right of the parenthesis.
-            let term2a = PI_SQRT_INV * xi.powf(1.5) * exp_term;
+                let term3 = (8.0 * exp_term) / n.powi(2);
 
-            // (The portion inside the parenthesis, as described by Wolfram Alpha)
-            let term2b =
-                2. * ((n - 1.) / 2. - 1.) * (n - 1.) * x_sq * r_sq.powf((n - 1.) / 2. - 2.)
-                    + (n - 1.) * r_sq.powf((n - 1.) / 2. - 1.);
+                result += term1 + term2 + term3;
+            }
 
-            result += term0_coeff * term0 + term1 + term2a * term2b;
+            else if n == 2 && l == 0 {
+                let term1 = -(8.0 * xi * x * (-x_sq + 2.0 * (2.0 - x) * x - y.powi(2) - z.powi(2)) * exp_term) / (n.powi(3) * r);
+                let term2 = (4.0 * (2.0 - x) * r * (
+                    (xi.powi(2) * x_sq * exp_term) / (n.powi(2) * r) +
+                        (xi * x_sq * exp_term) / (n * r.powf(3.0/2.0)) -
+                        (xi * exp_term) / (n * r)
+                )) / n.powi(2);
+                let term3 = (4.0 * (2.0 * (2.0 - x) - 4.0 * x) * exp_term) / n.powi(2);
+
+                result += term1 + term2 + term3;
+            }
+
+            else {
+                unimplemented!("Second deriv unimplemented for this n and l.")
+            }
+
         }
 
-        let radial = Cplx::from_real(result);
+        Cplx::from_real(norm_term * result)
 
-        radial
     }
 
     /// Saves some minor computations over calculating them individually, due to
     /// eliminated terms. Of note, the exponential term cancels out.
-    /// todo: Is it really always real?
+    ///
+    /// Note: It appears that this is always real (Hermitian eigenvalues?)
+
     pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
@@ -765,7 +779,7 @@ impl HOrbital {
     /// todo: Is this normalized?
     /// https://quantummechanics.ucsd.edu/ph130a/130_notes/node233.html
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
-        const EPS: f64 = 0.0000001;
+        const EPS: f64 = 0.000000001;
         // todo: COnsider re-adding if aplicable to save computation, if you end up with lots of 0ed bases.
         // if self.weight.abs() < EPS {
         //     return Cplx::new_zero(); // saves some computation.
@@ -784,32 +798,6 @@ impl HOrbital {
 
         let θ = (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z);
         let ϕ = diff.y.atan2(diff.x);
-
-        // let θ = if diff.z > EPS {
-        //     (diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z)
-        // } else if diff.z < -EPS {
-        //     (PI + diff.x.powi(2) + diff.y.powi(2)).sqrt().atan2(diff.z)
-        // } else if diff.z.abs() < EPS && (diff.x * diff.y).abs() > 0. {
-        // PI / 2.
-        // } else {
-        //     0. // todo: actually undefined.
-        // };
-
-        // let ϕ = if diff.x > EPS {
-        //     diff.y.atan2(diff.x)
-        // } else if diff.x < -EPS && diff.y >= EPS {
-        //    diff.y.atan2(diff.x) + PI
-        // } else if  diff.x < -EPS && diff.y < -EPS {
-        //     diff.y.atan2(diff.x) - PI
-        // } else if diff.x.abs() < EPS && diff.y > EPS {
-        //     PI / 2.
-        // } else if diff.x.abs() < EPS && diff.y < -EPS {
-        //     -PI / 2.
-        // } else {
-        //     0. // todo: Actually undefined.
-        // };
-
-        // todo: Is this why you're unable to get m = -1 to be orthogonal to m = 1?
 
         let angular = self.harmonic.value(θ, ϕ);
 
