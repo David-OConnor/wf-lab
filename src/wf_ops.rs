@@ -37,6 +37,8 @@ use cudarc::driver::CudaDevice;
 use std::sync::Arc;
 
 use crate::grid_setup::new_data_real;
+use crate::types::ComputationDevice;
+use crate::util::unflatten_arr;
 use lin_alg2::f64::Vec3;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
@@ -374,7 +376,7 @@ pub fn initialize_bases(
 /// pipeline; ie for creating charge from the electron cloud.
 /// todo: This currently keeps the bases unmixed. Do we want 2 variants: One mixed, one unmixed?
 pub fn create_psi_from_bases(
-    dev: &Arc<CudaDevice>,
+    dev: &ComputationDevice,
     bases: &[Basis],
     grid_posits: &Arr3dVec,
     grid_n: usize,
@@ -387,22 +389,33 @@ pub fn create_psi_from_bases(
     let posits_flat = util::flatten_arr(grid_posits, grid_n);
 
     for (basis_i, basis) in bases.iter().enumerate() {
-        let psi_flat =
-            gpu::sto_vals_or_derivs(dev, basis.xi(), basis.n(), &posits_flat, basis.posit(), false);
-
         let mut norm = 0.;
 
-        // This is similar to util::unflatten, but with coercing to cplx.
-        let grid_n_sq = grid_n.pow(2);
+        match dev {
+            ComputationDevice::Gpu(cuda_dev) => {
+                let psi_flat = gpu::sto_vals_or_derivs(
+                    cuda_dev,
+                    basis.xi(),
+                    basis.n(),
+                    &posits_flat,
+                    basis.posit(),
+                    false,
+                );
 
-        for i in 0..grid_n {
-            for j in 0..grid_n {
-                for k in 0..grid_n {
-                    let i_flat = i * grid_n_sq + j * grid_n + k;
-                    result[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
-                    norm += result[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
+                // This is similar to util::unflatten, but with coercing to cplx.
+                let grid_n_sq = grid_n.pow(2);
+
+                for i in 0..grid_n {
+                    for j in 0..grid_n {
+                        for k in 0..grid_n {
+                            let i_flat = i * grid_n_sq + j * grid_n + k;
+                            result[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
+                            norm += result[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
+                        }
+                    }
                 }
             }
+            ComputationDevice::Cpu => unimplemented!(),
         }
 
         util::normalize_wf(&mut result[basis_i], norm);
@@ -579,4 +592,28 @@ pub(crate) fn combine_electron_charges(
     }
 
     result
+}
+
+/// Get STO values, and second-derivative values, using the CPU.
+pub(crate) fn sto_vals_derivs_cpu(
+    psi: &mut Arr3d,
+    psi_pp: &mut Arr3d,
+    grid_posits: &Arr3dVec,
+    basis: &Basis,
+    grid_n: usize,
+) {
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                let posit_sample = grid_posits[i][j][k];
+
+                // todo: CUDA here.
+                psi[i][j][k] = basis.value(posit_sample);
+                psi_pp[i][j][k] = basis.second_deriv(posit_sample);
+
+                // todo: Do you want to normalize?
+                // norm += val_pt.abs_sq();
+            }
+        }
+    }
 }

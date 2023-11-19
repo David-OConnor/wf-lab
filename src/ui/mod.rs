@@ -528,7 +528,7 @@ fn bottom_items(
         let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
 
         let (bases, E) = basis_finder::run(
-            &state.cuda_dev,
+            &state.dev,
             &state.charges_fixed,
             &charges_other_elecs,
             &state.surfaces_shared.grid_posits_charge,
@@ -605,7 +605,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     surfaces_shared,
                     surfaces_per_elec,
                 ) = crate::init_from_grid(
-                    &state.cuda_dev,
+                    &state.dev,
                     state.grid_range_render,
                     state.grid_range_charge,
                     state.sample_factor_render,

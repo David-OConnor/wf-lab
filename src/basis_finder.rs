@@ -17,6 +17,7 @@ use crate::{
 use crate::eigen_fns::KE_COEFF_INV;
 
 use crate::potential::V_coulomb;
+use crate::types::ComputationDevice;
 use ndarray::prelude::*;
 use ndarray_linalg::SVD;
 
@@ -326,7 +327,7 @@ fn find_bases_system_of_eqs(
 
 /// Find a wave function, composed of STOs, that match a given potential.
 pub fn run(
-    cuda_dev: &Arc<CudaDevice>,
+    dev: &ComputationDevice,
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
@@ -370,13 +371,8 @@ pub fn run(
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
 
-    let mut V_to_match = potential::create_V_1d_from_elec(
-        cuda_dev,
-        &sample_pts,
-        charge_elec,
-        grid_charge,
-        grid_n_charge,
-    );
+    let mut V_to_match =
+        potential::create_V_1d_from_elec(dev, &sample_pts, charge_elec, grid_charge, grid_n_charge);
 
     // Add the charge from nucleii.
     for (i, sample_pt) in sample_pts.iter().enumerate() {

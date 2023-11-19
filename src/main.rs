@@ -23,11 +23,6 @@
 // https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB
 // https://github.com/biubug6/Pytorch_Retinaface
 
-// use cudarc::driver::{safe, result, sys};
-// use cudarc::nvrtc::{safe, result, sys};
-// use cudarc::cublas::{safe, result, sys};
-// use cudarc::cublaslt::{safe, result, sys};
-// use cudarc::curand::{safe, result, sys};
 use std::sync::Arc;
 
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
@@ -54,7 +49,7 @@ mod wf_ops;
 use crate::{
     basis_wfs::Basis,
     grid_setup::{Arr3d, Arr3dReal},
-    types::{SurfacesPerElec, SurfacesShared},
+    types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
     wf_ops::Q_PROT,
 };
 
@@ -118,7 +113,7 @@ impl Default for StateUi {
 }
 
 pub struct State {
-    pub cuda_dev: Arc<CudaDevice>,
+    pub dev: ComputationDevice,
     /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
     /// due to electrons are stored in `Surfaces`.
     pub charges_fixed: Vec<(Vec3, f64)>,
@@ -182,7 +177,7 @@ impl SurfaceData {
 
 /// Run this whenever n changes. Ie, at init, or when n changes in the GUI.
 pub fn init_from_grid(
-    cuda_dev: &Arc<CudaDevice>,
+    dev: &ComputationDevice,
     grid_range: (f64, f64),
     grid_range_charge: (f64, f64),
     spacing_factor: f64,
@@ -249,14 +244,14 @@ pub fn init_from_grid(
     }
 
     let bases_evaluated_one = types::BasesEvaluated::initialize_with_psi(
-        &cuda_dev,
+        dev,
         &bases[0], // todo: A bit of a kludge
         &surfaces_shared.grid_posits,
         grid_n,
     );
 
     let bases_evaluated_charge_one = wf_ops::create_psi_from_bases(
-        cuda_dev,
+        dev,
         &bases[0], // todo: A bit of a kludge
         &surfaces_shared.grid_posits_charge,
         grid_n_charge,
@@ -298,23 +293,29 @@ pub fn init_from_grid(
 }
 
 fn main() {
-    let cuda_dev = CudaDevice::new(0).unwrap();
+    // todo: Check if GPU is available. If so, use GPU dev. If note, use CPU.
 
-    // This is compiled in `build.rs`.
-    cuda_dev
-        .load_ptx(
-            Ptx::from_file("./cuda.ptx"),
-            "cuda",
-            &[
-                "coulomb_kernel",
-                "sto_val_or_deriv_kernel",
-                "sto_deriv_kernel", // todo: Temp workaround for out-of-resources errors.
-                "sto_val_deriv_multiple_bases_kernel",
-                "sto_val_multiple_bases_kernel",
-                "sto_val_deriv_kernel",
-            ],
-        )
-        .unwrap();
+    let dev = if true {
+        // This is compiled in `build.rs`.
+        let cuda_dev = CudaDevice::new(0).unwrap();
+        cuda_dev
+            .load_ptx(
+                Ptx::from_file("./cuda.ptx"),
+                "cuda",
+                &[
+                    "coulomb_kernel",
+                    "sto_val_or_deriv_kernel",
+                    "sto_deriv_kernel", // todo: Temp workaround for out-of-resources errors.
+                    "sto_val_deriv_multiple_bases_kernel",
+                    "sto_val_multiple_bases_kernel",
+                    "sto_val_deriv_kernel",
+                ],
+            )
+            .unwrap();
+        ComputationDevice::Gpu(cuda_dev)
+    } else {
+        ComputationDevice::Cpu
+    };
 
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
@@ -374,7 +375,7 @@ fn main() {
         surfaces_shared,
         surfaces_per_elec,
     ) = init_from_grid(
-        &cuda_dev,
+        &dev,
         (grid_min_render, grid_max_render),
         (grid_min_charge, grid_max_charge),
         spacing_factor,
@@ -400,7 +401,7 @@ fn main() {
     ];
 
     let state = State {
-        cuda_dev,
+        dev,
         charges_fixed: nuclei,
         charges_electron,
         V_from_elecs,

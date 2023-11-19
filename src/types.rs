@@ -10,8 +10,13 @@ use crate::{
     gpu,
     grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
     num_diff::H,
-    util,
+    util, wf_ops,
 };
+
+pub enum ComputationDevice {
+    Cpu,
+    Gpu(Arc<CudaDevice>),
+}
 
 pub struct SurfacesShared {
     /// Represents points on a grid, for our non-uniform grid.
@@ -164,7 +169,7 @@ impl BasesEvaluated {
     /// Update Nov 2023: This initializer only updates `psi` and `psi_pp_analytic`: Compute
     /// numerical diffs after.
     pub fn initialize_with_psi(
-        device: &Arc<CudaDevice>,
+        dev: &ComputationDevice,
         bases: &[Basis],
         grid_posits: &Arr3dVec,
         grid_n: usize,
@@ -200,46 +205,33 @@ impl BasesEvaluated {
             // let (psi_flat, psi_pp_flat) =
             //     gpu::sto_vals_derivs(device, basis.xi(), basis.n(), &posits_flat, basis.posit());
 
-            let psi_flat = gpu::sto_vals_or_derivs(
-                device,
-                basis.xi(),
-                basis.n(),
-                &posits_flat,
-                basis.posit(),
-                false,
-            );
+            // let psi_flat = gpu::sto_vals_or_derivs(
+            //     device,
+            //     basis.xi(),
+            //     basis.n(),
+            //     &posits_flat,
+            //     basis.posit(),
+            //     false,
+            // );
+            //
+            // let psi_pp_flat = gpu::sto_vals_or_derivs(
+            //     device,
+            //     basis.xi(),
+            //     basis.n(),
+            //     &posits_flat,
+            //     basis.posit(),
+            //     true,
+            // );
+            //
+            // util::unflatten_arr(&mut on_pt[basis_i], &psi_flat, grid_n);
+            // util::unflatten_arr(&mut psi_pp_analytic[basis_i], &psi_pp_flat, grid_n);
 
-            let psi_pp_flat = gpu::sto_vals_or_derivs(
-                device,
-                basis.xi(),
-                basis.n(),
-                &posits_flat,
-                basis.posit(),
-                true,
-            );
-
-            util::unflatten_arr(&mut on_pt[basis_i], &psi_flat, grid_n);
-            util::unflatten_arr(&mut psi_pp_analytic[basis_i], &psi_pp_flat, grid_n);
+            // todo: TS asymetric psipp
+            // wf_ops::sto_vals_derivs_cpu(&mut on_pt[basis_i], &mut psi_pp_analytic[basis_i], &grid_posits, basis, grid_n)
 
             //todo: Normalize?
             // on_pt[basis_i] = util::normalize_wf(&mut on_pt[basis_i], norm);
             // psi_pp_analytic[basis_i] = util::normalize_wf(&mut on_pt[basis_i], norm);
-
-            // CPU version below.
-            // for i in 0..grid_n {
-            //     for j in 0..grid_n {
-            //         for k in 0..grid_n {
-            //             let posit_sample = grid_posits[i][j][k];
-            //
-            //             // todo: CUDA here.
-            //             on_pt[basis_i][i][j][k] = basis.value(posit_sample);
-            //             psi_pp_analytic[basis_i][i][j][k] = basis.second_deriv(posit_sample);
-            //
-            //             // todo: Do you want to normalize?
-            //             // norm += val_pt.abs_sq();
-            //         }
-            //     }
-            // }
         }
 
         Self {

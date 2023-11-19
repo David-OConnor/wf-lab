@@ -5,6 +5,7 @@ use std::sync::Arc;
 use cudarc::driver::CudaDevice;
 use lin_alg2::f64::Vec3;
 
+use crate::types::ComputationDevice;
 use crate::{
     gpu,
     grid_setup::{Arr3dReal, Arr3dVec},
@@ -116,7 +117,7 @@ pub(crate) fn update_V_acting_on_elec_1d(
 /// See `create_V`. This assumes the sample positions are flattened already, vice arranged in
 /// 3D grids. Note that it returns a result, vice modifying in place.
 pub(crate) fn create_V_1d_from_elec(
-    cuda_dev: &Arc<CudaDevice>,
+    dev: &ComputationDevice,
     posits_sample: &[Vec3],
     charges_elec: &Arr3dReal,
     posits_charge: &Arr3dVec,
@@ -126,8 +127,12 @@ pub(crate) fn create_V_1d_from_elec(
         flatten_charge(posits_charge, charges_elec, grid_n_charge);
 
     // Calculate the charge from electrons using the GPU
-    let mut V_per_sample =
-        gpu::run_coulomb(cuda_dev, &posits_charge_flat, &posits_sample, &charges_flat);
+    let V_per_sample = match dev {
+        ComputationDevice::Gpu(cuda_dev) => {
+            gpu::run_coulomb(cuda_dev, &posits_charge_flat, &posits_sample, &charges_flat)
+        }
+        ComputationDevice::Cpu => unimplemented!(),
+    };
 
     V_per_sample
 }
@@ -138,7 +143,7 @@ pub(crate) fn create_V_1d_from_elec(
 /// we each of a 3d set of charge points). We leave the option to calculate sample points only on
 /// a 2D grid, but this may not be necessary given how fast the full operation is on GPU.
 pub(crate) fn create_V_from_elec(
-    cuda_dev: &Arc<CudaDevice>,
+    dev: &ComputationDevice,
     V_from_this_elec: &mut Arr3dReal,
     posits_sample: &Arr3dVec,
     posits_charge: &Arr3dVec,
@@ -170,12 +175,15 @@ pub(crate) fn create_V_from_elec(
         }
     }
 
-    let V_per_sample_flat = gpu::run_coulomb(
-        cuda_dev,
-        &posits_charge_flat,
-        &posits_sample_flat,
-        &charges_flat,
-    );
+    let V_per_sample_flat = match dev {
+        ComputationDevice::Gpu(cuda_dev) => gpu::run_coulomb(
+            cuda_dev,
+            &posits_charge_flat,
+            &posits_sample_flat,
+            &charges_flat,
+        ),
+        ComputationDevice::Cpu => unimplemented!(),
+    };
 
     let grid_n_sq = grid_n.pow(2);
 

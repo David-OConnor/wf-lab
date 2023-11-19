@@ -69,14 +69,14 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
 /// Run this when we add bases, change basis parameters other than weight etc.
 pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     state.bases_evaluated[ae] = BasesEvaluated::initialize_with_psi(
-        &state.cuda_dev,
+        &state.dev,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits,
         state.grid_n_render,
     );
 
     state.bases_evaluated_charge[ae] = wf_ops::create_psi_from_bases(
-        &state.cuda_dev,
+        &state.dev,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits_charge,
         state.grid_n_charge,
@@ -131,7 +131,7 @@ pub fn create_V_from_elec(state: &mut State, ae: usize) {
 
     if state.ui.create_3d_electron_V || state.ui.create_2d_electron_V {
         potential::create_V_from_elec(
-            &state.cuda_dev,
+            &state.dev,
             &mut state.V_from_elecs[ae],
             &state.surfaces_shared.grid_posits,
             &state.surfaces_shared.grid_posits_charge,
@@ -295,7 +295,7 @@ pub(crate) fn he_solver(state: &mut State) {
         let xis: Vec<f64> = state.bases[elec_id].iter().map(|b| b.xi()).collect();
 
         let (bases, E) = basis_finder::run(
-            &state.cuda_dev,
+            &state.dev,
             &state.charges_fixed,
             &charges_other_elecs,
             &state.surfaces_shared.grid_posits_charge,
@@ -312,7 +312,7 @@ pub(crate) fn he_solver(state: &mut State) {
         // todo mixing the bases. The clincher is how to handle normalization. Maybe normalize the charge
         // todo density grid after the fact?
         // wf_ops::create_psi_from_bases_mix_update_charge_density(
-        //     &state.cuda_dev,
+        //     &state.dev,
         //     &mut state.charges_electron[elec_id],
         //     &state.bases[elec_id],
         //     &state.surfaces_shared.grid_posits_charge,
@@ -320,7 +320,7 @@ pub(crate) fn he_solver(state: &mut State) {
         // );
 
         state.bases_evaluated_charge[elec_id] = wf_ops::create_psi_from_bases(
-            &state.cuda_dev,
+            &state.dev,
             &state.bases[elec_id],
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_charge,
