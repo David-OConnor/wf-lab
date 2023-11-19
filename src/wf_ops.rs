@@ -310,7 +310,7 @@ pub fn initialize_bases(
             for n in 1..3 {
                 bases.push(Basis::Sto(Sto {
                     posit: *nuc_posit,
-                    n: 1,
+                    n,
                     xi,
                     weight,
                     charge_id,

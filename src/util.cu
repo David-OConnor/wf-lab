@@ -15,22 +15,17 @@ __device__
 const dtype A_0 = 1.f;
 
 __device__
-dtype laguerre_0(uint16_t n, uint16_t alpha, dtype x) {
-    return 1.f;
+dtype laguerre(uint16_t n, uint16_t alpha, dtype x) {
+    if (n == 0) {
+        return 1.f;
+    } else if (n == 1) {
+        return alpha + 1.f - x;
+    } else if (n == 2) {
+        return std::pow(x, 2) / 2. - (alpha + 2.f) * x + (alpha + 1.f) * (alpha + 2.f) / 2.;
+    } else {
+        return 0.; // todo: Implement.
+    }
 }
-
-__device__
-dtype laguerre_1(uint16_t n, uint16_t alpha, dtype x) {
-    return alpha + 1.f - x;
-}
-
-__device__
-dtype laguerre_2(uint16_t n, uint16_t alpha, dtype x) {
-    return std::pow(x, 2) / 2. - (alpha + 2.f) * x + (alpha + 1.f) * (alpha + 2.f) / 2.;
-}
-// todo: More A/R.
-
-// todo: Util module?
 
 __device__
 dtype calc_dist(dtype3 point0, dtype3 point1) {

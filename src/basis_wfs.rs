@@ -449,7 +449,16 @@ impl Sto {
         let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
         let norm_term = (norm_term_num / norm_term_denom).sqrt();
 
+        let exp_term = (-self.xi * r / (nf* A_0)).exp();
+
+        // Note: [The OP here](https://chemistry.stackexchange.com/questions/164478/why-are-slater-type-orbitals-used-for-atomic-calculations-instead-of-hydrogen-li)
+        // contains a different form; worth examining. It includes both xi and the Laguerre term,
+        // which most forms I've found don't.
+
         let L = util::make_laguerre(n - l - 1, 2 * l + 1);
+
+        let polynomial_term = (2. * r / (nf * A_0)).powi(l.into())
+            * L(2. * r / (nf * A_0));
         // n=0: L(x) = 1.
         // n=1: L(x) = α + 1. - x,
         // n=2: L(x) = x.powi(2) / 2. - (α + 2.) * x + (α + 1.) * (α + 2.) / 2.,
@@ -479,39 +488,9 @@ impl Sto {
         // `exp_term` and `s_sq` as well.
 
         norm_term
-            * (-r * self.xi / (nf * A_0)).exp() // todo: Is this where xi goes?
-            * (2. * r / (nf * A_0)).powi(l.into())
-            * L(2. * r / (nf * A_0))
+            * polynomial_term
+            * exp_term
     }
-    //
-    // /// Analytic second derivative using analytic basis functions.
-    // /// See OneNote: `Exploring the WF, part 6`. Hardcoded for n=1.
-    // /// todo: Deprecate A/R
-    // pub fn _second_deriv_n1(&self, posit_sample: Vec3) -> Cplx {
-    //     // todo: This currently ignores the spherical harmonic part; add that!
-    //
-    //     // Enter this in Wolfram Alpha: `second derivative of (1/sqrt(pi)) * \xi^(3/2) * e^(-\xi * r) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
-    //     let diff = posit_sample - self.posit;
-    //     let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
-    //
-    //     let N = PI_SQRT_INV * self.xi.powf(1.5);
-    //     // Note: This variant uses the same form as our `value` fn, but assumes n = 1.
-    //
-    //     let exp_term = (-self.xi * r).exp();
-    //
-    //     let mut result = 0.;
-    //
-    //     // Each part is the second deriv WRT to an orthogonal axis.
-    //     for x in &[diff.x, diff.y, diff.z] {
-    //         result += self.xi.powi(2) * x.powi(2) * exp_term / r.powi(2);
-    //         result += self.xi * x.powi(2) * exp_term / r.powi(3);
-    //         result -= self.xi * exp_term / r;
-    //     }
-    //
-    //     let radial = Cplx::from_real(N * result);
-    //
-    //     radial
-    // }
 
     /// Analytic second derivative using analytic basis functions.
     /// See OneNote: `Exploring the WF, part 6`.

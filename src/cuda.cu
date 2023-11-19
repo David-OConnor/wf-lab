@@ -21,26 +21,17 @@ dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n) {
     dtype norm_term_denom = (2 * n * std::pow(factorial(n + l), 3));
     dtype norm_term = std::sqrt(norm_term_num / norm_term_denom);
 
+    dtype exp_term = std::exp(-r / (n * A_0));
 
-    dtype laguerre_term;
     uint16_t lg_l = n - l - 1;
     uint16_t lg_r = 2 * l + 1;
-    dtype lg_input = 2.f * r / (n * A_0);
+    dtype lg_input = 2.f * r / n;
 
-    if (n == 0) {
-        laguerre_term = laguerre_0(lg_l, lg_r, lg_input);
-    }
-    if (n == 1) {
-        laguerre_term = laguerre_1(lg_l, lg_r, lg_input);
-    }
-    if (n == 2) {
-        laguerre_term = laguerre_2(lg_l, lg_r, lg_input);
-    }
+    dtype polynomial_term = std::pow(2.f * r / n, l) * laguerre(lg_l, lg_r, lg_input);
 
     return norm_term
-        * std::exp(-r / (n * A_0))
-        * std::pow(2.f * r / (n * A_0), l)
-        * laguerre_term;
+        * polynomial_term
+        * exp_term;
 }
 
 
@@ -166,6 +157,7 @@ void sto_deriv_kernel(
     }
 }
 
+// We combine value and derivative computations here to reduce IO between host and device.
 extern "C" __global__
 void sto_val_deriv_kernel(
     dtype *out_val,
