@@ -7,15 +7,13 @@
 
 // Note that this is for the radial component only, with n=1. Real. See CPU side for a ref.
 __device__
-dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n) {
+dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n, uint16_t l) {
 //     dtype N = PI_SQRT_INV * std::pow(xi, 1.5f);
 //
     dtype r = calc_dist(posit_sample, posit_nuc);
 //
 //     dtype radial = N * std::pow(r, n - 1) * std::exp(-xi * r / n);
 //     return radial;
-
-    uint16_t l = 0;
 
     dtype norm_term_num = std::pow(2. / (n * A_0), 3) * factorial(n - l - 1);
     dtype norm_term_denom = (2 * n * std::pow(factorial(n + l), 3));
@@ -37,7 +35,7 @@ dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n) {
 
 // Note that this is for the radial component only. Real. See CPU side for a ref.
 __device__
-dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n) {
+dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n, uint16_t l) {
     dtype3 diff;
     diff.x = posit_sample.x - posit_nuc.x;
     diff.y = posit_sample.y - posit_nuc.y;
@@ -50,8 +48,6 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
     }
 
     dtype r = std::sqrt(r_sq);
-
-    uint16_t l = 0;
 
     dtype exp_term = std::exp(-xi * r / n);
     dtype laguerre_param = 2.f * r / n;
@@ -78,7 +74,6 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
         } else if (n == 2 && l == 0) {
             result += exp_term * 2.f * r / n * (2.f - laguerre_param);
         }
-
     }
 
     return result;
@@ -134,9 +129,9 @@ void sto_val_or_deriv_kernel(
 
     for (size_t i = index; i < N_samples; i += stride) {
         if (deriv == true) {
-            out[i] = sto_second_deriv(posits_sample[i], posit_nuc, xi, n);
+            out[i] = sto_second_deriv(posits_sample[i], posit_nuc, xi, n, 0);
         } else {
-            out[i] = sto_val(posits_sample[i], posit_nuc, xi, n);
+            out[i] = sto_val(posits_sample[i], posit_nuc, xi, n, 0);
         }
     }
 }
@@ -155,7 +150,7 @@ void sto_deriv_kernel(
     size_t stride = blockDim.x * gridDim.x;
 
     for (size_t i = index; i < N_samples; i += stride) {
-        out[i] = sto_second_deriv(posits_sample[i], posit_nuc, xi, n);
+        out[i] = sto_second_deriv(posits_sample[i], posit_nuc, xi, n, 0);
     }
 }
 
@@ -174,8 +169,8 @@ void sto_val_deriv_kernel(
     size_t stride = blockDim.x * gridDim.x;
 
     for (size_t i_sample = index; i_sample < N_samples; i_sample += stride) {
-        out_val[i_sample] = sto_val(posits_sample[i_sample], posit_nuc, xi, n);
-        out_second_deriv[i_sample] = sto_second_deriv(posits_sample[i_sample], posit_nuc, xi, n);
+        out_val[i_sample] = sto_val(posits_sample[i_sample], posit_nuc, xi, n, 0);
+        out_second_deriv[i_sample] = sto_second_deriv(posits_sample[i_sample], posit_nuc, xi, n, 0);
     }
 }
 
@@ -195,7 +190,7 @@ void sto_val_multiple_bases_kernel(
 
     for (size_t i_sample = index; i_sample < N_samples; i_sample += stride) {
         for (size_t i_basis = 0; i_basis < N_bases; i_basis++) {
-            out_val[i_sample] += sto_val(posits_sample[i_sample], posits_nuc[i_basis], xis[i_basis], n[i_basis]) * weights[i_basis];
+            out_val[i_sample] += sto_val(posits_sample[i_sample], posits_nuc[i_basis], xis[i_basis], n[i_basis], 0) * weights[i_basis];
         }
     }
 }
@@ -219,8 +214,8 @@ void sto_val_deriv_multiple_bases_kernel(
 
     for (size_t i_sample = index; i_sample < N_samples; i_sample += stride) {
         for (size_t i_basis = 0; i_basis < N_bases; i_basis++) {
-            out_val[i_sample] += sto_val(posits_sample[i_sample], posit_nuc, xis[i_basis], n[i_basis]) * weights[i_basis];
-            out_second_deriv[i_sample] += sto_second_deriv(posits_sample[i_sample], posit_nuc, xis[i_basis], n[i_basis]) * weights[i_basis];
+            out_val[i_sample] += sto_val(posits_sample[i_sample], posit_nuc, xis[i_basis], n[i_basis], 0) * weights[i_basis];
+            out_second_deriv[i_sample] += sto_second_deriv(posits_sample[i_sample], posit_nuc, xis[i_basis], n[i_basis], 0) * weights[i_basis];
         }
     }
 }

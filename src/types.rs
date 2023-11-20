@@ -196,7 +196,7 @@ impl BasesEvaluated {
             z_next.push(empty.clone());
         }
 
-        // todo: TS asymetric psipp; forcing CPU.
+        // todo: TS questrionable psipp; forcing CPU.
         // let dev = &ComputationDevice::Cpu;
 
         wf_ops::create_psi_from_bases(
