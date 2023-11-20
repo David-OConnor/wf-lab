@@ -45,8 +45,8 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
 
     dtype r_sq = std::pow(diff.x, 2) + std::pow(diff.y, 2) + std::pow(diff.z, 2);
 
-    if (r_sq < 0.000000001) {
-        return 0.;
+    if (r_sq < 0.000000001f) {
+        return 0.f;
     }
 
     dtype r = std::sqrt(r_sq);
@@ -54,8 +54,9 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
     uint16_t l = 0;
 
     dtype exp_term = std::exp(-xi * r / n);
+    dtype laguerre_param = 2.f * r / n;
 
-    double norm_term_num = std::pow(2.0 / n, 3) * factorial(n - l - 1);
+    double norm_term_num = std::pow(2.0f / n, 3) * factorial(n - l - 1);
     double norm_term_denom = std::pow(2 * n * factorial(n + l), 3);
     double norm_term = std::sqrt(norm_term_num / norm_term_denom);
 
@@ -65,30 +66,19 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
         double x_sq = std::pow(x, 2);
 
         if (n == 1 && l == 0) {
-            double term1 = -(16.0 * xi * x_sq * exp_term) / (std::pow(n, 3) * r);
-
-            double term2 = (4.0 * r_sq * ((std::pow(xi, 2) * x_sq * exp_term) / (std::pow(n, 2) * r_sq) +
-                    (xi * x_sq * exp_term) / (n * std::pow(r_sq, 1.5)) - (xi * exp_term) / (n * r))) / std::pow(n, 2);
-
-            double term3 = (8.0 * exp_term) / std::pow(n, 2);
-
+            auto term1 = 2.0f * r * ((pow(xi, 2) * x_sq * exp_term) / (pow(n, 2) * r_sq)
+                        + (xi * x_sq * exp_term) / (n * pow(r_sq, 1.5f))
+                        - (xi * exp_term) / (n * r)) / n;
+        
+            auto term2 = - (4.0f * xi * x_sq * exp_term) / (pow(n, 2) * r_sq);
+        
+            auto term3 = (2.0f * (1.0f / r - x_sq / pow(r_sq, 1.5f)) * exp_term) / n;
+        
             result += term1 + term2 + term3;
         } else if (n == 2 && l == 0) {
-            double term1 = -(8.0 * xi * x * (-x_sq + 4.0 * x - 3.0 * x_sq - r_sq) * exp_term) / (std::pow(n, 3) * r);
-
-            double term2 = (4.0 * (2.0 - x) * r * (
-                    (std::pow(xi, 2) * x_sq * exp_term) / (std::pow(n, 2) * r) +
-                    (xi * x_sq * exp_term) / (n * std::pow(r, 3.0/2.0)) -
-                    (xi * exp_term) / (n * r)
-                )) / std::pow(n, 2);
-
-            double term3 = (4.0 * (2.0 * (2.0 - x) - 4.0 * x) * exp_term) / std::pow(n, 2);
-
-            // todo: All 3 terms are showing as asymetric...
-            result += term1 + term2 + term3;
-//             result += term3; // todo tS
-//             result += 1.;
+            result += exp_term * 2.f * r / n * (2.f - laguerre_param);
         }
+
     }
 
     return result;

@@ -48,6 +48,7 @@ pub fn update_V_from_nuclei(
     grid_n: usize,
     // Wave functions from other electrons, for calculating the Hartree potential.
 ) {
+    // todo: CUDA
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {

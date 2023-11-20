@@ -455,21 +455,22 @@ impl Sto {
 
         let polynomial_term = (2. * r / (nf * A_0)).powi(l.into()) * L(2. * r / (nf * A_0));
         // n=0: L(x) = 1.
-        // n=1: L(x) = α + 1. - x,
-        // n=2: L(x) = x.powi(2) / 2. - (α + 2.) * x + (α + 1.) * (α + 2.) / 2.,
+        // n=1: L(x) = α + 1. - b,
+        // n=2: L(x) = b.powi(2) / 2. - (α + 2.) * b + (α + 1.) * (α + 2.) / 2.,
 
         // If n=1, l=0, L= 1.
-        // If n=2, l=0, L = 2. - x
-        // If n=3, l=0, L = x^2 / 2 - 3x + 3
+        // If n=2, l=0, L = 2. - b
+        // If n=3, l=0, L = b^2 / 2 - 3b + 3
 
         // For n=1 second deriv, try this in Wolfram Alpha:
         // todo: Confirm this is how you apply xi.
         // n=1, l=0
-        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 * 1*(2*r/n) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
+        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 with respect to x where r=sqrt(x^2 + y^2 + z^2)`
         // n=2, l=0
-        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 * (2-x)*(2*r/n) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
+        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 * (2-b) with respect to x where r=sqrt(x^2 + y^2 + z^2) and b=2*r/n`
         // n=3, l=0
-        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 * (x^2 / 2 - 3x + 3)*(2*r/n) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
+        // todo: Redo this.
+        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 * (b^2 / 2 - 3b + 3)  with respect to x where r=sqrt(x^2 + y^2 + z^2) and b=2*r/n`
 
         // Example ChatGPT query:
         // "Please calculate the second derivative of C * exp(-r * \xi / n) * (2 * r / n)^1 *
@@ -511,6 +512,7 @@ impl Sto {
         let xi = self.xi;
 
         let exp_term = (-xi * r / nf).exp();
+        let laguerre_param = 2. * r / nf;
 
         // todo: These normalization terms may be inappropriate when not paired with a spherical harmonic.
         // C+P from `radial`.
@@ -523,44 +525,22 @@ impl Sto {
         // Each part is the second deriv WRT to an orthogonal axis.
         for x in &[diff.x, diff.y, diff.z] {
             let x_sq = x.powi(2);
-            // n=1, l=0.
-            // todo: Higher n and l
-            // todo: It may be possible to get a form from WA that unifies the different Laguerre  polynomial
-            // todo variants better. Or, perhaps not.
 
             if n == 1 && l == 0 {
-                let term1 = -(16.0 * xi * x_sq * exp_term) / (nf.powi(3) * r);
-
-                let term2 = (4.0
-                    * r_sq
+                let term1 = 2.0
+                    * r
                     * ((xi.powi(2) * x_sq * exp_term) / (nf.powi(2) * r_sq)
                         + (xi * x_sq * exp_term) / (nf * r_sq.powf(1.5))
-                        - (xi * exp_term) / (nf * r)))
-                    / nf.powi(2);
+                        - (xi * exp_term) / (nf * r))
+                    / nf;
 
-                let term3 = (8.0 * exp_term) / nf.powi(2);
+                let term2 = -(4.0 * xi * x_sq * exp_term) / (nf.powi(2) * r_sq);
 
-                result += term1 + term2 + term3;
+                let term3 = (2.0 * (1.0 / r - x_sq / r_sq.powf(1.5)) * exp_term) / nf;
+
+                result += term1 + term2 + term3
             } else if n == 2 && l == 0 {
-                // Re-arranging to remove standalone y and z terms with r_sq.
-                // let term1 = -(8.0 * xi * x * (-x_sq + 2.0 * (2.0 - x) * x - y.powi(2) - z.powi(2)) * exp_term) / (n.powi(3) * r);
-                // -x_sq + 2x * (2-x) - y^2...
-                // -x_sq + 4x - 4x^2 - y^2 - z^2
-                // -x_sq + 4x - 3x^2 - x^2 - y^2 - z^2
-                let term1 = -(8.0 * xi * x * (-x_sq + 4. * x - 3. * x_sq - r_sq) * exp_term)
-                    / (nf.powi(3) * r);
-
-                let term2 = (4.0
-                    * (2.0 - x)
-                    * r
-                    * ((xi.powi(2) * x_sq * exp_term) / (nf.powi(2) * r)
-                        + (xi * x_sq * exp_term) / (nf * r.powf(3.0 / 2.0))
-                        - (xi * exp_term) / (nf * r)))
-                    / nf.powi(2);
-
-                let term3 = (4.0 * (2.0 * (2.0 - x) - 4.0 * x) * exp_term) / nf.powi(2);
-
-                result += term1 + term2 + term3;
+                result += exp_term * 2. * r / nf * (2. - laguerre_param);
             } else {
                 unimplemented!("Second deriv unimplemented for this n and l.")
             }

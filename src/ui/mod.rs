@@ -577,10 +577,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
         ui.set_max_width(UI_WIDTH);
 
-        // ui.heading("Wavefunction Lab");
-
-        // ui.heading("Show surfaces:");
-
         let mut updated_fixed_charges = false;
         let mut updated_evaluated_wfs = false;
         let mut updated_basis_weights = false;
@@ -624,12 +620,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 state.surfaces_per_elec = surfaces_per_elec;
 
                 for elec_i in 0..state.surfaces_per_elec.len() {
-                    wf_ops::initialize_bases(
-                        &state.charges_fixed,
-                        &mut state.bases[elec_i],
-                        // Some(&mut state.bases_visible[elec_i]),
-                        2,
-                    );
+                    wf_ops::initialize_bases(&state.charges_fixed, &mut state.bases[elec_i], 2);
                 }
 
                 updated_evaluated_wfs = true;
@@ -674,13 +665,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 updated_E_or_V = true;
                 updated_meshes = true;
             }
-
-            // if ui
-            //     .checkbox(&mut state.ui_render_all_elecs, "Render all elecs")
-            //     .clicked()
-            // {
-            //     updated_meshes = true;
-            // }
 
             if ui
                 .checkbox(&mut state.ui.mag_phase, "Show mag, phase")

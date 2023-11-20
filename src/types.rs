@@ -1,5 +1,6 @@
-use cudarc::driver::CudaDevice;
 use std::sync::Arc;
+
+use cudarc::driver::CudaDevice;
 
 use lin_alg2::f64::Vec3;
 
@@ -7,10 +8,9 @@ use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
-    gpu,
     grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
     num_diff::H,
-    util, wf_ops,
+    wf_ops,
 };
 
 pub enum ComputationDevice {
@@ -197,7 +197,7 @@ impl BasesEvaluated {
         }
 
         // todo: TS asymetric psipp; forcing CPU.
-        let dev = &ComputationDevice::Cpu;
+        // let dev = &ComputationDevice::Cpu;
 
         wf_ops::create_psi_from_bases(
             dev,
