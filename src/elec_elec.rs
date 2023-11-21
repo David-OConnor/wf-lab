@@ -11,7 +11,6 @@ use crate::{
     num_diff,
 };
 
-
 /// This struct helps keep syntax more readable
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PositIndex {

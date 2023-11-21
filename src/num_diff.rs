@@ -82,7 +82,7 @@ pub(crate) fn find_ψ_pp_num_fm_bases(
     let mut psi_z_next = Cplx::new_zero();
 
     for basis in bases {
-    // for (basis_i, basis) in bases.iter().enumerate() {
+        // for (basis_i, basis) in bases.iter().enumerate() {
         // let weight = match weights {
         //     Some(w) => w[basis_i],
         //     None => basis.weight(),
@@ -121,5 +121,6 @@ pub(crate) fn find_ψ_pp_num_fm_bases(
     psi_z_next = psi_z_next / norm_sqrt;
 
     (psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-        - psi_sample_loc * 6.) / (norm_sqrt * H_SQ)
+        - psi_sample_loc * 6.)
+        / (norm_sqrt * H_SQ)
 }

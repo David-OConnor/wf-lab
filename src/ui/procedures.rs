@@ -4,13 +4,17 @@
 use graphics::{EngineUpdates, Scene};
 
 use crate::{
-    basis_finder, eigen_fns,
+    basis_finder,
+    eigen_fns,
     elec_elec::{PositIndex, WaveFunctionMultiElec},
     grid_setup::{new_data, Arr3dReal},
-    potential, render,
+    potential,
+    render,
     // types::BasesEvaluated,
     types::SurfacesPerElec,
-    wf_ops, ActiveElec, State,
+    wf_ops,
+    ActiveElec,
+    State,
 };
 
 pub fn update_E_or_V(
@@ -22,11 +26,8 @@ pub fn update_E_or_V(
     for i in 0..grid_n_render {
         for j in 0..grid_n_render {
             for k in 0..grid_n_render {
-                sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
-                    sfcs.psi[i][j][k],
-                    sfcs.V_acting_on_this[i][j][k],
-                    E,
-                )
+                sfcs.psi_pp_calculated[i][j][k] =
+                    eigen_fns::find_ψ_pp_calc(sfcs.psi[i][j][k], sfcs.V_acting_on_this[i][j][k], E)
             }
         }
     }

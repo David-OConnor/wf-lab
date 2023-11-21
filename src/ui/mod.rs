@@ -596,7 +596,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 let (
                     charges_electron,
                     V_from_elecs,
-                    bases_evaluated,
+                    // bases_evaluated,
                     bases_evaluated_charge,
                     surfaces_shared,
                     surfaces_per_elec,
@@ -614,7 +614,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.charges_electron = charges_electron;
                 state.V_from_elecs = V_from_elecs;
-                state.bases_evaluated = bases_evaluated;
+                // state.bases_evaluated = bases_evaluated;
                 state.bases_evaluated_charge = bases_evaluated_charge;
                 state.surfaces_shared = surfaces_shared;
                 state.surfaces_per_elec = surfaces_per_elec;

@@ -46,11 +46,10 @@ mod ui;
 mod util;
 mod wf_ops;
 
-use crate::grid_setup::new_data;
-use crate::types::BasesEvaluated;
+// use crate::types::BasesEvaluated;
 use crate::{
     basis_wfs::Basis,
-    grid_setup::{Arr3d, Arr3dReal},
+    grid_setup::{new_data, Arr3d, Arr3dReal},
     types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
     wf_ops::Q_PROT,
 };
@@ -191,7 +190,7 @@ pub fn init_from_grid(
 ) -> (
     Vec<Arr3dReal>,
     Vec<Arr3dReal>,
-    Vec<BasesEvaluated>,
+    // Vec<BasesEvaluated>,
     Vec<Vec<Arr3d>>,
     SurfacesShared,
     Vec<SurfacesPerElec>,
@@ -246,7 +245,7 @@ pub fn init_from_grid(
     }
 
     // These must be initialized from wave functions later.
-    let mut bases_evaluated = Vec::new();
+    // let mut bases_evaluated = Vec::new();
     let mut bases_evaluated_charge = Vec::new();
     let mut charges_electron = Vec::new();
     let mut V_from_elecs = Vec::new();
@@ -263,27 +262,27 @@ pub fn init_from_grid(
             bec_this_elec.push(new_data(grid_n_charge));
         }
 
-        let bases_eval_this_elec = BasesEvaluated::initialize_with_psi(
-            dev,
-            &bases_per_elec[0], // todo temp
-            &surfaces_shared.grid_posits,
-            grid_n,
-        );
+        // let bases_eval_this_elec = BasesEvaluated::initialize_with_psi(
+        //     dev,
+        //     &bases_per_elec[0], // todo temp
+        //     &surfaces_shared.grid_posits,
+        //     grid_n,
+        // );
         // let weights: Vec<f64> = bases_this_elec.iter().map(|b| b.weight()).collect();
         // wf_ops::mix_bases(&mut surfaces_per_elec[i_elec].psi.on_pt, &bases_evaluated[i_elec],grid_n, &weights);
 
         // Set up our basis-function based trial wave function.
         let weights: Vec<f64> = bases_per_elec[0].iter().map(|b| b.weight()).collect(); // todo: 0 is temp
 
-        wf_ops::update_wf_fm_bases(
-            &mut surfaces_per_elec[i_elec],
-            &bases_eval_this_elec,
-            -0.5, // todo: Param etc?
-            grid_n,
-            &weights,
-        );
+        // wf_ops::update_wf_fm_bases(
+        //     &mut surfaces_per_elec[i_elec],
+        //     &bases_eval_this_elec,
+        //     -0.5, // todo: Param etc?
+        //     grid_n,
+        //     &weights,
+        // );
 
-        bases_evaluated.push(bases_eval_this_elec);
+        // bases_evaluated.push(bases_eval_this_elec);
 
         // todo: Not working; index error.
         // wf_ops::create_psi_from_bases(
@@ -299,7 +298,7 @@ pub fn init_from_grid(
     (
         charges_electron,
         V_from_elecs,
-        bases_evaluated,
+        // bases_evaluated,
         bases_evaluated_charge,
         surfaces_shared,
         surfaces_per_elec,
@@ -386,7 +385,7 @@ fn main() {
     let (
         charges_electron,
         V_from_elecs,
-        bases_evaluated,
+        // bases_evaluated,
         bases_evaluated_charge,
         surfaces_shared,
         surfaces_per_elec,
