@@ -337,7 +337,7 @@ fn main() {
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let nuclei = vec![
-        (posit_charge_1, Q_PROT * 2.), // helium
+        (posit_charge_1, Q_PROT * 1.), // helium
                                        // (posit_charge_1, Q_PROT * 3.), // lithium
                                        // (posit_charge_1, Q_PROT * 1.), // Hydrogen
                                        // (posit_charge_2, Q_PROT),

@@ -9,6 +9,7 @@ use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
+    num_diff,
     num_diff::H,
     wf_ops,
 };
@@ -30,11 +31,12 @@ pub struct SurfacesShared {
     // todo: This may not be a good model: the wave function isn't a function of position
     // mapped to a value for multi-elecs. It's a function of a position for each elec.
     pub psi: WaveFunctionMultiElec,
-    pub psi_pp_calculated: Arr3d,
-    pub psi_pp_measured: Arr3d,
+    // todo: Why do we have these as shared?
+    // pub psi_pp_calculated: Arr3d,
+    // pub psi_pp_measured: Arr3d,
     pub E: f64,
-    /// 2023-08-17: Another attempt at a 3d-grid-based save function
-    pub psi_numeric: Arr3d,
+    // /// 2023-08-17: Another attempt at a 3d-grid-based save function
+    // pub psi_numeric: Arr3d,
     /// In case we want to explore something like DFT
     pub charge_density_dft: Arr3dReal,
 }
@@ -70,10 +72,10 @@ impl SurfacesShared {
             V_total: data_real.clone(),
             V_from_nuclei: data_real.clone(),
             psi: WaveFunctionMultiElec::new(num_elecs, n_grid),
-            psi_pp_measured: data.clone(),
-            psi_pp_calculated: data.clone(),
+            // psi_pp_measured: data.clone(),
+            // psi_pp_calculated: data.clone(),
             E: -0.50,
-            psi_numeric: data,
+            // psi_numeric: data,
             charge_density_dft: data_real,
         }
     }
@@ -89,10 +91,15 @@ pub struct SurfacesPerElec {
     /// V from the nucleii, and all other electrons. Does not include this electron's charge.
     /// We use this as a cache instead of generating it on the fly.
     pub V_acting_on_this: Arr3dReal,
-    pub psi: PsiWDiffs,
+    // pub psi: PsiWDiffs,
+    // todo: Breaking change: Removing the stored diffs. We'll see if that works out.
+    pub psi: Arr3d,
+    /// From the Schrodinger equation based on psi and the other parameters.
     pub psi_pp_calculated: Arr3d,
-    pub psi_pp_measured: Arr3d,
+    /// From an analytic or numeric computation from basis functions.
+    pub psi_pp_evaluated: Arr3d,
     /// Aux surfaces are for misc visualizations
+    /// todo: Rename them to total V from psi, V' elec etc.
     pub aux1: Arr3dReal,
     pub aux2: Arr3dReal,
     pub aux3: Arr3dReal,
@@ -107,13 +114,13 @@ impl SurfacesPerElec {
         // Set up a regular grid using this; this will allow us to convert to an irregular grid
         // later, once we've verified this works.
 
-        let psi = PsiWDiffs::init(&data);
+        // let psi = PsiWDiffs::init(&data);
 
         Self {
             V_acting_on_this: data_real.clone(),
-            psi,
+            psi: data.clone(),
             psi_pp_calculated: data.clone(),
-            psi_pp_measured: data.clone(),
+            psi_pp_evaluated: data.clone(),
             aux1: data_real.clone(),
             aux2: data_real.clone(),
             aux3: data_real,
@@ -121,6 +128,7 @@ impl SurfacesPerElec {
     }
 }
 
+// todo: What do you use this for?
 pub struct EvalDataShared {
     pub posits: Vec<Vec3>,
     pub V_from_nuclei: Vec<f64>,
@@ -149,7 +157,7 @@ impl EvalDataShared {
 /// a small amount along each axix, for calculating partial derivatives of psi''.
 /// The `Vec` index corresponds to basis index.
 #[derive(Clone)]
-pub struct BasesEvaluated {
+pub struct _BasesEvaluated {
     pub on_pt: Vec<Arr3d>,
     pub psi_pp_analytic: Vec<Arr3d>,
     pub x_prev: Vec<Arr3d>,
@@ -160,7 +168,7 @@ pub struct BasesEvaluated {
     pub z_next: Vec<Arr3d>,
 }
 
-impl BasesEvaluated {
+impl _BasesEvaluated {
     /// Create unweighted basis wave functions. Run this whenever we add or remove basis fns,
     /// and when changing the grid. This evaluates the analytic basis functions at
     /// each grid point. Each basis will be normalized in this function.
@@ -197,7 +205,7 @@ impl BasesEvaluated {
         }
 
         // todo: TS questrionable psipp; forcing CPU.
-        // let dev = &ComputationDevice::Cpu;
+        let dev = &ComputationDevice::Cpu;
 
         wf_ops::create_psi_from_bases(
             dev,
@@ -226,50 +234,14 @@ impl BasesEvaluated {
         grid_posits: &Arr3dVec,
         grid_n: usize,
     ) {
-        for (basis_i, basis) in bases.iter().enumerate() {
-            for i in 0..grid_n {
-                for j in 0..grid_n {
-                    for k in 0..grid_n {
-                        let posit_sample = grid_posits[i][j][k];
-
-                        let posit_x_prev =
-                            Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
-                        let posit_x_next =
-                            Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
-                        let posit_y_prev =
-                            Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
-                        let posit_y_next =
-                            Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
-                        let posit_z_prev =
-                            Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
-                        let posit_z_next =
-                            Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
-
-                        let val_x_prev = basis.value(posit_x_prev);
-                        let val_x_next = basis.value(posit_x_next);
-                        let val_y_prev = basis.value(posit_y_prev);
-                        let val_y_next = basis.value(posit_y_next);
-                        let val_z_prev = basis.value(posit_z_prev);
-                        let val_z_next = basis.value(posit_z_next);
-
-                        // todo: Divide by norm A/R.
-                        self.x_prev[basis_i][i][j][k] = val_x_prev;
-                        self.x_next[basis_i][i][j][k] = val_x_next;
-                        self.y_prev[basis_i][i][j][k] = val_y_prev;
-                        self.y_next[basis_i][i][j][k] = val_y_next;
-                        self.z_prev[basis_i][i][j][k] = val_z_prev;
-                        self.z_next[basis_i][i][j][k] = val_z_next;
-                    }
-                }
-            }
-        }
+        num_diff::update_psi_pp(self, bases, grid_posits, grid_n);
     }
 }
 
 /// Group that includes psi at a point, and at points surrounding it, an infinetesimal difference
 /// in both directions along each spacial axis.
 #[derive(Clone)]
-pub struct PsiWDiffs1d {
+pub struct _PsiWDiffs1d {
     pub on_pt: Vec<Cplx>,
     pub psi_pp_analytic: Vec<Cplx>,
     pub x_prev: Vec<Cplx>,
@@ -280,7 +252,7 @@ pub struct PsiWDiffs1d {
     pub z_next: Vec<Cplx>,
 }
 
-impl PsiWDiffs1d {
+impl _PsiWDiffs1d {
     pub fn init(data: &Vec<Cplx>) -> Self {
         Self {
             on_pt: data.clone(),
@@ -298,7 +270,7 @@ impl PsiWDiffs1d {
 /// Group that includes psi at a point, and at points surrounding it, an infinetesimal difference
 /// in both directions along each spacial axis.
 #[derive(Clone)]
-pub struct PsiWDiffs {
+pub struct _PsiWDiffs {
     pub on_pt: Arr3d,
     pub psi_pp_analytic: Arr3d,
     pub x_prev: Arr3d,
@@ -309,7 +281,7 @@ pub struct PsiWDiffs {
     pub z_next: Arr3d,
 }
 
-impl PsiWDiffs {
+impl _PsiWDiffs {
     pub fn init(data: &Arr3d) -> Self {
         Self {
             on_pt: data.clone(),

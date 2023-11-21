@@ -26,6 +26,7 @@ use basis_wfs::{Basis, HOrbital, SphericalHarmonic};
 use grid_setup::Arr3d;
 use types::SurfacesPerElec;
 
+use crate::grid_setup::new_data;
 use lin_alg2::f64::Vec3;
 
 /// Create trial wave functions for a given point-charge distibution. Currently
@@ -94,5 +95,6 @@ pub fn psi_from_pt_charges(
     let weights: Vec<f64> = bases.iter().map(|b| b.weight()).collect();
     // wf_ops::update_wf_fm_bases(&mut sfcs, &bases_unweighted, E, grid_n, &weights);
 
-    sfcs.psi.on_pt.clone()
+    // sfcs.psi.on_pt.clone()
+    new_data(69)
 }

@@ -170,6 +170,7 @@ pub(crate) fn factorial(val: u16) -> u64 {
 
 /// Calculate ψ* ψ
 pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, grid_n: usize) {
+    // todo: CUDA.
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
@@ -185,14 +186,14 @@ pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, grid_n: usize) {
 /// Note that due to phase symmetry, there are many ways to balance the normalization of the real
 /// vice imaginary parts. Our implmentation (dividing both real and imag parts by norm square)
 /// is one way.
-pub(crate) fn normalize_wf(arr: &mut Arr3d, norm: f64) {
-    const EPS: f64 = 0.0000001;
+pub(crate) fn normalize_arr(arr: &mut Arr3d, norm: f64) {
+    const EPS: f64 = 0.00000001;
     if norm.abs() < EPS {
         return;
     }
 
     // todo: Why are we dividing by norm.sqrt() instead of norm?
-    // todo: Seems to be required, but try to understand it.
+    // todo: Seems to be required, but I don't yet understand it.
     let norm_sqrt = norm.sqrt();
 
     let grid_n = arr.len();
@@ -200,12 +201,10 @@ pub(crate) fn normalize_wf(arr: &mut Arr3d, norm: f64) {
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
-                // Note: Check the div impl for details.
                 arr[i][j][k] = arr[i][j][k] / norm_sqrt;
             }
         }
     }
-    // norm_sqrt
 }
 
 /// Flatten 3D data, prior passing to a GPU kernel.

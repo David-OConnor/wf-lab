@@ -5,6 +5,13 @@
 #include "util.cu"
 
 
+__device__
+dtype norm_term(uint16_t n, uint16_t l) {
+    double norm_term_num = std::pow(2.0f / n, 3) * factorial(n - l - 1);
+    double norm_term_denom = std::pow(2 * n * factorial(n + l), 3);
+    return std::sqrt(norm_term_num / norm_term_denom);
+}
+
 // Note that this is for the radial component only, with n=1. Real. See CPU side for a ref.
 __device__
 dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n, uint16_t l) {
@@ -15,10 +22,6 @@ dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n, uint1
 //     dtype radial = N * std::pow(r, n - 1) * std::exp(-xi * r / n);
 //     return radial;
 
-    dtype norm_term_num = std::pow(2. / (n * A_0), 3) * factorial(n - l - 1);
-    dtype norm_term_denom = (2 * n * std::pow(factorial(n + l), 3));
-    dtype norm_term = std::sqrt(norm_term_num / norm_term_denom);
-
     dtype exp_term = std::exp(-r / (n * A_0));
 
     uint16_t lg_l = n - l - 1;
@@ -27,11 +30,10 @@ dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n, uint1
 
     dtype polynomial_term = std::pow(2.f * r / n, l) * laguerre(lg_l, lg_r, lg_input);
 
-    return norm_term
+    return norm_term(n, l)
         * polynomial_term
         * exp_term;
 }
-
 
 // Note that this is for the radial component only. Real. See CPU side for a ref.
 __device__
@@ -52,31 +54,23 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
     dtype exp_term = std::exp(-xi * r / n);
     dtype laguerre_param = 2.f * r / n;
 
-    double norm_term_num = std::pow(2.0f / n, 3) * factorial(n - l - 1);
-    double norm_term_denom = std::pow(2 * n * factorial(n + l), 3);
-    double norm_term = std::sqrt(norm_term_num / norm_term_denom);
-
     dtype result = 0.;
 
     for (auto x : {diff.x, diff.y, diff.z}) {
         double x_sq = std::pow(x, 2);
 
         if (n == 1 && l == 0) {
-            auto term1 = 2.0f * r * ((pow(xi, 2) * x_sq * exp_term) / (pow(n, 2) * r_sq)
-                        + (xi * x_sq * exp_term) / (n * pow(r_sq, 1.5f))
-                        - (xi * exp_term) / (n * r)) / n;
-        
-            auto term2 = - (4.0f * xi * x_sq * exp_term) / (pow(n, 2) * r_sq);
-        
-            auto term3 = (2.0f * (1.0f / r - x_sq / pow(r_sq, 1.5f)) * exp_term) / n;
+            double term1 = std::pow(xi, 2) * x_sq * exp_term / (std::pow(n, 2) * r_sq);
+            double term2 = xi * x_sq * exp_term / (n * std::pow(r_sq, 1.5f));
+            double term3 = -xi * exp_term / (n * r);
         
             result += term1 + term2 + term3;
         } else if (n == 2 && l == 0) {
-            result += exp_term * 2.f * r / n * (2.f - laguerre_param);
+            result += exp_term * (2.f - laguerre_param);
         }
     }
 
-    return result;
+    return norm_term(n, l) * result;
 }
 
 

@@ -128,8 +128,8 @@ pub(crate) fn mix_bases_w_diffs(
         }
     }
 
-    util::normalize_wf(&mut psi.on_pt, norm);
-    util::normalize_wf(&mut psi.psi_pp_analytic, norm);
+    util::normalize_arr(&mut psi.on_pt, norm);
+    util::normalize_arr(&mut psi.psi_pp_analytic, norm);
 }
 
 /// Eg for the psi-on-grid for charges, where we don't need to generate psi''.
@@ -225,7 +225,7 @@ pub fn update_wf_fm_bases(
         &sfcs.psi,
         &sfcs.V_acting_on_this,
         &mut sfcs.psi_pp_calculated,
-        &mut sfcs.psi_pp_measured,
+        &mut sfcs.psi_pp_evaluated,
         E,
         grid_n,
     );
@@ -435,7 +435,10 @@ pub fn create_psi_from_bases(
                         }
                     }
                 }
-                util::normalize_wf(&mut psi[basis_i], norm);
+                util::normalize_arr(&mut psi[basis_i], norm);
+                if psi_pp.is_some() {
+                    util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
+                }
             }
         }
         ComputationDevice::Cpu => {
@@ -453,7 +456,10 @@ pub fn create_psi_from_bases(
                         }
                     }
                 }
-                util::normalize_wf(&mut psi[basis_i], norm);
+                util::normalize_arr(&mut psi[basis_i], norm);
+                if psi_pp.is_some() {
+                    util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
+                }
             }
         }
     }
@@ -503,7 +509,7 @@ pub fn create_psi_from_bases_mix_update_charge_density(
             }
         }
 
-        util::normalize_wf(&mut result[basis_i], norm);
+        util::normalize_arr(&mut result[basis_i], norm);
     }
     result
 }

@@ -181,7 +181,7 @@ impl Basis {
         match self {
             Self::H(v) => v.psi_pp_div_psi(posit_sample),
             Self::Gto(v) => unimplemented!(),
-            Self::Sto(v) => v.psi_pp_div_psi(posit_sample),
+            Self::Sto(v) => v._psi_pp_div_psi(posit_sample),
         }
     }
 
@@ -431,6 +431,13 @@ impl Sto {
         self.harmonic.value(θ, ϕ)
     }
 
+    fn norm_term(n: u16, l: u16) -> f64 {
+        // todo: These normalization terms may be inappropriate when not paired with a spherical harmonic.
+        let norm_term_num = (2. / (n as f64 * A_0)).powi(3) * factorial(n - l - 1) as f64;
+        let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
+        (norm_term_num / norm_term_denom).sqrt()
+    }
+
     pub fn radial(&self, posit_sample: Vec3) -> f64 {
         // todo: This currently ignores the spherical harmonic part; add that!
         let r = (posit_sample - self.posit).magnitude();
@@ -439,11 +446,6 @@ impl Sto {
         // let l = self.l; // todo
         let l = 0;
         let nf = n as f64;
-
-        // todo: These normalization terms may be inappropriate when not paired with a spherical harmonic.
-        let norm_term_num = (2. / (nf * A_0)).powi(3) * factorial(n - l - 1) as f64;
-        let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
-        let norm_term = (norm_term_num / norm_term_denom).sqrt();
 
         let exp_term = (-self.xi * r / (nf * A_0)).exp();
 
@@ -465,12 +467,12 @@ impl Sto {
         // For n=1 second deriv, try this in Wolfram Alpha:
         // todo: Confirm this is how you apply xi.
         // n=1, l=0
-        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 with respect to x where r=sqrt(x^2 + y^2 + z^2)`
+        // `second derivative of exp(-r * xi / n) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
         // n=2, l=0
-        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 * (2-b) with respect to x where r=sqrt(x^2 + y^2 + z^2) and b=2*r/n`
+        // `second derivative of exp(-r * xi / n) * (2-b) with respect to x where r=sqrt(x^2 + y^2 + z^2) and b=2*r/n`
         // n=3, l=0
         // todo: Redo this.
-        // `second derivative of exp(-r * \xi / n) * (2 * r / n)^1 * (b^2 / 2 - 3b + 3)  with respect to x where r=sqrt(x^2 + y^2 + z^2) and b=2*r/n`
+        // `second derivative of exp(-r * xi / n) * (b^2 / 2 - 3b + 3)  with respect to x where r=sqrt(x^2 + y^2 + z^2) and b=2*r/n`
 
         // Example ChatGPT query:
         // "Please calculate the second derivative of C * exp(-r * \xi / n) * (2 * r / n)^1 *
@@ -483,7 +485,7 @@ impl Sto {
         // WA's image output. Then manually replace (x^+y^2+z^2) with r_sq etc, and replace using
         // `exp_term` and `s_sq` as well.
 
-        norm_term * polynomial_term * exp_term
+        Self::norm_term(n, l) * polynomial_term * exp_term
     }
 
     /// Analytic second derivative using analytic basis functions.
@@ -514,39 +516,43 @@ impl Sto {
         let exp_term = (-xi * r / nf).exp();
         let laguerre_param = 2. * r / nf;
 
-        // todo: These normalization terms may be inappropriate when not paired with a spherical harmonic.
-        // C+P from `radial`.
-        let norm_term_num = (2. / (nf * A_0)).powi(3) * factorial(n - l - 1) as f64;
-        let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
-        let norm_term = (norm_term_num / norm_term_denom).sqrt();
-
         let mut result = 0.;
 
         // Each part is the second deriv WRT to an orthogonal axis.
-        for x in &[diff.x, diff.y, diff.z] {
+        for (i, x) in [diff.x, diff.y, diff.z].iter().enumerate() {
             let x_sq = x.powi(2);
 
             if n == 1 && l == 0 {
-                let term1 = 2.0
-                    * r
-                    * ((xi.powi(2) * x_sq * exp_term) / (nf.powi(2) * r_sq)
-                        + (xi * x_sq * exp_term) / (nf * r_sq.powf(1.5))
-                        - (xi * exp_term) / (nf * r))
-                    / nf;
-
-                let term2 = -(4.0 * xi * x_sq * exp_term) / (nf.powi(2) * r_sq);
-
-                let term3 = (2.0 * (1.0 / r - x_sq / r_sq.powf(1.5)) * exp_term) / nf;
+                let term1 = xi.powi(2) * x_sq * exp_term / (nf.powi(2) * r_sq);
+                let term2 = xi * x_sq * exp_term / (nf * r_sq.powf(1.5));
+                let term3 = -xi * exp_term / (nf * r);
 
                 result += term1 + term2 + term3
             } else if n == 2 && l == 0 {
-                result += exp_term * 2. * r / nf * (2. - laguerre_param);
+                // Uhoh! Wolfram alpha is  having a struggle! ChatGPT is giving me an anaswer in "simplified form",
+                // . Likely incorrect. Let's try anyhow.
+
+                let term1 = match i {
+                    // todo?
+                    0 => -nf.powi(2) * (diff.y.powi(2) + diff.z.powi(2)) * r_sq.powi(2),
+                    1 => -nf.powi(2) * (diff.x.powi(2) + diff.z.powi(2)) * r_sq.powi(2),
+                    2 => -nf.powi(2) * (diff.x.powi(2) + diff.y.powi(2)) * r_sq.powi(2),
+                    _ => unreachable!(),
+                };
+
+                let term2 = 2.0 * nf * x_sq * xi * r_sq.powf(4.5);
+                let term3 = xi
+                    * (nf - r)
+                    * r_sq.powf(2.5)
+                    * (nf * x_sq * r.powi(3) - nf * r_sq.powf(2.5) + x_sq * xi * r_sq.powi(2));
+
+                result += 2.0 * (term1 + term2 + term3) * exp_term / (nf.powi(3) * r_sq.powf(5.5));
             } else {
                 unimplemented!("Second deriv unimplemented for this n and l.")
             }
         }
 
-        Cplx::from_real(norm_term * result)
+        Cplx::from_real(Self::norm_term(n, l) * result)
     }
 
     /// Saves some minor computations over calculating them individually, due to
@@ -554,7 +560,8 @@ impl Sto {
     ///
     /// Note: It appears that this is always real (Hermitian eigenvalues?)
 
-    pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
+    pub fn _psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
+        // todo: Update A/R, and or deprecate.
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
@@ -572,7 +579,8 @@ impl Sto {
     }
 
     pub fn V_p_from_psi(&self, posit_sample: Vec3) -> f64 {
-        // From Wolfram alpha
+        // From Wolfram alpha // todo: What query? What is this?
+        // todo: Update A/R if you need based on new sto formula?
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
@@ -594,6 +602,8 @@ impl Sto {
     }
 
     pub fn V_pp_from_psi(&self, posit_sample: Vec3) -> f64 {
+        // todo: What query? What is this?
+        // todo: Update A/R if you need based on new sto formula?
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 

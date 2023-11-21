@@ -1,4 +1,5 @@
-//! Code for numerical finite-difference differentiation.
+//! Code for numerical finite-difference differentiation. We use this primarily to calculate
+//! Ψ'', which is a component of the Schrodinger equation.
 
 use lin_alg2::f64::Vec3;
 
@@ -7,6 +8,7 @@ use crate::{
     complex_nums::Cplx,
     grid_setup::{Arr3d, Arr3dVec},
     interp,
+    types::BasesEvaluated,
 };
 
 // Used for calculating numerical psi''.
@@ -455,4 +457,49 @@ pub(crate) fn _find_ψ_pp_meas_from_interp(
 
     // result / H_SQ
     result / (h2 * h2)
+}
+
+pub(crate) fn update_psi_pp(
+    psi: &mut BasesEvaluated,
+    bases: &[Basis],
+    grid_posits: &Arr3dVec,
+    grid_n: usize,
+) {
+    for (basis_i, basis) in bases.iter().enumerate() {
+        for i in 0..grid_n {
+            for j in 0..grid_n {
+                for k in 0..grid_n {
+                    let posit_sample = grid_posits[i][j][k];
+
+                    let posit_x_prev =
+                        Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
+                    let posit_x_next =
+                        Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
+                    let posit_y_prev =
+                        Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
+                    let posit_y_next =
+                        Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
+                    let posit_z_prev =
+                        Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
+                    let posit_z_next =
+                        Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+
+                    let val_x_prev = basis.value(posit_x_prev);
+                    let val_x_next = basis.value(posit_x_next);
+                    let val_y_prev = basis.value(posit_y_prev);
+                    let val_y_next = basis.value(posit_y_next);
+                    let val_z_prev = basis.value(posit_z_prev);
+                    let val_z_next = basis.value(posit_z_next);
+
+                    // todo: Divide by norm A/R.
+                    psi.x_prev[basis_i][i][j][k] = val_x_prev;
+                    psi.x_next[basis_i][i][j][k] = val_x_next;
+                    psi.y_prev[basis_i][i][j][k] = val_y_prev;
+                    psi.y_next[basis_i][i][j][k] = val_y_next;
+                    psi.z_prev[basis_i][i][j][k] = val_z_prev;
+                    psi.z_next[basis_i][i][j][k] = val_z_next;
+                }
+            }
+        }
+    }
 }

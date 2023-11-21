@@ -245,20 +245,20 @@ pub fn update_meshes(
             true,
         ));
 
-        for (scaler, sfc) in [
-            (PSI_PP_SCALER, &surfaces_shared.psi_pp_calculated),
-            (PSI_PP_SCALER, &surfaces_shared.psi_pp_measured),
-        ] {
-            meshes.push(Mesh::new_surface(
-                &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false, grid_n),
-                true,
-            ));
-
-            meshes.push(Mesh::new_surface(
-                &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, true, grid_n),
-                true,
-            ));
-        }
+        // for (scaler, sfc) in [
+        //     (PSI_PP_SCALER, &surfaces_shared.psi_pp_calculated),
+        //     (PSI_PP_SCALER, &surfaces_shared.psi_pp_measured),
+        // ] {
+        //     meshes.push(Mesh::new_surface(
+        //         &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false, grid_n),
+        //         true,
+        //     ));
+        //
+        //     meshes.push(Mesh::new_surface(
+        //         &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, true, grid_n),
+        //         true,
+        //     ));
+        // }
 
         // meshes.push(Mesh::new_surface(
         //     &prepare_2d_mesh_real(
@@ -318,7 +318,7 @@ pub fn update_meshes(
 
         for (scaler, sfc) in [
             (PSI_PP_SCALER, &surfaces.psi_pp_calculated),
-            (PSI_PP_SCALER, &surfaces.psi_pp_measured),
+            (PSI_PP_SCALER, &surfaces.psi_pp_evaluated),
         ] {
             meshes.push(Mesh::new_surface(
                 &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false, grid_n),
