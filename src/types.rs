@@ -88,8 +88,6 @@ impl SurfacesShared {
 /// `Vec`s here generally mean per-electron.
 #[derive(Clone)]
 pub struct SurfacesPerElec {
-    pub bases_evaluated_psi: Vec<Arr3d>,
-    pub bases_evaluated_psi_pp: Vec<Arr3d>,
     /// V from the nucleii, and all other electrons. Does not include this electron's charge.
     /// We use this as a cache instead of generating it on the fly.
     pub V_acting_on_this: Arr3dReal,
@@ -100,6 +98,10 @@ pub struct SurfacesPerElec {
     pub psi_pp_calculated: Arr3d,
     /// From an analytic or numeric computation from basis functions.
     pub psi_pp_evaluated: Arr3d,
+    // todo: We may need to move this to top-level state like `charges_electron` for API reasons.
+    // todo: It will become apparent if this is the case.
+    pub psi_per_basis: Vec<Arr3d>,
+    pub psi_pp_per_basis: Vec<Arr3d>,
     /// Aux surfaces are for misc visualizations
     /// todo: Rename them to total V from psi, V' elec etc.
     pub aux1: Arr3dReal,
@@ -119,8 +121,8 @@ impl SurfacesPerElec {
         // let psi = PsiWDiffs::init(&data);
 
         Self {
-            bases_evaluated_psi: Vec::new(),
-            bases_evaluated_psi_pp: Vec::new(),
+            psi_per_basis: Vec::new(),
+            psi_pp_per_basis: Vec::new(),
             V_acting_on_this: data_real.clone(),
             psi: data.clone(),
             psi_pp_calculated: data.clone(),

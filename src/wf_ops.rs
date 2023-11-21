@@ -373,9 +373,8 @@ pub fn initialize_bases(
     // }
 }
 
-/// Create psi using basis functions. Only creates psi; doesn't create
-/// its derivatives, and combines from all bases. We use this primarily as part of the central dogma
-/// pipeline; ie for creating charge from the electron cloud. We may also use it for the render grid.
+/// Create psi, and optionally psi'', using basis functions. Does not mix bases; creates these
+/// values per-basis.
 /// todo: This currently keeps the bases unmixed. Do we want 2 variants: One mixed, one unmixed?
 pub fn create_psi_from_bases(
     dev: &ComputationDevice,

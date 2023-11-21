@@ -182,7 +182,7 @@ pub fn init_from_grid(
     grid_range: (f64, f64),
     grid_range_charge: (f64, f64),
     spacing_factor: f64,
-    grid_n: usize,
+    grid_n_sample: usize,
     grid_n_charge: usize,
     bases_per_elec: &[Vec<Basis>],
     charges_fixed: &[(Vec3, f64)],
@@ -195,9 +195,9 @@ pub fn init_from_grid(
     SurfacesShared,
     Vec<SurfacesPerElec>,
 ) {
-    let arr_real = grid_setup::new_data_real(grid_n);
+    let arr_real = grid_setup::new_data_real(grid_n_sample);
 
-    let sfcs_one_elec = SurfacesPerElec::new(grid_n);
+    let sfcs_one_elec = SurfacesPerElec::new(grid_n_sample);
 
     let mut surfaces_per_elec = Vec::new();
     for _ in 0..num_electrons {
@@ -208,7 +208,7 @@ pub fn init_from_grid(
         grid_range,
         grid_range_charge,
         spacing_factor,
-        grid_n,
+        grid_n_sample,
         grid_n_charge,
         num_electrons,
     );
@@ -217,7 +217,7 @@ pub fn init_from_grid(
         &mut surfaces_shared.grid_posits,
         grid_range,
         spacing_factor,
-        grid_n,
+        grid_n_sample,
     );
 
     grid_setup::update_grid_posits(
@@ -231,7 +231,7 @@ pub fn init_from_grid(
         &mut surfaces_shared.V_from_nuclei,
         charges_fixed,
         &surfaces_shared.grid_posits,
-        grid_n,
+        grid_n_sample,
     );
 
     for (elec_i, electron) in surfaces_per_elec.iter_mut().enumerate() {
@@ -240,7 +240,7 @@ pub fn init_from_grid(
             &surfaces_shared.V_from_nuclei,
             &[], // Not ready to apply V from other elecs yet.
             elec_i,
-            grid_n,
+            grid_n_sample,
         );
     }
 
@@ -261,6 +261,16 @@ pub fn init_from_grid(
             // Handle the charge-grid-evaluated psi.
             bec_this_elec.push(new_data(grid_n_charge));
         }
+
+        wf_ops::create_psi_from_bases(
+            dev,
+            &mut surfaces_per_elec[i_elec].psi_per_basis,
+            Some(&mut surfaces_per_elec[i_elec].psi_pp_per_basis),
+            &bases_per_elec[i_elec],
+            &surfaces_shared.grid_posits,
+            grid_n_sample,
+        );
+
 
         // let bases_eval_this_elec = BasesEvaluated::initialize_with_psi(
         //     dev,
@@ -337,10 +347,10 @@ fn main() {
 
     let nuclei = vec![
         (posit_charge_1, Q_PROT * 1.), // helium
-                                       // (posit_charge_1, Q_PROT * 3.), // lithium
-                                       // (posit_charge_1, Q_PROT * 1.), // Hydrogen
-                                       // (posit_charge_2, Q_PROT),
-                                       // (Vec3::new(0., 1., 0.), Q_ELEC),
+        // (posit_charge_1, Q_PROT * 3.), // lithium
+        // (posit_charge_1, Q_PROT * 1.), // Hydrogen
+        // (posit_charge_2, Q_PROT),
+        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
     let max_basis_n = 1;
@@ -350,19 +360,19 @@ fn main() {
     let num_elecs = 2;
 
     // Outer of these is per-elec.
-    let mut bases = Vec::new();
+    let mut bases_per_elec = Vec::new();
 
     for _ in 0..num_elecs {
-        bases.push(Vec::new());
+        bases_per_elec.push(Vec::new());
     }
 
-    wf_ops::initialize_bases(&nuclei, &mut bases[ui_active_elec], max_basis_n);
+    wf_ops::initialize_bases(&nuclei, &mut bases_per_elec[ui_active_elec], max_basis_n);
 
     // todo: This is getting weird re multiple electrons; perhaps you should switch
     // todo an approach where bases don't have weights, but you use a separate
     // weights array.
     for i_elec in 1..num_elecs {
-        bases[i_elec] = bases[0].clone();
+        bases_per_elec[i_elec] = bases_per_elec[0].clone();
     }
 
     // H ion nuc dist is I believe 2 bohr radii.
@@ -396,7 +406,7 @@ fn main() {
         spacing_factor,
         grid_n,
         grid_n_charge,
-        &bases,
+        &bases_per_elec,
         &nuclei,
         num_elecs,
     );
@@ -420,7 +430,7 @@ fn main() {
         charges_fixed: nuclei,
         charges_electron,
         V_from_elecs,
-        bases,
+        bases: bases_per_elec,
         // bases_evaluated,
         bases_evaluated_charge,
         surfaces_shared,
