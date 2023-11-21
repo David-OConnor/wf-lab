@@ -122,6 +122,10 @@ pub struct State {
     /// This is not part of `SurfacesPerElec` since we use all values at once (or all except one)
     /// when calculating the potential. (easier to work with API)
     pub charges_electron: Vec<Arr3dReal>,
+    // /// See note on charges_electron; should be part of `SurfacesPerElec`.
+    // pub psi_per_basis: Vec<Vec<Arr3d>>,
+    // /// See note on charges_electron; should be part of `SurfacesPerElec`.
+    // pub psi_pp_per_basis: Vec<Vec<Arr3d>>,
     /// Also stored here vice part of per-elec structs due to borrow-limiting on struct fields.
     pub V_from_elecs: Vec<Arr3dReal>,
     /// Surfaces that are not electron-specific.
