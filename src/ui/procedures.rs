@@ -8,7 +8,7 @@ use crate::{
     elec_elec::{PositIndex, WaveFunctionMultiElec},
     grid_setup::{new_data, Arr3dReal},
     potential, render,
-    types::BasesEvaluated,
+    // types::BasesEvaluated,
     types::SurfacesPerElec,
     wf_ops, ActiveElec, State,
 };
@@ -23,7 +23,7 @@ pub fn update_E_or_V(
         for j in 0..grid_n_render {
             for k in 0..grid_n_render {
                 sfcs.psi_pp_calculated[i][j][k] = eigen_fns::find_ψ_pp_calc(
-                    sfcs.psi.on_pt[i][j][k],
+                    sfcs.psi[i][j][k],
                     sfcs.V_acting_on_this[i][j][k],
                     E,
                 )
@@ -35,7 +35,7 @@ pub fn update_E_or_V(
     wf_ops::calculate_v_elec(
         &mut sfcs.aux1,
         &mut sfcs.aux2,
-        &sfcs.psi.on_pt,
+        &sfcs.psi,
         &sfcs.psi_pp_evaluated,
         E,
         V_from_nuclei,
@@ -46,20 +46,20 @@ pub fn update_E_or_V(
 pub fn update_basis_weights(state: &mut State, ae: usize) {
     let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
 
-    wf_ops::update_wf_fm_bases(
-        &mut state.surfaces_per_elec[ae],
-        &state.bases_evaluated[ae],
-        state.surfaces_shared.E,
-        state.grid_n_render,
-        &weights,
-    );
+    // wf_ops::update_wf_fm_bases(
+    //     &mut state.surfaces_per_elec[ae],
+    //     &state.bases_evaluated[ae],
+    //     state.surfaces_shared.E,
+    //     state.grid_n_render,
+    //     &weights,
+    // );
 
     // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
     let sfcs = &mut state.surfaces_per_elec[ae];
     wf_ops::calculate_v_elec(
         &mut sfcs.aux1,
         &mut sfcs.aux2,
-        &sfcs.psi.on_pt,
+        &sfcs.psi,
         &sfcs.psi_pp_evaluated,
         state.surfaces_shared.E,
         &state.surfaces_shared.V_from_nuclei,
@@ -68,12 +68,12 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
 
 /// Run this when we add bases, change basis parameters other than weight etc.
 pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
-    state.bases_evaluated[ae] = BasesEvaluated::initialize_with_psi(
-        &state.dev,
-        &state.bases[ae],
-        &state.surfaces_shared.grid_posits,
-        state.grid_n_render,
-    );
+    // state.bases_evaluated[ae] = BasesEvaluated::initialize_with_psi(
+    //     &state.dev,
+    //     &state.bases[ae],
+    //     &state.surfaces_shared.grid_posits,
+    //     state.grid_n_render,
+    // );
 
     wf_ops::create_psi_from_bases(
         &state.dev,

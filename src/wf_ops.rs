@@ -30,7 +30,8 @@ use crate::{
     gpu,
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     num_diff::{self},
-    types::{BasesEvaluated, PsiWDiffs, PsiWDiffs1d, SurfacesPerElec},
+    // types::{BasesEvaluated, PsiWDiffs, PsiWDiffs1d, SurfacesPerElec},
+    types::SurfacesPerElec,
     util,
 };
 use cudarc::driver::CudaDevice;
@@ -63,74 +64,74 @@ pub enum Spin {
 // todo: QC if the individual Vs you're adding here already have nuc baked in; I think they do!
 // todo: You should likely split them off.
 
-/// Mix bases together into a numerical wave function at each grid point, and at diffs.
-/// This is our mixer from pre-calculated basis functions: Create psi, including at
-/// neighboring points (used to numerically differentiate), from summing them with
-/// their weights. Basis wfs must be initialized prior to running this, and weights must
-/// be selected.
-///
-/// The resulting wave functions are normalized.
-pub(crate) fn mix_bases_w_diffs(
-    psi: &mut PsiWDiffs,
-    bases_evaled: &BasesEvaluated,
-    grid_n: usize,
-    weights: &[f64],
-) {
-    // todo: This assumption may not be correct.
-    // We don't need to normalize the result using the full procedure; the basis-wfs are already
-    // normalized, so divide by the cumulative basis weights.
-
-    let mut weight_total = 0.;
-    for weight in weights {
-        weight_total += weight.abs();
-    }
-
-    let mut norm_scaler = 1. / weight_total;
-
-    // Prevents NaNs and related complications.
-    if weight_total.abs() < 0.000001 {
-        norm_scaler = 0.;
-    }
-
-    // todo temp TS
-    // let norm_scaler = 1.;
-
-    let mut norm = 0.;
-
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                psi.on_pt[i][j][k] = Cplx::new_zero();
-                psi.psi_pp_analytic[i][j][k] = Cplx::new_zero();
-                psi.x_prev[i][j][k] = Cplx::new_zero();
-                psi.x_next[i][j][k] = Cplx::new_zero();
-                psi.y_prev[i][j][k] = Cplx::new_zero();
-                psi.y_next[i][j][k] = Cplx::new_zero();
-                psi.z_prev[i][j][k] = Cplx::new_zero();
-                psi.z_next[i][j][k] = Cplx::new_zero();
-
-                for (i_basis, weight) in weights.iter().enumerate() {
-                    let scaled = weight * norm_scaler;
-
-                    psi.on_pt[i][j][k] += bases_evaled.on_pt[i_basis][i][j][k] * scaled;
-                    psi.psi_pp_analytic[i][j][k] +=
-                        bases_evaled.psi_pp_analytic[i_basis][i][j][k] * scaled;
-                    psi.x_prev[i][j][k] += bases_evaled.x_prev[i_basis][i][j][k] * scaled;
-                    psi.x_next[i][j][k] += bases_evaled.x_next[i_basis][i][j][k] * scaled;
-                    psi.y_prev[i][j][k] += bases_evaled.y_prev[i_basis][i][j][k] * scaled;
-                    psi.y_next[i][j][k] += bases_evaled.y_next[i_basis][i][j][k] * scaled;
-                    psi.z_prev[i][j][k] += bases_evaled.z_prev[i_basis][i][j][k] * scaled;
-                    psi.z_next[i][j][k] += bases_evaled.z_next[i_basis][i][j][k] * scaled;
-                }
-
-                norm += psi.on_pt[i][j][k].abs_sq();
-            }
-        }
-    }
-
-    util::normalize_arr(&mut psi.on_pt, norm);
-    util::normalize_arr(&mut psi.psi_pp_analytic, norm);
-}
+// /// Mix bases together into a numerical wave function at each grid point, and at diffs.
+// /// This is our mixer from pre-calculated basis functions: Create psi, including at
+// /// neighboring points (used to numerically differentiate), from summing them with
+// /// their weights. Basis wfs must be initialized prior to running this, and weights must
+// /// be selected.
+// ///
+// /// The resulting wave functions are normalized.
+// pub(crate) fn mix_bases_w_diffs(
+//     psi: &mut PsiWDiffs,
+//     bases_evaled: &BasesEvaluated,
+//     grid_n: usize,
+//     weights: &[f64],
+// ) {
+//     // todo: This assumption may not be correct.
+//     // We don't need to normalize the result using the full procedure; the basis-wfs are already
+//     // normalized, so divide by the cumulative basis weights.
+//
+//     let mut weight_total = 0.;
+//     for weight in weights {
+//         weight_total += weight.abs();
+//     }
+//
+//     let mut norm_scaler = 1. / weight_total;
+//
+//     // Prevents NaNs and related complications.
+//     if weight_total.abs() < 0.000001 {
+//         norm_scaler = 0.;
+//     }
+//
+//     // todo temp TS
+//     // let norm_scaler = 1.;
+//
+//     let mut norm = 0.;
+//
+//     for i in 0..grid_n {
+//         for j in 0..grid_n {
+//             for k in 0..grid_n {
+//                 psi.on_pt[i][j][k] = Cplx::new_zero();
+//                 psi.psi_pp_analytic[i][j][k] = Cplx::new_zero();
+//                 psi.x_prev[i][j][k] = Cplx::new_zero();
+//                 psi.x_next[i][j][k] = Cplx::new_zero();
+//                 psi.y_prev[i][j][k] = Cplx::new_zero();
+//                 psi.y_next[i][j][k] = Cplx::new_zero();
+//                 psi.z_prev[i][j][k] = Cplx::new_zero();
+//                 psi.z_next[i][j][k] = Cplx::new_zero();
+//
+//                 for (i_basis, weight) in weights.iter().enumerate() {
+//                     let scaled = weight * norm_scaler;
+//
+//                     psi.on_pt[i][j][k] += bases_evaled.on_pt[i_basis][i][j][k] * scaled;
+//                     psi.psi_pp_analytic[i][j][k] +=
+//                         bases_evaled.psi_pp_analytic[i_basis][i][j][k] * scaled;
+//                     psi.x_prev[i][j][k] += bases_evaled.x_prev[i_basis][i][j][k] * scaled;
+//                     psi.x_next[i][j][k] += bases_evaled.x_next[i_basis][i][j][k] * scaled;
+//                     psi.y_prev[i][j][k] += bases_evaled.y_prev[i_basis][i][j][k] * scaled;
+//                     psi.y_next[i][j][k] += bases_evaled.y_next[i_basis][i][j][k] * scaled;
+//                     psi.z_prev[i][j][k] += bases_evaled.z_prev[i_basis][i][j][k] * scaled;
+//                     psi.z_next[i][j][k] += bases_evaled.z_next[i_basis][i][j][k] * scaled;
+//                 }
+//
+//                 norm += psi.on_pt[i][j][k].abs_sq();
+//             }
+//         }
+//     }
+//
+//     util::normalize_arr(&mut psi.on_pt, norm);
+//     util::normalize_arr(&mut psi.psi_pp_analytic, norm);
+// }
 
 /// Eg for the psi-on-grid for charges, where we don't need to generate psi''.
 // todo: DRY
@@ -202,75 +203,75 @@ pub fn mix_bases_update_charge_density(
     }
 }
 
-/// This function combines mixing (pre-computed) numerical basis WFs with updating psi''.
-/// it updates E as well.
-///
-/// - Computes a trial ψ from basis functions. Computes it at each grid point, as well as
-/// the 6 offset ones along the 3 axis used to numerically differentiate.
-/// - Computes ψ'' calculated, and measured from the trial ψ
-/// todo: This function needs a rework or removal.
-pub fn update_wf_fm_bases(
-    sfcs: &mut SurfacesPerElec,
-    basis_wfs: &BasesEvaluated,
-    E: f64,
-    grid_n: usize,
-    weights: &[f64],
-) {
-    mix_bases_w_diffs(&mut sfcs.psi, basis_wfs, grid_n, weights);
-    // mix_bases_no_diffs(&mut sfcs.psi.on_pt, &basis_wfs.on_pt, grid_n, weights);
+// /// This function combines mixing (pre-computed) numerical basis WFs with updating psi''.
+// /// it updates E as well.
+// ///
+// /// - Computes a trial ψ from basis functions. Computes it at each grid point, as well as
+// /// the 6 offset ones along the 3 axis used to numerically differentiate.
+// /// - Computes ψ'' calculated, and measured from the trial ψ
+// /// todo: This function needs a rework or removal.
+// pub fn update_wf_fm_bases(
+//     sfcs: &mut SurfacesPerElec,
+//     basis_wfs: &BasesEvaluated,
+//     E: f64,
+//     grid_n: usize,
+//     weights: &[f64],
+// ) {
+//     mix_bases_w_diffs(&mut sfcs.psi, basis_wfs, grid_n, weights);
+//     // mix_bases_no_diffs(&mut sfcs.psi.on_pt, &basis_wfs.on_pt, grid_n, weights);
+//
+//     // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
+//     // take infinitessimal differences on the analytic basis equations to find psi'' measured.
+//     update_psi_pps(
+//         &sfcs.psi,
+//         &sfcs.V_acting_on_this,
+//         &mut sfcs.psi_pp_calculated,
+//         &mut sfcs.psi_pp_evaluated,
+//         E,
+//         grid_n,
+//     );
+// }
 
-    // Update psi_pps after normalization. We can't rely on cached wfs here, since we need to
-    // take infinitessimal differences on the analytic basis equations to find psi'' measured.
-    update_psi_pps(
-        &sfcs.psi,
-        &sfcs.V_acting_on_this,
-        &mut sfcs.psi_pp_calculated,
-        &mut sfcs.psi_pp_evaluated,
-        E,
-        grid_n,
-    );
-}
-
-/// Update psi'' calc and psi'' measured, assuming we are using basis WFs. This is done
-/// after the wave function is contructed and normalized, including at neighboring points.
-///
-/// We use a separate function from this since it's used separately in our basis-finding
-/// algorithm
-pub fn update_psi_pps(
-    // We split these arguments up instead of using surfaces to control mutability.
-    psi: &PsiWDiffs,
-    V: &Arr3dReal,
-    psi_pp_calc: &mut Arr3d,
-    psi_pp_meas: &mut Arr3d,
-    E: f64,
-    grid_n: usize,
-) {
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                psi_pp_calc[i][j][k] =
-                    eigen_fns::find_ψ_pp_calc(psi.on_pt[i][j][k], V[i][j][k], E);
-
-                // Calculate psi'' based on a numerical derivative of psi
-                // in 3D.
-                // We can compute ψ'' measured this in the same loop here, since we're using an analytic
-                // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
-                psi_pp_meas[i][j][k] = num_diff::find_ψ_pp_meas(
-                    psi.on_pt[i][j][k],
-                    psi.x_prev[i][j][k],
-                    psi.x_next[i][j][k],
-                    psi.y_prev[i][j][k],
-                    psi.y_next[i][j][k],
-                    psi.z_prev[i][j][k],
-                    psi.z_next[i][j][k],
-                );
-
-                // todo experimenting
-                psi_pp_meas[i][j][k] = psi.psi_pp_analytic[i][j][k];
-            }
-        }
-    }
-}
+// /// Update psi'' calc and psi'' measured, assuming we are using basis WFs. This is done
+// /// after the wave function is contructed and normalized, including at neighboring points.
+// ///
+// /// We use a separate function from this since it's used separately in our basis-finding
+// /// algorithm
+// pub fn update_psi_pps(
+//     // We split these arguments up instead of using surfaces to control mutability.
+//     psi: &PsiWDiffs,
+//     V: &Arr3dReal,
+//     psi_pp_calc: &mut Arr3d,
+//     psi_pp_meas: &mut Arr3d,
+//     E: f64,
+//     grid_n: usize,
+// ) {
+//     for i in 0..grid_n {
+//         for j in 0..grid_n {
+//             for k in 0..grid_n {
+//                 psi_pp_calc[i][j][k] =
+//                     eigen_fns::find_ψ_pp_calc(psi.on_pt[i][j][k], V[i][j][k], E);
+//
+//                 // Calculate psi'' based on a numerical derivative of psi
+//                 // in 3D.
+//                 // We can compute ψ'' measured this in the same loop here, since we're using an analytic
+//                 // equation for ψ; we can diff at arbitrary points vice only along a grid of pre-computed ψ.
+//                 psi_pp_meas[i][j][k] = num_diff::find_ψ_pp_meas(
+//                     psi.on_pt[i][j][k],
+//                     psi.x_prev[i][j][k],
+//                     psi.x_next[i][j][k],
+//                     psi.y_prev[i][j][k],
+//                     psi.y_next[i][j][k],
+//                     psi.z_prev[i][j][k],
+//                     psi.z_next[i][j][k],
+//                 );
+//
+//                 // todo experimenting
+//                 psi_pp_meas[i][j][k] = psi.psi_pp_analytic[i][j][k];
+//             }
+//         }
+//     }
+// }
 
 /// [re]Create a set of basis functions, given fixed-charges representing nuclei.
 /// Use this in main and lib inits, and when you add or remove charges.

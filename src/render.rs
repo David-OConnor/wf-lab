@@ -209,35 +209,35 @@ pub fn update_meshes(
             &prepare_2d_mesh_real(grid_posits, &surfaces_shared.V_total, z_i, V_SCALER, grid_n),
             true,
         ));
-
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces_shared.psi.psi_marginal.on_pt,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces_shared.psi.psi_marginal.on_pt,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                true,
-                grid_n,
-            ),
-            true,
-        ));
-
+        //
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces_shared.psi.psi_marginal.on_pt,
+        //         z_i,
+        //         PSI_SCALER,
+        //         mag_phase,
+        //         false,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
+        //
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces_shared.psi.psi_marginal.on_pt,
+        //         z_i,
+        //         PSI_SCALER,
+        //         mag_phase,
+        //         true,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
+        //
         let mut psi_sq = new_data_real(grid_n);
-        util::norm_sq(&mut psi_sq, &surfaces_shared.psi.psi_marginal.on_pt, grid_n);
+        // util::norm_sq(&mut psi_sq, &surfaces_shared.psi.psi_marginal.on_pt, grid_n);
 
         // todo: Lots of DRY here that is fixable between multi-elec and single-elec
         meshes.push(Mesh::new_surface(
@@ -285,7 +285,7 @@ pub fn update_meshes(
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh(
                 grid_posits,
-                &surfaces.psi.on_pt,
+                &surfaces.psi,
                 z_i,
                 PSI_SCALER,
                 mag_phase,
@@ -298,7 +298,7 @@ pub fn update_meshes(
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh(
                 grid_posits,
-                &surfaces.psi.on_pt,
+                &surfaces.psi,
                 z_i,
                 PSI_SCALER,
                 mag_phase,
@@ -309,7 +309,7 @@ pub fn update_meshes(
         ));
 
         let mut psi_sq = new_data_real(grid_n);
-        util::norm_sq(&mut psi_sq, &surfaces.psi.on_pt, grid_n);
+        util::norm_sq(&mut psi_sq, &surfaces.psi, grid_n);
 
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER, grid_n),

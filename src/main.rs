@@ -134,10 +134,10 @@ pub struct State {
     /// Wave functions, with weights. Per-electron. (Outer Vec iterates over electrons; inner over
     /// bases per-electron)
     pub bases: Vec<Vec<Basis>>,
-    /// Basis wave functions. Perhaps faster to cache these (at the cost of more memory use, rather than
-    /// compute their value each time we change weights...) Per-electron.
-    /// todo: This should probably be in one of the surfaces.
-    pub bases_evaluated: Vec<types::BasesEvaluated>,
+    // /// Basis wave functions. Perhaps faster to cache these (at the cost of more memory use, rather than
+    // /// compute their value each time we change weights...) Per-electron.
+    // /// todo: This should probably be in one of the surfaces.
+    // pub bases_evaluated: Vec<types::BasesEvaluated>, // todo: You might actually need this (nov 2023)....
     /// Similar to `bases_evaluated`, but on the charge grid. We don't need diffs for this.
     /// Outer is per-electron. Inner is per-basis
     /// todo: Do we want/need per-electron here?
@@ -422,7 +422,7 @@ fn main() {
         charges_electron,
         V_from_elecs,
         bases,
-        bases_evaluated,
+        // bases_evaluated,
         bases_evaluated_charge,
         surfaces_shared,
         surfaces_per_elec,

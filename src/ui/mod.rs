@@ -446,13 +446,13 @@ fn basis_fn_mixer(
 
                         let ae = elec_i;
 
-                        wf_ops::update_wf_fm_bases(
-                            &mut state.surfaces_per_elec[ae],
-                            &state.bases_evaluated[ae],
-                            state.surfaces_shared.E,
-                            state.grid_n_render,
-                            &weights,
-                        );
+                        // wf_ops::update_wf_fm_bases(
+                        //     &mut state.surfaces_per_elec[ae],
+                        //     &state.bases_evaluated[ae],
+                        //     state.surfaces_shared.E,
+                        //     state.grid_n_render,
+                        //     &weights,
+                        // );
 
                         let E = if state.ui.adjust_E_with_weights {
                             None
