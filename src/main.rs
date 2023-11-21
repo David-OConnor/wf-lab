@@ -23,7 +23,7 @@
 // https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB
 // https://github.com/biubug6/Pytorch_Retinaface
 
-use std::sync::Arc;
+use std::mem;
 
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
 
@@ -266,14 +266,23 @@ pub fn init_from_grid(
             bec_this_elec.push(new_data(grid_n_charge));
         }
 
+
+        let mut temp_psi_per_basis = mem::replace(&mut surfaces_per_elec[i_elec].psi_per_basis, Default::default());
+        let mut temp_psi_pp_per_basis = mem::replace(&mut surfaces_per_elec[i_elec].psi_pp_per_basis, Default::default());
+
         wf_ops::create_psi_from_bases(
             dev,
-            &mut surfaces_per_elec[i_elec].psi_per_basis,
-            Some(&mut surfaces_per_elec[i_elec].psi_pp_per_basis),
+            // &mut surfaces_per_elec[i_elec].psi_per_basis,
+            // Some(&mut surfaces_per_elec[i_elec].psi_pp_per_basis),
+            &mut temp_psi_per_basis,
+            Some(&mut temp_psi_pp_per_basis),
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits,
             grid_n_sample,
         );
+
+        surfaces_per_elec[i_elec].psi_per_basis = temp_psi_per_basis;
+        surfaces_per_elec[i_elec].psi_pp_per_basis = temp_psi_pp_per_basis;
 
 
         // let bases_eval_this_elec = BasesEvaluated::initialize_with_psi(
