@@ -16,12 +16,13 @@
 
 use std::f64::consts::PI;
 
-use scilib::{self, math::polynomial::Poly};
+use scilib;
 // todo: There's also a WIP scilib Quantum lib that can do these H orbital calculations
 // todo directly.
 
 use lin_alg2::f64::{Quaternion, Vec3};
 
+use crate::util::EPS_DIV0;
 use crate::{
     complex_nums::{Cplx, IM},
     eigen_fns::KE_COEFF,
@@ -502,7 +503,7 @@ impl Sto {
         let diff = posit_sample - self.posit;
         let r_sq = diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2);
 
-        if r_sq < 0.00000000001 {
+        if r_sq < EPS_DIV0 {
             return Cplx::new_zero();
         }
         let r = r_sq.sqrt();

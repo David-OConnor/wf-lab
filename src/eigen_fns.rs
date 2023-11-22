@@ -28,6 +28,7 @@ use crate::{
     wf_ops::{self, ħ, K_C, Q_ELEC, Q_PROT},
 };
 
+use crate::util::EPS_DIV0;
 use lin_alg2::f64::Vec3;
 
 pub const KE_COEFF: f64 = -(ħ * ħ) / (2. * wf_ops::M_ELEC);
@@ -140,6 +141,11 @@ pub fn _find_E_2_elec(
 /// Calculate the V that must be acting on a given psi, and its (known to be accurate, eg numerical
 /// differention) derivative.
 pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
+    if psi.real < EPS_DIV0 && psi.im < EPS_DIV0 {
+        // return -E;
+    }
+
+    // psi''/psi is always real, due to being an eigenvalue of a Hermitian operator.
     // todo: What's going on? Why do we need to invert E here?
     //KE_COEFF * (psi_pp / psi).real + E
     KE_COEFF * (psi_pp / psi).real - E
@@ -147,6 +153,11 @@ pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
 
 /// A mirror of `calc_V_on_psi`.
 pub fn calc_E_on_psi(psi: Cplx, psi_pp: Cplx, V: f64) -> f64 {
+    if psi.real < EPS_DIV0 && psi.im < EPS_DIV0 {
+        // return -V;
+    }
+
+    // psi''/psi is always real, due to being an eigenvalue of a Hermitian operator.
     // todo: As above, why are we inverting E here?
     KE_COEFF * (psi_pp / psi).real - V
 }

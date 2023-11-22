@@ -1,7 +1,11 @@
-use crate::grid_setup::{Arr3d, Arr3dReal, Arr3dVec};
-
-use crate::complex_nums::Cplx;
 use lin_alg2::f64::Vec3;
+
+use crate::{
+    complex_nums::Cplx,
+    grid_setup::{Arr3d, Arr3dReal, Arr3dVec},
+};
+
+pub(crate) const EPS_DIV0: f64 = 0.000000001;
 
 /// Create a set of values in a given range, with a given number of values.
 /// Similar to `numpy.linspace`.

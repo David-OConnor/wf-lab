@@ -13,6 +13,8 @@ __device__
 const dtype PI_SQRT_INV = 0.5641895835477563f;
 __device__
 const dtype A_0 = 1.f;
+__device__
+const dtype EPS_DIV0 = 0.00000000001f;
 
 __device__
 dtype laguerre(uint16_t n, uint16_t alpha, dtype x) {

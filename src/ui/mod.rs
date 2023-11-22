@@ -779,7 +779,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 // Code below handles various updates that were flagged above.
 
                 if updated_fixed_charges {
-                    procedures::update_fixed_charges(state);
+                    procedures::update_fixed_charges(state, scene);
                 }
 
                 if updated_evaluated_wfs {

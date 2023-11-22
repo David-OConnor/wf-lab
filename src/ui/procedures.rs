@@ -33,25 +33,6 @@ pub fn update_E_or_V(
         E,
         V_from_nuclei,
     );
-
-    // for i in 0..grid_n_render {
-    //     for j in 0..grid_n_render {
-    //         for k in 0..grid_n_render {
-    //             sfcs.psi_pp_calculated[i][j][k] =
-    //                 eigen_fns::find_ψ_pp_calc(sfcs.psi[i][j][k], sfcs.V_acting_on_this[i][j][k], E)
-    //         }
-    //     }
-    // }
-    //
-    // // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
-    // wf_ops::calculate_v_elec(
-    //     &mut sfcs.V_elec,
-    //     &mut sfcs.V_total,
-    //     &sfcs.psi,
-    //     &sfcs.psi_pp_evaluated,
-    //     E,
-    //     V_from_nuclei,
-    // );
 }
 
 /// Set up our basis-function based trial wave function.
@@ -71,6 +52,17 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         Some(&sfcs.psi_pp_per_basis),
         state.grid_n_render,
         &weights,
+    );
+
+    wf_ops::update_eigen_vals(
+        &mut sfcs.V_elec,
+        &mut sfcs.V_total,
+        &mut sfcs.psi_pp_calculated,
+        &sfcs.psi,
+        &sfcs.psi_pp_evaluated,
+        &sfcs.V_acting_on_this,
+        state.surfaces_shared.E,
+        &state.surfaces_shared.V_from_nuclei,
     );
 
     // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
@@ -105,12 +97,20 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
 
 /// Run this when we add bases, change basis parameters other than weight etc.
 pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
-    // state.bases_evaluated[ae] = BasesEvaluated::initialize_with_psi(
-    //     &state.dev,
-    //     &state.bases[ae],
-    //     &state.surfaces_shared.grid_posits,
-    //     state.grid_n_render,
-    // );
+    let sfcs = &mut state.surfaces_per_elec[ae];
+
+    // Prevents double borrow-mut error
+    let psi = &mut sfcs.psi_per_basis;
+    let psi_pp = &mut sfcs.psi_pp_per_basis;
+
+    wf_ops::update_wf_from_bases(
+        &state.dev,
+        psi,
+        Some(psi_pp),
+        &state.bases[ae],
+        &state.surfaces_shared.grid_posits,
+        state.grid_n_render,
+    );
 
     wf_ops::update_wf_from_bases(
         &state.dev,
@@ -122,7 +122,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     );
 }
 
-pub fn update_fixed_charges(state: &mut State) {
+pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
     potential::update_V_from_nuclei(
         &mut state.surfaces_shared.V_from_nuclei,
         &state.charges_fixed,
@@ -149,6 +149,9 @@ pub fn update_fixed_charges(state: &mut State) {
             state.grid_n_render,
         );
     }
+
+    // Update sphere entity locations.
+    render::update_entities(&state.charges_fixed, &state.surface_data, scene);
 }
 
 pub fn create_V_from_elec(state: &mut State, ae: usize) {
@@ -193,21 +196,6 @@ pub fn update_V_acting_on_elec(state: &mut State, scene: &mut Scene, ae: usize) 
             ae,
             state.grid_n_render,
         );
-    }
-
-    if state.ui.auto_gen_elec_V {
-        // state.surfaces_shared.E = wf_ops::find_E(
-        //     &mut state.eval_data_per_elec[ae],
-        //     state.eval_data_shared.grid_n,
-        // );
-    }
-
-    // todo: Kludge to update sphere entity locs; DRY
-    match state.ui.active_elec {
-        ActiveElec::PerElec(ae) => {
-            render::update_entities(&state.charges_fixed, &state.surface_data, scene);
-        }
-        ActiveElec::Combined => (),
     }
 }
 

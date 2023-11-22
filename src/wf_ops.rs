@@ -23,8 +23,6 @@
 // todo: Something that would really help: A recipe for which basis wfs to add for a given
 // todo potential.
 
-use std::sync::Arc;
-
 #[cfg(features = "cuda")]
 use cudarc::driver::CudaDevice;
 use lin_alg2::f64::Vec3;
@@ -33,15 +31,15 @@ use crate::{
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
     eigen_fns::{self, KE_COEFF},
-    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
-    num_diff::{self},
-    // types::{BasesEvaluated, PsiWDiffs, PsiWDiffs1d, SurfacesPerElec},
-    types::{ComputationDevice, SurfacesPerElec},
+    grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
+    num_diff,
+    types::ComputationDevice,
     util::{self, unflatten_arr},
 };
 
 #[cfg(features = "cuda")]
 use crate::gpu;
+use crate::util::EPS_DIV0;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -80,11 +78,14 @@ pub fn mix_bases(
     let mut norm_scaler = 1. / weight_total;
 
     // Prevents NaNs and related complications.
-    if weight_total.abs() < 0.00000001 {
+    if weight_total.abs() < EPS_DIV0 {
         norm_scaler = 0.;
     }
 
+    // let mut norm_scaler = 1.; // todo temp/TS.
+
     // todo: GPU option?
+    let mut norm = 0.; // todo temp/TS
 
     for i in 0..grid_n {
         for j in 0..grid_n {
@@ -98,6 +99,7 @@ pub fn mix_bases(
                     let scaler = weight * norm_scaler;
 
                     psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
+                    norm += psi[i][j][k].abs_sq(); // todo: Experimenting
 
                     if let Some(pp) = psi_pp.as_mut() {
                         pp[i][j][k] +=
@@ -108,9 +110,10 @@ pub fn mix_bases(
         }
     }
 
-    // util::normalize_arr(&mut psi[basis_i], norm);
+    // todo: Evaluate if you need/want this.
+    // util::normalize_arr(psi, norm);
     // if psi_pp.is_some() {
-    //     util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
+    //     util::normalize_arr(psi_pp.as_mut().unwrap(), norm);
     // }
 }
 
@@ -132,7 +135,7 @@ pub fn mix_bases_update_charge_density(
     let mut norm_scaler = 1. / weight_total;
 
     // Prevents NaNs and related complications.
-    if weight_total.abs() < 0.00000001 {
+    if weight_total.abs() < EPS_DIV0 {
         norm_scaler = 0.;
     }
 
@@ -189,7 +192,7 @@ pub fn initialize_bases(
             // (8., 0.),
             // (9., 0.),
         ] {
-            for n in 1..2 {
+            for n in 1..max_n + 1 {
                 bases.push(Basis::Sto(Sto {
                     posit: *nuc_posit,
                     n,
@@ -326,12 +329,22 @@ pub fn update_wf_from_bases(
                     for j in 0..grid_n {
                         for k in 0..grid_n {
                             let posit_sample = grid_posits[i][j][k];
+                            psi[basis_i][i][j][k] = basis.value(posit_sample);
 
                             if let Some(ref mut pp) = psi_pp {
-                                pp[basis_i][i][j][k] = basis.second_deriv(posit_sample);
+                                if basis.n() >= 2 {
+                                    // todo: Once working, apply to GPU as well.
+                                    pp[basis_i][i][j][k] = num_diff::find_ψ_pp_num_fm_bases(
+                                        posit_sample,
+                                        &[basis.clone()], // todo: Don't clone
+                                        psi[basis_i][i][j][k],
+                                    );
+                                } else {
+                                    pp[basis_i][i][j][k] = basis.second_deriv(posit_sample);
+                                }
                             }
-                            psi[basis_i][i][j][k] = basis.value(posit_sample);
-                            norm += psi[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
+
+                            norm += psi[basis_i][i][j][k].abs_sq();
                         }
                     }
                 }
@@ -431,8 +444,7 @@ pub fn calculate_v_elec(
     // todo: How do we go from V_elec to charge density? That may be key.
 }
 
-/// Update V-from-sci, and psipp-calculated, based on Psi, and V acting on a given electron.
-/// todo: DRY with `calculate_v_elec` above.
+/// Update V-from-psi, and psi''-calculated, based on psi, and V acting on a given electron.
 pub fn update_eigen_vals(
     V_elec: &mut Arr3dReal,
     V_total: &mut Arr3dReal,
@@ -465,8 +477,6 @@ pub fn update_eigen_vals(
 
     // todo: How do we go from V_elec to charge density? That may be key.
 }
-
-// todo: For finding E, you should consider varying it until V at the edges, analyticaally, is 0.
 
 /// Calculate E from a trial wave function. We assume V goes to 0 at +/- ∞
 /// note that this appears to approach the eneryg, but doens't hit it.

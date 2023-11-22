@@ -48,7 +48,6 @@ mod ui;
 mod util;
 mod wf_ops;
 
-// use crate::types::BasesEvaluated;
 use crate::{
     basis_wfs::Basis,
     grid_setup::{new_data, Arr3d, Arr3dReal},
@@ -258,11 +257,12 @@ pub fn init_from_grid(
         charges_electron.push(grid_setup::new_data_real(grid_n_charge));
         V_from_elecs.push(arr_real.clone());
 
-        let surface = &mut surfaces_per_elec[i_elec];
+        // todo: Call procedures::update_bases_weights etc here.
+        let sfcs = &mut surfaces_per_elec[i_elec];
 
         // Assigning vars prevents multiple-borrow-mut vars.
-        let psi = &mut surface.psi_per_basis;
-        let psi_pp = &mut surface.psi_pp_per_basis;
+        let psi = &mut sfcs.psi_per_basis;
+        let psi_pp = &mut sfcs.psi_pp_per_basis;
 
         wf_ops::update_wf_from_bases(
             dev,
@@ -273,17 +273,28 @@ pub fn init_from_grid(
             grid_n_sample,
         );
 
-        let psi = &mut surface.psi;
-        let psi_pp = &mut surface.psi_pp_evaluated;
+        let psi = &mut sfcs.psi;
+        let psi_pp = &mut sfcs.psi_pp_evaluated;
 
         let weights: Vec<f64> = bases_per_elec[i_elec].iter().map(|b| b.weight()).collect();
         wf_ops::mix_bases(
             psi,
             Some(psi_pp),
-            &surface.psi_per_basis,
-            Some(&surface.psi_pp_per_basis),
+            &sfcs.psi_per_basis,
+            Some(&sfcs.psi_pp_per_basis),
             grid_n_sample,
             &weights,
+        );
+
+        wf_ops::update_eigen_vals(
+            &mut sfcs.V_elec,
+            &mut sfcs.V_total,
+            &mut sfcs.psi_pp_calculated,
+            &sfcs.psi,
+            &sfcs.psi_pp_evaluated,
+            &sfcs.V_acting_on_this,
+            surfaces_shared.E,
+            &surfaces_shared.V_from_nuclei,
         );
 
         let mut bec_this_elec = Vec::new();
@@ -303,17 +314,6 @@ pub fn init_from_grid(
         // todo: Mix charge? Create electron V?
 
         bases_evaluated_charge.push(bec_this_elec);
-
-        wf_ops::update_eigen_vals(
-            &mut surface.V_elec,
-            &mut surface.V_total,
-            &mut surface.psi_pp_calculated,
-            &surface.psi,
-            &surface.psi_pp_evaluated,
-            &surface.V_acting_on_this,
-            surfaces_shared.E,
-            &surfaces_shared.V_from_nuclei,
-        );
     }
 
     (
@@ -366,7 +366,7 @@ fn main() {
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
-    let max_basis_n = 1;
+    let max_basis_n = 2;
 
     let ui_active_elec = 0;
 

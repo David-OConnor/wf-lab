@@ -45,7 +45,7 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
 
     dtype r_sq = std::pow(diff.x, 2) + std::pow(diff.y, 2) + std::pow(diff.z, 2);
 
-    if (r_sq < 0.000000001f) {
+    if (r_sq < EPS_DIV0) {
         return 0.f;
     }
 

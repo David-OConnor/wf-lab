@@ -4,16 +4,10 @@
 
 use lin_alg2::f64::Vec3;
 
-use crate::{
-    basis_wfs::Basis,
-    complex_nums::Cplx,
-    grid_setup::{Arr3d, Arr3dVec},
-    interp,
-    // types::BasesEvaluated,
-};
+use crate::{basis_wfs::Basis, complex_nums::Cplx};
 
-// Used for calculating numerical psi''.
-// Smaller is more precise. Too small might lead to numerical issues though (?)
+// Used for calculating numerical ψ''.
+// Smaller is more accurate. Too small might lead to numerical issues though (?)
 // Applies to dx, dy, and dz
 pub const H: f64 = 0.001;
 pub const H_SQ: f64 = H * H;
@@ -63,9 +57,9 @@ pub(crate) fn _find_pp_real(
 pub(crate) fn find_ψ_pp_num_fm_bases(
     posit_sample: Vec3,
     bases: &[Basis],
-    psi_sample_loc: Cplx,
-    norm_sqrt: f64,
-    // weights: Option<&[f64]>,
+    // We pass this as an argument since it's likely already been calculated.
+    ψ_sample_loc: Cplx,
+    // norm_sqrt: f64,
 ) -> Cplx {
     let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
     let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
@@ -82,19 +76,6 @@ pub(crate) fn find_ψ_pp_num_fm_bases(
     let mut psi_z_next = Cplx::new_zero();
 
     for basis in bases {
-        // for (basis_i, basis) in bases.iter().enumerate() {
-        // let weight = match weights {
-        //     Some(w) => w[basis_i],
-        //     None => basis.weight(),
-        // };
-
-        // psi_x_prev += basis.value(x_prev) * weight;
-        // psi_x_next += basis.value(x_next) * weight;
-        // psi_y_prev += basis.value(y_prev) * weight;
-        // psi_y_next += basis.value(y_next) * weight;
-        // psi_z_prev += basis.value(z_prev) * weight;
-        // psi_z_next += basis.value(z_next) * weight;
-
         psi_x_prev += basis.value(x_prev);
         psi_x_next += basis.value(x_next);
         psi_y_prev += basis.value(y_prev);
@@ -103,24 +84,16 @@ pub(crate) fn find_ψ_pp_num_fm_bases(
         psi_z_next += basis.value(z_next);
     }
 
-    // psi_x_prev = psi_x_prev / psi_norm_sqrt;
-    // psi_x_next = psi_x_next / psi_norm_sqrt;
-    // psi_y_prev = psi_y_prev / psi_norm_sqrt;
-    // psi_y_next = psi_y_next / psi_norm_sqrt;
-    // psi_z_prev = psi_z_prev / psi_norm_sqrt;
-    // psi_z_next = psi_z_next / psi_norm_sqrt;
-    //
-    // let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-    //     - psi_sample_loc * 6.;
+    // psi_x_prev = psi_x_prev / norm_sqrt;
+    // psi_x_next = psi_x_next / norm_sqrt;
+    // psi_y_prev = psi_y_prev / norm_sqrt;
+    // psi_y_next = psi_y_next / norm_sqrt;
+    // psi_z_prev = psi_z_prev / norm_sqrt;
+    // psi_z_next = psi_z_next / norm_sqrt;
 
-    psi_x_prev = psi_x_prev / norm_sqrt;
-    psi_x_next = psi_x_next / norm_sqrt;
-    psi_y_prev = psi_y_prev / norm_sqrt;
-    psi_y_next = psi_y_next / norm_sqrt;
-    psi_z_prev = psi_z_prev / norm_sqrt;
-    psi_z_next = psi_z_next / norm_sqrt;
+    // Note: We currently handle norm downstream.
 
     (psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-        - psi_sample_loc * 6.)
-        / (norm_sqrt * H_SQ)
+        - ψ_sample_loc * 6.)
+        / H_SQ
 }
