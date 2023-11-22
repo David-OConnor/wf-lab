@@ -13,6 +13,7 @@ pub mod complex_nums;
 mod eigen_fns;
 pub mod elec_elec;
 pub mod eval;
+#[cfg(features = "cuda")]
 mod gpu;
 mod grid_setup;
 pub mod interp;

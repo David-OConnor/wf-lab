@@ -1,16 +1,15 @@
 //! Contains code related to creating and combining potentials.
 
-use std::sync::Arc;
-
-use cudarc::driver::CudaDevice;
 use lin_alg2::f64::Vec3;
 
-use crate::types::ComputationDevice;
 use crate::{
-    gpu,
     grid_setup::{Arr3dReal, Arr3dVec},
+    types::ComputationDevice,
     wf_ops::K_C,
 };
+
+#[cfg(features = "cuda")]
+use crate::gpu;
 
 // We use this to prevent numerical anomolies and divide-by-0 errors in coulomb interactions, where
 // the positions are very close to each other.
@@ -125,6 +124,7 @@ pub(crate) fn create_V_1d_from_elec(
     grid_n_charge: usize,
 ) -> Vec<f64> {
     match dev {
+        #[cfg(features = "cuda")]
         ComputationDevice::Gpu(cuda_dev) => {
             let (posits_charge_flat, charges_flat) =
                 flatten_charge(posits_charge, charges_elec, grid_n_charge);
@@ -156,6 +156,7 @@ pub(crate) fn create_V_from_elec(
     println!("Creating V from an electron on grid (GPU)...");
 
     match dev {
+        #[cfg(features = "cuda")]
         ComputationDevice::Gpu(cuda_dev) => {
             let (posits_charge_flat, charges_flat) =
                 flatten_charge(posits_charge, charges_elec, grid_n_charge);

@@ -1,6 +1,6 @@
-use std::sync::Arc;
-
+#[cfg(features = "cuda")]
 use cudarc::driver::CudaDevice;
+use std::sync::Arc;
 
 use lin_alg2::f64::Vec3;
 
@@ -16,6 +16,7 @@ use crate::{
 
 pub enum ComputationDevice {
     Cpu,
+    #[cfg(features = "cuda")]
     Gpu(Arc<CudaDevice>),
 }
 
@@ -98,10 +99,10 @@ pub struct SurfacesPerElec {
     pub psi_pp_calculated: Arr3d,
     /// From an analytic or numeric computation from basis functions.
     pub psi_pp_evaluated: Arr3d,
-    // todo: We may need to move this to top-level state like `charges_electron` for API reasons.
-    // todo: It will become apparent if this is the case.
     pub psi_per_basis: Vec<Arr3d>,
     pub psi_pp_per_basis: Vec<Arr3d>,
+    /// Charges from this electron, over 3d space. Computed from <ψ|ψ>.
+    pub charge: Arr3dReal,
     /// Aux surfaces are for misc visualizations
     /// todo: Rename them to total V from psi, V' elec etc.
     pub aux1: Arr3dReal,
@@ -111,9 +112,9 @@ pub struct SurfacesPerElec {
 
 impl SurfacesPerElec {
     /// Fills with 0.s
-    pub fn new(n_grid: usize) -> Self {
-        let data = new_data(n_grid);
-        let data_real = new_data_real(n_grid);
+    pub fn new(n_grid_sample: usize, n_grid_charge: usize) -> Self {
+        let data = new_data(n_grid_sample);
+        let data_real = new_data_real(n_grid_sample);
 
         // Set up a regular grid using this; this will allow us to convert to an irregular grid
         // later, once we've verified this works.
@@ -127,6 +128,7 @@ impl SurfacesPerElec {
             psi: data.clone(),
             psi_pp_calculated: data.clone(),
             psi_pp_evaluated: data.clone(),
+            charge: new_data_real(n_grid_charge),
             aux1: data_real.clone(),
             aux2: data_real.clone(),
             aux3: data_real,

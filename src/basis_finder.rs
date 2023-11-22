@@ -1,8 +1,5 @@
 //! Used to find weights and Xis for STOs.
 
-use std::sync::Arc;
-
-use cudarc::driver::CudaDevice;
 use lin_alg2::f64::Vec3;
 
 use crate::{

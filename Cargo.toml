@@ -17,9 +17,12 @@ ndarray = "^0.15.6"
 ndarray-linalg = { version = "^0.16.0", features = ["intel-mkl-static"] }
 
 nalgebra = "^0.32.3"
-cudarc = "^0.9.15"
+cudarc = { version = "^0.9.15", optional=true }
 
 # todo: Eventually ditch this tool for permutations:
 itertools = "^0.11.0"
 
-# rulinalg = "^0.4" # Tempish: For adapting the RBF lib
+
+[features]
+cuda = ["cudarc"]
+#default = ["cuda"]

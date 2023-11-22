@@ -25,6 +25,7 @@
 
 use std::mem;
 
+#[cfg(features = "cuda")]
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
 
 use lin_alg2::f64::Vec3;
@@ -35,6 +36,7 @@ mod complex_nums;
 mod eigen_fns;
 mod elec_elec;
 mod eval;
+#[cfg(features = "cuda")]
 mod gpu;
 mod grid_setup;
 mod interp;
@@ -118,10 +120,10 @@ pub struct State {
     /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
     /// due to electrons are stored in `Surfaces`.
     pub charges_fixed: Vec<(Vec3, f64)>,
-    /// Charges from electrons, over 3d space. Computed from <ψ|ψ>.
-    /// This is not part of `SurfacesPerElec` since we use all values at once (or all except one)
-    /// when calculating the potential. (easier to work with API)
-    pub charges_electron: Vec<Arr3dReal>,
+    // /// Charges from electrons, over 3d space. Computed from <ψ|ψ>.
+    // /// This is not part of `SurfacesPerElec` since we use all values at once (or all except one)
+    // /// when calculating the potential. (easier to work with API)
+    // pub charges_electron: Vec<Arr3dReal>,
     // /// See note on charges_electron; should be part of `SurfacesPerElec`.
     // pub psi_per_basis: Vec<Vec<Arr3d>>,
     // /// See note on charges_electron; should be part of `SurfacesPerElec`.
@@ -266,24 +268,26 @@ pub fn init_from_grid(
             bec_this_elec.push(new_data(grid_n_charge));
         }
 
+        // let mut temp_psi_per_basis = mem::replace(&mut surfaces_per_elec[i_elec].psi_per_basis, Default::default());
+        // let mut temp_psi_pp_per_basis = mem::replace(&mut surfaces_per_elec[i_elec].psi_pp_per_basis, Default::default());
 
-        let mut temp_psi_per_basis = mem::replace(&mut surfaces_per_elec[i_elec].psi_per_basis, Default::default());
-        let mut temp_psi_pp_per_basis = mem::replace(&mut surfaces_per_elec[i_elec].psi_pp_per_basis, Default::default());
+        let surface = &mut surfaces_per_elec[i_elec];
+
+        // Assigning vars prevents multiple-borrow-mut vars.
+        let psi = &mut surface.psi_per_basis;
+        let psi_pp = &mut surface.psi_pp_per_basis;
 
         wf_ops::create_psi_from_bases(
             dev,
-            // &mut surfaces_per_elec[i_elec].psi_per_basis,
-            // Some(&mut surfaces_per_elec[i_elec].psi_pp_per_basis),
-            &mut temp_psi_per_basis,
-            Some(&mut temp_psi_pp_per_basis),
+            psi,
+            Some(psi_pp),
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits,
             grid_n_sample,
         );
 
-        surfaces_per_elec[i_elec].psi_per_basis = temp_psi_per_basis;
-        surfaces_per_elec[i_elec].psi_pp_per_basis = temp_psi_pp_per_basis;
-
+        // surfaces_per_elec[i_elec].psi_per_basis = temp_psi_per_basis;
+        // surfaces_per_elec[i_elec].psi_pp_per_basis = temp_psi_pp_per_basis;
 
         // let bases_eval_this_elec = BasesEvaluated::initialize_with_psi(
         //     dev,
@@ -329,9 +333,9 @@ pub fn init_from_grid(
 }
 
 fn main() {
-    // todo: Check if GPU is available. If so, use GPU dev. If note, use CPU.
-    let dev = if true {
-        // This is compiled in `build.rs`.
+    #[cfg(features = "cuda")]
+    let dev = if false {
+        // This is compiled in `build_`.
         let cuda_dev = CudaDevice::new(0).unwrap();
         cuda_dev
             .load_ptx(
@@ -355,15 +359,18 @@ fn main() {
         ComputationDevice::Cpu
     };
 
+    #[cfg(not(features = "cuda"))]
+    let dev = ComputationDevice::Cpu;
+
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let nuclei = vec![
         (posit_charge_1, Q_PROT * 1.), // helium
-        // (posit_charge_1, Q_PROT * 3.), // lithium
-        // (posit_charge_1, Q_PROT * 1.), // Hydrogen
-        // (posit_charge_2, Q_PROT),
-        // (Vec3::new(0., 1., 0.), Q_ELEC),
+                                       // (posit_charge_1, Q_PROT * 3.), // lithium
+                                       // (posit_charge_1, Q_PROT * 1.), // Hydrogen
+                                       // (posit_charge_2, Q_PROT),
+                                       // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
     let max_basis_n = 1;

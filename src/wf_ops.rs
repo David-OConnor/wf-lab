@@ -23,24 +23,25 @@
 // todo: Something that would really help: A recipe for which basis wfs to add for a given
 // todo potential.
 
+use std::sync::Arc;
+
+#[cfg(features = "cuda")]
+use cudarc::driver::CudaDevice;
+use lin_alg2::f64::Vec3;
+
 use crate::{
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
     eigen_fns::{self, KE_COEFF},
-    gpu,
-    grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     num_diff::{self},
     // types::{BasesEvaluated, PsiWDiffs, PsiWDiffs1d, SurfacesPerElec},
-    types::SurfacesPerElec,
-    util,
+    types::{ComputationDevice, SurfacesPerElec},
+    util::{self, unflatten_arr},
 };
-use cudarc::driver::CudaDevice;
-use std::sync::Arc;
 
-use crate::grid_setup::new_data_real;
-use crate::types::ComputationDevice;
-use crate::util::unflatten_arr;
-use lin_alg2::f64::Vec3;
+#[cfg(features = "cuda")]
+use crate::gpu;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -387,6 +388,7 @@ pub fn create_psi_from_bases(
     let mut norm = 0.;
 
     match dev {
+        #[cfg(features = "cuda")]
         ComputationDevice::Gpu(cuda_dev) => {
             let posits_flat = util::flatten_arr(grid_posits, grid_n);
 
@@ -465,54 +467,57 @@ pub fn create_psi_from_bases(
     }
 }
 
-/// Another loop-saving combo.
-pub fn create_psi_from_bases_mix_update_charge_density(
-    dev: &Arc<CudaDevice>,
-    charge_density: &mut Arr3dReal,
-    bases: &[Basis],
-    grid_posits: &Arr3dVec,
-    grid_n: usize,
-) -> Vec<Arr3d> {
-    let mut result = Vec::new();
-    for _ in 0..bases.len() {
-        result.push(new_data(grid_n));
-    }
+// todo: put back A/R
 
-    let posits_flat = util::flatten_arr(grid_posits, grid_n);
-
-    for (basis_i, basis) in bases.iter().enumerate() {
-        let psi_flat = gpu::sto_vals_or_derivs(
-            dev,
-            basis.xi(),
-            basis.n(),
-            &posits_flat,
-            basis.posit(),
-            false,
-        );
-
-        let mut norm = 0.;
-
-        // This is similar to util::unflatten, but with coercing to cplx.
-        let grid_n_sq = grid_n.pow(2);
-
-        for i in 0..grid_n {
-            for j in 0..grid_n {
-                for k in 0..grid_n {
-                    let i_flat = i * grid_n_sq + j * grid_n + k;
-
-                    result[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
-                    norm += result[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
-
-                    // todo: Figure out if this is feasible given the normalization
-                    // charge_density[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
-                }
-            }
-        }
-
-        util::normalize_arr(&mut result[basis_i], norm);
-    }
-    result
-}
+// /// Another loop-saving combo.
+// pub fn create_psi_from_bases_mix_update_charge_density(
+//     dev: ComputationDevice,
+//     charge_density: &mut Arr3dReal,
+//     bases: &[Basis],
+//     grid_posits: &Arr3dVec,
+//     grid_n: usize,
+// ) -> Vec<Arr3d> {
+//     let mut result = Vec::new();
+//     for _ in 0..bases.len() {
+//         result.push(new_data(grid_n));
+//     }
+//
+//     let posits_flat = util::flatten_arr(grid_posits, grid_n);
+//
+//     for (basis_i, basis) in bases.iter().enumerate() {
+//
+//         let psi_flat = gpu::sto_vals_or_derivs(
+//             dev,
+//             basis.xi(),
+//             basis.n(),
+//             &posits_flat,
+//             basis.posit(),
+//             false,
+//         );
+//
+//         let mut norm = 0.;
+//
+//         // This is similar to util::unflatten, but with coercing to cplx.
+//         let grid_n_sq = grid_n.pow(2);
+//
+//         for i in 0..grid_n {
+//             for j in 0..grid_n {
+//                 for k in 0..grid_n {
+//                     let i_flat = i * grid_n_sq + j * grid_n + k;
+//
+//                     result[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
+//                     norm += result[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
+//
+//                     // todo: Figure out if this is feasible given the normalization
+//                     // charge_density[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
+//                 }
+//             }
+//         }
+//
+//         util::normalize_arr(&mut result[basis_i], norm);
+//     }
+//     result
+// }
 
 /// Calulate the electron potential that must be acting on a given electron, given its
 /// wave function. This is the potential from *other* electroncs in the system. This is, perhaps
