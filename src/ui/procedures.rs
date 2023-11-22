@@ -23,24 +23,35 @@ pub fn update_E_or_V(
     grid_n_render: usize,
     E: f64,
 ) {
-    for i in 0..grid_n_render {
-        for j in 0..grid_n_render {
-            for k in 0..grid_n_render {
-                sfcs.psi_pp_calculated[i][j][k] =
-                    eigen_fns::find_ψ_pp_calc(sfcs.psi[i][j][k], sfcs.V_acting_on_this[i][j][k], E)
-            }
-        }
-    }
-
-    // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
-    wf_ops::calculate_v_elec(
-        &mut sfcs.aux1,
-        &mut sfcs.aux2,
+    wf_ops::update_eigen_vals(
+        &mut sfcs.V_elec,
+        &mut sfcs.V_total,
+        &mut sfcs.psi_pp_calculated,
         &sfcs.psi,
         &sfcs.psi_pp_evaluated,
+        &sfcs.V_acting_on_this,
         E,
         V_from_nuclei,
     );
+
+    // for i in 0..grid_n_render {
+    //     for j in 0..grid_n_render {
+    //         for k in 0..grid_n_render {
+    //             sfcs.psi_pp_calculated[i][j][k] =
+    //                 eigen_fns::find_ψ_pp_calc(sfcs.psi[i][j][k], sfcs.V_acting_on_this[i][j][k], E)
+    //         }
+    //     }
+    // }
+    //
+    // // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
+    // wf_ops::calculate_v_elec(
+    //     &mut sfcs.V_elec,
+    //     &mut sfcs.V_total,
+    //     &sfcs.psi,
+    //     &sfcs.psi_pp_evaluated,
+    //     E,
+    //     V_from_nuclei,
+    // );
 }
 
 /// Set up our basis-function based trial wave function.
@@ -58,8 +69,8 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
     let sfcs = &mut state.surfaces_per_elec[ae];
     wf_ops::calculate_v_elec(
-        &mut sfcs.aux1,
-        &mut sfcs.aux2,
+        &mut sfcs.V_elec,
+        &mut sfcs.V_total,
         &sfcs.psi,
         &sfcs.psi_pp_evaluated,
         state.surfaces_shared.E,
@@ -121,7 +132,9 @@ pub fn create_V_from_elec(state: &mut State, ae: usize) {
     let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
     wf_ops::mix_bases(
         &mut psi_charge_grid,
+        None,
         &state.bases_evaluated_charge[ae],
+        None,
         state.grid_n_charge,
         &weights,
     );

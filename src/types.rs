@@ -101,18 +101,18 @@ pub struct SurfacesPerElec {
     pub psi_pp_evaluated: Arr3d,
     pub psi_per_basis: Vec<Arr3d>,
     pub psi_pp_per_basis: Vec<Arr3d>,
-    /// Charges from this electron, over 3d space. Computed from <ψ|ψ>.
-    pub charge: Arr3dReal,
+    // /// Charges from this electron, over 3d space. Computed from <ψ|ψ>.
+    // pub charge: Arr3dReal,
     /// Aux surfaces are for misc visualizations
     /// todo: Rename them to total V from psi, V' elec etc.
-    pub aux1: Arr3dReal,
-    pub aux2: Arr3dReal,
+    pub V_elec: Arr3dReal,
+    pub V_total: Arr3dReal,
     pub aux3: Arr3dReal,
 }
 
 impl SurfacesPerElec {
     /// Fills with 0.s
-    pub fn new(n_grid_sample: usize, n_grid_charge: usize) -> Self {
+    pub fn new(num_bases: usize, n_grid_sample: usize, n_grid_charge: usize) -> Self {
         let data = new_data(n_grid_sample);
         let data_real = new_data_real(n_grid_sample);
 
@@ -121,16 +121,23 @@ impl SurfacesPerElec {
 
         // let psi = PsiWDiffs::init(&data);
 
+        let mut psi_per_basis = Vec::new();
+        let mut psi_pp_per_basis = Vec::new();
+        for _ in 0..num_bases {
+            psi_per_basis.push(data.clone());
+            psi_pp_per_basis.push(data.clone());
+        }
+
         Self {
-            psi_per_basis: Vec::new(),
-            psi_pp_per_basis: Vec::new(),
+            psi_per_basis,
+            psi_pp_per_basis,
             V_acting_on_this: data_real.clone(),
             psi: data.clone(),
             psi_pp_calculated: data.clone(),
             psi_pp_evaluated: data.clone(),
-            charge: new_data_real(n_grid_charge),
-            aux1: data_real.clone(),
-            aux2: data_real.clone(),
+            // charge: new_data_real(n_grid_charge),
+            V_elec: data_real.clone(),
+            V_total: data_real.clone(),
             aux3: data_real,
         }
     }

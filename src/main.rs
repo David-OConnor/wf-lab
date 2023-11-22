@@ -120,10 +120,10 @@ pub struct State {
     /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
     /// due to electrons are stored in `Surfaces`.
     pub charges_fixed: Vec<(Vec3, f64)>,
-    // /// Charges from electrons, over 3d space. Computed from <ψ|ψ>.
-    // /// This is not part of `SurfacesPerElec` since we use all values at once (or all except one)
-    // /// when calculating the potential. (easier to work with API)
-    // pub charges_electron: Vec<Arr3dReal>,
+    /// Charges from electrons, over 3d space. Computed from <ψ|ψ>.
+    /// This is not part of `SurfacesPerElec` since we use all values at once (or all except one)
+    /// when calculating the potential. (easier to work with API)
+    pub charges_electron: Vec<Arr3dReal>,
     // /// See note on charges_electron; should be part of `SurfacesPerElec`.
     // pub psi_per_basis: Vec<Vec<Arr3d>>,
     // /// See note on charges_electron; should be part of `SurfacesPerElec`.
@@ -196,14 +196,13 @@ pub fn init_from_grid(
 ) -> (
     Vec<Arr3dReal>,
     Vec<Arr3dReal>,
-    // Vec<BasesEvaluated>,
     Vec<Vec<Arr3d>>,
     SurfacesShared,
     Vec<SurfacesPerElec>,
 ) {
     let arr_real = grid_setup::new_data_real(grid_n_sample);
 
-    let sfcs_one_elec = SurfacesPerElec::new(grid_n_sample);
+    let sfcs_one_elec = SurfacesPerElec::new(bases_per_elec[0].len(), grid_n_sample, grid_n_charge);
 
     let mut surfaces_per_elec = Vec::new();
     for _ in 0..num_electrons {
@@ -256,20 +255,9 @@ pub fn init_from_grid(
     let mut charges_electron = Vec::new();
     let mut V_from_elecs = Vec::new();
 
-    // todo: YOu may not need the "bases_evaluated" per-elec.
     for i_elec in 0..num_electrons {
         charges_electron.push(grid_setup::new_data_real(grid_n_charge));
         V_from_elecs.push(arr_real.clone());
-
-        let mut bec_this_elec = Vec::new();
-
-        for bases_this_elec in bases_per_elec {
-            // Handle the charge-grid-evaluated psi.
-            bec_this_elec.push(new_data(grid_n_charge));
-        }
-
-        // let mut temp_psi_per_basis = mem::replace(&mut surfaces_per_elec[i_elec].psi_per_basis, Default::default());
-        // let mut temp_psi_pp_per_basis = mem::replace(&mut surfaces_per_elec[i_elec].psi_pp_per_basis, Default::default());
 
         let surface = &mut surfaces_per_elec[i_elec];
 
@@ -286,46 +274,52 @@ pub fn init_from_grid(
             grid_n_sample,
         );
 
-        // surfaces_per_elec[i_elec].psi_per_basis = temp_psi_per_basis;
-        // surfaces_per_elec[i_elec].psi_pp_per_basis = temp_psi_pp_per_basis;
+        let psi = &mut surface.psi;
+        let psi_pp = &mut surface.psi_pp_evaluated;
 
-        // let bases_eval_this_elec = BasesEvaluated::initialize_with_psi(
-        //     dev,
-        //     &bases_per_elec[0], // todo temp
-        //     &surfaces_shared.grid_posits,
-        //     grid_n,
-        // );
-        // let weights: Vec<f64> = bases_this_elec.iter().map(|b| b.weight()).collect();
-        // wf_ops::mix_bases(&mut surfaces_per_elec[i_elec].psi.on_pt, &bases_evaluated[i_elec],grid_n, &weights);
-
-        // Set up our basis-function based trial wave function.
         let weights: Vec<f64> = bases_per_elec[0].iter().map(|b| b.weight()).collect(); // todo: 0 is temp
+        wf_ops::mix_bases(
+            psi,
+            Some(psi_pp),
+            &surface.psi_per_basis,
+            Some(&surface.psi_pp_per_basis),
+            grid_n_sample,
+            &weights,
+        );
 
-        // wf_ops::update_wf_fm_bases(
-        //     &mut surfaces_per_elec[i_elec],
-        //     &bases_eval_this_elec,
-        //     -0.5, // todo: Param etc?
-        //     grid_n,
-        //     &weights,
-        // );
+        let mut bec_this_elec = Vec::new();
 
-        // bases_evaluated.push(bases_eval_this_elec);
+        for _ in 0..bases_per_elec[0].len() {
+            // Handle the charge-grid-evaluated psi.
+            bec_this_elec.push(new_data(grid_n_charge));
+        }
+        wf_ops::create_psi_from_bases(
+            dev,
+            &mut bec_this_elec,
+            None,
+            &bases_per_elec[i_elec],
+            &surfaces_shared.grid_posits_charge,
+            grid_n_charge,
+        );
+        // todo: Mix charge?
 
-        // todo: Not working; index error.
-        // wf_ops::create_psi_from_bases(
-        //     dev,
-        //     &mut bec_this_elec,
-        //     &bases_per_elec[i_elec],
-        //     &surfaces_shared.grid_posits_charge,
-        //     grid_n_charge,
-        // );
         bases_evaluated_charge.push(bec_this_elec);
+
+        wf_ops::update_eigen_vals(
+            &mut surface.V_elec,
+            &mut surface.V_total,
+            &mut surface.psi_pp_calculated,
+            &surface.psi,
+            &surface.psi_pp_evaluated,
+            &surface.V_acting_on_this,
+            surfaces_shared.E,
+            &surfaces_shared.V_from_nuclei,
+        );
     }
 
     (
         charges_electron,
         V_from_elecs,
-        // bases_evaluated,
         bases_evaluated_charge,
         surfaces_shared,
         surfaces_per_elec,
@@ -415,7 +409,6 @@ fn main() {
     let (
         charges_electron,
         V_from_elecs,
-        // bases_evaluated,
         bases_evaluated_charge,
         surfaces_shared,
         surfaces_per_elec,

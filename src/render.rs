@@ -333,12 +333,12 @@ pub fn update_meshes(
 
         // Experimenting with V_elec from a given psi.
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces.aux1, z_i, V_SCALER, grid_n),
+            &prepare_2d_mesh_real(grid_posits, &surfaces.V_elec, z_i, V_SCALER, grid_n),
             true,
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces.aux2, z_i, V_SCALER, grid_n),
+            &prepare_2d_mesh_real(grid_posits, &surfaces.V_total, z_i, V_SCALER, grid_n),
             true,
         ));
 

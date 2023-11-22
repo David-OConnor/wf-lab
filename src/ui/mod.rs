@@ -42,51 +42,6 @@ fn text_edit_float(val: &mut f64, _default: f64, ui: &mut Ui) {
     }
 }
 
-// /// Create a slider to adjust E. Note that this is a shared fn due to repetition between per-elec,
-// /// and combined.
-// /// todo: Not feasible to use this due to borrow-checker issues with mixed mutability of structf fields;
-// /// todo so, we repeat ourselves between shared and per-elec C.
-// fn _E_slider(
-//     ui: &mut Ui,
-//     E: &mut f64,
-//     psi: &Arr3d,
-//     V: &Arr3dReal,
-//     psi_pp_calc: &mut Arr3d,
-//     psi_pp_meas: &Arr3d,
-//     // psi_pp_calc: &mut [Cplx],
-//     // psi_pp_meas: &mut [Cplx],
-//     score: &mut f64,
-//     grid_n: usize,
-//     updated_meshes: &mut bool,
-// ) {
-//     ui.add(
-//         egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
-//             if let Some(v_) = v {
-//                 *E = v_;
-//
-//                 // wf_ops::update_psi_pp_calc_grid(
-//                 //     psi_pp_calc,
-//                 //     psi,
-//                 //     V,
-//                 //     *E,
-//                 //     grid_n,
-//                 // );
-//
-//                 // *score = eval::score_wf(psi_pp_calc, psi_pp_meas, grid_n);
-//                 // *score = eval::score_wf(psi_pp_calc, psi_pp_meas);
-//                 *score = 0.; // todo t
-//
-//                 // state.psi_p_score[active_elec] = 0.; // todo!
-//
-//                 *updated_meshes = true;
-//             }
-//
-//             *E
-//         })
-//             .text("E"),
-//     );
-// }
-
 /// Ui elements that allow adding, removing, and changing the point
 /// charges that form our potential.
 fn charge_editor(
@@ -412,7 +367,9 @@ fn basis_fn_mixer(
 
                                 wf_ops::mix_bases(
                                     &mut psi_charge_grid,
+                                    None,
                                     &state.bases_evaluated_charge[active_elec],
+                                    None,
                                     state.grid_n_charge,
                                     &weights,
                                 );
@@ -521,6 +478,11 @@ fn bottom_items(
     });
 
     if ui.add(egui::Button::new("Find STO bases")).clicked() {
+        let mut charges_per_elec = Vec::new();
+        for sfc in &state.surface_data {
+            charges_per_elec.push(sfc);
+        }
+
         let charges_other_elecs =
             wf_ops::combine_electron_charges(ae, &state.charges_electron, state.grid_n_charge);
 
@@ -596,7 +558,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 let (
                     charges_electron,
                     V_from_elecs,
-                    // bases_evaluated,
                     bases_evaluated_charge,
                     surfaces_shared,
                     surfaces_per_elec,
@@ -614,7 +575,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.charges_electron = charges_electron;
                 state.V_from_elecs = V_from_elecs;
-                // state.bases_evaluated = bases_evaluated;
                 state.bases_evaluated_charge = bases_evaluated_charge;
                 state.surfaces_shared = surfaces_shared;
                 state.surfaces_per_elec = surfaces_per_elec;

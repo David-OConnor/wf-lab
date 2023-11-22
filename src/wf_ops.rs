@@ -134,9 +134,14 @@ pub enum Spin {
 //     util::normalize_arr(&mut psi.psi_pp_analytic, norm);
 // }
 
-/// Eg for the psi-on-grid for charges, where we don't need to generate psi''.
-// todo: DRY
-pub fn mix_bases(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize, weights: &[f64]) {
+pub fn mix_bases(
+    psi: &mut Arr3d,
+    mut psi_pp: Option<&mut Arr3d>,
+    psi_per_basis: &[Arr3d],
+    psi_pp_per_basis: Option<&[Arr3d]>,
+    grid_n: usize,
+    weights: &[f64],
+) {
     // We don't need to normalize the result using the full procedure; the basis-wfs are already
     // normalized, so divide by the cumulative basis weights.
     let mut weight_total = 0.;
@@ -151,19 +156,34 @@ pub fn mix_bases(psi: &mut Arr3d, bases_evaled: &[Arr3d], grid_n: usize, weights
         norm_scaler = 0.;
     }
 
+    // todo: GPU option?
+
     for i in 0..grid_n {
         for j in 0..grid_n {
             for k in 0..grid_n {
                 psi[i][j][k] = Cplx::new_zero();
+                if let Some(pp) = psi_pp.as_mut() {
+                    pp[i][j][k] = Cplx::new_zero();
+                }
 
                 for (i_basis, weight) in weights.iter().enumerate() {
-                    let scaled = weight * norm_scaler;
+                    let scaler = weight * norm_scaler;
 
-                    psi[i][j][k] += bases_evaled[i_basis][i][j][k] * scaled;
+                    psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
+
+                    if let Some(pp) = psi_pp.as_mut() {
+                        pp[i][j][k] +=
+                            psi_pp_per_basis.as_ref().unwrap()[i_basis][i][j][k] * scaler;
+                    }
                 }
             }
         }
     }
+
+    // util::normalize_arr(&mut psi[basis_i], norm);
+    // if psi_pp.is_some() {
+    //     util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
+    // }
 }
 
 /// 2 in one, to remove an unecessarly loop.
@@ -541,6 +561,41 @@ pub fn calculate_v_elec(
                 // todo the imaginary parts here? Is psi'' / psi always real?
                 V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
                 V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
+            }
+        }
+    }
+
+    // todo: Aux 3: Try a numerical derivative of potential; examine for smoothness.
+
+    // Note: By dividing by Q_C, we can get the sum of psi^2 from other elecs, I think?
+    // Then a formula where (psi_0^2 + psi_1^2) * Q_C = the charge density, which is associated with the
+    // V_elec we calculate here.
+
+    // todo: How do we go from V_elec to charge density? That may be key.
+}
+
+/// Update V-from-sci, and psipp-calculated, based on Psi, and V acting on a given electron.
+/// todo: DRY with `calculate_v_elec` above.
+pub fn update_eigen_vals(
+    V_elec: &mut Arr3dReal,
+    V_total: &mut Arr3dReal,
+    psi_pp_calculated: &mut Arr3d,
+    psi: &Arr3d,
+    psi_pp: &Arr3d,
+    V_acting_on_this: &Arr3dReal,
+    E: f64,
+    V_nuc: &Arr3dReal,
+) {
+    let grid_n = psi.len();
+
+    for i in 0..grid_n {
+        for j in 0..grid_n {
+            for k in 0..grid_n {
+                V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
+                V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
+
+                psi_pp_calculated[i][j][k] =
+                    eigen_fns::find_ψ_pp_calc(psi[i][j][k], V_acting_on_this[i][j][k], E)
             }
         }
     }

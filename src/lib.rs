@@ -68,7 +68,7 @@ pub fn psi_from_pt_charges(
 
     let E = -0.5;
 
-    let mut sfcs = SurfacesPerElec::new(grid_n);
+    let mut sfcs = SurfacesPerElec::new(bases.len(), grid_n, grid_n);
 
     let mut grid_posits = grid_setup::new_data_vec(grid_n);
 
