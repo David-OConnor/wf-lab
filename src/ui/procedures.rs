@@ -58,16 +58,22 @@ pub fn update_E_or_V(
 pub fn update_basis_weights(state: &mut State, ae: usize) {
     let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
 
-    // wf_ops::update_wf_fm_bases(
-    //     &mut state.surfaces_per_elec[ae],
-    //     &state.bases_evaluated[ae],
-    //     state.surfaces_shared.E,
-    //     state.grid_n_render,
-    //     &weights,
-    // );
+    let sfcs = &mut state.surfaces_per_elec[ae];
+
+    // Prevents double borrow-mut error
+    let psi = &mut sfcs.psi;
+    let psi_pp = &mut sfcs.psi_pp_evaluated;
+
+    wf_ops::mix_bases(
+        psi,
+        Some(psi_pp),
+        &sfcs.psi_per_basis,
+        Some(&sfcs.psi_pp_per_basis),
+        state.grid_n_render,
+        &weights,
+    );
 
     // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
-    let sfcs = &mut state.surfaces_per_elec[ae];
     wf_ops::calculate_v_elec(
         &mut sfcs.V_elec,
         &mut sfcs.V_total,
@@ -76,6 +82,25 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         state.surfaces_shared.E,
         &state.surfaces_shared.V_from_nuclei,
     );
+
+    if state.ui.auto_gen_elec_V {
+        let mut psi_charge_grid = new_data(state.grid_n_charge);
+
+        wf_ops::mix_bases(
+            &mut psi_charge_grid,
+            None,
+            &state.bases_evaluated_charge[ae],
+            None,
+            state.grid_n_charge,
+            &weights,
+        );
+
+        wf_ops::update_charge_density_fm_psi(
+            &mut state.charges_electron[ae],
+            &psi_charge_grid,
+            state.grid_n_charge,
+        );
+    }
 }
 
 /// Run this when we add bases, change basis parameters other than weight etc.
@@ -87,7 +112,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     //     state.grid_n_render,
     // );
 
-    wf_ops::create_psi_from_bases(
+    wf_ops::update_wf_from_bases(
         &state.dev,
         &mut state.bases_evaluated_charge[ae],
         None,
@@ -251,7 +276,7 @@ pub(crate) fn he_solver(state: &mut State) {
         //     state.grid_n_charge,
         // );
 
-        wf_ops::create_psi_from_bases(
+        wf_ops::update_wf_from_bases(
             &state.dev,
             &mut state.bases_evaluated_charge[elec_id],
             None,

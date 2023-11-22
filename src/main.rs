@@ -250,7 +250,6 @@ pub fn init_from_grid(
     }
 
     // These must be initialized from wave functions later.
-    // let mut bases_evaluated = Vec::new();
     let mut bases_evaluated_charge = Vec::new();
     let mut charges_electron = Vec::new();
     let mut V_from_elecs = Vec::new();
@@ -265,7 +264,7 @@ pub fn init_from_grid(
         let psi = &mut surface.psi_per_basis;
         let psi_pp = &mut surface.psi_pp_per_basis;
 
-        wf_ops::create_psi_from_bases(
+        wf_ops::update_wf_from_bases(
             dev,
             psi,
             Some(psi_pp),
@@ -277,7 +276,7 @@ pub fn init_from_grid(
         let psi = &mut surface.psi;
         let psi_pp = &mut surface.psi_pp_evaluated;
 
-        let weights: Vec<f64> = bases_per_elec[0].iter().map(|b| b.weight()).collect(); // todo: 0 is temp
+        let weights: Vec<f64> = bases_per_elec[i_elec].iter().map(|b| b.weight()).collect();
         wf_ops::mix_bases(
             psi,
             Some(psi_pp),
@@ -289,11 +288,11 @@ pub fn init_from_grid(
 
         let mut bec_this_elec = Vec::new();
 
-        for _ in 0..bases_per_elec[0].len() {
+        for _ in 0..bases_per_elec[i_elec].len() {
             // Handle the charge-grid-evaluated psi.
             bec_this_elec.push(new_data(grid_n_charge));
         }
-        wf_ops::create_psi_from_bases(
+        wf_ops::update_wf_from_bases(
             dev,
             &mut bec_this_elec,
             None,
@@ -301,7 +300,7 @@ pub fn init_from_grid(
             &surfaces_shared.grid_posits_charge,
             grid_n_charge,
         );
-        // todo: Mix charge?
+        // todo: Mix charge? Create electron V?
 
         bases_evaluated_charge.push(bec_this_elec);
 

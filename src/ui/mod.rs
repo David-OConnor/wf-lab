@@ -350,36 +350,10 @@ fn basis_fn_mixer(
                 ui.add(
                     egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
                         if let Some(v_) = v {
-                            // todo temp removed
                             *basis.weight_mut() = v_;
                             *updated_basis_weights = true;
 
                             bases_modified.push(basis_i);
-
-                            if state.ui.auto_gen_elec_V {
-                                // todo: DRY (C+P) from `procedures` ideally use this:
-                                // todo procedures::create_V_from_elec(state, active_elec);
-                                // todo, but borrow checker issues when borrowing all of state
-
-                                // todo: It may be advantagerous to cache `psi_charge_grid` somewwhere,
-                                // todo eg in SurfacesPerElec.
-                                let mut psi_charge_grid = new_data(state.grid_n_charge);
-
-                                wf_ops::mix_bases(
-                                    &mut psi_charge_grid,
-                                    None,
-                                    &state.bases_evaluated_charge[active_elec],
-                                    None,
-                                    state.grid_n_charge,
-                                    &weights,
-                                );
-
-                                wf_ops::update_charge_density_fm_psi(
-                                    &mut state.charges_electron[active_elec],
-                                    &psi_charge_grid,
-                                    state.grid_n_charge,
-                                );
-                            }
                         }
 
                         basis.weight()
@@ -507,7 +481,6 @@ fn bottom_items(
 
         *updated_E_or_V = true;
         *updated_basis_weights = true;
-        *updated_meshes = true;
     }
 
     if ui.add(egui::Button::new("He solver")).clicked() {
@@ -517,7 +490,6 @@ fn bottom_items(
         *updated_evaluated_wfs = true;
         *updated_E_or_V = true;
         *updated_basis_weights = true;
-        *updated_meshes = true;
     }
 }
 
@@ -737,7 +709,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     updated_basis_weights = true;
                     updated_evaluated_wfs = true;
                     updated_fixed_charges = true; // Seems to be required.
-                    updated_meshes = true;
                 }
 
                 state.grid_range_render.1

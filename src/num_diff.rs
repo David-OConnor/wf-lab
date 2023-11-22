@@ -1,5 +1,6 @@
 //! Code for numerical finite-difference differentiation. We use this primarily to calculate
-//! Ψ'', which is a component of the Schrodinger equation.
+//! Ψ'', which is a component of the Schrodinger equation. We use analytic second derivatives
+//! when available, and numerical ones when not.
 
 use lin_alg2::f64::Vec3;
 
@@ -48,12 +49,11 @@ pub(crate) fn _find_pp_real(
     psi_y_next: f64,
     psi_z_prev: f64,
     psi_z_next: f64,
-    h: f64,
 ) -> f64 {
     let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - psi_on_pt * 6.;
 
-    result / h
+    result / H_SQ
 }
 
 /// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.

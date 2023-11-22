@@ -222,7 +222,7 @@ impl _BasesEvaluated {
         // todo: TS questrionable psipp; forcing CPU.
         let dev = &ComputationDevice::Cpu;
 
-        wf_ops::create_psi_from_bases(
+        wf_ops::update_wf_from_bases(
             dev,
             &mut on_pt,
             Some(&mut psi_pp_analytic),
