@@ -142,12 +142,12 @@ pub fn _find_E_2_elec(
 /// differention) derivative.
 pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
     if psi.real < EPS_DIV0 && psi.im < EPS_DIV0 {
-        // return -E;
+        // return 0.;
     }
 
     // psi''/psi is always real, due to being an eigenvalue of a Hermitian operator.
     // todo: What's going on? Why do we need to invert E here?
-    //KE_COEFF * (psi_pp / psi).real + E
+    // KE_COEFF * (psi_pp / psi).real + E
     KE_COEFF * (psi_pp / psi).real - E
 }
 

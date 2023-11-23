@@ -82,7 +82,7 @@ pub fn mix_bases(
         norm_scaler = 0.;
     }
 
-    // let mut norm_scaler = 1.; // todo temp/TS.
+    let mut norm_scaler = 1.; // todo temp/TS.
 
     // todo: GPU option?
     let mut norm = 0.; // todo temp/TS
@@ -111,10 +111,10 @@ pub fn mix_bases(
     }
 
     // todo: Evaluate if you need/want this.
-    // util::normalize_arr(psi, norm);
-    // if psi_pp.is_some() {
-    //     util::normalize_arr(psi_pp.as_mut().unwrap(), norm);
-    // }
+    util::normalize_arr(psi, norm);
+    if psi_pp.is_some() {
+        util::normalize_arr(psi_pp.as_mut().unwrap(), norm);
+    }
 }
 
 /// 2 in one, to remove an unecessarly loop.
@@ -184,7 +184,7 @@ pub fn initialize_bases(
             // (1.7, 0.),
             // (1.6, 0.),
             (2., 0.),
-            (3., 0.),
+            // (3., 0.),
             // (4., 0.),
             // (5., 0.),
             // (6., 0.),
@@ -329,11 +329,12 @@ pub fn update_wf_from_bases(
                     for j in 0..grid_n {
                         for k in 0..grid_n {
                             let posit_sample = grid_posits[i][j][k];
+
                             psi[basis_i][i][j][k] = basis.value(posit_sample);
 
                             if let Some(ref mut pp) = psi_pp {
                                 if basis.n() >= 2 {
-                                    // todo: Once working, apply to GPU as well.
+                                    // todo: Apply to GPU as well.
                                     pp[basis_i][i][j][k] = num_diff::find_ψ_pp_num_fm_bases(
                                         posit_sample,
                                         &[basis.clone()], // todo: Don't clone

@@ -411,7 +411,6 @@ impl Sto {
     /// Does not include weight.
     /// https://quantummechanics.ucsd.edu/ph130a/130_notes/node233.html
     pub fn angular(&self, posit_sample: Vec3) -> Cplx {
-        const EPS: f64 = 0.000000001;
         // todo: COnsider re-adding if aplicable to save computation, if you end up with lots of 0ed bases.
         // if self.weight.abs() < EPS {
         //     return Cplx::new_zero(); // saves some computation.
