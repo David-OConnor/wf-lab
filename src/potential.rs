@@ -4,6 +4,7 @@ use lin_alg2::f64::Vec3;
 
 use crate::{
     grid_setup::{Arr3dReal, Arr3dVec},
+    loop_arr,
     types::ComputationDevice,
     wf_ops::K_C,
 };
@@ -24,13 +25,9 @@ fn flatten_charge(
     let mut posits = Vec::new();
     let mut charges = Vec::new();
 
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                posits.push(posits_charge[i][j][k]);
-                charges.push(values_charge[i][j][k]);
-            }
-        }
+    for (i, j, k) in loop_arr!(grid_n) {
+        posits.push(posits_charge[i][j][k]);
+        charges.push(values_charge[i][j][k]);
     }
 
     (posits, charges)
@@ -48,17 +45,13 @@ pub fn update_V_from_nuclei(
     // Wave functions from other electrons, for calculating the Hartree potential.
 ) {
     // todo: CUDA
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                let posit_sample = grid_posits[i][j][k];
+    for (i, j, k) in loop_arr!(grid_n) {
+        let posit_sample = grid_posits[i][j][k];
 
-                V_from_nuclei[i][j][k] = 0.;
+        V_from_nuclei[i][j][k] = 0.;
 
-                for (posit_charge, charge_amt) in charges_nuc.iter() {
-                    V_from_nuclei[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
-                }
-            }
+        for (posit_charge, charge_amt) in charges_nuc.iter() {
+            V_from_nuclei[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
         }
     }
 }
@@ -72,19 +65,15 @@ pub(crate) fn update_V_acting_on_elec(
     i_this_elec: usize,
     grid_n: usize,
 ) {
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                V_on_this_elec[i][j][k] = V_from_nuclei[i][j][k];
+    for (i, j, k) in loop_arr!(grid_n) {
+        V_on_this_elec[i][j][k] = V_from_nuclei[i][j][k];
 
-                for (i_other_elec, V_other_elec) in V_from_elecs.iter().enumerate() {
-                    // Don't apply this own electron's charge to the V on it.
-                    if i_this_elec == i_other_elec {
-                        continue;
-                    }
-                    V_on_this_elec[i][j][k] += V_other_elec[i][j][k];
-                }
+        for (i_other_elec, V_other_elec) in V_from_elecs.iter().enumerate() {
+            // Don't apply this own electron's charge to the V on it.
+            if i_this_elec == i_other_elec {
+                continue;
             }
+            V_on_this_elec[i][j][k] += V_other_elec[i][j][k];
         }
     }
 }
@@ -317,15 +306,11 @@ pub(crate) fn create_V_1d_cpu(
     for sample_pt in posits_sample {
         let mut V_sample = 0.;
 
-        for i in 0..grid_n_charge {
-            for j in 0..grid_n_charge {
-                for k in 0..grid_n_charge {
-                    let posit_charge = posits_charge[i][j][k];
-                    let charge = charges_elec[i][j][k];
+        for (i, j, k) in loop_arr!(grid_n_charge) {
+            let posit_charge = posits_charge[i][j][k];
+            let charge = charges_elec[i][j][k];
 
-                    V_sample += V_coulomb(posit_charge, *sample_pt, charge);
-                }
-            }
+            V_sample += V_coulomb(posit_charge, *sample_pt, charge);
         }
 
         V_to_match.push(V_sample);

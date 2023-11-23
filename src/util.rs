@@ -7,6 +7,13 @@ use crate::{
 
 pub(crate) const EPS_DIV0: f64 = 0.000000001;
 
+#[macro_export]
+macro_rules! loop_arr {
+    ($n:expr) => {
+        (0..$n).flat_map(move |i| (0..$n).flat_map(move |j| (0..$n).map(move |k| (i, j, k))))
+    };
+}
+
 /// Create a set of values in a given range, with a given number of values.
 /// Similar to `numpy.linspace`.
 /// The result terminates one step before the end of the range.
@@ -175,12 +182,8 @@ pub(crate) fn factorial(val: u16) -> u64 {
 /// Calculate ψ* ψ
 pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, grid_n: usize) {
     // todo: CUDA.
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                dest[i][j][k] = source[i][j][k].abs_sq();
-            }
-        }
+    for (i, j, k) in loop_arr!(grid_n) {
+        dest[i][j][k] = source[i][j][k].abs_sq();
     }
 }
 
@@ -202,12 +205,8 @@ pub(crate) fn normalize_arr(arr: &mut Arr3d, norm: f64) {
 
     let grid_n = arr.len();
 
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                arr[i][j][k] = arr[i][j][k] / norm_sqrt;
-            }
-        }
+    for (i, j, k) in loop_arr!(grid_n) {
+        arr[i][j][k] = arr[i][j][k] / norm_sqrt;
     }
 }
 
@@ -215,12 +214,8 @@ pub(crate) fn normalize_arr(arr: &mut Arr3d, norm: f64) {
 pub(crate) fn flatten_arr(vals_3d: &Arr3dVec, grid_n: usize) -> Vec<Vec3> {
     let mut result = Vec::new();
 
-    for i_sample in 0..grid_n {
-        for j_sample in 0..grid_n {
-            for k_sample in 0..grid_n {
-                result.push(vals_3d[i_sample][j_sample][k_sample]);
-            }
-        }
+    for (i, j, k) in loop_arr!(grid_n) {
+        result.push(vals_3d[i][j][k]);
     }
 
     result
@@ -230,13 +225,9 @@ pub(crate) fn flatten_arr(vals_3d: &Arr3dVec, grid_n: usize) -> Vec<Vec3> {
 pub(crate) fn unflatten_arr_real(result: &mut Arr3dReal, vals_flat: &[f64], grid_n: usize) {
     let grid_n_sq = grid_n.pow(2);
 
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                let i_flat = i * grid_n_sq + j * grid_n + k;
-                result[i][j][k] = vals_flat[i_flat];
-            }
-        }
+    for (i, j, k) in loop_arr!(grid_n) {
+        let i_flat = i * grid_n_sq + j * grid_n + k;
+        result[i][j][k] = vals_flat[i_flat];
     }
 }
 
@@ -245,13 +236,9 @@ pub(crate) fn unflatten_arr(result: &mut Arr3d, vals_flat: &[f64], grid_n: usize
     let grid_n_sq = grid_n.pow(2);
     // todo: DRY. And currently accepts f3d, but converts to Cplx.
 
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                let i_flat = i * grid_n_sq + j * grid_n + k;
-                result[i][j][k] = Cplx::from_real(vals_flat[i_flat]);
-            }
-        }
+    for (i, j, k) in loop_arr!(grid_n) {
+        let i_flat = i * grid_n_sq + j * grid_n + k;
+        result[i][j][k] = Cplx::from_real(vals_flat[i_flat]);
     }
 }
 //

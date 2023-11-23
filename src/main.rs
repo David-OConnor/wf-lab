@@ -58,9 +58,9 @@ use crate::{
 const NUM_SURFACES: usize = 11;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 12.;
+const GRID_MAX_RENDER: f64 = 4.;
 const GRID_MAX_CHARGE: f64 = 15.;
-const GRID_N_RENDER_DEFAULT: usize = 60;
+const GRID_N_RENDER_DEFAULT: usize = 32;
 const GRID_N_CHARGE_DEFAULT: usize = 71;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
@@ -379,7 +379,7 @@ fn main() {
         bases_per_elec.push(Vec::new());
     }
 
-    wf_ops::initialize_bases(&nuclei, &mut bases_per_elec[ui_active_elec], max_basis_n);
+    wf_ops::initialize_bases(&mut bases_per_elec[ui_active_elec], &nuclei, max_basis_n);
 
     // todo: This is getting weird re multiple electrons; perhaps you should switch
     // todo an approach where bases don't have weights, but you use a separate

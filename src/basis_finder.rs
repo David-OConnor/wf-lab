@@ -7,14 +7,15 @@ use crate::{
     complex_nums::Cplx,
     eigen_fns::{calc_E_on_psi, calc_V_on_psi},
     grid_setup::{new_data, new_data_real, Arr3dReal, Arr3dVec},
-    potential, util,
+    loop_arr,
+    potential::{self, V_coulomb},
+    types::ComputationDevice,
+    util,
     wf_ops::Q_ELEC,
 };
 
 use crate::eigen_fns::KE_COEFF_INV;
 
-use crate::potential::V_coulomb;
-use crate::types::ComputationDevice;
 use ndarray::prelude::*;
 use ndarray_linalg::SVD;
 
@@ -140,14 +141,10 @@ fn find_base_xi_E_type2(
         V_corner += potential::V_coulomb(*posit_nuc, posit_corner, *charge);
     }
 
-    for i in 0..charge_elec.len() {
-        for j in 0..charge_elec.len() {
-            for k in 0..charge_elec.len() {
-                let charge = charge_elec[i][j][k];
-                V_sample += potential::V_coulomb(grid_charge[i][j][k], posit_sample, charge);
-                V_corner += potential::V_coulomb(grid_charge[i][j][k], posit_corner, charge);
-            }
-        }
+    for (i, j, k) in loop_arr!(charge_elec.len()) {
+        let charge = charge_elec[i][j][k];
+        V_sample += potential::V_coulomb(grid_charge[i][j][k], posit_sample, charge);
+        V_corner += potential::V_coulomb(grid_charge[i][j][k], posit_corner, charge);
     }
 
     find_base_xi_E_common(
@@ -180,30 +177,24 @@ fn find_charge_trial_wf(
 
     let mut psi_trial_charge_grid = new_data(grid_n_charge);
     let mut norm = 0.;
-    for i in 0..grid_n_charge {
-        for j in 0..grid_n_charge {
-            for k in 0..grid_n_charge {
-                let posit_sample = grid_charge[i][j][k];
-                let mut psi = Cplx::new_zero();
 
-                for basis in &trial_other_elecs_wf {
-                    psi += basis.value(posit_sample);
-                }
+    for (i, j, k) in loop_arr!(grid_n_charge) {
+        let posit_sample = grid_charge[i][j][k];
+        let mut psi = Cplx::new_zero();
 
-                psi_trial_charge_grid[i][j][k] = psi;
-                norm += psi.abs_sq();
-            }
+        for basis in &trial_other_elecs_wf {
+            psi += basis.value(posit_sample);
         }
+
+        psi_trial_charge_grid[i][j][k] = psi;
+        norm += psi.abs_sq();
     }
 
     // Note: We're saving a loop by not calling `elec_elec::update_charge_density_fm_psi`. here,
     // since we need to normalize anyway.
-    for i in 0..grid_n_charge {
-        for j in 0..grid_n_charge {
-            for k in 0..grid_n_charge {
-                result[i][j][k] = psi_trial_charge_grid[i][j][k].abs_sq() * Q_ELEC / norm
-            }
-        }
+
+    for (i, j, k) in loop_arr!(grid_n_charge) {
+        result[i][j][k] = psi_trial_charge_grid[i][j][k].abs_sq() * Q_ELEC / norm
     }
 
     result

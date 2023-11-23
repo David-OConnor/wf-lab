@@ -32,7 +32,7 @@ use crate::{
     complex_nums::Cplx,
     eigen_fns::{self, KE_COEFF},
     grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
-    num_diff,
+    loop_arr, num_diff,
     types::ComputationDevice,
     util::{self, unflatten_arr},
 };
@@ -87,25 +87,20 @@ pub fn mix_bases(
     // todo: GPU option?
     let mut norm = 0.; // todo temp/TS
 
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                psi[i][j][k] = Cplx::new_zero();
-                if let Some(pp) = psi_pp.as_mut() {
-                    pp[i][j][k] = Cplx::new_zero();
-                }
+    for (i, j, k) in loop_arr!(grid_n) {
+        psi[i][j][k] = Cplx::new_zero();
+        if let Some(pp) = psi_pp.as_mut() {
+            pp[i][j][k] = Cplx::new_zero();
+        }
 
-                for (i_basis, weight) in weights.iter().enumerate() {
-                    let scaler = weight * norm_scaler;
+        for (i_basis, weight) in weights.iter().enumerate() {
+            let scaler = weight * norm_scaler;
 
-                    psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
-                    norm += psi[i][j][k].abs_sq(); // todo: Experimenting
+            psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
+            norm += psi[i][j][k].abs_sq(); // todo: Experimenting
 
-                    if let Some(pp) = psi_pp.as_mut() {
-                        pp[i][j][k] +=
-                            psi_pp_per_basis.as_ref().unwrap()[i_basis][i][j][k] * scaler;
-                    }
-                }
+            if let Some(pp) = psi_pp.as_mut() {
+                pp[i][j][k] += psi_pp_per_basis.as_ref().unwrap()[i_basis][i][j][k] * scaler;
             }
         }
     }
@@ -138,28 +133,23 @@ pub fn mix_bases_update_charge_density(
     if weight_total.abs() < EPS_DIV0 {
         norm_scaler = 0.;
     }
+    for (i, j, k) in loop_arr!(grid_n) {
+        psi[i][j][k] = Cplx::new_zero();
 
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                psi[i][j][k] = Cplx::new_zero();
+        for (i_basis, weight) in weights.iter().enumerate() {
+            let scaled = weight * norm_scaler;
 
-                for (i_basis, weight) in weights.iter().enumerate() {
-                    let scaled = weight * norm_scaler;
-
-                    psi[i][j][k] += bases_evaled[i_basis][i][j][k] * scaled;
-                }
-                charge_density[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
-            }
+            psi[i][j][k] += bases_evaled[i_basis][i][j][k] * scaled;
         }
+        charge_density[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
     }
 }
 
 /// [re]Create a set of basis functions, given fixed-charges representing nuclei.
 /// Use this in main and lib inits, and when you add or remove charges.
 pub fn initialize_bases(
-    charges_fixed: &[(Vec3, f64)],
     bases: &mut Vec<Basis>,
+    charges_fixed: &[(Vec3, f64)],
     max_n: u16, // quantum number n
 ) {
     // let mut prev_weights = Vec::new();
@@ -184,15 +174,16 @@ pub fn initialize_bases(
             // (1.7, 0.),
             // (1.6, 0.),
             (2., 0.),
-            // (3., 0.),
-            // (4., 0.),
+            (3., 0.),
+            (4., 0.),
             // (5., 0.),
             // (6., 0.),
             // (7., 0.),
             // (8., 0.),
             // (9., 0.),
         ] {
-            for n in 1..max_n + 1 {
+            // for n in 1..max_n + 1 {
+            for n in 1..2 {
                 bases.push(Basis::Sto(Sto {
                     posit: *nuc_posit,
                     n,
@@ -302,21 +293,18 @@ pub fn update_wf_from_bases(
 
                 // This is similar to util::unflatten, but with norm involved.
                 // todo: Try to use unflatten.
-                for i in 0..grid_n {
-                    for j in 0..grid_n {
-                        for k in 0..grid_n {
-                            let i_flat = i * grid_n_sq + j * grid_n + k;
-                            psi[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
+                for (i, j, k) in loop_arr!(grid_n) {
+                    let i_flat = i * grid_n_sq + j * grid_n + k;
+                    psi[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
 
-                            if let Some(pp) = psi_pp.as_mut() {
-                                pp[basis_i][i][j][k] =
-                                    Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
-                            }
-
-                            norm += psi[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
-                        }
+                    if let Some(pp) = psi_pp.as_mut() {
+                        pp[basis_i][i][j][k] =
+                            Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
                     }
+
+                    norm += psi[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
                 }
+
                 util::normalize_arr(&mut psi[basis_i], norm);
                 if psi_pp.is_some() {
                     util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
@@ -325,29 +313,25 @@ pub fn update_wf_from_bases(
         }
         ComputationDevice::Cpu => {
             for (basis_i, basis) in bases.iter().enumerate() {
-                for i in 0..grid_n {
-                    for j in 0..grid_n {
-                        for k in 0..grid_n {
-                            let posit_sample = grid_posits[i][j][k];
+                for (i, j, k) in loop_arr!(grid_n) {
+                    let posit_sample = grid_posits[i][j][k];
 
-                            psi[basis_i][i][j][k] = basis.value(posit_sample);
+                    psi[basis_i][i][j][k] = basis.value(posit_sample);
 
-                            if let Some(ref mut pp) = psi_pp {
-                                if basis.n() >= 2 {
-                                    // todo: Apply to GPU as well.
-                                    pp[basis_i][i][j][k] = num_diff::find_ψ_pp_num_fm_bases(
-                                        posit_sample,
-                                        &[basis.clone()], // todo: Don't clone
-                                        psi[basis_i][i][j][k],
-                                    );
-                                } else {
-                                    pp[basis_i][i][j][k] = basis.second_deriv(posit_sample);
-                                }
-                            }
-
-                            norm += psi[basis_i][i][j][k].abs_sq();
+                    if let Some(ref mut pp) = psi_pp {
+                        if basis.n() >= 2 {
+                            // todo: Apply to GPU as well.
+                            pp[basis_i][i][j][k] = num_diff::find_ψ_pp_num_fm_bases(
+                                posit_sample,
+                                &[basis.clone()], // todo: Don't clone
+                                psi[basis_i][i][j][k],
+                            );
+                        } else {
+                            pp[basis_i][i][j][k] = basis.second_deriv(posit_sample);
                         }
                     }
+
+                    norm += psi[basis_i][i][j][k].abs_sq();
                 }
                 util::normalize_arr(&mut psi[basis_i], norm);
                 if psi_pp.is_some() {
@@ -425,15 +409,11 @@ pub fn calculate_v_elec(
 ) {
     let grid_n = psi.len();
 
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                // todo: Hermitian operator has real eigenvalues. How are we able to discard
-                // todo the imaginary parts here? Is psi'' / psi always real?
-                V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
-                V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
-            }
-        }
+    for (i, j, k) in loop_arr!(grid_n) {
+        // todo: Hermitian operator has real eigenvalues. How are we able to discard
+        // todo the imaginary parts here? Is psi'' / psi always real?
+        V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
+        V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
     }
 
     // todo: Aux 3: Try a numerical derivative of potential; examine for smoothness.
@@ -458,16 +438,12 @@ pub fn update_eigen_vals(
 ) {
     let grid_n = psi.len();
 
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
-                V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
+    for (i, j, k) in loop_arr!(grid_n) {
+        V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
+        V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
 
-                psi_pp_calculated[i][j][k] =
-                    eigen_fns::find_ψ_pp_calc(psi[i][j][k], V_acting_on_this[i][j][k], E)
-            }
-        }
+        psi_pp_calculated[i][j][k] =
+            eigen_fns::find_ψ_pp_calc(psi[i][j][k], V_acting_on_this[i][j][k], E)
     }
 
     // todo: Aux 3: Try a numerical derivative of potential; examine for smoothness.
@@ -528,12 +504,8 @@ pub(crate) fn update_charge_density_fm_psi(
     // todo: YOu may need to model in terms of areas vice points; this is likely
     // todo a factor on irregular grids.
 
-    for i in 0..grid_n_charge {
-        for j in 0..grid_n_charge {
-            for k in 0..grid_n_charge {
-                charge_density[i][j][k] = psi_on_charge_grid[i][j][k].abs_sq() * Q_ELEC;
-            }
-        }
+    for (i, j, k) in loop_arr!(grid_n_charge) {
+        charge_density[i][j][k] = psi_on_charge_grid[i][j][k].abs_sq() * Q_ELEC;
     }
 }
 
@@ -550,13 +522,10 @@ pub(crate) fn combine_electron_charges(
             continue;
         }
         let mut sum = 0.; // todo confirming
-        for i in 0..grid_n_charge {
-            for j in 0..grid_n_charge {
-                for k in 0..grid_n_charge {
-                    result[i][j][k] += charge_from_elec[i][j][k];
-                    sum += charge_from_elec[i][j][k];
-                }
-            }
+
+        for (i, j, k) in loop_arr!(grid_n_charge) {
+            result[i][j][k] += charge_from_elec[i][j][k];
+            sum += charge_from_elec[i][j][k];
         }
         println!("Charge sum (should be -1): {:?}", sum);
     }
@@ -572,14 +541,10 @@ pub(crate) fn sto_vals_derivs_cpu(
     basis: &Basis,
     grid_n: usize,
 ) {
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                let posit_sample = grid_posits[i][j][k];
+    for (i, j, k) in loop_arr!(grid_n) {
+        let posit_sample = grid_posits[i][j][k];
 
-                psi[i][j][k] = basis.value(posit_sample);
-                psi_pp[i][j][k] = basis.second_deriv(posit_sample);
-            }
-        }
+        psi[i][j][k] = basis.value(posit_sample);
+        psi_pp[i][j][k] = basis.second_deriv(posit_sample);
     }
 }

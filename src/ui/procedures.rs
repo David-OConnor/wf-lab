@@ -135,10 +135,9 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
     // Note: An alternative would be to add the new bases without 0ing the existing ones.
     for elec_i in 0..state.surfaces_per_elec.len() {
         wf_ops::initialize_bases(
-            &state.charges_fixed,
             &mut state.bases[elec_i],
-            // Some(&mut state.bases_visible[elec_i]),
-            2,
+            &state.charges_fixed,
+            state.max_basis_n,
         );
 
         potential::update_V_acting_on_elec(

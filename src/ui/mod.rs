@@ -4,10 +4,7 @@ use egui::{self, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::Vec3;
 
-use crate::grid_setup::new_data_real;
-use crate::{
-    basis_finder, basis_wfs::Basis, grid_setup::new_data, render, wf_ops, ActiveElec, State,
-};
+use crate::{basis_finder, basis_wfs::Basis, render, wf_ops, ActiveElec, State};
 
 pub(crate) mod procedures;
 
@@ -430,16 +427,11 @@ fn bottom_items(
         {
             procedures::update_V_acting_on_elec(state, scene, ae);
 
-            *updated_meshes = true;
             *updated_E_or_V = true;
+            *updated_meshes = true;
         }
 
         if ui.add(egui::Button::new("Find E")).clicked() {
-            // state.surfaces_shared.E = wf_ops::find_E(
-            //     &mut state.eval_data_per_elec[ae],
-            //     state.eval_data_shared.grid_n,
-            // );
-
             state.surfaces_shared.E = wf_ops::E_from_trial(
                 &state.bases[ae],
                 state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
@@ -552,7 +544,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 state.surfaces_per_elec = surfaces_per_elec;
 
                 for elec_i in 0..state.surfaces_per_elec.len() {
-                    wf_ops::initialize_bases(&state.charges_fixed, &mut state.bases[elec_i], 2);
+                    wf_ops::initialize_bases(&mut state.bases[elec_i], &state.charges_fixed, 2);
                 }
 
                 updated_evaluated_wfs = true;
