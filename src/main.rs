@@ -52,6 +52,7 @@ use crate::{
     basis_wfs::Basis,
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal},
     types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
+    ui::procedures,
     wf_ops::Q_PROT,
 };
 
@@ -287,23 +288,30 @@ pub fn init_from_grid(
             &surfaces_shared.V_from_nuclei,
         );
 
-        let mut bec_this_elec = Vec::new();
+        let mut psi_charge = Vec::new();
 
         for _ in 0..bases_per_elec[i_elec].len() {
             // Handle the charge-grid-evaluated psi.
-            bec_this_elec.push(new_data(grid_n_charge));
+            psi_charge.push(new_data(grid_n_charge));
         }
+
         wf_ops::update_wf_from_bases(
             dev,
-            &mut bec_this_elec,
+            &mut psi_charge,
             None,
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits_charge,
             grid_n_charge,
         );
-        // todo: Mix charge? Create electron V?
 
-        bases_evaluated_charge.push(bec_this_elec);
+        procedures::create_elec_charge(
+            &mut charges_electron[i_elec],
+            &psi_charge,
+            &weights,
+            grid_n_charge,
+        );
+
+        bases_evaluated_charge.push(psi_charge);
     }
 
     (

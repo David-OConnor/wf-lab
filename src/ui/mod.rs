@@ -418,7 +418,13 @@ fn bottom_items(
             .add(egui::Button::new("Create charge from this elec"))
             .clicked()
         {
-            procedures::create_elec_charge(state, ae);
+            let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
+            procedures::create_elec_charge(
+                &mut state.charges_electron[ae],
+                &state.psi_charge[ae],
+                &weights,
+                state.grid_n_charge,
+            );
         }
 
         if ui

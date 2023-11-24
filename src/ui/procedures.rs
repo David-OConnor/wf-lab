@@ -3,6 +3,7 @@
 
 use graphics::{EngineUpdates, Scene};
 
+use crate::grid_setup::Arr3d;
 use crate::{
     basis_finder,
     eigen_fns,
@@ -154,23 +155,29 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
 
 /// Create the electric charge from a single electron's wave function squared. Note that this
 /// is a combination of mixing bases to get the wave function, and generating charge from this.
-pub fn create_elec_charge(state: &mut State, ae: usize) {
-    let mut psi_charge_grid = new_data(state.grid_n_charge);
+// pub fn create_elec_charge(state: &mut State, ae: usize) {
+pub fn create_elec_charge(
+    charge_electron: &mut Arr3dReal,
+    psi_charge_per_basis: &[Arr3d],
+    weights: &[f64],
+    grid_n_charge: usize,
+) {
+    let mut psi_charge_grid = new_data(grid_n_charge);
 
-    let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
     wf_ops::mix_bases(
         &mut psi_charge_grid,
         None,
-        &state.psi_charge[ae],
+        psi_charge_per_basis,
         None,
-        state.grid_n_charge,
-        &weights,
+        grid_n_charge,
+        weights,
     );
 
     wf_ops::charge_from_psi(
-        &mut state.charges_electron[ae],
+        // &mut state.charges_electron[ae],
+        charge_electron,
         &psi_charge_grid,
-        state.grid_n_charge,
+        grid_n_charge,
     );
 }
 
@@ -288,6 +295,16 @@ pub(crate) fn he_solver(state: &mut State) {
     }
 
     // Update the 2D or 3D V grids once, at the end.
-    create_elec_charge(state, 0);
-    create_elec_charge(state, 1);
+    for e_id in 0..2 {
+        let weights: Vec<f64> = state.bases[e_id].iter().map(|b| b.weight()).collect();
+        create_elec_charge(
+            &mut state.charges_electron[e_id],
+            &state.psi_charge[e_id],
+            &weights,
+            state.grid_n_charge,
+        );
+    }
+
+    // create_elec_charge(state, 0);
+    // create_elec_charge(state, 1);
 }

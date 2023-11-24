@@ -20,6 +20,12 @@ pub enum ComputationDevice {
     Gpu(Arc<CudaDevice>),
 }
 
+impl Default for ComputationDevice {
+    fn default() -> Self {
+        Self::Cpu
+    }
+}
+
 pub struct SurfacesShared {
     /// Represents points on a grid, for our non-uniform grid.
     pub grid_posits: Arr3dVec,
