@@ -81,7 +81,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         wf_ops::mix_bases(
             &mut psi_charge_grid,
             None,
-            &state.bases_evaluated_charge[ae],
+            &state.psi_charge[ae],
             None,
             state.grid_n_charge,
             &weights,
@@ -114,7 +114,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
 
     wf_ops::update_wf_from_bases(
         &state.dev,
-        &mut state.bases_evaluated_charge[ae],
+        &mut state.psi_charge[ae],
         None,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits_charge,
@@ -161,7 +161,7 @@ pub fn create_elec_charge(state: &mut State, ae: usize) {
     wf_ops::mix_bases(
         &mut psi_charge_grid,
         None,
-        &state.bases_evaluated_charge[ae],
+        &state.psi_charge[ae],
         None,
         state.grid_n_charge,
         &weights,
@@ -268,7 +268,7 @@ pub(crate) fn he_solver(state: &mut State) {
 
         wf_ops::update_wf_from_bases(
             &state.dev,
-            &mut state.bases_evaluated_charge[elec_id],
+            &mut state.psi_charge[elec_id],
             None,
             &state.bases[elec_id],
             &state.surfaces_shared.grid_posits_charge,
@@ -281,7 +281,7 @@ pub(crate) fn he_solver(state: &mut State) {
         wf_ops::mix_bases_update_charge_density(
             &mut psi_charge_grid,
             &mut state.charges_electron[elec_id],
-            &state.bases_evaluated_charge[elec_id],
+            &state.psi_charge[elec_id],
             state.grid_n_charge,
             &weights,
         );

@@ -5,7 +5,7 @@ use crate::{
     grid_setup::{Arr3d, Arr3dReal, Arr3dVec},
 };
 
-pub(crate) const EPS_DIV0: f64 = 0.000000001;
+pub(crate) const EPS_DIV0: f64 = 0.0000000001;
 
 // This is an abstraction over a triple-nested loop. We use it to iterate over 3d arrays.
 #[macro_export]
@@ -195,8 +195,7 @@ pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, grid_n: usize) {
 /// vice imaginary parts. Our implmentation (dividing both real and imag parts by norm square)
 /// is one way.
 pub(crate) fn normalize_arr(arr: &mut Arr3d, norm: f64) {
-    const EPS: f64 = 0.000000001;
-    if norm.abs() < EPS {
+    if norm.abs() < EPS_DIV0 {
         return;
     }
 

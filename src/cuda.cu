@@ -74,6 +74,42 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
 }
 
 
+dtype find_psi_pp_num_fm_bases(
+    dtype3 posit_sample,
+    dtype3 posit_nuc,
+    uint16_t n,
+    uint16_t l,
+    dtype xi,
+    dtype psi_sample_loc,
+) {
+    dtype x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
+    dtype x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
+    dtype y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
+    dtype y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
+    dtype z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
+    dtype z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+
+    dtype mut psi_x_prev = 0.f;
+    dtype mut psi_x_next = 0.f;
+    dtype mut psi_y_prev = 0.f;
+    dtype mut psi_y_next = 0.f;
+    dtype mut psi_z_prev = 0.f;
+    dtype mut psi_z_next = 0.f;
+
+    for basis in bases {
+        psi_x_prev += sto_val(x_prev, posit_nuc, xi, n, l);
+        psi_x_next += sto_val(x_next, posit_nuc, xi, n, l);
+        psi_y_prev += sto_val(y_prev, posit_nuc, xi, n, l);
+        psi_y_next += sto_val(y_next, posit_nuc, xi, n, l);
+        psi_z_prev += sto_val(z_prev, posit_nuc, xi, n, l);
+        psi_z_next += sto_val(z_next, posit_nuc, xi, n, l);
+    }
+
+    return (psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+        - ψ_sample_loc * 6.f)
+        / H_SQ
+}
+
 // In this approach, we parallelize operations per sample, but run the
 // charge computations in serial, due to the cumulative addition step. This appears
 // to be much faster in practice, likely due to the addition being offloaded

@@ -136,7 +136,7 @@ pub struct State {
     pub bases: Vec<Vec<Basis>>,
     /// Similar to `bases_evaluated`, but on the charge grid. We don't need diffs for this.
     /// Outer is per-electron. Inner is per-basis
-    pub bases_evaluated_charge: Vec<Vec<Arr3d>>,
+    pub psi_charge: Vec<Vec<Arr3d>>,
     // /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
     // pub nudge_amount: Vec<f64>,
     pub surface_data: [SurfaceData; NUM_SURFACES],
@@ -190,7 +190,7 @@ pub fn init_from_grid(
     SurfacesShared,
     Vec<SurfacesPerElec>,
 ) {
-    let arr_real = grid_setup::new_data_real(grid_n_sample);
+    let arr_real = new_data_real(grid_n_sample);
 
     let sfcs_one_elec = SurfacesPerElec::new(bases_per_elec[0].len(), grid_n_sample, grid_n_charge);
 
@@ -229,7 +229,7 @@ pub fn init_from_grid(
         grid_n_sample,
     );
 
-    for (elec_i, electron) in surfaces_per_elec.iter_mut().enumerate() {
+    for electron in &mut surfaces_per_elec {
         potential::update_V_acting_on_elec(
             &mut electron.V_acting_on_this,
             &surfaces_shared.V_from_nuclei,
@@ -438,7 +438,7 @@ fn main() {
         charges_electron,
         V_from_elecs,
         bases: bases_per_elec,
-        bases_evaluated_charge,
+        psi_charge: bases_evaluated_charge,
         surfaces_shared,
         surfaces_per_elec,
         surface_data,
