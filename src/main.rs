@@ -50,7 +50,7 @@ mod wf_ops;
 
 use crate::{
     basis_wfs::Basis,
-    grid_setup::{new_data, Arr3d, Arr3dReal},
+    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal},
     types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
     wf_ops::Q_PROT,
 };
@@ -59,7 +59,7 @@ const NUM_SURFACES: usize = 11;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_RENDER: f64 = 4.;
-const GRID_MAX_CHARGE: f64 = 15.;
+const GRID_MAX_CHARGE: f64 = 7.;
 const GRID_N_RENDER_DEFAULT: usize = 32;
 const GRID_N_CHARGE_DEFAULT: usize = 71;
 
@@ -123,12 +123,8 @@ pub struct State {
     /// This is not part of `SurfacesPerElec` since we use all values at once (or all except one)
     /// when calculating the potential. (easier to work with API)
     pub charges_electron: Vec<Arr3dReal>,
-    // /// See note on charges_electron; should be part of `SurfacesPerElec`.
-    // pub psi_per_basis: Vec<Vec<Arr3d>>,
-    // /// See note on charges_electron; should be part of `SurfacesPerElec`.
-    // pub psi_pp_per_basis: Vec<Vec<Arr3d>>,
     /// Also stored here vice part of per-elec structs due to borrow-limiting on struct fields.
-    pub V_from_elecs: Vec<Arr3dReal>,
+    pub V_from_elecs: Vec<Arr3dReal>, // todo: Now that we have charge_from_elec, do we want this? Probably
     /// Surfaces that are not electron-specific.
     pub surfaces_shared: SurfacesShared,
     /// Computed surfaces, per electron. These span 3D space, are are quite large in memory. Contains various
@@ -138,13 +134,8 @@ pub struct State {
     /// Wave functions, with weights. Per-electron. (Outer Vec iterates over electrons; inner over
     /// bases per-electron)
     pub bases: Vec<Vec<Basis>>,
-    // /// Basis wave functions. Perhaps faster to cache these (at the cost of more memory use, rather than
-    // /// compute their value each time we change weights...) Per-electron.
-    // /// todo: This should probably be in one of the surfaces.
-    // pub bases_evaluated: Vec<types::BasesEvaluated>, // todo: You might actually need this (nov 2023)....
     /// Similar to `bases_evaluated`, but on the charge grid. We don't need diffs for this.
     /// Outer is per-electron. Inner is per-basis
-    /// todo: Do we want/need per-electron here?
     pub bases_evaluated_charge: Vec<Vec<Arr3d>>,
     // /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
     // pub nudge_amount: Vec<f64>,
@@ -243,7 +234,6 @@ pub fn init_from_grid(
             &mut electron.V_acting_on_this,
             &surfaces_shared.V_from_nuclei,
             &[], // Not ready to apply V from other elecs yet.
-            elec_i,
             grid_n_sample,
         );
     }
@@ -254,7 +244,7 @@ pub fn init_from_grid(
     let mut V_from_elecs = Vec::new();
 
     for i_elec in 0..num_electrons {
-        charges_electron.push(grid_setup::new_data_real(grid_n_charge));
+        charges_electron.push(new_data_real(grid_n_charge));
         V_from_elecs.push(arr_real.clone());
 
         // todo: Call procedures::update_bases_weights etc here.
@@ -287,8 +277,8 @@ pub fn init_from_grid(
         );
 
         wf_ops::update_eigen_vals(
-            &mut sfcs.V_elec,
-            &mut sfcs.V_total,
+            &mut sfcs.V_elec_eigen,
+            &mut sfcs.V_total_eigen,
             &mut sfcs.psi_pp_calculated,
             &sfcs.psi,
             &sfcs.psi_pp_evaluated,
@@ -436,6 +426,11 @@ fn main() {
         SurfaceData::new("Total V from ψ", true),
         SurfaceData::new("V'_elec", false),
     ];
+    //
+    // let mut charge_from_elecs = Vec::new();
+    // for _ in 0..num_elecs {
+    //     charge_from_elecs.push(new_data_real(grid_n_charge));
+    // }
 
     let state = State {
         dev,
@@ -443,11 +438,9 @@ fn main() {
         charges_electron,
         V_from_elecs,
         bases: bases_per_elec,
-        // bases_evaluated,
         bases_evaluated_charge,
         surfaces_shared,
         surfaces_per_elec,
-        // nudge_amount: vec![wf_ops::NUDGE_DEFAULT, wf_ops::NUDGE_DEFAULT],
         surface_data,
         grid_n_render: grid_n,
         grid_n_charge,

@@ -7,7 +7,7 @@ use crate::{
     complex_nums::Cplx,
     eigen_fns::{calc_E_on_psi, calc_V_on_psi},
     grid_setup::{new_data, new_data_real, Arr3dReal, Arr3dVec},
-    loop_arr,
+    iter_arr,
     potential::{self, V_coulomb},
     types::ComputationDevice,
     util,
@@ -141,7 +141,7 @@ fn find_base_xi_E_type2(
         V_corner += potential::V_coulomb(*posit_nuc, posit_corner, *charge);
     }
 
-    for (i, j, k) in loop_arr!(charge_elec.len()) {
+    for (i, j, k) in iter_arr!(charge_elec.len()) {
         let charge = charge_elec[i][j][k];
         V_sample += potential::V_coulomb(grid_charge[i][j][k], posit_sample, charge);
         V_corner += potential::V_coulomb(grid_charge[i][j][k], posit_corner, charge);
@@ -178,7 +178,7 @@ fn find_charge_trial_wf(
     let mut psi_trial_charge_grid = new_data(grid_n_charge);
     let mut norm = 0.;
 
-    for (i, j, k) in loop_arr!(grid_n_charge) {
+    for (i, j, k) in iter_arr!(grid_n_charge) {
         let posit_sample = grid_charge[i][j][k];
         let mut psi = Cplx::new_zero();
 
@@ -193,7 +193,7 @@ fn find_charge_trial_wf(
     // Note: We're saving a loop by not calling `elec_elec::update_charge_density_fm_psi`. here,
     // since we need to normalize anyway.
 
-    for (i, j, k) in loop_arr!(grid_n_charge) {
+    for (i, j, k) in iter_arr!(grid_n_charge) {
         result[i][j][k] = psi_trial_charge_grid[i][j][k].abs_sq() * Q_ELEC / norm
     }
 

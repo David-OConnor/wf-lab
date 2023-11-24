@@ -32,7 +32,7 @@ use crate::{
     complex_nums::Cplx,
     eigen_fns::{self, KE_COEFF},
     grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
-    loop_arr, num_diff,
+    iter_arr, num_diff,
     types::ComputationDevice,
     util::{self, unflatten_arr},
 };
@@ -60,6 +60,9 @@ pub enum Spin {
     Dn,
 }
 
+/// Mix previously-evaluated basis into a single wave function, with optional psi''. We generally
+/// use psi'' when evaluating sample positions, but not when evaluating psi to be fed into
+/// electron charge.
 pub fn mix_bases(
     psi: &mut Arr3d,
     mut psi_pp: Option<&mut Arr3d>,
@@ -87,7 +90,7 @@ pub fn mix_bases(
     // todo: GPU option?
     let mut norm = 0.; // todo temp/TS
 
-    for (i, j, k) in loop_arr!(grid_n) {
+    for (i, j, k) in iter_arr!(grid_n) {
         psi[i][j][k] = Cplx::new_zero();
         if let Some(pp) = psi_pp.as_mut() {
             pp[i][j][k] = Cplx::new_zero();
@@ -133,7 +136,7 @@ pub fn mix_bases_update_charge_density(
     if weight_total.abs() < EPS_DIV0 {
         norm_scaler = 0.;
     }
-    for (i, j, k) in loop_arr!(grid_n) {
+    for (i, j, k) in iter_arr!(grid_n) {
         psi[i][j][k] = Cplx::new_zero();
 
         for (i_basis, weight) in weights.iter().enumerate() {
@@ -165,17 +168,17 @@ pub fn initialize_bases(
         // See Sebens, for weights under equation 24; this is for Helium.
 
         for (xi, weight) in [
-            // (1.41714, 0.76837),
-            // (2.37682, 0.22346),
-            // (4.39628, 0.04082),
-            // (6.52699, -0.00994),
-            // (7.94252, 0.00230),
-            (1., 1.),
+            (1.41714, 0.76837),
+            (2.37682, 0.22346),
+            (4.39628, 0.04082),
+            (6.52699, -0.00994),
+            (7.94252, 0.00230),
+            // (1., 1.),
             // (1.7, 0.),
             // (1.6, 0.),
-            (2., 0.),
-            (3., 0.),
-            (4., 0.),
+            // (2., 0.),
+            // (3., 0.),
+            // (4., 0.),
             // (5., 0.),
             // (6., 0.),
             // (7., 0.),
@@ -195,54 +198,6 @@ pub fn initialize_bases(
             }
         }
     }
-
-    // for n in 1..max_n + 1 {
-    //     for l in 0..n {
-    //         for m in -(l as i16)..l as i16 + 1 {
-    //             // This loop order allows the basis sliders to be sorted with like-electrons next to each other.
-    //             for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
-    //                 let weight = if n == 1 { 1. } else { 0. };
-    //
-    //                 bases.push(Basis::H(HOrbital {
-    //                     posit: *nuc_posit,
-    //                     n,
-    //                     harmonic: SphericalHarmonic {
-    //                         l,
-    //                         m,
-    //                         orientation: Quaternion::new_identity(),
-    //                     },
-    //
-    //                     weight,
-    //                     charge_id,
-    //                 }));
-    //
-    //                 //    pub posit: Vec3,
-    //                 //     pub n: u16,
-    //                 //     pub xi: f64,
-    //                 //     pub weight: f64,
-    //                 //     pub charge_id: usize,
-    //                 //     pub harmonic: SphericalHarmonic,
-    //
-    //                 // for xi in &[1., 2., 3., 4.] {
-    //                 //     for xi in &[1.41714, 2.37682, 4.39628, 6.52699, 7.94252] {
-    //                 //         bases.push(Basis::Sto(Sto {
-    //                 //             posit: *nuc_posit,
-    //                 //             n,
-    //                 //             xi: *xi,
-    //                 //             harmonic: SphericalHarmonic {
-    //                 //                 l,
-    //                 //                 m,
-    //                 //                 orientation: Quaternion::new_identity(),
-    //                 //             },
-    //                 //             weight,
-    //                 //             charge_id,
-    //                 //         }));
-    //                 //     }
-    //             }
-    //
-    //         }
-    //     }
-    // }
 }
 
 /// Create psi, and optionally psi'', using basis functions. Does not mix bases; creates these
@@ -293,7 +248,7 @@ pub fn update_wf_from_bases(
 
                 // This is similar to util::unflatten, but with norm involved.
                 // todo: Try to use unflatten.
-                for (i, j, k) in loop_arr!(grid_n) {
+                for (i, j, k) in iter_arr!(grid_n) {
                     let i_flat = i * grid_n_sq + j * grid_n + k;
                     psi[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
 
@@ -313,7 +268,7 @@ pub fn update_wf_from_bases(
         }
         ComputationDevice::Cpu => {
             for (basis_i, basis) in bases.iter().enumerate() {
-                for (i, j, k) in loop_arr!(grid_n) {
+                for (i, j, k) in iter_arr!(grid_n) {
                     let posit_sample = grid_posits[i][j][k];
 
                     psi[basis_i][i][j][k] = basis.value(posit_sample);
@@ -375,9 +330,7 @@ pub fn update_wf_from_bases(
 //         // This is similar to util::unflatten, but with coercing to cplx.
 //         let grid_n_sq = grid_n.pow(2);
 //
-//         for i in 0..grid_n {
-//             for j in 0..grid_n {
-//                 for k in 0..grid_n {
+//                 for (i, j, k) in loop_arr!(grid_n) {
 //                     let i_flat = i * grid_n_sq + j * grid_n + k;
 //
 //                     result[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
@@ -385,8 +338,6 @@ pub fn update_wf_from_bases(
 //
 //                     // todo: Figure out if this is feasible given the normalization
 //                     // charge_density[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
-//                 }
-//             }
 //         }
 //
 //         util::normalize_arr(&mut result[basis_i], norm);
@@ -409,20 +360,12 @@ pub fn calculate_v_elec(
 ) {
     let grid_n = psi.len();
 
-    for (i, j, k) in loop_arr!(grid_n) {
-        // todo: Hermitian operator has real eigenvalues. How are we able to discard
-        // todo the imaginary parts here? Is psi'' / psi always real?
+    for (i, j, k) in iter_arr!(grid_n) {
         V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
         V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
     }
 
     // todo: Aux 3: Try a numerical derivative of potential; examine for smoothness.
-
-    // Note: By dividing by Q_C, we can get the sum of psi^2 from other elecs, I think?
-    // Then a formula where (psi_0^2 + psi_1^2) * Q_C = the charge density, which is associated with the
-    // V_elec we calculate here.
-
-    // todo: How do we go from V_elec to charge density? That may be key.
 }
 
 /// Update V-from-psi, and psi''-calculated, based on psi, and V acting on a given electron.
@@ -438,21 +381,13 @@ pub fn update_eigen_vals(
 ) {
     let grid_n = psi.len();
 
-    for (i, j, k) in loop_arr!(grid_n) {
+    for (i, j, k) in iter_arr!(grid_n) {
         V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
         V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
 
         psi_pp_calculated[i][j][k] =
             eigen_fns::find_ψ_pp_calc(psi[i][j][k], V_acting_on_this[i][j][k], E)
     }
-
-    // todo: Aux 3: Try a numerical derivative of potential; examine for smoothness.
-
-    // Note: By dividing by Q_C, we can get the sum of psi^2 from other elecs, I think?
-    // Then a formula where (psi_0^2 + psi_1^2) * Q_C = the charge density, which is associated with the
-    // V_elec we calculate here.
-
-    // todo: How do we go from V_elec to charge density? That may be key.
 }
 
 /// Calculate E from a trial wave function. We assume V goes to 0 at +/- ∞
@@ -492,7 +427,7 @@ pub fn E_from_trial(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> f64 {
 /// from an electron. (And potential energy between electrons) Modifies in place
 /// to avoid unecessary allocations.
 /// `psi` must be normalized.
-pub(crate) fn update_charge_density_fm_psi(
+pub(crate) fn charge_from_psi(
     charge_density: &mut Arr3dReal,
     psi_on_charge_grid: &Arr3d,
     grid_n_charge: usize,
@@ -504,7 +439,7 @@ pub(crate) fn update_charge_density_fm_psi(
     // todo: YOu may need to model in terms of areas vice points; this is likely
     // todo a factor on irregular grids.
 
-    for (i, j, k) in loop_arr!(grid_n_charge) {
+    for (i, j, k) in iter_arr!(grid_n_charge) {
         charge_density[i][j][k] = psi_on_charge_grid[i][j][k].abs_sq() * Q_ELEC;
     }
 }
@@ -515,6 +450,7 @@ pub(crate) fn combine_electron_charges(
     charges_electron: &[Arr3dReal],
     grid_n_charge: usize,
 ) -> Arr3dReal {
+    // todo: Consider modify in place instead of creating something new.
     let mut result = new_data_real(grid_n_charge);
 
     for (i_charge, charge_from_elec) in charges_electron.iter().enumerate() {
@@ -523,7 +459,7 @@ pub(crate) fn combine_electron_charges(
         }
         let mut sum = 0.; // todo confirming
 
-        for (i, j, k) in loop_arr!(grid_n_charge) {
+        for (i, j, k) in iter_arr!(grid_n_charge) {
             result[i][j][k] += charge_from_elec[i][j][k];
             sum += charge_from_elec[i][j][k];
         }
@@ -541,7 +477,7 @@ pub(crate) fn sto_vals_derivs_cpu(
     basis: &Basis,
     grid_n: usize,
 ) {
-    for (i, j, k) in loop_arr!(grid_n) {
+    for (i, j, k) in iter_arr!(grid_n) {
         let posit_sample = grid_posits[i][j][k];
 
         psi[i][j][k] = basis.value(posit_sample);

@@ -1,6 +1,6 @@
 //! This module contains code for setting up grids and sample points.
 
-use crate::{complex_nums::Cplx, util};
+use crate::{complex_nums::Cplx, iter_arr, util};
 
 use lin_alg2::f64::Vec3;
 
@@ -147,11 +147,7 @@ pub fn new_data_vec(n: usize) -> Arr3dVec {
 }
 
 pub fn copy_array(dest: &mut Arr3d, source: &Arr3d, grid_n: usize) {
-    for i in 0..grid_n {
-        for j in 0..grid_n {
-            for k in 0..grid_n {
-                dest[i][j][k] = source[i][j][k];
-            }
-        }
+    for (i, j, k) in iter_arr!(grid_n) {
+        dest[i][j][k] = source[i][j][k];
     }
 }

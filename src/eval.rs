@@ -1,6 +1,6 @@
 //! This module contains code related to evlauting a WF's accuracy.
 
-use crate::{complex_nums::Cplx, grid_setup::Arr3d};
+use crate::{complex_nums::Cplx, grid_setup::Arr3d, iter_arr};
 
 /// Score using the fidelity of psi'' calculated vs measured; |<psi_trial | psi_true >|^2.
 /// This requires normalizing the wave functions we're comparing.
@@ -24,38 +24,29 @@ fn _fidelity(psi_pp_calc: &Arr3d, psi_pp_meas: &Arr3d, n: usize) -> f64 {
     const SCORE_THRESH: f64 = 100.;
 
     // Create normalization const.
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
-                // norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].abs_sq();
-                // norm_sq_meas += sfcs.psi_pp_measured[i][j][k].abs_sq();
-                // todo: .real is temp
-                if psi_pp_calc[i][j][k].real.abs() < SCORE_THRESH
-                    && psi_pp_meas[i][j][k].real.abs() < SCORE_THRESH
-                {
-                    norm_calc += psi_pp_calc[i][j][k];
-                    norm_meas += psi_pp_meas[i][j][k];
-                }
-            }
+    for (i, j, k) in iter_arr!(n) {
+        // norm_sq_calc += sfcs.psi_pp_calculated[i][j][k].abs_sq();
+        // norm_sq_meas += sfcs.psi_pp_measured[i][j][k].abs_sq();
+        // todo: .real is temp
+        if psi_pp_calc[i][j][k].real.abs() < SCORE_THRESH
+            && psi_pp_meas[i][j][k].real.abs() < SCORE_THRESH
+        {
+            norm_calc += psi_pp_calc[i][j][k];
+            norm_meas += psi_pp_meas[i][j][k];
         }
     }
 
     // Now that we have both wave functions and normalized them, calculate fidelity.
     let mut result = Cplx::new_zero();
 
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
-                // todo: .reals here may be a kludge and not working with complex psi.
+    for (i, j, k) in iter_arr!(n) {
+        // todo: .reals here may be a kludge and not working with complex psi.
 
-                // todo: LHS should be conjugated.
-                if psi_pp_calc[i][j][k].real.abs() < SCORE_THRESH
-                    && psi_pp_meas[i][j][k].real.abs() < SCORE_THRESH
-                {
-                    result += psi_pp_calc[i][j][k] / norm_calc.real * psi_pp_calc[i][j][k]
-                        / norm_calc.real;
-                }
-            }
+        // todo: LHS should be conjugated.
+        if psi_pp_calc[i][j][k].real.abs() < SCORE_THRESH
+            && psi_pp_meas[i][j][k].real.abs() < SCORE_THRESH
+        {
+            result += psi_pp_calc[i][j][k] / norm_calc.real * psi_pp_calc[i][j][k] / norm_calc.real;
         }
     }
 

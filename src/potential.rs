@@ -4,8 +4,9 @@ use lin_alg2::f64::Vec3;
 
 use crate::{
     grid_setup::{Arr3dReal, Arr3dVec},
-    loop_arr,
+    iter_arr,
     types::ComputationDevice,
+    wf_ops,
     wf_ops::K_C,
 };
 
@@ -25,7 +26,7 @@ fn flatten_charge(
     let mut posits = Vec::new();
     let mut charges = Vec::new();
 
-    for (i, j, k) in loop_arr!(grid_n) {
+    for (i, j, k) in iter_arr!(grid_n) {
         posits.push(posits_charge[i][j][k]);
         charges.push(values_charge[i][j][k]);
     }
@@ -45,7 +46,7 @@ pub fn update_V_from_nuclei(
     // Wave functions from other electrons, for calculating the Hartree potential.
 ) {
     // todo: CUDA
-    for (i, j, k) in loop_arr!(grid_n) {
+    for (i, j, k) in iter_arr!(grid_n) {
         let posit_sample = grid_posits[i][j][k];
 
         V_from_nuclei[i][j][k] = 0.;
@@ -62,17 +63,12 @@ pub(crate) fn update_V_acting_on_elec(
     V_on_this_elec: &mut Arr3dReal,
     V_from_nuclei: &Arr3dReal,
     V_from_elecs: &[Arr3dReal],
-    i_this_elec: usize,
     grid_n: usize,
 ) {
-    for (i, j, k) in loop_arr!(grid_n) {
+    for (i, j, k) in iter_arr!(grid_n) {
         V_on_this_elec[i][j][k] = V_from_nuclei[i][j][k];
 
-        for (i_other_elec, V_other_elec) in V_from_elecs.iter().enumerate() {
-            // Don't apply this own electron's charge to the V on it.
-            if i_this_elec == i_other_elec {
-                continue;
-            }
+        for V_other_elec in V_from_elecs {
             V_on_this_elec[i][j][k] += V_other_elec[i][j][k];
         }
     }
@@ -132,17 +128,19 @@ pub(crate) fn create_V_1d_from_elec(
 /// We use the GPU, due to the large number of operations involved (3d set of sample points interacting
 /// we each of a 3d set of charge points). We leave the option to calculate sample points only on
 /// a 2D grid, but this may not be necessary given how fast the full operation is on GPU.
-pub(crate) fn create_V_from_elec(
+pub(crate) fn create_V_from_elecs(
     dev: &ComputationDevice,
     V_from_this_elec: &mut Arr3dReal,
     posits_sample: &Arr3dVec,
     posits_charge: &Arr3dVec,
+    // charges_e_per_elec: &[Arr3dReal], // per elec
     charges_elec: &Arr3dReal,
     grid_n_sample: usize,
     grid_n_charge: usize,
     twod_only: bool,
+    elec_id: usize,
 ) {
-    println!("Creating V from an electron on grid (GPU)...");
+    println!("Creating V from an electron on grid...");
 
     match dev {
         #[cfg(features = "cuda")]
@@ -198,7 +196,7 @@ pub(crate) fn create_V_from_elec(
         ComputationDevice::Cpu => {
             create_V_from_elec_grid_cpu(
                 V_from_this_elec,
-                charges_elec,
+                &charges_elec,
                 posits_sample,
                 posits_charge,
                 grid_n_sample,
@@ -236,16 +234,12 @@ fn V_from_grid_inner_cpu(
 
     V_from_this_elec[posit.0][posit.1][posit.2] = 0.;
 
-    for i_charge in 0..grid_n_charge {
-        for j_charge in 0..grid_n_charge {
-            for k_charge in 0..grid_n_charge {
-                let posit_charge = grid_charge[i_charge][j_charge][k_charge];
-                let charge = charge_this_elec[i_charge][j_charge][k_charge];
+    for (i, j, k) in iter_arr!(grid_n_charge) {
+        let posit_charge = grid_charge[i][j][k];
+        let charge = charge_this_elec[i][j][k];
 
-                V_from_this_elec[posit.0][posit.1][posit.2] +=
-                    V_coulomb(posit_charge, posit_sample, charge);
-            }
-        }
+        V_from_this_elec[posit.0][posit.1][posit.2] +=
+            V_coulomb(posit_charge, posit_sample, charge);
     }
 }
 
@@ -306,7 +300,7 @@ pub(crate) fn create_V_1d_cpu(
     for sample_pt in posits_sample {
         let mut V_sample = 0.;
 
-        for (i, j, k) in loop_arr!(grid_n_charge) {
+        for (i, j, k) in iter_arr!(grid_n_charge) {
             let posit_charge = posits_charge[i][j][k];
             let charge = charges_elec[i][j][k];
 

@@ -24,8 +24,8 @@ pub fn update_E_or_V(
     E: f64,
 ) {
     wf_ops::update_eigen_vals(
-        &mut sfcs.V_elec,
-        &mut sfcs.V_total,
+        &mut sfcs.V_elec_eigen,
+        &mut sfcs.V_total_eigen,
         &mut sfcs.psi_pp_calculated,
         &sfcs.psi,
         &sfcs.psi_pp_evaluated,
@@ -55,8 +55,8 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     );
 
     wf_ops::update_eigen_vals(
-        &mut sfcs.V_elec,
-        &mut sfcs.V_total,
+        &mut sfcs.V_elec_eigen,
+        &mut sfcs.V_total_eigen,
         &mut sfcs.psi_pp_calculated,
         &sfcs.psi,
         &sfcs.psi_pp_evaluated,
@@ -67,8 +67,8 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
 
     // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
     wf_ops::calculate_v_elec(
-        &mut sfcs.V_elec,
-        &mut sfcs.V_total,
+        &mut sfcs.V_elec_eigen,
+        &mut sfcs.V_total_eigen,
         &sfcs.psi,
         &sfcs.psi_pp_evaluated,
         state.surfaces_shared.E,
@@ -87,7 +87,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
             &weights,
         );
 
-        wf_ops::update_charge_density_fm_psi(
+        wf_ops::charge_from_psi(
             &mut state.charges_electron[ae],
             &psi_charge_grid,
             state.grid_n_charge,
@@ -144,7 +144,6 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
             &mut state.surfaces_per_elec[elec_i].V_acting_on_this,
             &state.surfaces_shared.V_from_nuclei,
             &state.V_from_elecs,
-            elec_i,
             state.grid_n_render,
         );
     }
@@ -153,7 +152,9 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
     render::update_entities(&state.charges_fixed, &state.surface_data, scene);
 }
 
-pub fn create_V_from_elec(state: &mut State, ae: usize) {
+/// Create the electric charge from a single electron's wave function squared. Note that this
+/// is a combination of mixing bases to get the wave function, and generating charge from this.
+pub fn create_elec_charge(state: &mut State, ae: usize) {
     let mut psi_charge_grid = new_data(state.grid_n_charge);
 
     let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
@@ -166,33 +167,35 @@ pub fn create_V_from_elec(state: &mut State, ae: usize) {
         &weights,
     );
 
-    wf_ops::update_charge_density_fm_psi(
+    wf_ops::charge_from_psi(
         &mut state.charges_electron[ae],
         &psi_charge_grid,
         state.grid_n_charge,
     );
+}
 
+pub(crate) fn update_V_acting_on_elec(state: &mut State, ae: usize) {
     if state.ui.create_3d_electron_V || state.ui.create_2d_electron_V {
-        potential::create_V_from_elec(
+        // First, create V based on electron charge.
+        let charges_other_elecs =
+            wf_ops::combine_electron_charges(ae, &state.charges_electron, state.grid_n_charge);
+
+        potential::create_V_from_elecs(
             &state.dev,
             &mut state.V_from_elecs[ae],
             &state.surfaces_shared.grid_posits,
             &state.surfaces_shared.grid_posits_charge,
-            &state.charges_electron[ae],
+            &charges_other_elecs,
             state.grid_n_render,
             state.grid_n_charge,
             state.ui.create_2d_electron_V,
+            ae,
         );
-    }
-}
 
-pub fn update_V_acting_on_elec(state: &mut State, scene: &mut Scene, ae: usize) {
-    if state.ui.create_3d_electron_V || state.ui.create_2d_electron_V {
         potential::update_V_acting_on_elec(
             &mut state.surfaces_per_elec[ae].V_acting_on_this,
             &state.surfaces_shared.V_from_nuclei,
             &state.V_from_elecs,
-            ae,
             state.grid_n_render,
         );
     }
@@ -285,6 +288,6 @@ pub(crate) fn he_solver(state: &mut State) {
     }
 
     // Update the 2D or 3D V grids once, at the end.
-    create_V_from_elec(state, 0);
-    create_V_from_elec(state, 1);
+    create_elec_charge(state, 0);
+    create_elec_charge(state, 1);
 }

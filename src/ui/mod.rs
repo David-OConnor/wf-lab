@@ -4,7 +4,7 @@ use egui::{self, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::Vec3;
 
-use crate::{basis_finder, basis_wfs::Basis, render, wf_ops, ActiveElec, State};
+use crate::{basis_finder, basis_wfs::Basis, potential, render, wf_ops, ActiveElec, State};
 
 pub(crate) mod procedures;
 
@@ -415,17 +415,17 @@ fn bottom_items(
         // }
 
         if ui
-            .add(egui::Button::new("Create V from this elec"))
+            .add(egui::Button::new("Create charge from this elec"))
             .clicked()
         {
-            procedures::create_V_from_elec(state, ae);
+            procedures::create_elec_charge(state, ae);
         }
 
         if ui
             .add(egui::Button::new("Update V acting on this elec"))
             .clicked()
         {
-            procedures::update_V_acting_on_elec(state, scene, ae);
+            procedures::update_V_acting_on_elec(state, ae);
 
             *updated_E_or_V = true;
             *updated_meshes = true;
@@ -580,11 +580,15 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             // Show the new active electron's meshes, if it changed.
             if state.ui.active_elec != prev_active_elec {
                 // Auto update V acting on.
-                let ae = match state.ui.active_elec {
-                    ActiveElec::Combined => 0,
-                    ActiveElec::PerElec(a) => a,
-                };
-                procedures::update_V_acting_on_elec(state, scene, ae);
+                // let ae = match state.ui.active_elec {
+                //     ActiveElec::Combined => 0,
+                //     ActiveElec::PerElec(a) => a,
+                // };
+
+                // procedures::update_V_acting_on_elec(
+                //     state,
+                //     ae
+                // );
 
                 updated_E_or_V = true;
                 updated_meshes = true;

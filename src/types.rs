@@ -104,9 +104,8 @@ pub struct SurfacesPerElec {
     // /// Charges from this electron, over 3d space. Computed from <ψ|ψ>.
     // pub charge: Arr3dReal,
     /// Aux surfaces are for misc visualizations
-    /// todo: Rename them to total V from psi, V' elec etc.
-    pub V_elec: Arr3dReal,
-    pub V_total: Arr3dReal,
+    pub V_elec_eigen: Arr3dReal,
+    pub V_total_eigen: Arr3dReal,
     pub aux3: Arr3dReal,
 }
 
@@ -118,8 +117,6 @@ impl SurfacesPerElec {
 
         // Set up a regular grid using this; this will allow us to convert to an irregular grid
         // later, once we've verified this works.
-
-        // let psi = PsiWDiffs::init(&data);
 
         let mut psi_per_basis = Vec::new();
         let mut psi_pp_per_basis = Vec::new();
@@ -136,8 +133,8 @@ impl SurfacesPerElec {
             psi_pp_calculated: data.clone(),
             psi_pp_evaluated: data.clone(),
             // charge: new_data_real(n_grid_charge),
-            V_elec: data_real.clone(),
-            V_total: data_real.clone(),
+            V_elec_eigen: data_real.clone(),
+            V_total_eigen: data_real.clone(),
             aux3: data_real,
         }
     }
