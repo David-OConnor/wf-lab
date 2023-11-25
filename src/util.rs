@@ -199,8 +199,8 @@ pub(crate) fn normalize_arr(arr: &mut Arr3d, norm: f64) {
         return;
     }
 
-    // todo: Why are we dividing by norm.sqrt() instead of norm?
-    // todo: Seems to be required, but I don't yet understand it.
+    // We normalize <ψ|ψ>, and are therefor passing the absolute square sum as our norm term.
+    // So, we divide by its square root here.
     let norm_sqrt = norm.sqrt();
 
     let grid_n = arr.len();

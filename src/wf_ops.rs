@@ -85,10 +85,8 @@ pub fn mix_bases(
         norm_scaler = 0.;
     }
 
-    let mut norm_scaler = 1.; // todo temp/TS.
-
     // todo: GPU option?
-    let mut norm = 0.; // todo temp/TS
+    let mut norm = 0.;
 
     for (i, j, k) in iter_arr!(grid_n) {
         psi[i][j][k] = Cplx::new_zero();
@@ -100,25 +98,47 @@ pub fn mix_bases(
             let scaler = weight * norm_scaler;
 
             psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
-            norm += psi[i][j][k].abs_sq(); // todo: Experimenting
 
             if let Some(pp) = psi_pp.as_mut() {
                 pp[i][j][k] += psi_pp_per_basis.as_ref().unwrap()[i_basis][i][j][k] * scaler;
             }
         }
+        // todo: Note that ideally, our basis wfs are normalizd, so we can use the cheaper weight
+        // todo division approach instead of this.
+        norm += psi[i][j][k].abs_sq();
     }
 
-    // todo: Evaluate if you need/want this.
     util::normalize_arr(psi, norm);
     if psi_pp.is_some() {
         util::normalize_arr(psi_pp.as_mut().unwrap(), norm);
     }
 }
 
-/// 2 in one, to remove an unecessarly loop.
-pub fn mix_bases_update_charge_density(
+/// Convert an array of ψ to one of electron charge, through space. This is used to calculate potential
+/// from an electron. (And potential energy between electrons) Modifies in place
+/// to avoid unecessary allocations.
+/// `psi` must be normalized.
+pub(crate) fn charge_from_psi(
+    charge: &mut Arr3dReal,
+    psi_on_charge_grid: &Arr3d,
+    grid_n_charge: usize,
+) {
+    // Note: We need to sum to 1 over *all space*, not just in the grid.
+    // We can mitigate this by using a sufficiently large grid bounds, since the WF
+    // goes to 0 at distance.
+
+    // todo: YOu may need to model in terms of areas vice points; this is likely
+    // todo a factor on irregular grids.
+
+    for (i, j, k) in iter_arr!(grid_n_charge) {
+        charge[i][j][k] = psi_on_charge_grid[i][j][k].abs_sq() * Q_ELEC;
+    }
+}
+
+/// Combines `mix_bases`, and `charge_from_psi`; removes an unecessarly loop 3d loop.
+pub fn mix_bases_update_charge(
     psi: &mut Arr3d,
-    charge_density: &mut Arr3dReal,
+    charge: &mut Arr3dReal,
     bases_evaled: &[Arr3d],
     grid_n: usize,
     weights: &[f64],
@@ -129,6 +149,8 @@ pub fn mix_bases_update_charge_density(
     for weight in weights {
         weight_total += weight.abs();
     }
+
+    // todo: Using this over teh split functions may have consequences IRT normalization.
 
     let mut norm_scaler = 1. / weight_total;
 
@@ -144,7 +166,7 @@ pub fn mix_bases_update_charge_density(
 
             psi[i][j][k] += bases_evaled[i_basis][i][j][k] * scaled;
         }
-        charge_density[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
+        charge[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
     }
 }
 
@@ -421,27 +443,6 @@ pub fn E_from_trial(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> f64 {
 
     // todo: Why do we need to flip the sign?
     KE_COEFF * (psi_pp / psi).real - V_corner
-}
-
-/// Convert an array of ψ to one of electron charge, through space. This is used to calculate potential
-/// from an electron. (And potential energy between electrons) Modifies in place
-/// to avoid unecessary allocations.
-/// `psi` must be normalized.
-pub(crate) fn charge_from_psi(
-    charge_density: &mut Arr3dReal,
-    psi_on_charge_grid: &Arr3d,
-    grid_n_charge: usize,
-) {
-    // Note: We need to sum to 1 over *all space*, not just in the grid.
-    // We can mitigate this by using a sufficiently large grid bounds, since the WF
-    // goes to 0 at distance.
-
-    // todo: YOu may need to model in terms of areas vice points; this is likely
-    // todo a factor on irregular grids.
-
-    for (i, j, k) in iter_arr!(grid_n_charge) {
-        charge_density[i][j][k] = psi_on_charge_grid[i][j][k].abs_sq() * Q_ELEC;
-    }
 }
 
 /// Combine electron charges into a single array, not to include the electron acted on.

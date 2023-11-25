@@ -240,7 +240,7 @@ pub fn init_from_grid(
     }
 
     // These must be initialized from wave functions later.
-    let mut bases_evaluated_charge = Vec::new();
+    let mut psi_charge_all_elecs = Vec::new();
     let mut charges_electron = Vec::new();
     let mut V_from_elecs = Vec::new();
 
@@ -311,13 +311,13 @@ pub fn init_from_grid(
             grid_n_charge,
         );
 
-        bases_evaluated_charge.push(psi_charge);
+        psi_charge_all_elecs.push(psi_charge);
     }
 
     (
         charges_electron,
         V_from_elecs,
-        bases_evaluated_charge,
+        psi_charge_all_elecs,
         surfaces_shared,
         surfaces_per_elec,
     )
@@ -403,23 +403,18 @@ fn main() {
     let grid_n = GRID_N_RENDER_DEFAULT;
     let grid_n_charge = GRID_N_CHARGE_DEFAULT;
 
-    let (
-        charges_electron,
-        V_from_elecs,
-        bases_evaluated_charge,
-        surfaces_shared,
-        surfaces_per_elec,
-    ) = init_from_grid(
-        &dev,
-        (grid_min_render, grid_max_render),
-        (grid_min_charge, grid_max_charge),
-        spacing_factor,
-        grid_n,
-        grid_n_charge,
-        &bases_per_elec,
-        &nuclei,
-        num_elecs,
-    );
+    let (charges_electron, V_from_elecs, psi_charge, surfaces_shared, surfaces_per_elec) =
+        init_from_grid(
+            &dev,
+            (grid_min_render, grid_max_render),
+            (grid_min_charge, grid_max_charge),
+            spacing_factor,
+            grid_n,
+            grid_n_charge,
+            &bases_per_elec,
+            &nuclei,
+            num_elecs,
+        );
 
     let surface_data = [
         SurfaceData::new("V", true),
@@ -446,7 +441,7 @@ fn main() {
         charges_electron,
         V_from_elecs,
         bases: bases_per_elec,
-        psi_charge: bases_evaluated_charge,
+        psi_charge,
         surfaces_shared,
         surfaces_per_elec,
         surface_data,

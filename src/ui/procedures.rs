@@ -3,19 +3,13 @@
 
 use graphics::{EngineUpdates, Scene};
 
-use crate::grid_setup::Arr3d;
 use crate::{
     basis_finder,
-    eigen_fns,
-    elec_elec::{PositIndex, WaveFunctionMultiElec},
+    grid_setup::Arr3d,
     grid_setup::{new_data, Arr3dReal},
-    potential,
-    render,
-    // types::BasesEvaluated,
+    iter_arr, potential, render,
     types::SurfacesPerElec,
-    wf_ops,
-    ActiveElec,
-    State,
+    util, wf_ops, ActiveElec, State,
 };
 
 pub fn update_E_or_V(
@@ -173,12 +167,7 @@ pub fn create_elec_charge(
         weights,
     );
 
-    wf_ops::charge_from_psi(
-        // &mut state.charges_electron[ae],
-        charge_electron,
-        &psi_charge_grid,
-        grid_n_charge,
-    );
+    wf_ops::charge_from_psi(charge_electron, &psi_charge_grid, grid_n_charge);
 }
 
 pub(crate) fn update_V_acting_on_elec(state: &mut State, ae: usize) {
@@ -282,16 +271,24 @@ pub(crate) fn he_solver(state: &mut State) {
             state.grid_n_charge,
         );
 
-        let mut psi_charge_grid = new_data(state.grid_n_charge);
+        // let mut psi_charge_grid = new_data(state.grid_n_charge);
         let weights: Vec<f64> = state.bases[elec_id].iter().map(|b| b.weight()).collect();
 
-        wf_ops::mix_bases_update_charge_density(
-            &mut psi_charge_grid,
+        create_elec_charge(
             &mut state.charges_electron[elec_id],
             &state.psi_charge[elec_id],
-            state.grid_n_charge,
             &weights,
+            state.grid_n_charge,
         );
+
+        // todo:
+        // wf_ops::mix_bases_update_charge(
+        //     &mut psi_charge_grid,
+        //     &mut state.charges_electron[elec_id],
+        //     &state.psi_charge[elec_id],
+        //     state.grid_n_charge,
+        //     &weights,
+        // );
     }
 
     // Update the 2D or 3D V grids once, at the end.
