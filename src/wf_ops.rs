@@ -60,6 +60,58 @@ pub enum Spin {
     Dn,
 }
 
+/// [re]Create a set of basis functions, given fixed-charges representing nuclei.
+/// Use this in main and lib inits, and when you add or remove charges.
+pub fn initialize_bases(
+    bases: &mut Vec<Basis>,
+    charges_fixed: &[(Vec3, f64)],
+    max_n: u16, // quantum number n
+) {
+    // let mut prev_weights = Vec::new();
+    // for basis in bases.iter() {
+    //     prev_weights.push(basis.weight());
+    // }
+
+    *bases = Vec::new();
+
+    // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
+    // todo for now as a kludge to preserve weights, we copy the prev weights.
+    for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
+        // See Sebens, for weights under equation 24; this is for Helium.
+
+        for (xi, weight) in [
+            (1.41714, 0.76837),
+            (2.37682, 0.22346),
+            (4.39628, 0.04082),
+            (6.52699, -0.00994),
+            (7.94252, 0.00230),
+            // (1., 1.),
+            // (1.7, 0.),
+            // (1.6, 0.),
+            // (2., 0.),
+            // (3., 0.),
+            // (4., 0.),
+            // (5., 0.),
+            // (6., 0.),
+            // (7., 0.),
+            // (8., 0.),
+            // (9., 0.),
+        ] {
+            // for n in 1..max_n + 1 {
+            for n in 1..2 {
+                bases.push(Basis::Sto(Sto {
+                    posit: *nuc_posit,
+                    n,
+                    xi,
+                    weight,
+                    charge_id,
+                    harmonic: Default::default(),
+                }));
+            }
+        }
+    }
+}
+
 /// Mix previously-evaluated basis into a single wave function, with optional psi''. We generally
 /// use psi'' when evaluating sample positions, but not when evaluating psi to be fed into
 /// electron charge.
@@ -136,6 +188,7 @@ pub(crate) fn charge_from_psi(
 }
 
 /// Combines `mix_bases`, and `charge_from_psi`; removes an unecessarly loop 3d loop.
+/// todo: This may not be a tenable optimization due to normalization.
 pub fn mix_bases_update_charge(
     psi: &mut Arr3d,
     charge: &mut Arr3dReal,
@@ -149,8 +202,6 @@ pub fn mix_bases_update_charge(
     for weight in weights {
         weight_total += weight.abs();
     }
-
-    // todo: Using this over teh split functions may have consequences IRT normalization.
 
     let mut norm_scaler = 1. / weight_total;
 
@@ -167,58 +218,6 @@ pub fn mix_bases_update_charge(
             psi[i][j][k] += bases_evaled[i_basis][i][j][k] * scaled;
         }
         charge[i][j][k] = psi[i][j][k].abs_sq() * Q_ELEC;
-    }
-}
-
-/// [re]Create a set of basis functions, given fixed-charges representing nuclei.
-/// Use this in main and lib inits, and when you add or remove charges.
-pub fn initialize_bases(
-    bases: &mut Vec<Basis>,
-    charges_fixed: &[(Vec3, f64)],
-    max_n: u16, // quantum number n
-) {
-    // let mut prev_weights = Vec::new();
-    // for basis in bases.iter() {
-    //     prev_weights.push(basis.weight());
-    // }
-
-    *bases = Vec::new();
-
-    // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
-    // todo for now as a kludge to preserve weights, we copy the prev weights.
-    for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
-        // See Sebens, for weights under equation 24; this is for Helium.
-
-        for (xi, weight) in [
-            (1.41714, 0.76837),
-            (2.37682, 0.22346),
-            (4.39628, 0.04082),
-            (6.52699, -0.00994),
-            (7.94252, 0.00230),
-            // (1., 1.),
-            // (1.7, 0.),
-            // (1.6, 0.),
-            // (2., 0.),
-            // (3., 0.),
-            // (4., 0.),
-            // (5., 0.),
-            // (6., 0.),
-            // (7., 0.),
-            // (8., 0.),
-            // (9., 0.),
-        ] {
-            // for n in 1..max_n + 1 {
-            for n in 1..2 {
-                bases.push(Basis::Sto(Sto {
-                    posit: *nuc_posit,
-                    n,
-                    xi,
-                    weight,
-                    charge_id,
-                    harmonic: Default::default(),
-                }));
-            }
-        }
     }
 }
 
@@ -319,7 +318,8 @@ pub fn update_wf_from_bases(
     }
 }
 
-// todo: put back A/R
+// todo: put back A/R. A more tenable abstraction may be to combine the norm and charge-creation
+// todo loops.
 
 // /// Another loop-saving combo.
 // pub fn create_psi_from_bases_mix_update_charge_density(

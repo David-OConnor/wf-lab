@@ -228,13 +228,14 @@ pub fn update_meshes(state: &mut State, scene: &mut Scene, engine_updates: &mut 
 ///
 /// We can use this to assist in general refactoring of our fundamental operations.
 pub(crate) fn he_solver(state: &mut State) {
-    for i in 0..8 {
+    let sample_pts = basis_finder::generate_sample_pts();
+
+    for i in 0..3 {
         let elec_id = i % 2;
 
         let charges_other_elecs =
             wf_ops::combine_electron_charges(elec_id, &state.charges_electron, state.grid_n_charge);
 
-        let sample_pts = basis_finder::generate_sample_pts();
         let xis: Vec<f64> = state.bases[elec_id].iter().map(|b| b.xi()).collect();
 
         let (bases, E) = basis_finder::run(
@@ -251,17 +252,6 @@ pub(crate) fn he_solver(state: &mut State) {
         state.bases[elec_id] = bases;
         state.ui.active_elec = ActiveElec::PerElec(elec_id);
 
-        // todo: Consider combining these 2 things: evaluating the WF at each basis, and
-        // todo mixing the bases. The clincher is how to handle normalization. Maybe normalize the charge
-        // todo density grid after the fact?
-        // wf_ops::create_psi_from_bases_mix_update_charge_density(
-        //     &state.dev,
-        //     &mut state.charges_electron[elec_id],
-        //     &state.bases[elec_id],
-        //     &state.surfaces_shared.grid_posits_charge,
-        //     state.grid_n_charge,
-        // );
-
         wf_ops::update_wf_from_bases(
             &state.dev,
             &mut state.psi_charge[elec_id],
@@ -270,6 +260,9 @@ pub(crate) fn he_solver(state: &mut State) {
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_charge,
         );
+
+        // We don't need to mix bases here, and that's handled at the end of the loop
+        // by the `updated_weights` flag.
 
         // let mut psi_charge_grid = new_data(state.grid_n_charge);
         let weights: Vec<f64> = state.bases[elec_id].iter().map(|b| b.weight()).collect();
@@ -280,15 +273,6 @@ pub(crate) fn he_solver(state: &mut State) {
             &weights,
             state.grid_n_charge,
         );
-
-        // todo:
-        // wf_ops::mix_bases_update_charge(
-        //     &mut psi_charge_grid,
-        //     &mut state.charges_electron[elec_id],
-        //     &state.psi_charge[elec_id],
-        //     state.grid_n_charge,
-        //     &weights,
-        // );
     }
 
     // Update the 2D or 3D V grids once, at the end.

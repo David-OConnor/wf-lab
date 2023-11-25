@@ -118,7 +118,7 @@ pub(crate) fn create_V_1d_from_elec(
             gpu::run_coulomb(cuda_dev, &posits_charge_flat, &posits_sample, &charges_flat)
         }
         ComputationDevice::Cpu => {
-            create_V_1d_cpu(posits_sample, charges_elec, posits_charge, grid_n_charge)
+            create_V_from_elec_1d_cpu(posits_sample, charges_elec, posits_charge, grid_n_charge)
         }
     }
 }
@@ -289,13 +289,13 @@ pub(crate) fn create_V_from_elec_grid_cpu(
 }
 
 /// Create a potential on a set of sample points, from nuclei and electrons.
-pub(crate) fn create_V_1d_cpu(
+pub(crate) fn create_V_from_elec_1d_cpu(
     posits_sample: &[Vec3],
     charges_elec: &Arr3dReal,
     posits_charge: &Arr3dVec,
     grid_n_charge: usize,
 ) -> Vec<f64> {
-    let mut V_to_match = Vec::new();
+    let mut result = Vec::new();
 
     for sample_pt in posits_sample {
         let mut V_sample = 0.;
@@ -307,8 +307,8 @@ pub(crate) fn create_V_1d_cpu(
             V_sample += V_coulomb(posit_charge, *sample_pt, charge);
         }
 
-        V_to_match.push(V_sample);
+        result.push(V_sample);
     }
 
-    V_to_match
+    result
 }

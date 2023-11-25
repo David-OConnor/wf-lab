@@ -313,7 +313,9 @@ fn find_bases_system_of_eqs(
     result
 }
 
-/// Find a wave function, composed of STOs, that match a given potential.
+/// Find a wave function, composed of STOs, that match a given potential. The potential is calculated
+/// in this function from charges associated with nuclei, and other electrons; these must be calculated
+/// prior to passing in as parameters.
 pub fn run(
     dev: &ComputationDevice,
     charges_fixed: &[(Vec3, f64)],

@@ -450,11 +450,6 @@ fn bottom_items(
     });
 
     if ui.add(egui::Button::new("Find STO bases")).clicked() {
-        let mut charges_per_elec = Vec::new();
-        for sfc in &state.surface_data {
-            charges_per_elec.push(sfc);
-        }
-
         let charges_other_elecs =
             wf_ops::combine_electron_charges(ae, &state.charges_electron, state.grid_n_charge);
 
