@@ -5,7 +5,10 @@ use crate::{
     grid_setup::{Arr3d, Arr3dReal, Arr3dVec},
 };
 
-pub(crate) const EPS_DIV0: f64 = 0.0000000001;
+pub(crate) const EPS_DIV0: f64 = 0.0000000000001;
+// We use this to prevent adding psi values near the singularity when computing the norm.
+// todo: Experiment with this.
+pub(crate) const MAX_PSI_FOR_NORM: f64 = 100.;
 
 // This is an abstraction over a triple-nested loop. We use it to iterate over 3d arrays.
 #[macro_export]

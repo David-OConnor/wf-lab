@@ -25,6 +25,7 @@
 
 #[cfg(feature = "cuda")]
 use cudarc::driver::CudaDevice;
+
 use lin_alg2::f64::Vec3;
 
 use crate::{
@@ -34,7 +35,7 @@ use crate::{
     grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, num_diff,
     types::ComputationDevice,
-    util::{self, unflatten_arr},
+    util::{self, unflatten_arr, MAX_PSI_FOR_NORM},
 };
 
 #[cfg(feature = "cuda")]
@@ -80,25 +81,24 @@ pub fn initialize_bases(
         // See Sebens, for weights under equation 24; this is for Helium.
 
         for (xi, weight) in [
-            (1.41714, 0.76837),
-            (2.37682, 0.22346),
-            (4.39628, 0.04082),
-            (6.52699, -0.00994),
-            (7.94252, 0.00230),
-            // (1., 1.),
+            // (1.41714, 0.76837),
+            // (2.37682, 0.22346),
+            // (4.39628, 0.04082),
+            // (6.52699, -0.00994),
+            // (7.94252, 0.00230),
+            (1., 1.),
             // (1.7, 0.),
             // (1.6, 0.),
-            // (2., 0.),
-            // (3., 0.),
-            // (4., 0.),
-            // (5., 0.),
-            // (6., 0.),
-            // (7., 0.),
-            // (8., 0.),
+            (2., 0.),
+            (3., 0.),
+            (4., 0.),
+            (5., 0.),
+            (6., 0.),
+            (7., 0.),
+            (8., 0.),
             // (9., 0.),
         ] {
-            // for n in 1..max_n + 1 {
-            for n in 1..2 {
+            for n in 1..max_n + 1 {
                 bases.push(Basis::Sto(Sto {
                     posit: *nuc_posit,
                     n,
@@ -169,7 +169,12 @@ pub fn wf_from_bases(
                             Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
                     }
 
-                    norm += psi[basis_i][i][j][k].abs_sq(); // todo: Handle norm on GPU?
+                    let abs_sq = psi[basis_i][i][j][k].abs_sq();
+                    if abs_sq < MAX_PSI_FOR_NORM {
+                        norm += abs_sq; // todo: Handle norm on GPU?
+                    } else {
+                        println!("Exceeded norm thresh in create: {:?}", abs_sq);
+                    }
                 }
 
                 util::normalize_arr(&mut psi[basis_i], norm);
@@ -197,7 +202,12 @@ pub fn wf_from_bases(
                         }
                     }
 
-                    norm += psi[basis_i][i][j][k].abs_sq();
+                    let abs_sq = psi[basis_i][i][j][k].abs_sq();
+                    if abs_sq < MAX_PSI_FOR_NORM {
+                        norm += abs_sq; // todo: Handle norm on GPU?
+                    } else {
+                        println!("Exceeded norm thresh in create: {:?}", abs_sq);
+                    }
                 }
 
                 // todo: temp (?) removed./ put back
@@ -239,7 +249,13 @@ pub fn mix_bases(
         }
         // todo: Note that ideally, our basis wfs are normalizd, so we can use the cheaper weight
         // todo division approach instead of this.
-        norm += psi[i][j][k].abs_sq();
+
+        let abs_sq = psi[i][j][k].abs_sq();
+        if abs_sq < MAX_PSI_FOR_NORM {
+            norm += abs_sq; // todo: Handle norm on GPU?
+        } else {
+            println!("Exceeded norm thresh in mix: {:?}", abs_sq);
+        }
     }
 
     util::normalize_arr(psi, norm);

@@ -59,10 +59,10 @@ use crate::{
 const NUM_SURFACES: usize = 11;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 8.;
-const GRID_MAX_CHARGE: f64 = 7.;
-const GRID_N_RENDER_DEFAULT: usize = 68;
-const GRID_N_CHARGE_DEFAULT: usize = 71;
+const GRID_MAX_RENDER: f64 = 10.;
+const GRID_MAX_CHARGE: f64 = 10.;
+const GRID_N_RENDER_DEFAULT: usize = 60;
+const GRID_N_CHARGE_DEFAULT: usize = 81;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -120,10 +120,10 @@ pub struct State {
     /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
     /// due to electrons are stored in `Surfaces`.
     pub charges_fixed: Vec<(Vec3, f64)>,
-    /// Charges from electrons, over 3d space. Computed from <ψ|ψ>.
+    /// Charges from electrons, over 3d space. Each value is the charge created by a single electron. Computed from <ψ|ψ>.
     /// This is not part of `SurfacesPerElec` since we use all values at once (or all except one)
     /// when calculating the potential. (easier to work with API)
-    pub charges_electron: Vec<Arr3dReal>,
+    pub charges_from_electron: Vec<Arr3dReal>,
     /// Also stored here vice part of per-elec structs due to borrow-limiting on struct fields.
     pub V_from_elecs: Vec<Arr3dReal>, // todo: Now that we have charge_from_elec, do we want this? Probably
     /// Surfaces that are not electron-specific.
@@ -230,15 +230,6 @@ pub fn init_from_grid(
         grid_n_sample,
     );
 
-    for electron in &mut surfaces_per_elec {
-        potential::update_V_acting_on_elec(
-            &mut electron.V_acting_on_this,
-            &surfaces_shared.V_from_nuclei,
-            &[], // Not ready to apply V from other elecs yet.
-            grid_n_sample,
-        );
-    }
-
     // These must be initialized from wave functions later.
     let mut psi_charge_all_elecs = Vec::new();
     let mut charges_electron = Vec::new();
@@ -294,25 +285,46 @@ pub fn init_from_grid(
             // Handle the charge-grid-evaluated psi.
             psi_charge.push(new_data(grid_n_charge));
         }
-        // temp rem
-        // wf_ops::wf_from_bases(
-        //     dev,
-        //     &mut psi_charge,
-        //     None,
-        //     &bases_per_elec[i_elec],
-        //     &surfaces_shared.grid_posits_charge,
-        //     grid_n_charge,
-        // );
+        wf_ops::wf_from_bases(
+            dev,
+            &mut psi_charge,
+            None,
+            &bases_per_elec[i_elec],
+            &surfaces_shared.grid_posits_charge,
+            grid_n_charge,
+        );
 
-        // temp removed
-        // procedures::create_elec_charge(
-        //     &mut charges_electron[i_elec],
-        //     &psi_charge,
-        //     &weights,
-        //     grid_n_charge,
-        // );
+        procedures::create_elec_charge(
+            &mut charges_electron[i_elec],
+            &psi_charge,
+            &weights,
+            grid_n_charge,
+        );
 
         psi_charge_all_elecs.push(psi_charge);
+
+        // todo: Create electron V here
+        // potential::create_V_from_elecs(
+        //     dev,
+        //     &mut V_from_elecs[i_elec],
+        //     &state.surfaces_shared.grid_posits,
+        //     &state.surfaces_shared.grid_posits_charge,
+        //     &charges_other_elecs,
+        //     state.grid_n_render,
+        //     state.grid_n_charge,
+        //     state.ui.create_2d_electron_V,
+        // );
+
+        for electron in &mut surfaces_per_elec {
+            // todo: Come back to A/R
+            potential::update_V_acting_on_elec(
+                &mut electron.V_acting_on_this,
+                &surfaces_shared.V_from_nuclei,
+                // &[], // Not ready to apply V from other elecs yet.
+                &new_data_real(grid_n_sample), // Not ready to apply V from other elecs yet.
+                grid_n_sample,
+            );
+        }
     }
 
     (
@@ -362,10 +374,8 @@ fn main() {
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
-    let max_basis_n = 2;
-
     let ui_active_elec = 0;
-
+    let max_basis_n = 1;
     let num_elecs = 2;
 
     // Outer of these is per-elec.
@@ -436,7 +446,7 @@ fn main() {
     let state = State {
         dev,
         charges_fixed: nuclei,
-        charges_electron,
+        charges_from_electron: charges_electron,
         V_from_elecs,
         bases: bases_per_elec,
         psi_charge,

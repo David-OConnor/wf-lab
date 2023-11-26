@@ -513,7 +513,7 @@ pub fn render(state: State) {
         &mut scene,
         &state.surfaces_shared.grid_posits,
         state.ui.mag_phase,
-        &state.charges_electron[active_elec_init],
+        &state.charges_from_electron[active_elec_init],
         state.grid_n_render,
         false,
     );

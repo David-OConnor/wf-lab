@@ -62,15 +62,17 @@ pub fn update_V_from_nuclei(
 pub(crate) fn update_V_acting_on_elec(
     V_on_this_elec: &mut Arr3dReal,
     V_from_nuclei: &Arr3dReal,
-    V_from_elecs: &[Arr3dReal],
+    // V_from_elecs: &[Arr3dReal],
+    V_from_elecs: &Arr3dReal,
     grid_n: usize,
 ) {
     for (i, j, k) in iter_arr!(grid_n) {
         V_on_this_elec[i][j][k] = V_from_nuclei[i][j][k];
+        V_on_this_elec[i][j][k] += V_from_elecs[i][j][k];
 
-        for V_other_elec in V_from_elecs {
-            V_on_this_elec[i][j][k] += V_other_elec[i][j][k];
-        }
+        // for V_other_elec in V_from_elecs {
+        //     V_on_this_elec[i][j][k] += V_other_elec[i][j][k];
+        // }
     }
 }
 
@@ -133,12 +135,10 @@ pub(crate) fn create_V_from_elecs(
     V_from_this_elec: &mut Arr3dReal,
     posits_sample: &Arr3dVec,
     posits_charge: &Arr3dVec,
-    // charges_e_per_elec: &[Arr3dReal], // per elec
     charges_elec: &Arr3dReal,
     grid_n_sample: usize,
     grid_n_charge: usize,
     twod_only: bool,
-    elec_id: usize,
 ) {
     println!("Creating V from an electron on grid...");
 

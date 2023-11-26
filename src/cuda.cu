@@ -165,6 +165,8 @@ void coulomb_kernel(
 
 // Note that this is for the radial component only, with n=1. Real.
 extern "C" __global__
+// __launch_bounds__(maxThreadsPerBlock, minBlocksPerMultiprocessor)
+// __launch_bounds__(256, 2)
 void sto_val_or_deriv_kernel(
     dtype *out,
     dtype3 *posits_sample,

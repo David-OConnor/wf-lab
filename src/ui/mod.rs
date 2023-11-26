@@ -420,7 +420,7 @@ fn bottom_items(
         {
             let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
             procedures::create_elec_charge(
-                &mut state.charges_electron[ae],
+                &mut state.charges_from_electron[ae],
                 &state.psi_charge[ae],
                 &weights,
                 state.grid_n_charge,
@@ -451,7 +451,7 @@ fn bottom_items(
 
     if ui.add(egui::Button::new("Find STO bases")).clicked() {
         let charges_other_elecs =
-            wf_ops::combine_electron_charges(ae, &state.charges_electron, state.grid_n_charge);
+            wf_ops::combine_electron_charges(ae, &state.charges_from_electron, state.grid_n_charge);
 
         let sample_pts = basis_finder::generate_sample_pts();
         let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
@@ -538,7 +538,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.num_elecs,
                 );
 
-                state.charges_electron = charges_electron;
+                state.charges_from_electron = charges_electron;
                 state.V_from_elecs = V_from_elecs;
                 state.psi_charge = bases_evaluated_charge;
                 state.surfaces_shared = surfaces_shared;

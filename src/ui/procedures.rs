@@ -83,7 +83,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         );
 
         wf_ops::charge_from_psi(
-            &mut state.charges_electron[ae],
+            &mut state.charges_from_electron[ae],
             &psi_charge_grid,
             state.grid_n_charge,
         );
@@ -138,7 +138,8 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
         potential::update_V_acting_on_elec(
             &mut state.surfaces_per_elec[elec_i].V_acting_on_this,
             &state.surfaces_shared.V_from_nuclei,
-            &state.V_from_elecs,
+            // &state.V_from_elecs,
+            &state.V_from_elecs[elec_i],
             state.grid_n_render,
         );
     }
@@ -149,7 +150,6 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
 
 /// Create the electric charge from a single electron's wave function squared. Note that this
 /// is a combination of mixing bases to get the wave function, and generating charge from this.
-// pub fn create_elec_charge(state: &mut State, ae: usize) {
 pub fn create_elec_charge(
     charge_electron: &mut Arr3dReal,
     psi_charge_per_basis: &[Arr3d],
@@ -174,7 +174,7 @@ pub(crate) fn update_V_acting_on_elec(state: &mut State, ae: usize) {
     if state.ui.create_3d_electron_V || state.ui.create_2d_electron_V {
         // First, create V based on electron charge.
         let charges_other_elecs =
-            wf_ops::combine_electron_charges(ae, &state.charges_electron, state.grid_n_charge);
+            wf_ops::combine_electron_charges(ae, &state.charges_from_electron, state.grid_n_charge);
 
         potential::create_V_from_elecs(
             &state.dev,
@@ -185,13 +185,13 @@ pub(crate) fn update_V_acting_on_elec(state: &mut State, ae: usize) {
             state.grid_n_render,
             state.grid_n_charge,
             state.ui.create_2d_electron_V,
-            ae,
         );
 
         potential::update_V_acting_on_elec(
             &mut state.surfaces_per_elec[ae].V_acting_on_this,
             &state.surfaces_shared.V_from_nuclei,
-            &state.V_from_elecs,
+            // &state.V_from_elecs,
+            &state.V_from_elecs[ae],
             state.grid_n_render,
         );
     }
@@ -217,7 +217,7 @@ pub fn update_meshes(state: &mut State, scene: &mut Scene, engine_updates: &mut 
         scene,
         &state.surfaces_shared.grid_posits,
         state.ui.mag_phase,
-        &state.charges_electron[active_elec],
+        &state.charges_from_electron[active_elec],
         state.grid_n_render,
         render_multi_elec,
     );
@@ -233,8 +233,11 @@ pub(crate) fn he_solver(state: &mut State) {
     for i in 0..3 {
         let elec_id = i % 2;
 
-        let charges_other_elecs =
-            wf_ops::combine_electron_charges(elec_id, &state.charges_electron, state.grid_n_charge);
+        let charges_other_elecs = wf_ops::combine_electron_charges(
+            elec_id,
+            &state.charges_from_electron,
+            state.grid_n_charge,
+        );
 
         let xis: Vec<f64> = state.bases[elec_id].iter().map(|b| b.xi()).collect();
 
@@ -268,7 +271,7 @@ pub(crate) fn he_solver(state: &mut State) {
         let weights: Vec<f64> = state.bases[elec_id].iter().map(|b| b.weight()).collect();
 
         create_elec_charge(
-            &mut state.charges_electron[elec_id],
+            &mut state.charges_from_electron[elec_id],
             &state.psi_charge[elec_id],
             &weights,
             state.grid_n_charge,
@@ -279,7 +282,7 @@ pub(crate) fn he_solver(state: &mut State) {
     for e_id in 0..2 {
         let weights: Vec<f64> = state.bases[e_id].iter().map(|b| b.weight()).collect();
         create_elec_charge(
-            &mut state.charges_electron[e_id],
+            &mut state.charges_from_electron[e_id],
             &state.psi_charge[e_id],
             &weights,
             state.grid_n_charge,

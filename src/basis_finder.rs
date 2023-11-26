@@ -127,11 +127,8 @@ fn find_base_xi_E_type2(
     grid_charge: &Arr3dVec,
     // base_xi_specified: f64,
 ) -> (f64, f64) {
-    // let posit_corner = Vec3::new(30., 30., 30.);
-    // let posit_sample = Vec3::new(30., 0., 0.);
-    let posit_corner = Vec3::new(15., 15., 15.);
-    // let posit_sample = Vec3::new(5., 5., 5.);
-    let posit_sample = Vec3::new(15., 0., 0.);
+    let posit_corner = Vec3::new(30., 30., 30.);
+    let posit_sample = Vec3::new(30., 0., 0.);
 
     let mut V_corner = 0.;
     let mut V_sample = 0.;
