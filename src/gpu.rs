@@ -280,6 +280,9 @@ pub(crate) fn sto_vals_or_derivs(
     }
     .unwrap();
 
+    // todo: experimenting/TS
+    // dev.synchronize().unwrap();
+
     let result_psi = dev.dtoh_sync_copy(&psi).unwrap();
 
     // This step is not required when using f64.
