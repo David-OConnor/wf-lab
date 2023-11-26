@@ -24,5 +24,6 @@ itertools = "^0.11.0"
 
 
 [features]
+default = ["cuda"]
 cuda = ["cudarc"]
-#default = ["cuda"]
+

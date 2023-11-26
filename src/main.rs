@@ -25,7 +25,7 @@
 
 use std::mem;
 
-#[cfg(features = "cuda")]
+#[cfg(feature = "cuda")]
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
 
 use lin_alg2::f64::Vec3;
@@ -36,7 +36,7 @@ mod complex_nums;
 mod eigen_fns;
 mod elec_elec;
 mod eval;
-#[cfg(features = "cuda")]
+#[cfg(feature = "cuda")]
 mod gpu;
 mod grid_setup;
 mod interp;
@@ -59,9 +59,9 @@ use crate::{
 const NUM_SURFACES: usize = 11;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 4.;
+const GRID_MAX_RENDER: f64 = 8.;
 const GRID_MAX_CHARGE: f64 = 7.;
-const GRID_N_RENDER_DEFAULT: usize = 32;
+const GRID_N_RENDER_DEFAULT: usize = 62;
 const GRID_N_CHARGE_DEFAULT: usize = 71;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
@@ -255,7 +255,7 @@ pub fn init_from_grid(
         let psi = &mut sfcs.psi_per_basis;
         let psi_pp = &mut sfcs.psi_pp_per_basis;
 
-        wf_ops::update_wf_from_bases(
+        wf_ops::wf_from_bases(
             dev,
             psi,
             Some(psi_pp),
@@ -294,22 +294,23 @@ pub fn init_from_grid(
             // Handle the charge-grid-evaluated psi.
             psi_charge.push(new_data(grid_n_charge));
         }
+        // temp rem
+        // wf_ops::wf_from_bases(
+        //     dev,
+        //     &mut psi_charge,
+        //     None,
+        //     &bases_per_elec[i_elec],
+        //     &surfaces_shared.grid_posits_charge,
+        //     grid_n_charge,
+        // );
 
-        wf_ops::update_wf_from_bases(
-            dev,
-            &mut psi_charge,
-            None,
-            &bases_per_elec[i_elec],
-            &surfaces_shared.grid_posits_charge,
-            grid_n_charge,
-        );
-
-        procedures::create_elec_charge(
-            &mut charges_electron[i_elec],
-            &psi_charge,
-            &weights,
-            grid_n_charge,
-        );
+        // temp removed
+        // procedures::create_elec_charge(
+        //     &mut charges_electron[i_elec],
+        //     &psi_charge,
+        //     &weights,
+        //     grid_n_charge,
+        // );
 
         psi_charge_all_elecs.push(psi_charge);
     }
@@ -324,8 +325,8 @@ pub fn init_from_grid(
 }
 
 fn main() {
-    #[cfg(features = "cuda")]
-    let dev = if false {
+    #[cfg(feature = "cuda")]
+    let dev = {
         // This is compiled in `build_`.
         let cuda_dev = CudaDevice::new(0).unwrap();
         cuda_dev
@@ -345,19 +346,16 @@ fn main() {
 
         println!("Using the GPU for computations.");
         ComputationDevice::Gpu(cuda_dev)
-    } else {
-        println!("Using the CPU for computations.");
-        ComputationDevice::Cpu
     };
 
-    #[cfg(not(features = "cuda"))]
+    #[cfg(not(feature = "cuda"))]
     let dev = ComputationDevice::Cpu;
 
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let nuclei = vec![
-        (posit_charge_1, Q_PROT * 1.), // helium
+        (posit_charge_1, Q_PROT * 2.), // helium
                                        // (posit_charge_1, Q_PROT * 3.), // lithium
                                        // (posit_charge_1, Q_PROT * 1.), // Hydrogen
                                        // (posit_charge_2, Q_PROT),

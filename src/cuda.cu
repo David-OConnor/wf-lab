@@ -22,7 +22,7 @@ dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n, uint1
 //     dtype radial = N * std::pow(r, n - 1) * std::exp(-xi * r / n);
 //     return radial;
 
-    dtype exp_term = std::exp(-r / (n * A_0));
+    dtype exp_term = std::exp(-xi * r / n);
 
     uint16_t lg_l = n - l - 1;
     uint16_t lg_r = 2 * l + 1;
@@ -73,41 +73,63 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
     return norm_term(n, l) * result;
 }
 
-
-dtype find_psi_pp_num_fm_bases(
+__device__
+dtype find_psi_pp_num(
     dtype3 posit_sample,
     dtype3 posit_nuc,
+    dtype xi,
     uint16_t n,
     uint16_t l,
-    dtype xi,
-    dtype psi_sample_loc,
+    dtype psi_sample_loc
 ) {
-    dtype x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
-    dtype x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
-    dtype y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
-    dtype y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
-    dtype z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
-    dtype z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+    dtype3 x_prev;
+    dtype3 x_next;
+    dtype3 y_prev;
+    dtype3 y_next;
+    dtype3 z_prev;
+    dtype3 z_next;
 
-    dtype mut psi_x_prev = 0.f;
-    dtype mut psi_x_next = 0.f;
-    dtype mut psi_y_prev = 0.f;
-    dtype mut psi_y_next = 0.f;
-    dtype mut psi_z_prev = 0.f;
-    dtype mut psi_z_next = 0.f;
+    x_prev.x = posit_sample.x - H;
+    x_prev.y = posit_sample.y;
+    x_prev.z = posit_sample.z;
+    
+    x_next.x = posit_sample.x + H;
+    x_next.y = posit_sample.y;
+    x_next.z = posit_sample.z;
+    
+    y_prev.x = posit_sample.x;
+    y_prev.y = posit_sample.y - H;
+    y_prev.z = posit_sample.z;
+    
+    y_next.x = posit_sample.x;
+    y_next.y = posit_sample.y + H;
+    y_next.z = posit_sample.z;
+        
+    z_prev.x = posit_sample.x;
+    z_prev.y = posit_sample.y;
+    z_prev.z = posit_sample.z - H;
+    
+    z_next.x = posit_sample.x;
+    z_next.y = posit_sample.y;
+    z_next.z = posit_sample.z + H;
 
-    for basis in bases {
-        psi_x_prev += sto_val(x_prev, posit_nuc, xi, n, l);
-        psi_x_next += sto_val(x_next, posit_nuc, xi, n, l);
-        psi_y_prev += sto_val(y_prev, posit_nuc, xi, n, l);
-        psi_y_next += sto_val(y_next, posit_nuc, xi, n, l);
-        psi_z_prev += sto_val(z_prev, posit_nuc, xi, n, l);
-        psi_z_next += sto_val(z_next, posit_nuc, xi, n, l);
-    }
+//     dtype psi_x_prev = 0.f;
+//     dtype psi_x_next = 0.f;
+//     dtype psi_y_prev = 0.f;
+//     dtype psi_y_next = 0.f;
+//     dtype psi_z_prev = 0.f;
+//     dtype psi_z_next = 0.f;
+
+    dtype psi_x_prev = sto_val(x_prev, posit_nuc, xi, n, l);
+    dtype psi_x_next = sto_val(x_next, posit_nuc, xi, n, l);
+    dtype psi_y_prev = sto_val(y_prev, posit_nuc, xi, n, l);
+    dtype psi_y_next = sto_val(y_next, posit_nuc, xi, n, l);
+    dtype psi_z_prev = sto_val(z_prev, posit_nuc, xi, n, l);
+    dtype psi_z_next = sto_val(z_next, posit_nuc, xi, n, l);
 
     return (psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-        - ψ_sample_loc * 6.f)
-        / H_SQ
+        - psi_sample_loc * 6.f)
+        / H_SQ;
 }
 
 // In this approach, we parallelize operations per sample, but run the
@@ -159,7 +181,14 @@ void sto_val_or_deriv_kernel(
 
     for (size_t i = index; i < N_samples; i += stride) {
         if (deriv == true) {
-            out[i] = sto_second_deriv(posits_sample[i], posit_nuc, xi, n, 0);
+            if (n >= 2) {
+                // todo: Ideally, don't re-calc on pt here: Pass in, since you've likely
+                // todo already calculated it.
+                dtype psi_on_pt = sto_val(posits_sample[i], posit_nuc, xi, n, 0);
+                out[i] = find_psi_pp_num(posits_sample[i], posit_nuc, xi, n, 0, psi_on_pt);
+            } else {
+                out[i] = sto_second_deriv(posits_sample[i], posit_nuc, xi, n, 0);
+            }
         } else {
             out[i] = sto_val(posits_sample[i], posit_nuc, xi, n, 0);
         }
@@ -180,7 +209,14 @@ void sto_deriv_kernel(
     size_t stride = blockDim.x * gridDim.x;
 
     for (size_t i = index; i < N_samples; i += stride) {
-        out[i] = sto_second_deriv(posits_sample[i], posit_nuc, xi, n, 0);
+        if (n >= 2) {
+            // todo: Ideally, don't re-calc on pt here: Pass in, since you've likely
+            // todo already calculated it.
+            dtype psi_on_pt = sto_val(posits_sample[i], posit_nuc, xi, n, 0);
+            out[i] = find_psi_pp_num(posits_sample[i], posit_nuc, xi, n, 0, psi_on_pt);
+        } else {
+            out[i] = sto_second_deriv(posits_sample[i], posit_nuc, xi, n, 0);
+        }
     }
 }
 
@@ -198,9 +234,14 @@ void sto_val_deriv_kernel(
     size_t index = blockIdx.x * blockDim.x + threadIdx.x;
     size_t stride = blockDim.x * gridDim.x;
 
-    for (size_t i_sample = index; i_sample < N_samples; i_sample += stride) {
-        out_val[i_sample] = sto_val(posits_sample[i_sample], posit_nuc, xi, n, 0);
-        out_second_deriv[i_sample] = sto_second_deriv(posits_sample[i_sample], posit_nuc, xi, n, 0);
+    for (size_t i = index; i < N_samples; i += stride) {
+        out_val[i] = sto_val(posits_sample[i], posit_nuc, xi, n, 0);
+
+        if (n >= 2) {
+            out_second_deriv[i] = find_psi_pp_num(posits_sample[i], posit_nuc, xi, n, 0, out_val[i]);
+        } else {
+            out_second_deriv[i] = sto_second_deriv(posits_sample[i], posit_nuc, xi, n, 0);
+        }
     }
 }
 

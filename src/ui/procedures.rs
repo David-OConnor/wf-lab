@@ -98,7 +98,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     let psi = &mut sfcs.psi_per_basis;
     let psi_pp = &mut sfcs.psi_pp_per_basis;
 
-    wf_ops::update_wf_from_bases(
+    wf_ops::wf_from_bases(
         &state.dev,
         psi,
         Some(psi_pp),
@@ -107,7 +107,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
         state.grid_n_render,
     );
 
-    wf_ops::update_wf_from_bases(
+    wf_ops::wf_from_bases(
         &state.dev,
         &mut state.psi_charge[ae],
         None,
@@ -252,7 +252,7 @@ pub(crate) fn he_solver(state: &mut State) {
         state.bases[elec_id] = bases;
         state.ui.active_elec = ActiveElec::PerElec(elec_id);
 
-        wf_ops::update_wf_from_bases(
+        wf_ops::wf_from_bases(
             &state.dev,
             &mut state.psi_charge[elec_id],
             None,

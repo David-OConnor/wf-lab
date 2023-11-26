@@ -260,6 +260,7 @@ pub(crate) fn sto_vals_or_derivs(
     } else {
         dev.get_func("cuda", "sto_val_or_deriv_kernel").unwrap()
     };
+    // let kernel = dev.get_func("cuda", "sto_val_or_deriv_kernel").unwrap();
 
     let cfg = LaunchConfig::for_num_elems(n_samples as u32);
 

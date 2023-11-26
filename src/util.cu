@@ -18,7 +18,7 @@ const dtype EPS_DIV0 = 0.00000000001f;
 __device__
 const dtype H = 0.001f;
 __device__
-const dtype H_SQ = H * H;
+const dtype H_SQ = 0.001f * 0.001f;
 
 __device__
 dtype laguerre(uint16_t n, uint16_t alpha, dtype x) {

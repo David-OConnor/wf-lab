@@ -10,7 +10,7 @@ use crate::{
     wf_ops::K_C,
 };
 
-#[cfg(features = "cuda")]
+#[cfg(feature = "cuda")]
 use crate::gpu;
 
 // We use this to prevent numerical anomolies and divide-by-0 errors in coulomb interactions, where
@@ -109,7 +109,7 @@ pub(crate) fn create_V_1d_from_elec(
     grid_n_charge: usize,
 ) -> Vec<f64> {
     match dev {
-        #[cfg(features = "cuda")]
+        #[cfg(feature = "cuda")]
         ComputationDevice::Gpu(cuda_dev) => {
             let (posits_charge_flat, charges_flat) =
                 flatten_charge(posits_charge, charges_elec, grid_n_charge);
@@ -143,7 +143,7 @@ pub(crate) fn create_V_from_elecs(
     println!("Creating V from an electron on grid...");
 
     match dev {
-        #[cfg(features = "cuda")]
+        #[cfg(feature = "cuda")]
         ComputationDevice::Gpu(cuda_dev) => {
             let (posits_charge_flat, charges_flat) =
                 flatten_charge(posits_charge, charges_elec, grid_n_charge);

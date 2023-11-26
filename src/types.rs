@@ -1,4 +1,4 @@
-#[cfg(features = "cuda")]
+#[cfg(feature = "cuda")]
 use cudarc::driver::CudaDevice;
 use std::sync::Arc;
 
@@ -16,7 +16,7 @@ use crate::{
 
 pub enum ComputationDevice {
     Cpu,
-    #[cfg(features = "cuda")]
+    #[cfg(feature = "cuda")]
     Gpu(Arc<CudaDevice>),
 }
 
@@ -225,7 +225,7 @@ impl _BasesEvaluated {
         // todo: TS questrionable psipp; forcing CPU.
         let dev = &ComputationDevice::Cpu;
 
-        wf_ops::update_wf_from_bases(
+        wf_ops::wf_from_bases(
             dev,
             &mut on_pt,
             Some(&mut psi_pp_analytic),
