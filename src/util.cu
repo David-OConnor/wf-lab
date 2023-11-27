@@ -16,8 +16,9 @@ const dtype A_0 = 1.f;
 __device__
 const dtype EPS_DIV0 = 0.00000000001f;
 __device__
-const dtype H = 0.001f;
+const dtype H = 0.1f;
 __device__
+// const dtype H_SQ = 0.001f * 0.001f;
 const dtype H_SQ = 0.001f * 0.001f;
 
 __device__

@@ -127,21 +127,22 @@ fn find_base_xi_E_type2(
     grid_charge: &Arr3dVec,
     // base_xi_specified: f64,
 ) -> (f64, f64) {
-    let posit_corner = Vec3::new(30., 30., 30.);
-    let posit_sample = Vec3::new(30., 0., 0.);
+    const SAMPLE_DIST: f64 = 3.;
+    let posit_corner = Vec3::new(SAMPLE_DIST, SAMPLE_DIST, SAMPLE_DIST);
+    let posit_sample = Vec3::new(SAMPLE_DIST, 0., 0.);
 
     let mut V_corner = 0.;
     let mut V_sample = 0.;
 
     for (posit_nuc, charge) in charges_fixed {
-        V_sample += potential::V_coulomb(*posit_nuc, posit_sample, *charge);
-        V_corner += potential::V_coulomb(*posit_nuc, posit_corner, *charge);
+        V_sample += V_coulomb(*posit_nuc, posit_sample, *charge);
+        V_corner += V_coulomb(*posit_nuc, posit_corner, *charge);
     }
 
     for (i, j, k) in iter_arr!(charge_elec.len()) {
         let charge = charge_elec[i][j][k];
-        V_sample += potential::V_coulomb(grid_charge[i][j][k], posit_sample, charge);
-        V_corner += potential::V_coulomb(grid_charge[i][j][k], posit_corner, charge);
+        V_sample += V_coulomb(grid_charge[i][j][k], posit_sample, charge);
+        V_corner += V_coulomb(grid_charge[i][j][k], posit_corner, charge);
     }
 
     find_base_xi_E_common(
@@ -204,7 +205,7 @@ pub fn generate_sample_pts() -> Vec<Vec3> {
     let sample_dists = [
         // 10., 5., 3., 2., 1.5, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1
         // 10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.4, 0.3,
-        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6,
+        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.4,
     ];
 
     // println!("\nSample dists: {:?}", sample_dists);

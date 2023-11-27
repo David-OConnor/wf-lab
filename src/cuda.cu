@@ -73,6 +73,7 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
     return norm_term(n, l) * result;
 }
 
+// We use `double` here, due to numerical problems with `float`.
 __device__
 dtype find_psi_pp_num(
     dtype3 posit_sample,
@@ -92,33 +93,26 @@ dtype find_psi_pp_num(
     x_prev.x = posit_sample.x - H;
     x_prev.y = posit_sample.y;
     x_prev.z = posit_sample.z;
-    
+
     x_next.x = posit_sample.x + H;
     x_next.y = posit_sample.y;
     x_next.z = posit_sample.z;
-    
+
     y_prev.x = posit_sample.x;
     y_prev.y = posit_sample.y - H;
     y_prev.z = posit_sample.z;
-    
+
     y_next.x = posit_sample.x;
     y_next.y = posit_sample.y + H;
     y_next.z = posit_sample.z;
-        
+
     z_prev.x = posit_sample.x;
     z_prev.y = posit_sample.y;
     z_prev.z = posit_sample.z - H;
-    
+
     z_next.x = posit_sample.x;
     z_next.y = posit_sample.y;
     z_next.z = posit_sample.z + H;
-
-//     dtype psi_x_prev = 0.f;
-//     dtype psi_x_next = 0.f;
-//     dtype psi_y_prev = 0.f;
-//     dtype psi_y_next = 0.f;
-//     dtype psi_z_prev = 0.f;
-//     dtype psi_z_next = 0.f;
 
     dtype psi_x_prev = sto_val(x_prev, posit_nuc, xi, n, l);
     dtype psi_x_next = sto_val(x_next, posit_nuc, xi, n, l);

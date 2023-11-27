@@ -138,7 +138,6 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
         potential::update_V_acting_on_elec(
             &mut state.surfaces_per_elec[elec_i].V_acting_on_this,
             &state.surfaces_shared.V_from_nuclei,
-            // &state.V_from_elecs,
             &state.V_from_elecs[elec_i],
             state.grid_n_render,
         );
@@ -190,7 +189,6 @@ pub(crate) fn update_V_acting_on_elec(state: &mut State, ae: usize) {
         potential::update_V_acting_on_elec(
             &mut state.surfaces_per_elec[ae].V_acting_on_this,
             &state.surfaces_shared.V_from_nuclei,
-            // &state.V_from_elecs,
             &state.V_from_elecs[ae],
             state.grid_n_render,
         );

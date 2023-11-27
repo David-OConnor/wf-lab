@@ -242,6 +242,8 @@ pub(crate) fn sto_vals_or_derivs(
     // todo: DRY
     let n_samples = posits_sample.len();
 
+    // todo: We may need to use f64 for numerical second derivatives.
+
     let posits_sample_gpu = alloc_vec3s(&dev, posits_sample);
 
     let mut psi = dev.alloc_zeros::<FDev>(n_samples).unwrap();
