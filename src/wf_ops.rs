@@ -95,7 +95,7 @@ pub fn initialize_bases(
             (5., 0.),
             (6., 0.),
             (7., 0.),
-            (8., 0.),
+            // (8., 0.),
             // (9., 0.),
         ] {
             for n in 1..max_n + 1 {
@@ -125,36 +125,73 @@ pub fn wf_from_bases(
 ) {
     let mut norm = 0.;
 
-    match dev {
-        #[cfg(feature = "cuda")]
-        ComputationDevice::Gpu(cuda_dev) => {
-            let posits_flat = util::flatten_arr(grid_posits, grid_n);
+    // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
+    let mut posits_flat = None;
 
-            // This basis loop is instead the dev selection so we don't calc posits_flat on CPU.
-            // Unfortunately, it adds duplicated code.
-            for (basis_i, basis) in bases.iter().enumerate() {
-                let psi_flat = gpu::sto_vals_or_derivs(
-                    cuda_dev,
-                    basis.xi(),
-                    basis.n(),
-                    &posits_flat,
-                    basis.posit(),
-                    false,
-                );
+    #[cfg(feature = "cuda")]
+    if let ComputationDevice::Gpu(_) = dev {
+        posits_flat = Some(util::flatten_arr(grid_posits, grid_n));
+    }
 
-                // todo: Use the combined kernnel once you sort out out-of-resources.
-                let psi_pp_flat = if let Some(_) = psi_pp {
-                    Some(gpu::sto_vals_or_derivs(
+    fn add_to_norm(n: &mut f64, v: Cplx) {
+        let abs_sq = v.abs_sq();
+        if abs_sq < MAX_PSI_FOR_NORM {
+            *n += abs_sq; // todo: Handle norm on GPU?
+        } else {
+            println!("Exceeded norm thresh in create: {:?}", abs_sq);
+        }
+    }
+
+    for (basis_i, basis) in bases.iter().enumerate() {
+        match dev {
+            #[cfg(feature = "cuda")]
+            ComputationDevice::Gpu(cuda_dev) => {
+                let (psi_flat, psi_pp_flat) = if psi_pp.is_some() {
+                    // Calculate both using the same kernel.
+                    let (a, b) = gpu::sto_vals_derivs(
                         cuda_dev,
                         basis.xi(),
                         basis.n(),
-                        &posits_flat,
+                        &posits_flat.as_ref().unwrap(),
                         basis.posit(),
-                        true,
-                    ))
+                    );
+                    (a, Some(b))
                 } else {
-                    None
+                    (
+                        gpu::sto_vals_or_derivs(
+                            cuda_dev,
+                            basis.xi(),
+                            basis.n(),
+                            &posits_flat.as_ref().unwrap(),
+                            basis.posit(),
+                            false,
+                        ),
+                        None,
+                    )
                 };
+
+                // let psi_flat = gpu::sto_vals_or_derivs(
+                //     cuda_dev,
+                //     basis.xi(),
+                //     basis.n(),
+                //     &posits_flat.as_ref().unwrap(),
+                //     basis.posit(),
+                //     false,
+                // );
+                //
+                // // todo: Use the combined kernnel once you sort out out-of-resources.
+                // let psi_pp_flat = if psi_pp.is_some() {
+                //     Some(gpu::sto_vals_or_derivs(
+                //         cuda_dev,
+                //         basis.xi(),
+                //         basis.n(),
+                //         &posits_flat.as_ref().unwrap(),
+                //         basis.posit(),
+                //         true,
+                //     ))
+                // } else {
+                //     None
+                // };
 
                 let grid_n_sq = grid_n.pow(2);
 
@@ -169,25 +206,12 @@ pub fn wf_from_bases(
                             Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
                     }
 
-                    let abs_sq = psi[basis_i][i][j][k].abs_sq();
-                    if abs_sq < MAX_PSI_FOR_NORM {
-                        norm += abs_sq; // todo: Handle norm on GPU?
-                    } else {
-                        println!("Exceeded norm thresh in create: {:?}", abs_sq);
-                    }
-                }
-
-                util::normalize_arr(&mut psi[basis_i], norm);
-                if psi_pp.is_some() {
-                    util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
+                    add_to_norm(&mut norm, psi[basis_i][i][j][k]);
                 }
             }
-        }
-        ComputationDevice::Cpu => {
-            for (basis_i, basis) in bases.iter().enumerate() {
+            ComputationDevice::Cpu => {
                 for (i, j, k) in iter_arr!(grid_n) {
                     let posit_sample = grid_posits[i][j][k];
-
                     psi[basis_i][i][j][k] = basis.value(posit_sample);
 
                     if let Some(ref mut pp) = psi_pp {
@@ -202,20 +226,14 @@ pub fn wf_from_bases(
                         }
                     }
 
-                    let abs_sq = psi[basis_i][i][j][k].abs_sq();
-                    if abs_sq < MAX_PSI_FOR_NORM {
-                        norm += abs_sq; // todo: Handle norm on GPU?
-                    } else {
-                        println!("Exceeded norm thresh in create: {:?}", abs_sq);
-                    }
-                }
-
-                // todo: temp (?) removed./ put back
-                util::normalize_arr(&mut psi[basis_i], norm);
-                if psi_pp.is_some() {
-                    util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
+                    add_to_norm(&mut norm, psi[basis_i][i][j][k]);
                 }
             }
+        }
+
+        util::normalize_arr(&mut psi[basis_i], norm);
+        if psi_pp.is_some() {
+            util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
         }
     }
 }
@@ -233,6 +251,17 @@ pub fn mix_bases(
 ) {
     // todo: GPU option?
     let mut norm = 0.;
+    //
+    // // This approach allows us to take advantage of the bases being already normalized, saving us
+    // // computation here. This same concept allows us (elsewhere) to normalize arbitrary points without computing
+    // // psi over all space.
+    // // todo: Not working!
+    // let mut weight_sq_sum = 0.;
+    // for w in weights {
+    //     // weight_sq_sum += w.powi(2);
+    //     // weight_sq_sum += w.sqrt();
+    //     weight_sq_sum += w.abs();
+    // }
 
     for (i, j, k) in iter_arr!(grid_n) {
         psi[i][j][k] = Cplx::new_zero();
@@ -241,10 +270,15 @@ pub fn mix_bases(
         }
 
         for (i_basis, weight) in weights.iter().enumerate() {
-            psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * *weight;
+            // let scaler = weight / weight_sq_sum;
+            // let scaler = weight / weight_sq_sum.powi(2);
+            // let scaler = weight / weight_sq_sum.sqrt();
+            let scaler = *weight; // todo t
+
+            psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
 
             if let Some(pp) = psi_pp.as_mut() {
-                pp[i][j][k] += psi_pp_per_basis.as_ref().unwrap()[i_basis][i][j][k] * *weight;
+                pp[i][j][k] += psi_pp_per_basis.as_ref().unwrap()[i_basis][i][j][k] * scaler;
             }
         }
         // todo: Note that ideally, our basis wfs are normalizd, so we can use the cheaper weight
@@ -286,7 +320,7 @@ pub(crate) fn charge_from_psi(
 }
 
 /// Combines `mix_bases`, and `charge_from_psi`; removes an unecessarly loop 3d loop.
-/// todo: This may not be a tenable optimization due to normalization.
+/// todo: This ma`y not be a tenable optimization due to normalization.
 pub fn mix_bases_update_charge(
     psi: &mut Arr3d,
     charge: &mut Arr3dReal,

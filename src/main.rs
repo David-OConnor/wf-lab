@@ -59,10 +59,10 @@ use crate::{
 const NUM_SURFACES: usize = 11;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 10.;
-const GRID_MAX_CHARGE: f64 = 10.;
-const GRID_N_RENDER_DEFAULT: usize = 60;
-const GRID_N_CHARGE_DEFAULT: usize = 81;
+const GRID_MAX_RENDER: f64 = 16.;
+const GRID_MAX_CHARGE: f64 = 18.;
+const GRID_N_RENDER_DEFAULT: usize = 80;
+const GRID_N_CHARGE_DEFAULT: usize = 91;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -348,7 +348,7 @@ fn main() {
                 &[
                     "coulomb_kernel",
                     "sto_val_or_deriv_kernel",
-                    "sto_deriv_kernel", // todo: Temp workaround for out-of-resources errors.
+                    // "sto_deriv_kernel", // todo: Temp workaround for out-of-resources errors.
                     "sto_val_deriv_multiple_bases_kernel",
                     "sto_val_multiple_bases_kernel",
                     "sto_val_deriv_kernel",
@@ -367,16 +367,16 @@ fn main() {
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let nuclei = vec![
-        (posit_charge_1, Q_PROT * 2.), // helium
-                                       // (posit_charge_1, Q_PROT * 3.), // lithium
+        // (posit_charge_1, Q_PROT * 2.), // helium
+        (posit_charge_1, Q_PROT * 3.), // lithium
                                        // (posit_charge_1, Q_PROT * 1.), // Hydrogen
                                        // (posit_charge_2, Q_PROT),
                                        // (Vec3::new(0., 1., 0.), Q_ELEC),
     ];
 
     let ui_active_elec = 0;
-    let max_basis_n = 1;
-    let num_elecs = 2;
+    let max_basis_n = 2;
+    let num_elecs = 1;
 
     // Outer of these is per-elec.
     let mut bases_per_elec = Vec::new();

@@ -34,17 +34,18 @@ impl GpuArchitecture {
 /// Compiles our CUDA program using Nvidia's NVCC compiler
 fn main() {
     // Tell Cargo that if the given file changes, to rerun this build script.
-    println!("cargo:rerun-if-changed=src/cuda.cu");
-    println!("cargo:rerun-if-changed=src/util.cu");
+    println!("cargo:rerun-if-changed=src/cuda/cuda.cu");
+    println!("cargo:rerun-if-changed=src/cuda/util.cu");
 
     let architecture = GpuArchitecture::Rtx4;
 
     let compilation_result = Command::new("nvcc")
         .args([
-            "src/cuda.cu",
+            "src/cuda/cuda.cu",
             "-gencode",
             &architecture.gencode_val(),
             "-ptx",
+            "-O3", // optimized/release mode.
         ])
         .output()
         .expect("Problem compiling the CUDA module.");

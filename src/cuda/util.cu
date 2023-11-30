@@ -4,8 +4,10 @@
 // Allows easy switching between float and double.
 // #define dtype double
 // #define dtype3 double3
-#define dtype float
-#define dtype3 float3
+// #define dtype float
+// #define dtype3 float3
+using dtype = float;
+using dtype3 = float3;
 
 __device__
 const dtype SOFTENING_FACTOR = 0.000000000001f;
@@ -15,11 +17,14 @@ __device__
 const dtype A_0 = 1.f;
 __device__
 const dtype EPS_DIV0 = 0.00000000001f;
+// __device__
+// const dtype H = 0.1f;
+// __device__
+// const dtype H_SQ = 0.1f * 0.1f;
 __device__
-const dtype H = 0.1f;
+const dtype H = 0.1;
 __device__
-// const dtype H_SQ = 0.001f * 0.001f;
-const dtype H_SQ = 0.001f * 0.001f;
+const dtype H_SQ = 0.1 * 0.1;
 
 __device__
 dtype laguerre(uint16_t n, uint16_t alpha, dtype x) {
@@ -43,6 +48,17 @@ dtype calc_dist(dtype3 point0, dtype3 point1) {
 
     return std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
 }
+
+__device__
+double calc_dist_f64(double3 point0, double3 point1) {
+    double3 diff;
+    diff.x = point0.x - point1.x;
+    diff.y = point0.y - point1.y;
+    diff.z = point0.z - point1.z;
+
+    return std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+}
+
 
 
 __device__
@@ -88,8 +104,8 @@ uint32_t factorial(uint8_t val) {
 
 
 __device__
-dtype coulomb(dtype3 q0, dtype3 q1, dtype charge) {
-    dtype r = calc_dist(q0, q1);
+float coulomb(float3 q0, float3 q1, float charge) {
+    float r = calc_dist(q0, q1);
 
     return 1.f * charge / (r + SOFTENING_FACTOR);
 }

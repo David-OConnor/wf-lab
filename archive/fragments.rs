@@ -225,3 +225,27 @@ fn _numerical_psi_ps(trial_base_sto: &Basis, grid_posits: &Arr3dVec, V: &Arr3dRe
     println!("V' corner: Blue {}  Grey {}", V_p_corner, V_p_psi);
     // println!("V'' corner: Blue {}  Grey {}", V_pp_corner, V_pp_psi);
 }
+
+fn find_base_xi_E_discrete(
+    V: &Arr3dReal,
+    grid_posits: &Arr3dVec,
+    // base_xi_specified: f64
+) -> (f64, f64) {
+    // Set energy so that at a corner, (or edge, ie as close to +/- infinity as we have given a grid-based V)
+    // V calculated from this basis matches the potential at this point.
+    let index_halfway = V[0].len() / 2;
+
+    let posit_corner = grid_posits[0][0][0];
+    let posit_sample = grid_posits[index_halfway][0][0];
+
+    let V_corner = V[0][0][0];
+    let V_sample = V[index_halfway][0][0];
+
+    find_base_xi_E_common(
+        V_corner,
+        posit_corner,
+        V_sample,
+        posit_sample,
+        // base_xi_specified,
+    )
+}

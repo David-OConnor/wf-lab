@@ -54,17 +54,18 @@ pub fn run_coulomb(
 
     let kernel = dev.get_func("cuda", "coulomb_kernel").unwrap();
 
-    const NUM_THREADS: u32 = 1024;
-    // const NUM_THREADS: u32 = 1;
-    let num_blocks = (n_samples as u32 + NUM_THREADS - 1) / NUM_THREADS;
-
     let cfg = LaunchConfig::for_num_elems(n_samples as u32);
 
-    // Custom launch config for 2-dimensional data (?)
-    let cfg = LaunchConfig {
-        grid_dim: (num_blocks, 1, 1),
-        block_dim: (NUM_THREADS, 1, 1),
-        shared_mem_bytes: 0,
+    let cfg = {
+        const NUM_THREADS: u32 = 1024;
+        let num_blocks = (n_samples as u32 + NUM_THREADS - 1) / NUM_THREADS;
+
+        // Custom launch config for 2-dimensional data (?)
+        LaunchConfig {
+            grid_dim: (num_blocks, 1, 1),
+            block_dim: (NUM_THREADS, 1, 1),
+            shared_mem_bytes: 0,
+        }
     };
 
     unsafe {
@@ -256,15 +257,20 @@ pub(crate) fn sto_vals_or_derivs(
         ])
         .unwrap();
 
-    // if/else here a workaround for out of resources error.
-    let kernel = if deriv {
-        dev.get_func("cuda", "sto_deriv_kernel").unwrap()
-    } else {
-        dev.get_func("cuda", "sto_val_or_deriv_kernel").unwrap()
-    };
-    // let kernel = dev.get_func("cuda", "sto_val_or_deriv_kernel").unwrap();
+    let kernel = dev.get_func("cuda", "sto_val_or_deriv_kernel").unwrap();
 
-    let cfg = LaunchConfig::for_num_elems(n_samples as u32);
+    // let cfg = LaunchConfig::for_num_elems(n_samples as u32);
+    let cfg = {
+        const NUM_THREADS: u32 = 768; // 1_024 is triggering `OUT_OF_RESOURCES`.
+        let num_blocks = (n_samples as u32 + NUM_THREADS - 1) / NUM_THREADS;
+
+        // Custom launch config for 2-dimensional data (?)
+        LaunchConfig {
+            grid_dim: (num_blocks, 1, 1),
+            block_dim: (NUM_THREADS, 1, 1),
+            shared_mem_bytes: 0,
+        }
+    };
 
     unsafe {
         kernel.launch(
@@ -275,15 +281,12 @@ pub(crate) fn sto_vals_or_derivs(
                 &posit_nuc_gpu,
                 xi as FDev,
                 n,
-                // deriv,
+                deriv,
                 n_samples,
             ),
         )
     }
     .unwrap();
-
-    // todo: experimenting/TS
-    // dev.synchronize().unwrap();
 
     let result_psi = dev.dtoh_sync_copy(&psi).unwrap();
 
@@ -316,7 +319,18 @@ pub(crate) fn sto_vals_derivs(
         .unwrap();
 
     let kernel = dev.get_func("cuda", "sto_val_deriv_kernel").unwrap();
-    let cfg = LaunchConfig::for_num_elems(n_samples as u32);
+
+    let cfg = {
+        const NUM_THREADS: u32 = 768; // 1_024 is triggering `OUT_OF_RESOURCES`.
+        let num_blocks = (n_samples as u32 + NUM_THREADS - 1) / NUM_THREADS;
+
+        // Custom launch config for 2-dimensional data (?)
+        LaunchConfig {
+            grid_dim: (num_blocks, 1, 1),
+            block_dim: (NUM_THREADS, 1, 1),
+            shared_mem_bytes: 0,
+        }
+    };
 
     unsafe {
         kernel.launch(

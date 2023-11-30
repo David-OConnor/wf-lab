@@ -44,8 +44,6 @@ fn find_base_xi_E_common(
     posit_sample: Vec3,
     // base_xi_specified: f64,
 ) -> (f64, f64) {
-    // todo: Try at different ns, one the `value` and `second_deriv` there for STOs are set up appropritaely.
-
     let mut best_xi_i = 0;
     let mut smallest_diff = 99999.;
     // This isn't perhaps an ideal apperoach, but try it to find the baseline xi.
@@ -56,7 +54,7 @@ fn find_base_xi_E_common(
     for (i, trial_xi) in trial_base_xis.iter().enumerate() {
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
-            n: 1,
+            n: 1,                    // todo: Maybe don't hard-set.,
             xi: *trial_xi,
             weight: 1.,
             charge_id: 0,
@@ -80,6 +78,8 @@ fn find_base_xi_E_common(
             best_xi_i = i;
             smallest_diff = diff;
         }
+
+        println!("XI: {:?}, Diff: {}", trial_xi, diff);
     }
 
     let base_xi = trial_base_xis[best_xi_i];
@@ -90,6 +90,7 @@ fn find_base_xi_E_common(
 
     // todo temp?
     // let base_xi = base_xi_specified;
+    // let base_xi = 1.50; // todo t!
 
     // Note: We calculate this above in `Es`, but not if we override it as here.
     let E = find_E_from_base_xi(base_xi, V_corner, posit_corner);
@@ -98,36 +99,12 @@ fn find_base_xi_E_common(
 }
 
 fn find_base_xi_E(
-    V: &Arr3dReal,
-    grid_posits: &Arr3dVec,
-    // base_xi_specified: f64
-) -> (f64, f64) {
-    // Set energy so that at a corner, (or edge, ie as close to +/- infinity as we have given a grid-based V)
-    // V calculated from this basis matches the potential at this point.
-    let index_halfway = V[0].len() / 2;
-
-    let posit_corner = grid_posits[0][0][0];
-    let posit_sample = grid_posits[index_halfway][0][0];
-
-    let V_corner = V[0][0][0];
-    let V_sample = V[index_halfway][0][0];
-
-    find_base_xi_E_common(
-        V_corner,
-        posit_corner,
-        V_sample,
-        posit_sample,
-        // base_xi_specified,
-    )
-}
-
-fn find_base_xi_E_type2(
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
     // base_xi_specified: f64,
 ) -> (f64, f64) {
-    const SAMPLE_DIST: f64 = 3.;
+    const SAMPLE_DIST: f64 = 15.;
     let posit_corner = Vec3::new(SAMPLE_DIST, SAMPLE_DIST, SAMPLE_DIST);
     let posit_sample = Vec3::new(SAMPLE_DIST, 0., 0.);
 
@@ -326,12 +303,9 @@ pub fn run(
     sample_pts: &[Vec3],
     xis: &[f64],
 ) -> (Vec<Basis>, f64) {
-    let mut xis = Vec::from(xis); // todo: Experimenting with adding more
-                                  // xis.push(7.);
-                                  // xis.push(8.);
-                                  // xis.push(9.);
+    let mut xis = Vec::from(xis);
 
-    let (base_xi, E) = find_base_xi_E_type2(charges_fixed, charge_elec, grid_charge);
+    let (base_xi, E) = find_base_xi_E(charges_fixed, charge_elec, grid_charge);
     // xis[0]);
 
     xis[0] = base_xi;
