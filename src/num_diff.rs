@@ -9,7 +9,7 @@ use crate::{basis_wfs::Basis, complex_nums::Cplx};
 // Used for calculating numerical ψ''.
 // Smaller is more accurate. Too small might lead to numerical issues though (?)
 // Applies to dx, dy, and dz
-pub const H: f64 = 0.001;
+pub const H: f64 = 0.01;
 pub const H_SQ: f64 = H * H;
 
 /// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.

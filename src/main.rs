@@ -59,8 +59,8 @@ use crate::{
 const NUM_SURFACES: usize = 11;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 16.;
-const GRID_MAX_CHARGE: f64 = 18.;
+const GRID_MAX_RENDER: f64 = 6.;
+const GRID_MAX_CHARGE: f64 = 12.;
 const GRID_N_RENDER_DEFAULT: usize = 80;
 const GRID_N_CHARGE_DEFAULT: usize = 91;
 
@@ -363,20 +363,16 @@ fn main() {
     #[cfg(not(feature = "cuda"))]
     let dev = ComputationDevice::Cpu;
 
+    let ui_active_elec = 0;
+    let max_basis_n = 1;
+    let num_elecs = 1;
+
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
     let nuclei = vec![
-        // (posit_charge_1, Q_PROT * 2.), // helium
-        (posit_charge_1, Q_PROT * 3.), // lithium
-                                       // (posit_charge_1, Q_PROT * 1.), // Hydrogen
-                                       // (posit_charge_2, Q_PROT),
-                                       // (Vec3::new(0., 1., 0.), Q_ELEC),
+        (posit_charge_1, Q_PROT * num_elecs as f64),
     ];
-
-    let ui_active_elec = 0;
-    let max_basis_n = 2;
-    let num_elecs = 3;
 
     // Outer of these is per-elec.
     let mut bases_per_elec = Vec::new();

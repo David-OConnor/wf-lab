@@ -86,7 +86,7 @@ pub fn initialize_bases(
             // (4.39628, 0.04082),
             // (6.52699, -0.00994),
             // (7.94252, 0.00230),
-            (1., 1.),
+            (1., 0.7),
             // (1.7, 0.),
             // (1.6, 0.),
             (2., 0.),
@@ -195,15 +195,7 @@ pub fn wf_from_bases(
                     psi[basis_i][i][j][k] = basis.value(posit_sample);
 
                     if let Some(ref mut pp) = psi_pp {
-                        if basis.n() >= 2 {
-                            pp[basis_i][i][j][k] = num_diff::find_ψ_pp_num_fm_bases(
-                                posit_sample,
-                                &[basis.clone()],
-                                psi[basis_i][i][j][k],
-                            );
-                        } else {
-                            pp[basis_i][i][j][k] = basis.second_deriv(posit_sample);
-                        }
+                        pp[basis_i][i][j][k] =  second_deriv(psi[basis_i][i][j][k], &basis, posit_sample);
                     }
 
                     add_to_norm(&mut norm, psi[basis_i][i][j][k]);
@@ -231,17 +223,6 @@ pub fn mix_bases(
 ) {
     // todo: GPU option?
     let mut norm = 0.;
-    //
-    // // This approach allows us to take advantage of the bases being already normalized, saving us
-    // // computation here. This same concept allows us (elsewhere) to normalize arbitrary points without computing
-    // // psi over all space.
-    // // todo: Not working!
-    // let mut weight_sq_sum = 0.;
-    // for w in weights {
-    //     // weight_sq_sum += w.powi(2);
-    //     // weight_sq_sum += w.sqrt();
-    //     weight_sq_sum += w.abs();
-    // }
 
     for (i, j, k) in iter_arr!(grid_n) {
         psi[i][j][k] = Cplx::new_zero();
@@ -445,8 +426,10 @@ pub fn calc_E_from_bases(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> 
         // let weight = weights[i];
 
         // psi_pp_div_psi += weight * basis.psi_pp_div_psi(posit_corner);
-        psi += weight * basis.value(posit_corner);
-        psi_pp += weight * basis.second_deriv(posit_corner);
+        let psi_this = weight * basis.value(posit_corner);
+        psi += psi_this;
+
+        psi_pp += second_deriv(psi_this, basis, posit_corner);
     }
 
     // todo: WIth the psi_pp_div_psi shortcut, you appear to be getting normalization issues.
@@ -456,17 +439,17 @@ pub fn calc_E_from_bases(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> 
 /// Combine electron charges into a single array, not to include the electron acted on.
 pub(crate) fn combine_electron_charges(
     elec_id: usize,
-    charges_electron: &[Arr3dReal],
+    charges_by_electron: &[Arr3dReal],
     grid_n_charge: usize,
 ) -> Arr3dReal {
     // todo: Consider modify in place instead of creating something new.
     let mut result = new_data_real(grid_n_charge);
 
-    for (i_charge, charge_from_elec) in charges_electron.iter().enumerate() {
+    for (i_charge, charge_from_elec) in charges_by_electron.iter().enumerate() {
         if i_charge == elec_id {
             continue;
         }
-        let mut sum = 0.; // todo confirming
+        let mut sum = 0.; // todo confirmation heuristic
 
         for (i, j, k) in iter_arr!(grid_n_charge) {
             result[i][j][k] += charge_from_elec[i][j][k];
@@ -490,6 +473,19 @@ pub(crate) fn sto_vals_derivs_cpu(
         let posit_sample = grid_posits[i][j][k];
 
         psi[i][j][k] = basis.value(posit_sample);
-        psi_pp[i][j][k] = basis.second_deriv(posit_sample);
+        psi_pp[i][j][k] = second_deriv(psi[i][j][k], basis, posit_sample);
+    }
+}
+
+/// Helper fn to help manage numerical vs analytic second derivs.
+pub fn second_deriv(psi: Cplx, basis: &Basis, posit: Vec3) -> Cplx {
+    if basis.n() >= 2 {
+        num_diff::find_ψ_pp_num_fm_bases(
+            posit,
+            &[basis.clone()],
+            psi,
+        )
+    } else {
+        basis.second_deriv(posit)
     }
 }

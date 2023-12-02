@@ -144,12 +144,25 @@ pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
     // We experience numerica problems with n >= 2, at least when calculated using numeric methods.
     // if psi.real < EPS_DIV0 && psi.im < EPS_DIV0 {
     // todo: THis bandaid is having some effect, but there are still problems.
-    // if psi.real.abs() < 0.00001 && psi.im.abs() < 0.00001 {
-    if (psi.real - psi_pp.real).abs() < 0.00000001 {
-    // if psi.abs_sq() < 0.00000001 {
-        println!("Psi: {:?}, Psi'': {:?}", psi.real, psi_pp.real);
-        return 0.;
-    }
+    // if psi.real.abs() < 0.000001 && psi_pp.real.abs() < 0.000001 {
+        // return -1.;
+    // }
+
+    // if (psi.real - psi_pp.real).abs() < 0.00000001 {
+    // // if psi.abs_sq() < 0.00000001 {
+    //     println!("Psi: {:?}, Psi'': {:?}", psi.real, psi_pp.real);
+    //     return 0.;
+    // }
+
+    // if (psi_pp / psi).real > 10. {
+        // println!("uhoh Psi: {:?}, Psi'': {:?}", psi.real, psi_pp.real);
+        // return 10.
+    // }
+
+    // if (psi_pp / psi).real.abs() > 10. {
+    //     println!(">1.: Psi: {:?}, Psi'': {:?}", psi.real, psi_pp.real);
+    //     return 0.
+    // }
 
     // psi''/psi is always real, due to being an eigenvalue of a Hermitian operator.
     // todo: What's going on? Why do we need to invert E here?

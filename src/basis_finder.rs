@@ -2,17 +2,7 @@
 
 use lin_alg2::f64::Vec3;
 
-use crate::{
-    basis_wfs::{Basis, Sto},
-    complex_nums::Cplx,
-    eigen_fns::{calc_E_on_psi, calc_V_on_psi},
-    grid_setup::{new_data, new_data_real, Arr3dReal, Arr3dVec},
-    iter_arr,
-    potential::{self, V_coulomb},
-    types::ComputationDevice,
-    util,
-    wf_ops::Q_ELEC,
-};
+use crate::{basis_wfs::{Basis, Sto}, complex_nums::Cplx, eigen_fns::{calc_E_on_psi, calc_V_on_psi}, grid_setup::{new_data, new_data_real, Arr3dReal, Arr3dVec}, iter_arr, potential::{self, V_coulomb}, types::ComputationDevice, util, wf_ops, wf_ops::Q_ELEC};
 
 use crate::eigen_fns::KE_COEFF_INV;
 
@@ -32,7 +22,7 @@ fn find_E_from_base_xi(base_xi: f64, V_corner: f64, posit_corner: Vec3) -> f64 {
     });
 
     let psi_corner = base_sto.value(posit_corner);
-    let psi_pp_corner = base_sto.second_deriv(posit_corner);
+    let psi_pp_corner =  wf_ops::second_deriv(psi_corner, &base_sto, posit_corner);
 
     calc_E_on_psi(psi_corner, psi_pp_corner, V_corner)
 }
@@ -62,7 +52,8 @@ fn find_base_xi_E_common(
         });
 
         let psi_corner = sto.value(posit_corner);
-        let psi_pp_corner = sto.second_deriv(posit_corner);
+        let psi_pp_corner =  wf_ops::second_deriv(psi_corner, &sto, posit_corner);
+
         let E_ = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
         Es[i] = E_;
 
@@ -70,7 +61,8 @@ fn find_base_xi_E_common(
         // see how close it is.
 
         let psi = sto.value(posit_sample);
-        let psi_pp = sto.second_deriv(posit_sample);
+        let psi_pp =  wf_ops::second_deriv(psi, &sto, posit_sample);
+
         let V_from_psi = calc_V_on_psi(psi, psi_pp, E_);
 
         let diff = (V_from_psi - V_sample).abs();
@@ -233,8 +225,9 @@ fn find_bases_system_of_eqs(
         // for posit_sample in &sample_pts[i_range.clone()] {
         for posit_sample in sample_pts {
             // todo: Real-only for now while building the algorithm, but in general, these are complex.
-            psi_mat_.push(sto.value(*posit_sample).real);
-            psi_pp_mat_.push(sto.second_deriv(*posit_sample).real);
+            let psi = sto.value(*posit_sample);
+            psi_mat_.push(psi.real);
+            psi_pp_mat_.push(wf_ops::second_deriv(psi, &sto, *posit_sample).real);
         }
     }
 

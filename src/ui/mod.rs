@@ -566,7 +566,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 .selected_text(active_elec_text)
                 .show_ui(ui, |ui| {
                     // A value to select the composite wave function.
-                    ui.selectable_value(&mut state.ui.active_elec, ActiveElec::Combined, "C");
+                    // ui.selectable_value(&mut state.ui.active_elec, ActiveElec::Combined, "C");
 
                     // A value for each individual electron
                     for i in 0..state.surfaces_per_elec.len() {
@@ -580,16 +580,19 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             // Show the new active electron's meshes, if it changed.
             if state.ui.active_elec != prev_active_elec {
-                // Auto update V acting on.
-                // let ae = match state.ui.active_elec {
-                //     ActiveElec::Combined => 0,
-                //     ActiveElec::PerElec(a) => a,
-                // };
-
-                // procedures::update_V_acting_on_elec(
-                //     state,
-                //     ae
-                // );
+                // Create charge from all other electrons.
+                for ae in 0..state.surfaces_per_elec.len() {
+                    // if ae == state.ui.active_elec {
+                    //     continue
+                    // }
+                    let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
+                    procedures::create_elec_charge(
+                        &mut state.charges_from_electron[ae],
+                        &state.psi_charge[ae],
+                        &weights,
+                        state.grid_n_charge,
+                    );
+                }
 
                 updated_E_or_V = true;
                 updated_meshes = true;
