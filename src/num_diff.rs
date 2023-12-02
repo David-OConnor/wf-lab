@@ -59,7 +59,6 @@ pub(crate) fn find_ψ_pp_num_fm_bases(
     bases: &[Basis],
     // We pass this as an argument since it's likely already been calculated.
     ψ_sample_loc: Cplx,
-    // norm_sqrt: f64,
 ) -> Cplx {
     let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
     let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
@@ -83,13 +82,6 @@ pub(crate) fn find_ψ_pp_num_fm_bases(
         psi_z_prev += basis.value(z_prev);
         psi_z_next += basis.value(z_next);
     }
-
-    // psi_x_prev = psi_x_prev / norm_sqrt;
-    // psi_x_next = psi_x_next / norm_sqrt;
-    // psi_y_prev = psi_y_prev / norm_sqrt;
-    // psi_y_next = psi_y_next / norm_sqrt;
-    // psi_z_prev = psi_z_prev / norm_sqrt;
-    // psi_z_next = psi_z_next / norm_sqrt;
 
     // Note: We currently handle norm downstream.
 

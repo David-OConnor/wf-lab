@@ -44,9 +44,9 @@ double sto_val_f64(double3 posit_sample, double3 posit_nuc, double xi, uint16_t 
 
     uint16_t lg_l = n - l - 1;
     uint16_t lg_r = 2 * l + 1;
-    double lg_input = 2.f * r / n;
+    double lg_input = 2. * r / n;
 
-    double polynomial_term = std::pow(2.f * r / n, l) * laguerre(lg_l, lg_r, lg_input);
+    double polynomial_term = std::pow(2. * r / n, l) * laguerre(lg_l, lg_r, lg_input);
 
     return norm_term(n, l)
         * polynomial_term
@@ -91,29 +91,19 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
     return norm_term(n, l) * result;
 }
 
-// We use `double` here, due to numerical problems with `float`.
+// We use `double` here, due to numerical problems with `float`
+// todo: Still experiencing numerical or related problems after this change.
 __device__
 dtype find_psi_pp_num(
     dtype3 posit_sample_,
     dtype3 posit_nuc_,
-//     dtype xi,
-//     double3 posit_sample_,
-//     double3 posit_nuc_,
     double xi,
     uint16_t n,
     uint16_t l,
-//     dtype psi_sample_loc
     double psi_sample_loc
 ) {
-//     dtype3 x_prev;
-//     dtype3 x_next;
-//     dtype3 y_prev;
-//     dtype3 y_next;
-//     dtype3 z_prev;
-//     dtype3 z_next;
-
-    double3 posit_sample;
-    double3 posit_nuc;
+   double3 posit_sample;
+   double3 posit_nuc;
 
    posit_sample.x = static_cast<double>(posit_sample_.x);
    posit_sample.y = static_cast<double>(posit_sample_.y);
@@ -161,10 +151,9 @@ dtype find_psi_pp_num(
     dtype psi_z_next = sto_val_f64(z_next, posit_nuc, xi, n, l);
 
 
-    return static_cast<float>(psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-//         - psi_sample_loc * 6.f)
+    return static_cast<float>((psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - psi_sample_loc * 6.)
-        / H_SQ;
+        / H_SQ);
 }
 
 // In this approach, we parallelize operations per sample, but run the
@@ -198,8 +187,6 @@ void coulomb_kernel(
 }
 
 // Note that this is for the radial component only, with n=1. Real.
-// __launch_bounds__(maxThreadsPerBlock, minBlocksPerMultiprocessor)
-// __launch_bounds__(256, 2)
 extern "C" __global__
 void sto_val_or_deriv_kernel(
     dtype *out,
@@ -211,6 +198,7 @@ void sto_val_or_deriv_kernel(
     size_t N_samples
 ) {
     size_t index = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t stride = blockDim.x * gridDim.x;
 
     for (size_t i = index; i < N_samples; i += stride) {
         if (deriv == true) {

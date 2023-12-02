@@ -141,8 +141,14 @@ pub fn _find_E_2_elec(
 /// Calculate the V that must be acting on a given psi, and its (known to be accurate, eg numerical
 /// differention) derivative.
 pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
-    if psi.real < EPS_DIV0 && psi.im < EPS_DIV0 {
-        // return 0.;
+    // We experience numerica problems with n >= 2, at least when calculated using numeric methods.
+    // if psi.real < EPS_DIV0 && psi.im < EPS_DIV0 {
+    // todo: THis bandaid is having some effect, but there are still problems.
+    // if psi.real.abs() < 0.00001 && psi.im.abs() < 0.00001 {
+    if (psi.real - psi_pp.real).abs() < 0.00000001 {
+    // if psi.abs_sq() < 0.00000001 {
+        println!("Psi: {:?}, Psi'': {:?}", psi.real, psi_pp.real);
+        return 0.;
     }
 
     // psi''/psi is always real, due to being an eigenvalue of a Hermitian operator.
@@ -153,9 +159,9 @@ pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
 
 /// A mirror of `calc_V_on_psi`.
 pub fn calc_E_on_psi(psi: Cplx, psi_pp: Cplx, V: f64) -> f64 {
-    if psi.real < EPS_DIV0 && psi.im < EPS_DIV0 {
+    // if psi.real < EPS_DIV0 && psi.im < EPS_DIV0 {
         // return -V;
-    }
+    // }
 
     // psi''/psi is always real, due to being an eigenvalue of a Hermitian operator.
     // todo: As above, why are we inverting E here?

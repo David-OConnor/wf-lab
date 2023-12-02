@@ -438,7 +438,7 @@ fn bottom_items(
         }
 
         if ui.add(egui::Button::new("Find E")).clicked() {
-            state.surfaces_shared.E = wf_ops::E_from_trial(
+            state.surfaces_shared.E = wf_ops::calc_E_from_bases(
                 &state.bases[ae],
                 state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
                 state.surfaces_shared.grid_posits[0][0][0],

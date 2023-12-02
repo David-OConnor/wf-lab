@@ -143,73 +143,53 @@ pub fn wf_from_bases(
     }
 
     for (basis_i, basis) in bases.iter().enumerate() {
-        match dev {
-            #[cfg(feature = "cuda")]
-            ComputationDevice::Gpu(cuda_dev) => {
-                let (psi_flat, psi_pp_flat) = if psi_pp.is_some() {
-                    // Calculate both using the same kernel.
-                    let (a, b) = gpu::sto_vals_derivs(
-                        cuda_dev,
-                        basis.xi(),
-                        basis.n(),
-                        &posits_flat.as_ref().unwrap(),
-                        basis.posit(),
-                    );
-                    (a, Some(b))
-                } else {
-                    (
-                        gpu::sto_vals_or_derivs(
-                            cuda_dev,
-                            basis.xi(),
-                            basis.n(),
-                            &posits_flat.as_ref().unwrap(),
-                            basis.posit(),
-                            false,
-                        ),
-                        None,
-                    )
-                };
+        // todo: Temp forcing CPU only while we confirm numerical stability issues with f32
+        // todo on GPU aren't causing a problem.
 
-                // let psi_flat = gpu::sto_vals_or_derivs(
-                //     cuda_dev,
-                //     basis.xi(),
-                //     basis.n(),
-                //     &posits_flat.as_ref().unwrap(),
-                //     basis.posit(),
-                //     false,
-                // );
-                //
-                // // todo: Use the combined kernnel once you sort out out-of-resources.
-                // let psi_pp_flat = if psi_pp.is_some() {
-                //     Some(gpu::sto_vals_or_derivs(
-                //         cuda_dev,
-                //         basis.xi(),
-                //         basis.n(),
-                //         &posits_flat.as_ref().unwrap(),
-                //         basis.posit(),
-                //         true,
-                //     ))
-                // } else {
-                //     None
-                // };
-
-                let grid_n_sq = grid_n.pow(2);
-
-                // This is similar to util::unflatten, but with norm involved.
-                // todo: Try to use unflatten.
-                for (i, j, k) in iter_arr!(grid_n) {
-                    let i_flat = i * grid_n_sq + j * grid_n + k;
-                    psi[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
-
-                    if let Some(pp) = psi_pp.as_mut() {
-                        pp[basis_i][i][j][k] =
-                            Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
-                    }
-
-                    add_to_norm(&mut norm, psi[basis_i][i][j][k]);
-                }
-            }
-            ComputationDevice::Cpu => {
+        // match dev {
+        //     #[cfg(feature = "cuda")]
+        //     ComputationDevice::Gpu(cuda_dev) => {
+        //         let (psi_flat, psi_pp_flat) = if psi_pp.is_some() {
+        //             // Calculate both using the same kernel.
+        //             let (a, b) = gpu::sto_vals_derivs(
+        //                 cuda_dev,
+        //                 basis.xi(),
+        //                 basis.n(),
+        //                 &posits_flat.as_ref().unwrap(),
+        //                 basis.posit(),
+        //             );
+        //             (a, Some(b))
+        //         } else {
+        //             (
+        //                 gpu::sto_vals_or_derivs(
+        //                     cuda_dev,
+        //                     basis.xi(),
+        //                     basis.n(),
+        //                     &posits_flat.as_ref().unwrap(),
+        //                     basis.posit(),
+        //                     false,
+        //                 ),
+        //                 None,
+        //             )
+        //         };
+        //
+        //         let grid_n_sq = grid_n.pow(2);
+        //
+        //         // This is similar to util::unflatten, but with norm involved.
+        //         // todo: Try to use unflatten.
+        //         for (i, j, k) in iter_arr!(grid_n) {
+        //             let i_flat = i * grid_n_sq + j * grid_n + k;
+        //             psi[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
+        //
+        //             if let Some(pp) = psi_pp.as_mut() {
+        //                 pp[basis_i][i][j][k] =
+        //                     Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
+        //             }
+        //
+        //             add_to_norm(&mut norm, psi[basis_i][i][j][k]);
+        //         }
+        //     }
+        //     ComputationDevice::Cpu => {
                 for (i, j, k) in iter_arr!(grid_n) {
                     let posit_sample = grid_posits[i][j][k];
                     psi[basis_i][i][j][k] = basis.value(posit_sample);
@@ -218,7 +198,7 @@ pub fn wf_from_bases(
                         if basis.n() >= 2 {
                             pp[basis_i][i][j][k] = num_diff::find_ψ_pp_num_fm_bases(
                                 posit_sample,
-                                &[basis.clone()], // todo: Don't clone
+                                &[basis.clone()],
                                 psi[basis_i][i][j][k],
                             );
                         } else {
@@ -228,8 +208,8 @@ pub fn wf_from_bases(
 
                     add_to_norm(&mut norm, psi[basis_i][i][j][k]);
                 }
-            }
-        }
+        //     }
+        // }
 
         util::normalize_arr(&mut psi[basis_i], norm);
         if psi_pp.is_some() {
@@ -270,10 +250,7 @@ pub fn mix_bases(
         }
 
         for (i_basis, weight) in weights.iter().enumerate() {
-            // let scaler = weight / weight_sq_sum;
-            // let scaler = weight / weight_sq_sum.powi(2);
-            // let scaler = weight / weight_sq_sum.sqrt();
-            let scaler = *weight; // todo t
+            let scaler = *weight;
 
             psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
 
@@ -447,13 +424,11 @@ pub fn update_eigen_vals(
     }
 }
 
-/// Calculate E from a trial wave function. We assume V goes to 0 at +/- ∞
-/// note that this appears to approach the eneryg, but doens't hit it.
-pub fn E_from_trial(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> f64 {
+/// Calculate E using the bases save functions. We assume V goes to 0 at +/- ∞, so
+/// edges are, perhaps, a good sample point for this calculation.
+pub fn calc_E_from_bases(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> f64 {
     // Important: eval_pt should be close to +- infinity, but doing so may cause numerical issues
     // as both psi and psi'' go to 0.
-    // todo: Ideally with analytic bases, we use the analytic second derivative, but we're currently
-    // todo having trouble with it.
 
     let mut psi = Cplx::new_zero();
     let mut psi_pp = Cplx::new_zero();
@@ -474,10 +449,8 @@ pub fn E_from_trial(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> f64 {
         psi_pp += weight * basis.second_deriv(posit_corner);
     }
 
-    // todo: WIth this psi_pp_div_psi shortcut, you appear to be getting normalization issues.
-
-    // todo: Why do we need to flip the sign?
-    KE_COEFF * (psi_pp / psi).real - V_corner
+    // todo: WIth the psi_pp_div_psi shortcut, you appear to be getting normalization issues.
+    eigen_fns::calc_E_on_psi(psi, psi_pp, V_corner)
 }
 
 /// Combine electron charges into a single array, not to include the electron acted on.

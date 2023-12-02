@@ -17,14 +17,10 @@ __device__
 const dtype A_0 = 1.f;
 __device__
 const dtype EPS_DIV0 = 0.00000000001f;
-// __device__
-// const dtype H = 0.1f;
-// __device__
-// const dtype H_SQ = 0.1f * 0.1f;
 __device__
-const dtype H = 0.1;
+const double H = 0.01;
 __device__
-const dtype H_SQ = 0.1 * 0.1;
+const double H_SQ = 0.01 * 0.01;
 
 __device__
 dtype laguerre(uint16_t n, uint16_t alpha, dtype x) {
@@ -33,9 +29,9 @@ dtype laguerre(uint16_t n, uint16_t alpha, dtype x) {
     } else if (n == 1) {
         return alpha + 1.f - x;
     } else if (n == 2) {
-        return std::pow(x, 2) / 2. - (alpha + 2.f) * x + (alpha + 1.f) * (alpha + 2.f) / 2.;
+        return std::pow(x, 2) / 2.f - (alpha + 2.f) * x + (alpha + 1.f) * (alpha + 2.f) / 2.f;
     } else {
-        return 0.; // todo: Implement.
+        return 0.f; // todo: Implement.
     }
 }
 
@@ -58,8 +54,6 @@ double calc_dist_f64(double3 point0, double3 point1) {
 
     return std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
 }
-
-
 
 __device__
 uint32_t factorial(uint8_t val) {

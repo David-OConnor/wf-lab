@@ -376,7 +376,7 @@ fn main() {
 
     let ui_active_elec = 0;
     let max_basis_n = 2;
-    let num_elecs = 1;
+    let num_elecs = 3;
 
     // Outer of these is per-elec.
     let mut bases_per_elec = Vec::new();
