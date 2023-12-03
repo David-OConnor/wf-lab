@@ -190,16 +190,16 @@ pub fn wf_from_bases(
         //         }
         //     }
         //     ComputationDevice::Cpu => {
-                for (i, j, k) in iter_arr!(grid_n) {
-                    let posit_sample = grid_posits[i][j][k];
-                    psi[basis_i][i][j][k] = basis.value(posit_sample);
+        for (i, j, k) in iter_arr!(grid_n) {
+            let posit_sample = grid_posits[i][j][k];
+            psi[basis_i][i][j][k] = basis.value(posit_sample);
 
-                    if let Some(ref mut pp) = psi_pp {
-                        pp[basis_i][i][j][k] =  second_deriv(psi[basis_i][i][j][k], &basis, posit_sample);
-                    }
+            if let Some(ref mut pp) = psi_pp {
+                pp[basis_i][i][j][k] = second_deriv(psi[basis_i][i][j][k], &basis, posit_sample);
+            }
 
-                    add_to_norm(&mut norm, psi[basis_i][i][j][k]);
-                }
+            add_to_norm(&mut norm, psi[basis_i][i][j][k]);
+        }
         //     }
         // }
 
@@ -480,11 +480,7 @@ pub(crate) fn sto_vals_derivs_cpu(
 /// Helper fn to help manage numerical vs analytic second derivs.
 pub fn second_deriv(psi: Cplx, basis: &Basis, posit: Vec3) -> Cplx {
     if basis.n() >= 2 {
-        num_diff::find_ψ_pp_num_fm_bases(
-            posit,
-            &[basis.clone()],
-            psi,
-        )
+        num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi)
     } else {
         basis.second_deriv(posit)
     }

@@ -2,12 +2,46 @@
 
 use lin_alg2::f64::Vec3;
 
-use crate::{basis_wfs::{Basis, Sto}, complex_nums::Cplx, eigen_fns::{calc_E_on_psi, calc_V_on_psi}, grid_setup::{new_data, new_data_real, Arr3dReal, Arr3dVec}, iter_arr, potential::{self, V_coulomb}, types::ComputationDevice, util, wf_ops, wf_ops::Q_ELEC};
+use crate::{
+    basis_wfs::{Basis, Sto},
+    complex_nums::Cplx,
+    eigen_fns::{calc_E_on_psi, calc_V_on_psi},
+    grid_setup::{new_data, new_data_real, Arr3dReal, Arr3dVec},
+    iter_arr,
+    potential::{self, V_coulomb},
+    types::ComputationDevice,
+    util, wf_ops,
+    wf_ops::Q_ELEC,
+};
 
 use crate::eigen_fns::KE_COEFF_INV;
 
 use ndarray::prelude::*;
 use ndarray_linalg::SVD;
+
+pub fn generate_sample_pts() -> Vec<Vec3> {
+    // It's important that these sample points span points both close and far from the nuclei.
+
+    // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
+    let sample_dists = [
+        // 10., 5., 3., 2., 1.5, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1
+        // 10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.4, 0.3,
+        // 10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.4,
+        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7,
+    ];
+
+    // println!("\nSample dists: {:?}", sample_dists);
+
+    let mut result = Vec::new();
+    for dist in sample_dists {
+        // todo: Add back in the others, but for now skipping other dims due to spherical potentials.
+        result.push(Vec3::new(dist, 0., 0.));
+        // sample_pts_all.push(Vec3::new(0., dist, 0.));
+        // sample_pts_all.push(Vec3::new(0., 0., dist));
+    }
+
+    result
+}
 
 fn find_E_from_base_xi(base_xi: f64, V_corner: f64, posit_corner: Vec3) -> f64 {
     // Now that we've identified the base Xi, use it to calculate the energy of the system.
@@ -22,7 +56,7 @@ fn find_E_from_base_xi(base_xi: f64, V_corner: f64, posit_corner: Vec3) -> f64 {
     });
 
     let psi_corner = base_sto.value(posit_corner);
-    let psi_pp_corner =  wf_ops::second_deriv(psi_corner, &base_sto, posit_corner);
+    let psi_pp_corner = wf_ops::second_deriv(psi_corner, &base_sto, posit_corner);
 
     calc_E_on_psi(psi_corner, psi_pp_corner, V_corner)
 }
@@ -41,18 +75,18 @@ fn find_base_xi_E_common(
 
     let mut Es = vec![0.; trial_base_xis.len()];
 
-    for (i, trial_xi) in trial_base_xis.iter().enumerate() {
+    for (i, xi_trial) in trial_base_xis.iter().enumerate() {
         let sto = Basis::Sto(Sto {
             posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
             n: 1,                    // todo: Maybe don't hard-set.,
-            xi: *trial_xi,
+            xi: *xi_trial,
             weight: 1.,
             charge_id: 0,
             harmonic: Default::default(),
         });
 
         let psi_corner = sto.value(posit_corner);
-        let psi_pp_corner =  wf_ops::second_deriv(psi_corner, &sto, posit_corner);
+        let psi_pp_corner = wf_ops::second_deriv(psi_corner, &sto, posit_corner);
 
         let E_ = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
         Es[i] = E_;
@@ -61,7 +95,7 @@ fn find_base_xi_E_common(
         // see how close it is.
 
         let psi = sto.value(posit_sample);
-        let psi_pp =  wf_ops::second_deriv(psi, &sto, posit_sample);
+        let psi_pp = wf_ops::second_deriv(psi, &sto, posit_sample);
 
         let V_from_psi = calc_V_on_psi(psi, psi_pp, E_);
 
@@ -71,7 +105,7 @@ fn find_base_xi_E_common(
             smallest_diff = diff;
         }
 
-        println!("XI: {:?}, Diff: {}", trial_xi, diff);
+        println!("XI: {:?}, Diff: {}", xi_trial, diff);
     }
 
     let base_xi = trial_base_xis[best_xi_i];
@@ -123,6 +157,71 @@ fn find_base_xi_E(
     )
 }
 
+// An attempt by evaluating the closest fit using different base xis.
+fn find_base_xi_E2(V_to_match: &[f64], sample_pts: &[Vec3], non_base_xis: &[f64]) -> (f64, f64) {
+    const SAMPLE_DIST: f64 = 20.;
+    let posit_corner = Vec3::new(SAMPLE_DIST, SAMPLE_DIST, SAMPLE_DIST);
+    let posit_sample = Vec3::new(SAMPLE_DIST, 0., 0.);
+
+    let mut V_corner = 0.;
+    let mut V_sample = 0.;
+
+    let trial_base_xis = util::linspace((0.5, 1.9), 50);
+    // let trial_Es = util::linspace((-1., -0.10), 20);
+    // let trial_Es = util::linspace((-1., -0.5), 40);
+
+    let mut best_score = 999999.;
+    let mut best_xi = 0.;
+    let mut best_E = 0.;
+
+    let mut xis = vec![0.];
+    for xi in non_base_xis {
+        xis.push(*xi);
+    }
+
+    // let mut Es = vec![0.; trial_base_xis.len()];
+
+    for xi_trial in &trial_base_xis {
+        xis[0] = *xi_trial;
+
+        let base_sto = Basis::Sto(Sto {
+            posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
+            n: 1,                    // todo: Maybe don't hard-set.,
+            xi: *xi_trial,
+            weight: 1.,
+            charge_id: 0,
+            harmonic: Default::default(),
+        });
+
+        let psi_corner = base_sto.value(posit_corner);
+        let psi_pp_corner = wf_ops::second_deriv(psi_corner, &base_sto, posit_corner);
+
+        let E_trial = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
+
+        // todo: You shouldn't need to loop through E; do a corner trial again.
+        // for E_trial in &trial_Es {
+        let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E_trial);
+
+        let score = score_fit(V_to_match, sample_pts, &bases, E_trial);
+
+        println!("Xi: {:.3}, E: {:.3} Score: {:.5}", xi_trial, E_trial, score);
+
+        if score < best_score {
+            best_score = score;
+            best_xi = *xi_trial;
+            best_E = E_trial;
+            // }
+        }
+    }
+
+    // let E = find_E_from_base_xi(best_xi, V_corner, posit_corner);
+    // let E = find_E_from_base_xi(best_xi, V_corner, posit_corner);
+    // let E = -0.5;
+    // let E = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
+
+    (best_xi, best_E)
+}
+
 /// Stos passed are (xi, weight)
 fn find_charge_trial_wf(
     stos: &[(f64, f64)],
@@ -167,29 +266,6 @@ fn find_charge_trial_wf(
     result
 }
 
-pub fn generate_sample_pts() -> Vec<Vec3> {
-    // It's important that these sample points span points both close and far from the nuclei.
-
-    // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
-    let sample_dists = [
-        // 10., 5., 3., 2., 1.5, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1
-        // 10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.4, 0.3,
-        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.4,
-    ];
-
-    // println!("\nSample dists: {:?}", sample_dists);
-
-    let mut result = Vec::new();
-    for dist in sample_dists {
-        // todo: Add back in the others, but for now skipping other dims due to spherical potentials.
-        result.push(Vec3::new(dist, 0., 0.));
-        // sample_pts_all.push(Vec3::new(0., dist, 0.));
-        // sample_pts_all.push(Vec3::new(0., 0., dist));
-    }
-
-    result
-}
-
 /// See Onenote: `Exploring the WF, part 7`.
 /// `V_to_match` indices correspond to `sample_pts`.
 ///
@@ -220,6 +296,7 @@ fn find_bases_system_of_eqs(
             harmonic: Default::default(),
         });
 
+        // todo: Cplx
         // todo: Experimenting with non-square matrix
         // Sample positions are the columns.
         // for posit_sample in &sample_pts[i_range.clone()] {
@@ -257,6 +334,7 @@ fn find_bases_system_of_eqs(
     }
     let base_weight = highest_weight;
 
+    // This normalization is to keep values reasonable relative to each other; it's subjective.
     let normalize_to = 1.2;
 
     let mut weights_normalized = Vec::new();
@@ -281,6 +359,31 @@ fn find_bases_system_of_eqs(
     result
 }
 
+/// Evaluate an estimated wave function, based on least-squares distance of V trial vs the V it's matching.
+/// We may use this for determining base wave function.
+fn score_fit(V_to_match: &[f64], sample_pts: &[Vec3], bases_to_eval: &[Basis], E: f64) -> f64 {
+    let mut V_from_psi = vec![0.; sample_pts.len()];
+
+    for (i, sample_pt) in sample_pts.iter().enumerate() {
+        let mut psi_this_pt = Cplx::new_zero();
+        let mut psi_pp_this_pt = Cplx::new_zero();
+
+        for basis in bases_to_eval {
+            let psi = basis.value(*sample_pt);
+            psi_this_pt += psi;
+            psi_pp_this_pt += wf_ops::second_deriv(psi, basis, *sample_pt);
+        }
+        V_from_psi[i] = calc_V_on_psi(psi_this_pt, psi_pp_this_pt, E);
+    }
+
+    let mut score = 0.;
+    for i in 0..sample_pts.len() {
+        score += (V_from_psi[i] - V_to_match[i]).powi(2);
+    }
+
+    score
+}
+
 /// Find a wave function, composed of STOs, that match a given potential. The potential is calculated
 /// in this function from charges associated with nuclei, and other electrons; these must be calculated
 /// prior to passing in as parameters.
@@ -298,8 +401,13 @@ pub fn run(
 ) -> (Vec<Basis>, f64) {
     let mut xis = Vec::from(xis);
 
-    let (base_xi, E) = find_base_xi_E(charges_fixed, charge_elec, grid_charge);
+    // let (base_xi, E) = find_base_xi_E(charges_fixed, charge_elec, grid_charge);
     // xis[0]);
+
+    let mut V_to_match =
+        potential::create_V_1d_from_elec(dev, &sample_pts, charge_elec, grid_charge, grid_n_charge);
+
+    let (base_xi, E) = find_base_xi_E2(&V_to_match, sample_pts, &xis);
 
     xis[0] = base_xi;
     println!("\nBase xi: {}. E: {}\n", base_xi, E);
@@ -325,9 +433,6 @@ pub fn run(
 
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
-
-    let mut V_to_match =
-        potential::create_V_1d_from_elec(dev, &sample_pts, charge_elec, grid_charge, grid_n_charge);
 
     // Add the charge from nucleii.
     for (i, sample_pt) in sample_pts.iter().enumerate() {

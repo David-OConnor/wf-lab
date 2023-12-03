@@ -145,7 +145,7 @@ pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
     // if psi.real < EPS_DIV0 && psi.im < EPS_DIV0 {
     // todo: THis bandaid is having some effect, but there are still problems.
     // if psi.real.abs() < 0.000001 && psi_pp.real.abs() < 0.000001 {
-        // return -1.;
+    // return -1.;
     // }
 
     // if (psi.real - psi_pp.real).abs() < 0.00000001 {
@@ -155,8 +155,8 @@ pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
     // }
 
     // if (psi_pp / psi).real > 10. {
-        // println!("uhoh Psi: {:?}, Psi'': {:?}", psi.real, psi_pp.real);
-        // return 10.
+    // println!("uhoh Psi: {:?}, Psi'': {:?}", psi.real, psi_pp.real);
+    // return 10.
     // }
 
     // if (psi_pp / psi).real.abs() > 10. {
@@ -173,7 +173,7 @@ pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
 /// A mirror of `calc_V_on_psi`.
 pub fn calc_E_on_psi(psi: Cplx, psi_pp: Cplx, V: f64) -> f64 {
     // if psi.real < EPS_DIV0 && psi.im < EPS_DIV0 {
-        // return -V;
+    // return -V;
     // }
 
     // psi''/psi is always real, due to being an eigenvalue of a Hermitian operator.

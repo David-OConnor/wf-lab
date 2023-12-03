@@ -99,6 +99,15 @@ impl Basis {
         }
     }
 
+    pub fn xi_mut(&mut self) -> &mut f64 {
+        match self {
+            // Self::Sto(v) => &mut v.harmonic.l,
+            Self::H(_v) => unimplemented!(),
+            Self::Gto(_v) => unimplemented!(),
+            Self::Sto(v) => &mut v.xi,
+        }
+    }
+
     pub fn m(&self) -> i16 {
         match self {
             // Self::Sto(v) => v.harmonic.m,

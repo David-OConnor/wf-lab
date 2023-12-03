@@ -370,9 +370,7 @@ fn main() {
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let _posit_charge_2 = Vec3::new(1., 0., 0.);
 
-    let nuclei = vec![
-        (posit_charge_1, Q_PROT * num_elecs as f64),
-    ];
+    let nuclei = vec![(posit_charge_1, Q_PROT * num_elecs as f64)];
 
     // Outer of these is per-elec.
     let mut bases_per_elec = Vec::new();
