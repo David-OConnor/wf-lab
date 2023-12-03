@@ -56,7 +56,7 @@ pub const ħ: f64 = 1.;
 // pub const N: usize = 20;
 
 #[derive(Clone, Copy, Debug)]
-pub enum Spin {
+pub enum _Spin {
     Up,
     Dn,
 }
@@ -92,9 +92,9 @@ pub fn initialize_bases(
             (2., 0.),
             (3., 0.),
             (4., 0.),
-            (5., 0.),
-            (6., 0.),
-            (7., 0.),
+            // (5., 0.),
+            // (6., 0.),
+            // (7., 0.),
             // (8., 0.),
             // (9., 0.),
         ] {

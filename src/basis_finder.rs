@@ -27,7 +27,7 @@ pub fn generate_sample_pts() -> Vec<Vec3> {
         // 10., 5., 3., 2., 1.5, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1
         // 10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.4, 0.3,
         // 10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.4,
-        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7,
+        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1.,
     ];
 
     // println!("\nSample dists: {:?}", sample_dists);
@@ -161,10 +161,17 @@ fn find_base_xi_E(
 fn find_base_xi_E2(V_to_match: &[f64], sample_pts: &[Vec3], non_base_xis: &[f64]) -> (f64, f64) {
     const SAMPLE_DIST: f64 = 20.;
     let posit_corner = Vec3::new(SAMPLE_DIST, SAMPLE_DIST, SAMPLE_DIST);
-    let posit_sample = Vec3::new(SAMPLE_DIST, 0., 0.);
 
     let mut V_corner = 0.;
-    let mut V_sample = 0.;
+
+    // for (posit_nuc, charge) in charges_fixed {
+    //     V_corner += V_coulomb(*posit_nuc, posit_corner, *charge);
+    // }
+    //
+    // for (i, j, k) in iter_arr!(charge_elec.len()) {
+    //     let charge = charge_elec[i][j][k];
+    //     V_corner += V_coulomb(grid_charge[i][j][k], posit_corner, charge);
+    // }
 
     let trial_base_xis = util::linspace((0.5, 1.9), 50);
     // let trial_Es = util::linspace((-1., -0.10), 20);
@@ -174,12 +181,10 @@ fn find_base_xi_E2(V_to_match: &[f64], sample_pts: &[Vec3], non_base_xis: &[f64]
     let mut best_xi = 0.;
     let mut best_E = 0.;
 
-    let mut xis = vec![0.];
+    let mut xis = vec![0.]; // This initial value is the base xi we update with each trial one.
     for xi in non_base_xis {
         xis.push(*xi);
     }
-
-    // let mut Es = vec![0.; trial_base_xis.len()];
 
     for xi_trial in &trial_base_xis {
         xis[0] = *xi_trial;
@@ -193,10 +198,12 @@ fn find_base_xi_E2(V_to_match: &[f64], sample_pts: &[Vec3], non_base_xis: &[f64]
             harmonic: Default::default(),
         });
 
-        let psi_corner = base_sto.value(posit_corner);
-        let psi_pp_corner = wf_ops::second_deriv(psi_corner, &base_sto, posit_corner);
+        // let psi_corner = base_sto.value(posit_corner);
+        // let psi_pp_corner = wf_ops::second_deriv(psi_corner, &base_sto, posit_corner);
+        //
+        // let E_trial = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
 
-        let E_trial = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
+        let E_trial = -0.5;
 
         // todo: You shouldn't need to loop through E; do a corner trial again.
         // for E_trial in &trial_Es {
@@ -210,14 +217,8 @@ fn find_base_xi_E2(V_to_match: &[f64], sample_pts: &[Vec3], non_base_xis: &[f64]
             best_score = score;
             best_xi = *xi_trial;
             best_E = E_trial;
-            // }
         }
     }
-
-    // let E = find_E_from_base_xi(best_xi, V_corner, posit_corner);
-    // let E = find_E_from_base_xi(best_xi, V_corner, posit_corner);
-    // let E = -0.5;
-    // let E = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
 
     (best_xi, best_E)
 }
@@ -378,7 +379,9 @@ fn score_fit(V_to_match: &[f64], sample_pts: &[Vec3], bases_to_eval: &[Basis], E
 
     let mut score = 0.;
     for i in 0..sample_pts.len() {
-        score += (V_from_psi[i] - V_to_match[i]).powi(2);
+        // println!("Diff: {:?}", (V_from_psi[i] - V_to_match[i]).powi(2));
+        // score += (V_from_psi[i] - V_to_match[i]).powi(2);
+        score += ((V_from_psi[i] - V_to_match[i]) / V_to_match[i]).powi(2);
     }
 
     score
@@ -401,12 +404,18 @@ pub fn run(
 ) -> (Vec<Basis>, f64) {
     let mut xis = Vec::from(xis);
 
+    let mut V_to_match =
+        potential::create_V_1d_from_elec(dev, sample_pts, charge_elec, grid_charge, grid_n_charge);
+
+    // Add the charge from nucleii.
+    for (i, sample_pt) in sample_pts.iter().enumerate() {
+        for (posit_nuc, charge_nuc) in charges_fixed {
+            V_to_match[i] += V_coulomb(*posit_nuc, *sample_pt, *charge_nuc);
+        }
+    }
+
     // let (base_xi, E) = find_base_xi_E(charges_fixed, charge_elec, grid_charge);
     // xis[0]);
-
-    let mut V_to_match =
-        potential::create_V_1d_from_elec(dev, &sample_pts, charge_elec, grid_charge, grid_n_charge);
-
     let (base_xi, E) = find_base_xi_E2(&V_to_match, sample_pts, &xis);
 
     xis[0] = base_xi;
@@ -433,13 +442,6 @@ pub fn run(
 
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
-
-    // Add the charge from nucleii.
-    for (i, sample_pt) in sample_pts.iter().enumerate() {
-        for (posit_nuc, charge_nuc) in charges_fixed {
-            V_to_match[i] += V_coulomb(*posit_nuc, *sample_pt, *charge_nuc);
-        }
-    }
 
     // let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, &sample_pts, E);
     let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);

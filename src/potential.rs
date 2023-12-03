@@ -71,30 +71,29 @@ pub(crate) fn update_V_acting_on_elec(
     }
 }
 
-/// Update the potential field acting on a given electron, by summing already-calcualted V
-/// associated with other electrons. Run this after changing V nuclei,
-/// or V from another electron.
-pub(crate) fn update_V_acting_on_elec_1d(
-    V_on_this_elec: &mut [f64],
-    V_from_nuclei: &[f64],
-    V_from_elecs: &[Vec<f64>],
-    i_this_elec: usize,
-    grid_n: usize,
-) {
-    println!("Updating V on this elec (1d)...");
-    for i in 0..grid_n {
-        V_on_this_elec[i] = V_from_nuclei[i];
-
-        for (i_other_elec, V_other_elec) in V_from_elecs.iter().enumerate() {
-            // Don't apply this own electron's charge to the V on it.
-            if i_this_elec == i_other_elec {
-                continue;
-            }
-            V_on_this_elec[i] += V_other_elec[i];
-        }
-    }
-    println!("Complete");
-}
+// /// Update the potential field acting on a given electron, by summing already-calcualted V
+// /// associated with other electrons. Run this after changing V nuclei,
+// /// or V from another electron.
+// pub(crate) fn update_V_acting_on_elec_1d(
+//     V_on_this_elec: &mut [f64],
+//     V_from_nuclei: &[f64],
+//     V_from_elecs: &[Vec<f64>],
+//     i_this_elec: usize,
+//     grid_n: usize,
+// ) {
+//     for i in 0..grid_n {
+//         V_on_this_elec[i] = V_from_nuclei[i];
+//
+//         for (i_other_elec, V_other_elec) in V_from_elecs.iter().enumerate() {
+//             // Don't apply this own electron's charge to the V on it.
+//             if i_this_elec == i_other_elec {
+//                 continue;
+//             }
+//             V_on_this_elec[i] += V_other_elec[i];
+//         }
+//     }
+//     println!("Complete");
+// }
 
 /// See `create_V`. This assumes the sample positions are flattened already, vice arranged in
 /// 3D grids. Note that it returns a result, vice modifying in place.
