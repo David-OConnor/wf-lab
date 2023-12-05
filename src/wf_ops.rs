@@ -118,7 +118,8 @@ pub fn initialize_bases(
 pub fn wf_from_bases(
     dev: &ComputationDevice,
     psi: &mut [Arr3d],
-    mut psi_pp: Option<&mut [Arr3d]>,
+    mut psi_pp: Option<&mut [Arr3d]>, // None for charge calcs.
+    mut psi_pp_div_psi: Option<&mut [Arr3dReal]>, // None for charge calcs. todo: Experimenting.
     bases: &[Basis],
     grid_posits: &Arr3dVec,
     grid_n: usize,
@@ -195,7 +196,13 @@ pub fn wf_from_bases(
             psi[basis_i][i][j][k] = basis.value(posit_sample);
 
             if let Some(ref mut pp) = psi_pp {
-                pp[basis_i][i][j][k] = second_deriv(psi[basis_i][i][j][k], &basis, posit_sample);
+                pp[basis_i][i][j][k] =
+                    second_deriv_cpu(psi[basis_i][i][j][k], &basis, posit_sample);
+            }
+            if let Some(ref mut ppd) = psi_pp_div_psi {
+                // todo: This is currently hard-coded for CPU, and n=1
+                // ppd[basis_i][i][j][k] = second_deriv(psi[basis_i][i][j][k], &basis, posit_sample);
+                ppd[basis_i][i][j][k] = basis.psi_pp_div_psi(posit_sample);
             }
 
             add_to_norm(&mut norm, psi[basis_i][i][j][k]);
@@ -207,6 +214,9 @@ pub fn wf_from_bases(
         if psi_pp.is_some() {
             util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
         }
+        if psi_pp_div_psi.is_some() {
+            util::normalize_arr_real(&mut psi_pp_div_psi.as_mut().unwrap()[basis_i], norm);
+        }
     }
 }
 
@@ -215,9 +225,11 @@ pub fn wf_from_bases(
 /// electron charge.
 pub fn mix_bases(
     psi: &mut Arr3d,
-    mut psi_pp: Option<&mut Arr3d>,
+    mut psi_pp: Option<&mut Arr3d>, // Not required for charge generation.
+    mut psi_pp_div_psi: Option<&mut Arr3dReal>, // Not required for charge generation. // todo QC
     psi_per_basis: &[Arr3d],
-    psi_pp_per_basis: Option<&[Arr3d]>,
+    psi_pp_per_basis: Option<&[Arr3d]>, // Not required for charge generation.
+    psi_pp_div_psi_per_basis: Option<&[Arr3dReal]>, // Not required for charge generation. todo: Consider if you want this
     grid_n: usize,
     weights: &[f64],
 ) {
@@ -229,6 +241,9 @@ pub fn mix_bases(
         if let Some(pp) = psi_pp.as_mut() {
             pp[i][j][k] = Cplx::new_zero();
         }
+        if let Some(ppd) = psi_pp_div_psi.as_mut() {
+            ppd[i][j][k] = 0.;
+        }
 
         for (i_basis, weight) in weights.iter().enumerate() {
             let scaler = *weight;
@@ -237,6 +252,10 @@ pub fn mix_bases(
 
             if let Some(pp) = psi_pp.as_mut() {
                 pp[i][j][k] += psi_pp_per_basis.as_ref().unwrap()[i_basis][i][j][k] * scaler;
+            }
+            if let Some(ppd) = psi_pp_div_psi.as_mut() {
+                ppd[i][j][k] +=
+                    psi_pp_div_psi_per_basis.as_ref().unwrap()[i_basis][i][j][k] * scaler;
             }
         }
         // todo: Note that ideally, our basis wfs are normalizd, so we can use the cheaper weight
@@ -429,7 +448,7 @@ pub fn calc_E_from_bases(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> 
         let psi_this = weight * basis.value(posit_corner);
         psi += psi_this;
 
-        psi_pp += second_deriv(psi_this, basis, posit_corner);
+        psi_pp += second_deriv_cpu(psi_this, basis, posit_corner);
     }
 
     // todo: WIth the psi_pp_div_psi shortcut, you appear to be getting normalization issues.
@@ -473,12 +492,12 @@ pub(crate) fn sto_vals_derivs_cpu(
         let posit_sample = grid_posits[i][j][k];
 
         psi[i][j][k] = basis.value(posit_sample);
-        psi_pp[i][j][k] = second_deriv(psi[i][j][k], basis, posit_sample);
+        psi_pp[i][j][k] = second_deriv_cpu(psi[i][j][k], basis, posit_sample);
     }
 }
 
 /// Helper fn to help manage numerical vs analytic second derivs.
-pub fn second_deriv(psi: Cplx, basis: &Basis, posit: Vec3) -> Cplx {
+pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3) -> Cplx {
     if basis.n() >= 2 {
         num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi)
     } else {

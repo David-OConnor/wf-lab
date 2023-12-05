@@ -1,5 +1,6 @@
 //! Used to find weights and Xis for STOs.
 
+use cudarc::driver::sys::cuTexObjectGetResourceViewDesc;
 use lin_alg2::f64::Vec3;
 
 use crate::{
@@ -56,7 +57,7 @@ fn find_E_from_base_xi(base_xi: f64, V_corner: f64, posit_corner: Vec3) -> f64 {
     });
 
     let psi_corner = base_sto.value(posit_corner);
-    let psi_pp_corner = wf_ops::second_deriv(psi_corner, &base_sto, posit_corner);
+    let psi_pp_corner = wf_ops::second_deriv_cpu(psi_corner, &base_sto, posit_corner);
 
     calc_E_on_psi(psi_corner, psi_pp_corner, V_corner)
 }
@@ -86,7 +87,7 @@ fn find_base_xi_E_common(
         });
 
         let psi_corner = sto.value(posit_corner);
-        let psi_pp_corner = wf_ops::second_deriv(psi_corner, &sto, posit_corner);
+        let psi_pp_corner = wf_ops::second_deriv_cpu(psi_corner, &sto, posit_corner);
 
         let E_ = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
         Es[i] = E_;
@@ -95,7 +96,7 @@ fn find_base_xi_E_common(
         // see how close it is.
 
         let psi = sto.value(posit_sample);
-        let psi_pp = wf_ops::second_deriv(psi, &sto, posit_sample);
+        let psi_pp = wf_ops::second_deriv_cpu(psi, &sto, posit_sample);
 
         let V_from_psi = calc_V_on_psi(psi, psi_pp, E_);
 
@@ -105,7 +106,7 @@ fn find_base_xi_E_common(
             smallest_diff = diff;
         }
 
-        println!("XI: {:?}, Diff: {}", xi_trial, diff);
+        // println!("XI: {:?}, Diff: {}", xi_trial, diff);
     }
 
     let base_xi = trial_base_xis[best_xi_i];
@@ -158,24 +159,33 @@ fn find_base_xi_E(
 }
 
 // An attempt by evaluating the closest fit using different base xis.
-fn find_base_xi_E2(V_to_match: &[f64], sample_pts: &[Vec3], non_base_xis: &[f64]) -> (f64, f64) {
+fn find_base_xi_E2(
+    V_to_match: &[f64],
+    sample_pts: &[Vec3],
+    non_base_xis: &[f64],
+    charges_fixed: &[(Vec3, f64)],
+    charge_elec: &Arr3dReal,
+    grid_charge: &Arr3dVec,
+) -> (f64, f64) {
     const SAMPLE_DIST: f64 = 20.;
-    let posit_corner = Vec3::new(SAMPLE_DIST, SAMPLE_DIST, SAMPLE_DIST);
-
-    let mut V_corner = 0.;
-
-    // for (posit_nuc, charge) in charges_fixed {
-    //     V_corner += V_coulomb(*posit_nuc, posit_corner, *charge);
-    // }
+    // let posit_corner = Vec3::new(SAMPLE_DIST, SAMPLE_DIST, SAMPLE_DIST);
     //
-    // for (i, j, k) in iter_arr!(charge_elec.len()) {
-    //     let charge = charge_elec[i][j][k];
-    //     V_corner += V_coulomb(grid_charge[i][j][k], posit_corner, charge);
-    // }
+    // let V_corner = {
+    //     let mut V = 0.;
+    //
+    //     for (posit_nuc, charge) in charges_fixed {
+    //         V += V_coulomb(*posit_nuc, posit_corner, *charge);
+    //     }
+    //     for (i, j, k) in iter_arr!(charge_elec.len()) {
+    //         let charge = charge_elec[i][j][k];
+    //         V += V_coulomb(grid_charge[i][j][k], posit_corner, charge);
+    //     }
+    //     V
+    // };
 
-    let trial_base_xis = util::linspace((0.5, 1.9), 50);
-    // let trial_Es = util::linspace((-1., -0.10), 20);
-    // let trial_Es = util::linspace((-1., -0.5), 40);
+    // let trial_base_xis = util::linspace((0.5, 1.9), 100);
+    let trial_base_xis = util::linspace((1.38, 1.41), 10);
+    let trial_Es = util::linspace((-0.1, -0.45), 100);
 
     let mut best_score = 999999.;
     let mut best_xi = 0.;
@@ -189,34 +199,34 @@ fn find_base_xi_E2(V_to_match: &[f64], sample_pts: &[Vec3], non_base_xis: &[f64]
     for xi_trial in &trial_base_xis {
         xis[0] = *xi_trial;
 
-        let base_sto = Basis::Sto(Sto {
-            posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
-            n: 1,                    // todo: Maybe don't hard-set.,
-            xi: *xi_trial,
-            weight: 1.,
-            charge_id: 0,
-            harmonic: Default::default(),
-        });
+        // let base_sto = Basis::Sto(Sto {
+        //     posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
+        //     n: 1,                    // todo: Maybe don't hard-set.,
+        //     xi: *xi_trial,
+        //     weight: 1.,
+        //     charge_id: 0,
+        //     harmonic: Default::default(),
+        // });
 
         // let psi_corner = base_sto.value(posit_corner);
         // let psi_pp_corner = wf_ops::second_deriv(psi_corner, &base_sto, posit_corner);
-        //
+
         // let E_trial = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
 
-        let E_trial = -0.5;
+        for E_trial in &trial_Es {
+            let E_trial = *E_trial;
 
-        // todo: You shouldn't need to loop through E; do a corner trial again.
-        // for E_trial in &trial_Es {
-        let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E_trial);
+            let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E_trial);
 
-        let score = score_fit(V_to_match, sample_pts, &bases, E_trial);
+            let score = score_fit(V_to_match, sample_pts, &bases, E_trial);
 
-        println!("Xi: {:.3}, E: {:.3} Score: {:.5}", xi_trial, E_trial, score);
+            println!("Xi: {:.3}, E: {:.3} Score: {:.5}", xi_trial, E_trial, score);
 
-        if score < best_score {
-            best_score = score;
-            best_xi = *xi_trial;
-            best_E = E_trial;
+            if score < best_score {
+                best_score = score;
+                best_xi = *xi_trial;
+                best_E = E_trial;
+            }
         }
     }
 
@@ -305,7 +315,7 @@ fn find_bases_system_of_eqs(
             // todo: Real-only for now while building the algorithm, but in general, these are complex.
             let psi = sto.value(*posit_sample);
             psi_mat_.push(psi.real);
-            psi_pp_mat_.push(wf_ops::second_deriv(psi, &sto, *posit_sample).real);
+            psi_pp_mat_.push(wf_ops::second_deriv_cpu(psi, &sto, *posit_sample).real);
         }
     }
 
@@ -372,7 +382,7 @@ fn score_fit(V_to_match: &[f64], sample_pts: &[Vec3], bases_to_eval: &[Basis], E
         for basis in bases_to_eval {
             let psi = basis.value(*sample_pt);
             psi_this_pt += psi;
-            psi_pp_this_pt += wf_ops::second_deriv(psi, basis, *sample_pt);
+            psi_pp_this_pt += wf_ops::second_deriv_cpu(psi, basis, *sample_pt);
         }
         V_from_psi[i] = calc_V_on_psi(psi_this_pt, psi_pp_this_pt, E);
     }
@@ -380,6 +390,10 @@ fn score_fit(V_to_match: &[f64], sample_pts: &[Vec3], bases_to_eval: &[Basis], E
     let mut score = 0.;
     for i in 0..sample_pts.len() {
         // println!("Diff: {:?}", (V_from_psi[i] - V_to_match[i]).powi(2));
+        println!(
+            "Diff: {:?}",
+            ((V_from_psi[i] - V_to_match[i]) / V_to_match[i]).powi(2)
+        );
         // score += (V_from_psi[i] - V_to_match[i]).powi(2);
         score += ((V_from_psi[i] - V_to_match[i]) / V_to_match[i]).powi(2);
     }
@@ -414,11 +428,18 @@ pub fn run(
         }
     }
 
-    // let (base_xi, E) = find_base_xi_E(charges_fixed, charge_elec, grid_charge);
+    let (base_xi, E) = find_base_xi_E(charges_fixed, charge_elec, grid_charge);
     // xis[0]);
-    let (base_xi, E) = find_base_xi_E2(&V_to_match, sample_pts, &xis);
-
-    xis[0] = base_xi;
+    // let (base_xi, E) = find_base_xi_E2(
+    //     &V_to_match,
+    //     sample_pts,
+    //     &xis,
+    //     charges_fixed,
+    //     charge_elec,
+    //     grid_charge,
+    // );
+    //
+    // xis[0] = base_xi;
     println!("\nBase xi: {}. E: {}\n", base_xi, E);
 
     // Code regarding trial wave functions. We are currently not using it, assuming we can converge

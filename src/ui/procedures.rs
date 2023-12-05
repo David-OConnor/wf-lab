@@ -39,12 +39,15 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     // Prevents double borrow-mut error
     let psi = &mut sfcs.psi;
     let psi_pp = &mut sfcs.psi_pp_evaluated;
+    let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_evaluated;
 
     wf_ops::mix_bases(
         psi,
         Some(psi_pp),
+        Some(psi_pp_div_psi),
         &sfcs.psi_per_basis,
         Some(&sfcs.psi_pp_per_basis),
+        Some(&sfcs.psi_pp_div_psi_per_basis),
         state.grid_n_render,
         &weights,
     );
@@ -76,7 +79,9 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         wf_ops::mix_bases(
             &mut psi_charge_grid,
             None,
+            None,
             &state.psi_charge[ae],
+            None,
             None,
             state.grid_n_charge,
             &weights,
@@ -97,11 +102,13 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     // Prevents double borrow-mut error
     let psi = &mut sfcs.psi_per_basis;
     let psi_pp = &mut sfcs.psi_pp_per_basis;
+    let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_per_basis;
 
     wf_ops::wf_from_bases(
         &state.dev,
         psi,
         Some(psi_pp),
+        Some(psi_pp_div_psi),
         &state.bases[ae],
         &state.surfaces_shared.grid_posits,
         state.grid_n_render,
@@ -110,6 +117,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     wf_ops::wf_from_bases(
         &state.dev,
         &mut state.psi_charge[ae],
+        None,
         None,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits_charge,
@@ -160,7 +168,9 @@ pub fn create_elec_charge(
     wf_ops::mix_bases(
         &mut psi_charge_grid,
         None,
+        None,
         psi_charge_per_basis,
+        None,
         None,
         grid_n_charge,
         weights,
@@ -256,6 +266,7 @@ pub(crate) fn he_solver(state: &mut State) {
         wf_ops::wf_from_bases(
             &state.dev,
             &mut state.psi_charge[elec_id],
+            None,
             None,
             &state.bases[elec_id],
             &state.surfaces_shared.grid_posits_charge,

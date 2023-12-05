@@ -109,8 +109,9 @@ impl Default for StateUi {
             adjust_E_with_weights: false,
             auto_gen_elec_V: false,
             weight_symmetry: false,
-            create_2d_electron_V: true,
-            create_3d_electron_V: false,
+            // todo: Having issues choosing the correct 2D one; 3D for now.
+            create_2d_electron_V: false,
+            create_3d_electron_V: true,
         }
     }
 }
@@ -245,11 +246,13 @@ pub fn init_from_grid(
         // Assigning vars prevents multiple-borrow-mut vars.
         let psi = &mut sfcs.psi_per_basis;
         let psi_pp = &mut sfcs.psi_pp_per_basis;
+        let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_per_basis;
 
         wf_ops::wf_from_bases(
             dev,
             psi,
             Some(psi_pp),
+            Some(psi_pp_div_psi),
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits,
             grid_n_sample,
@@ -257,13 +260,16 @@ pub fn init_from_grid(
 
         let psi = &mut sfcs.psi;
         let psi_pp = &mut sfcs.psi_pp_evaluated;
+        let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_evaluated;
 
         let weights: Vec<f64> = bases_per_elec[i_elec].iter().map(|b| b.weight()).collect();
         wf_ops::mix_bases(
             psi,
             Some(psi_pp),
+            Some(psi_pp_div_psi),
             &sfcs.psi_per_basis,
             Some(&sfcs.psi_pp_per_basis),
+            Some(&sfcs.psi_pp_div_psi_per_basis),
             grid_n_sample,
             &weights,
         );
@@ -288,6 +294,7 @@ pub fn init_from_grid(
         wf_ops::wf_from_bases(
             dev,
             &mut psi_charge,
+            None,
             None,
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits_charge,
@@ -365,7 +372,7 @@ fn main() {
 
     let ui_active_elec = 0;
     let max_basis_n = 1;
-    let num_elecs = 1;
+    let num_elecs = 3;
 
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let _posit_charge_2 = Vec3::new(1., 0., 0.);

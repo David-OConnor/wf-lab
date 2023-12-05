@@ -191,7 +191,7 @@ impl Basis {
         match self {
             Self::H(v) => v.psi_pp_div_psi(posit_sample),
             Self::Gto(v) => unimplemented!(),
-            Self::Sto(v) => v._psi_pp_div_psi(posit_sample),
+            Self::Sto(v) => v.psi_pp_div_psi(posit_sample),
         }
     }
 
@@ -523,7 +523,7 @@ impl Sto {
         let xi = self.xi;
 
         let exp_term = (-xi * r / nf).exp();
-        let laguerre_param = 2. * r / nf;
+        let _laguerre_param = 2. * r / nf;
 
         let mut result = 0.;
 
@@ -531,7 +531,7 @@ impl Sto {
         for (i, x) in [diff.x, diff.y, diff.z].iter().enumerate() {
             let x_sq = x.powi(2);
 
-            if n == 1 && l == 0 {
+            if n == 1 {
                 let term1 = xi.powi(2) * x_sq * exp_term / (nf.powi(2) * r_sq);
                 let term2 = xi * x_sq * exp_term / (nf * r_sq.powf(1.5));
                 let term3 = -xi * exp_term / (nf * r);
@@ -569,22 +569,31 @@ impl Sto {
     ///
     /// Note: It appears that this is always real (Hermitian eigenvalues?)
 
-    pub fn _psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
+    pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
         // todo: Update A/R, and or deprecate.
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
-        let mut result = 0.;
+        // todo: Orbital
 
-        for x in &[diff.x, diff.y, diff.z] {
-            result += self.xi.powi(2) * x.powi(2) / r.powi(2);
-            result += self.xi * x.powi(2) / r.powi(3);
-            result -= self.xi / r;
+        if self.n == 1 {
+            // todo: Validate this
+            return self.xi.powi(2) - 2. * self.xi / r;
+        } else {
+            unimplemented!()
         }
-
-        let radial = result;
-
-        radial
+        //
+        // let mut result = 0.;
+        //
+        // for x in &[diff.x, diff.y, diff.z] {
+        //     result += self.xi.powi(2) * x.powi(2) / r.powi(2);
+        //     result += self.xi * x.powi(2) / r.powi(3);
+        //     result -= self.xi / r;
+        // }
+        //
+        // let radial = result;
+        //
+        // radial
     }
 
     pub fn V_p_from_psi(&self, posit_sample: Vec3) -> f64 {

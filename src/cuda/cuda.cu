@@ -77,7 +77,7 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
     for (auto x : {diff.x, diff.y, diff.z}) {
         double x_sq = std::pow(x, 2);
 
-        if (n == 1 && l == 0) {
+        if (n == 1) {
             double term1 = std::pow(xi, 2) * x_sq * exp_term / (std::pow(n, 2) * r_sq);
             double term2 = xi * x_sq * exp_term / (n * std::pow(r_sq, 1.5f));
             double term3 = -xi * exp_term / (n * r);

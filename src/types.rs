@@ -105,8 +105,12 @@ pub struct SurfacesPerElec {
     pub psi_pp_calculated: Arr3d,
     /// From an analytic or numeric computation from basis functions.
     pub psi_pp_evaluated: Arr3d,
+    // todo: An experiment where we analytically calculate this directly.
+    pub psi_pp_div_psi_evaluated: Arr3dReal,
     pub psi_per_basis: Vec<Arr3d>,
     pub psi_pp_per_basis: Vec<Arr3d>,
+    // todo: An experiment where we analytically calculate this directly.
+    pub psi_pp_div_psi_per_basis: Vec<Arr3dReal>,
     // /// Charges from this electron, over 3d space. Computed from <ψ|ψ>.
     // pub charge: Arr3dReal,
     /// Aux surfaces are for misc visualizations
@@ -126,18 +130,22 @@ impl SurfacesPerElec {
 
         let mut psi_per_basis = Vec::new();
         let mut psi_pp_per_basis = Vec::new();
+        let mut psi_pp_div_psi_per_basis = Vec::new();
         for _ in 0..num_bases {
             psi_per_basis.push(data.clone());
             psi_pp_per_basis.push(data.clone());
+            psi_pp_div_psi_per_basis.push(data_real.clone());
         }
 
         Self {
-            psi_per_basis,
-            psi_pp_per_basis,
             V_acting_on_this: data_real.clone(),
             psi: data.clone(),
             psi_pp_calculated: data.clone(),
             psi_pp_evaluated: data.clone(),
+            psi_pp_div_psi_evaluated: data_real.clone(),
+            psi_per_basis,
+            psi_pp_per_basis,
+            psi_pp_div_psi_per_basis,
             // charge: new_data_real(n_grid_charge),
             V_elec_eigen: data_real.clone(),
             V_total_eigen: data_real.clone(),
@@ -229,6 +237,7 @@ impl _BasesEvaluated {
             dev,
             &mut on_pt,
             Some(&mut psi_pp_analytic),
+            None,
             bases,
             grid_posits,
             grid_n,
