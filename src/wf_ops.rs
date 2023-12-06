@@ -234,6 +234,7 @@ pub fn mix_bases(
 ) {
     // todo: GPU option?
     let mut norm = 0.;
+    let balance = weights.iter().sum(); // todo: Only if psipp_div_psi is some A/R.
 
     for (i, j, k) in iter_arr!(grid_n) {
         psi[i][j][k] = Cplx::new_zero();
@@ -257,8 +258,6 @@ pub fn mix_bases(
                     psi_pp_div_psi_per_basis.as_ref().unwrap()[i_basis][i][j][k] * scaler;
             }
         }
-        // todo: Note that ideally, our basis wfs are normalizd, so we can use the cheaper weight
-        // todo division approach instead of this.
 
         let abs_sq = psi[i][j][k].abs_sq();
         if abs_sq < MAX_PSI_FOR_NORM {
@@ -271,6 +270,12 @@ pub fn mix_bases(
     util::normalize_arr(psi, norm);
     if psi_pp.is_some() {
         util::normalize_arr(psi_pp.as_mut().unwrap(), norm);
+    }
+
+    // We are experimenting with how to *normalize* psi_pp_div_psi. Perhaps *balance* is a better word.
+    // I don't fully understand this, but it appears that something to this effect is required.
+    if psi_pp_div_psi.is_some() {
+        util::balance_arr(psi_pp_div_psi.as_mut().unwrap(), balance);
     }
 }
 

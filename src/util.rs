@@ -215,6 +215,20 @@ pub(crate) fn normalize_arr(arr: &mut Arr3d, norm: f64) {
     }
 }
 
+/// Experimental for psi''/psi
+pub(crate) fn balance_arr(arr: &mut Arr3dReal, balance: f64) {
+    if balance.abs() < EPS_DIV0 {
+        return;
+    }
+    println!("BAL: {:?}", balance);
+
+    let grid_n = arr.len();
+
+    for (i, j, k) in iter_arr!(grid_n) {
+        arr[i][j][k] = arr[i][j][k] / balance;
+    }
+}
+
 
 /// Flatten 3D data, prior passing to a GPU kernel.
 pub(crate) fn flatten_arr(vals_3d: &Arr3dVec, grid_n: usize) -> Vec<Vec3> {
