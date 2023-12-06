@@ -280,6 +280,7 @@ pub fn init_from_grid(
             &mut sfcs.psi_pp_calculated,
             &sfcs.psi,
             &sfcs.psi_pp_evaluated,
+            &sfcs.psi_pp_div_psi_evaluated,
             &sfcs.V_acting_on_this,
             surfaces_shared.E,
             &surfaces_shared.V_from_nuclei,
@@ -372,7 +373,7 @@ fn main() {
 
     let ui_active_elec = 0;
     let max_basis_n = 1;
-    let num_elecs = 3;
+    let num_elecs = 1;
 
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let _posit_charge_2 = Vec3::new(1., 0., 0.);

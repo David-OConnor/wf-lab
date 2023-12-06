@@ -214,9 +214,8 @@ pub fn wf_from_bases(
         if psi_pp.is_some() {
             util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
         }
-        if psi_pp_div_psi.is_some() {
-            util::normalize_arr_real(&mut psi_pp_div_psi.as_mut().unwrap()[basis_i], norm);
-        }
+
+        // We do not normalize psi''/psi: The (identical) normalization terms cancel out during division..
     }
 }
 
@@ -384,18 +383,21 @@ pub fn mix_bases_update_charge(
 /// something that could be considered DFT. (?)
 ///
 /// Note: psi'' here is associated with psi'' measured, vice calculated.
-pub fn calculate_v_elec(
+pub fn _calculate_v_elec(
     V_elec: &mut Arr3dReal,
     V_total: &mut Arr3dReal,
     psi: &Arr3d,
     psi_pp: &Arr3d,
+    psi_pp_div_psi: &Arr3dReal, // todo: Experimenting
     E: f64,
     V_nuc: &Arr3dReal,
 ) {
     let grid_n = psi.len();
 
     for (i, j, k) in iter_arr!(grid_n) {
-        V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
+        // todo: experimenting
+        // V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
+        V_total[i][j][k] = eigen_fns::calc_V_on_psi2(psi_pp_div_psi[i][j][k], E);
         V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
     }
 
@@ -403,12 +405,14 @@ pub fn calculate_v_elec(
 }
 
 /// Update V-from-psi, and psi''-calculated, based on psi, and V acting on a given electron.
+/// todo: When do we use this, vice `calcualte_v_elec`?
 pub fn update_eigen_vals(
     V_elec: &mut Arr3dReal,
     V_total: &mut Arr3dReal,
     psi_pp_calculated: &mut Arr3d,
     psi: &Arr3d,
     psi_pp: &Arr3d,
+    psi_pp_div_psi: &Arr3dReal, // todo: Experimenting
     V_acting_on_this: &Arr3dReal,
     E: f64,
     V_nuc: &Arr3dReal,
@@ -416,7 +420,8 @@ pub fn update_eigen_vals(
     let grid_n = psi.len();
 
     for (i, j, k) in iter_arr!(grid_n) {
-        V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
+        // V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
+        V_total[i][j][k] = eigen_fns::calc_V_on_psi2(psi_pp_div_psi[i][j][k], E);
         V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
 
         psi_pp_calculated[i][j][k] =
@@ -498,7 +503,7 @@ pub(crate) fn sto_vals_derivs_cpu(
 
 /// Helper fn to help manage numerical vs analytic second derivs.
 pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3) -> Cplx {
-    if basis.n() >= 2 {
+    if basis.n() >= 3 { // todo: 3 is temp, vice 2; testing new analytic second.
         num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi)
     } else {
         basis.second_deriv(posit)

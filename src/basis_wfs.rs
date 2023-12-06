@@ -236,7 +236,7 @@ impl Basis {
             Self::Gto(_) => "SO1",
             Self::Sto(_) => "SO2",
         }
-        .to_owned()
+            .to_owned()
     }
 }
 
@@ -426,7 +426,7 @@ impl Sto {
         // }
 
         let diff = posit_sample - self.posit;
-        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+        // let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
         let diff = self.harmonic.orientation.inverse().rotate_vec(diff);
 
@@ -452,8 +452,7 @@ impl Sto {
         let r = (posit_sample - self.posit).magnitude();
 
         let n = self.n;
-        // let l = self.l; // todo
-        let l = 0;
+        let l = self.harmonic.l;
         let nf = n as f64;
 
         let exp_term = (-self.xi * r / (nf * A_0)).exp();
@@ -465,6 +464,7 @@ impl Sto {
         let L = util::make_laguerre(n - l - 1, 2 * l + 1);
 
         let polynomial_term = (2. * r / (nf * A_0)).powi(l.into()) * L(2. * r / (nf * A_0));
+
         // n=0: L(x) = 1.
         // n=1: L(x) = α + 1. - b,
         // n=2: L(x) = b.powi(2) / 2. - (α + 2.) * b + (α + 1.) * (α + 2.) / 2.,
@@ -473,26 +473,19 @@ impl Sto {
         // If n=2, l=0, L = 2. - b
         // If n=3, l=0, L = b^2 / 2 - 3b + 3
 
-        // For n=1 second deriv, try this in Wolfram Alpha:
-        // todo: Confirm this is how you apply xi.
+        // For the second derivative, try this in Wolfram Alpha:
         // n=1, l=0
         // `second derivative of exp(-r * xi / n) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
         // n=2, l=0
         // `second derivative of exp(-r * xi / n) * (2-b) with respect to x where r=sqrt(x^2 + y^2 + z^2) and b=2*r/n`
         // n=3, l=0
         // todo: Redo this.
-        // `second derivative of exp(-r * xi / n) * (b^2 / 2 - 3b + 3)  with respect to x where r=sqrt(x^2 + y^2 + z^2) and b=2*r/n`
+        // `second derivative of exp(-r * xi / n) * (b^2 / 2 - 3b + 3) with respect to x where r=sqrt(x^2 + y^2 + z^2) and b=2*r/n`
 
         // Example ChatGPT query:
-        // "Please calculate the second derivative of C * exp(-r * \xi / n) * (2 * r / n)^1 *
-        // 1*(2*r/n) with respect to x where r=sqrt(x^2 + y^2 + z^2). Please output the result in
+        // "Please calculate the second derivative of "(see above)". Please output the result in
         // the form of a rust function. Please use the variable `r` in the resulting code when
-        // possible, vice splitting it into its x, y, and z components.
-
-        // Note: ChatGPT appears not to output a form that doesn't include x or y directly; use WolframAlpha,and
-        // ask ChatGPT to convert its plain text version to Rust. You could alternatively screenshot
-        // WA's image output. Then manually replace (x^+y^2+z^2) with r_sq etc, and replace using
-        // `exp_term` and `s_sq` as well.
+        // possible, vice splitting it into its x, y, and z components."
 
         Self::norm_term(n, l) * polynomial_term * exp_term
     }
@@ -538,24 +531,44 @@ impl Sto {
 
                 result += term1 + term2 + term3
             } else if n == 2 && l == 0 {
-                // Uhoh! Wolfram alpha is  having a struggle! ChatGPT is giving me an anaswer in "simplified form",
+                let (x_, y, z) = if i == 0 {
+                    (diff.x, diff.y, diff.z)
+                } else if i == 1 {
+                    (diff.y, diff.z, diff.x)
+                } else {
+                    (diff.z, diff.x, diff.y)
+                };
+                
+                // Wolfram alpha concedes. ChatGPT gave me this; Unknown accuracy:
+                let term1 = -nf.powi(2) * (y.powi(2) + z.powi(2)) * r.powi(8);
+                let term2 = 2.0 * nf * x_.powi(2) * xi * r.powf(9.0 / 2.0);
+                let term3 = xi * (nf - r) * r.powf(5.0 / 2.0) * (nf * x_.powi(2) * r.powf(3.0 / 2.0) - nf * r.powf(5.0 / 2.0) + x_.powi(2) * xi * r.powi(4));
+                
+                let numerator = 2.0 * (term1 + term2 + term3) * exp_term;
+                let denominator = nf.powi(3) * r.powf(11.0 / 2.0);
+
+                result += numerator / denominator;
+
+
+                // Uhoh! Wolfram alpha is  having a struggle! ChatGPT is giving me an answer in "simplified form",
                 // . Likely incorrect. Let's try anyhow.
 
-                let term1 = match i {
-                    // todo?
-                    0 => -nf.powi(2) * (diff.y.powi(2) + diff.z.powi(2)) * r_sq.powi(2),
-                    1 => -nf.powi(2) * (diff.x.powi(2) + diff.z.powi(2)) * r_sq.powi(2),
-                    2 => -nf.powi(2) * (diff.x.powi(2) + diff.y.powi(2)) * r_sq.powi(2),
-                    _ => unreachable!(),
-                };
 
-                let term2 = 2.0 * nf * x_sq * xi * r_sq.powf(4.5);
-                let term3 = xi
-                    * (nf - r)
-                    * r_sq.powf(2.5)
-                    * (nf * x_sq * r.powi(3) - nf * r_sq.powf(2.5) + x_sq * xi * r_sq.powi(2));
-
-                result += 2.0 * (term1 + term2 + term3) * exp_term / (nf.powi(3) * r_sq.powf(5.5));
+                // let term1 = match i {
+                //     // todo?
+                //     0 => -nf.powi(2) * (diff.y.powi(2) + diff.z.powi(2)) * r_sq.powi(2),
+                //     1 => -nf.powi(2) * (diff.x.powi(2) + diff.z.powi(2)) * r_sq.powi(2),
+                //     2 => -nf.powi(2) * (diff.x.powi(2) + diff.y.powi(2)) * r_sq.powi(2),
+                //     _ => unreachable!(),
+                // };
+                // 
+                // let term2 = 2.0 * nf * x_sq * xi * r_sq.powf(4.5);
+                // let term3 = xi
+                //     * (nf - r)
+                //     * r_sq.powf(2.5)
+                //     * (nf * x_sq * r.powi(3) - nf * r_sq.powf(2.5) + x_sq * xi * r_sq.powi(2));
+                // 
+                // result += 2.0 * (term1 + term2 + term3) * exp_term / (nf.powi(3) * r_sq.powf(5.5));
             } else {
                 unimplemented!("Second deriv unimplemented for this n and l.")
             }
@@ -574,26 +587,14 @@ impl Sto {
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
-        // todo: Orbital
-
+        // this is our ideal approach
         if self.n == 1 {
-            // todo: Validate this
-            return self.xi.powi(2) - 2. * self.xi / r;
+            self.xi.powi(2) - 2. * self.xi / r
+        } else if self.n == 2 && self.harmonic.l == 0 {
+            return 0.; // todo t
         } else {
             unimplemented!()
         }
-        //
-        // let mut result = 0.;
-        //
-        // for x in &[diff.x, diff.y, diff.z] {
-        //     result += self.xi.powi(2) * x.powi(2) / r.powi(2);
-        //     result += self.xi * x.powi(2) / r.powi(3);
-        //     result -= self.xi / r;
-        // }
-        //
-        // let radial = result;
-        //
-        // radial
     }
 
     pub fn V_p_from_psi(&self, posit_sample: Vec3) -> f64 {

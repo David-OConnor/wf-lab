@@ -215,19 +215,6 @@ pub(crate) fn normalize_arr(arr: &mut Arr3d, norm: f64) {
     }
 }
 
-// todo: Dry
-pub(crate) fn normalize_arr_real(arr: &mut Arr3dReal, norm: f64) {
-    if norm.abs() < EPS_DIV0 {
-        return;
-    }
-    let norm_sqrt = norm.sqrt();
-
-    let grid_n = arr.len();
-
-    for (i, j, k) in iter_arr!(grid_n) {
-        arr[i][j][k] = arr[i][j][k] / norm_sqrt;
-    }
-}
 
 /// Flatten 3D data, prior passing to a GPU kernel.
 pub(crate) fn flatten_arr(vals_3d: &Arr3dVec, grid_n: usize) -> Vec<Vec3> {
