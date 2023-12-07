@@ -425,9 +425,9 @@ pub fn update_eigen_vals(
     let grid_n = psi.len();
 
     for (i, j, k) in iter_arr!(grid_n) {
-        V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
-        // V_total[i][j][k] = eigen_fns::calc_V_on_psi2(psi_pp_div_psi[i][j][k], E);
-        // V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
+        // V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
+        V_total[i][j][k] = eigen_fns::calc_V_on_psi2(psi_pp_div_psi[i][j][k], E);
+        V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
 
         psi_pp_calculated[i][j][k] =
             eigen_fns::find_ψ_pp_calc(psi[i][j][k], V_acting_on_this[i][j][k], E)

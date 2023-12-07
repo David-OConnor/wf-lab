@@ -13,7 +13,7 @@ const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 260.;
 const SLIDER_WIDTH_ORIENTATION: f32 = 100.;
 
-const E_MIN: f64 = -2.5;
+const E_MIN: f64 = -4.5;
 const E_MAX: f64 = 0.1;
 
 // Wave fn weights

@@ -528,20 +528,24 @@ impl Sto {
             let x_sq = x.powi(2);
 
             if n == 1 {
-                let term1 = xi.powi(2) * x_sq * exp_term / (nf.powi(2) * r_sq);
-                let term2 = xi * x_sq * exp_term / (nf * r_sq.powf(1.5));
-                let term3 = -xi * exp_term / (nf * r);
+                // todo: Why do you have n here??
+                // let term1 = xi.powi(2) * x_sq * exp_term / (nf.powi(2) * r_sq);
+                // let term2 = xi * x_sq * exp_term / (nf * r_sq.powf(1.5));
+                // let term3 = -xi * exp_term / (nf * r);
+                let term1 = xi.powi(2) * x_sq * exp_term / r_sq;
+                let term2 = xi * x_sq * exp_term / r_sq.powf(1.5);
+                let term3 = -xi * exp_term / r;
 
                 result += term1 + term2 + term3
             } else if n == 2 && l == 0 {
-                let term1 = (2.0 - (2.0 * r) / nf)
-                    * ((xi.powi(2) * x_sq * exp_term) / (nf.powi(2) * r_sq)
-                    + (xi * x_sq * exp_term) / (nf * r_sq.powf(1.5))
-                    - (xi * exp_term) / (nf * r));
+                let term1 = (2.0 - r)
+                    * ((xi.powi(2) * x_sq * exp_term) / (4. * r_sq)
+                    + (xi * x_sq * exp_term) / (2. * r_sq.powf(1.5))
+                    - (xi * exp_term) / (2. * r));
 
-                let term2 = (4.0 * xi * x_sq * exp_term) / (nf.powi(2) * r_sq);
+                let term2 = (4. * xi * x_sq * exp_term) / (4. * r_sq);
 
-                let term3 = -(2.0 * (1.0 / r - x_sq / r_sq.powf(1.5)) * exp_term) / nf;
+                let term3 = -(2. * (1. / r - x_sq / r_sq.powf(1.5)) * exp_term) / 2.;
 
                 result += term1 + term2 + term3
             } else {
@@ -562,11 +566,13 @@ impl Sto {
         let diff = posit_sample - self.posit;
         let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
+        let xi = self.xi;
+
         // this is our ideal approach
         if self.n == 1 {
-            self.xi.powi(2) - 2. * self.xi / r
+            xi.powi(2) - 2. * xi / r
         } else if self.n == 2 && self.harmonic.l == 0 {
-            return 0.; // todo t
+            xi.powi(2)/4. + xi/(2. - r) - xi / r - 2. / ((2. - r) * r)
         } else {
             unimplemented!()
         }

@@ -158,7 +158,12 @@ fn find_base_xi_E(
     )
 }
 
-// An attempt by evaluating the closest fit using different base xis.
+/// An attempt by evaluating the closest fit using different base xis.
+///
+/// Alternative take: // For n=1: E = -(xi^2)/2.
+/// for n=2: E =
+///
+/// But how much of this is just the base, vs a blend? And how do they blend?
 fn find_base_xi_E2(
     V_to_match: &[f64],
     sample_pts: &[Vec3],

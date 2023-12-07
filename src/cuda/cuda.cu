@@ -79,20 +79,20 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
         dtype x_sq = std::pow(x, 2);
 
         if (n == 1) {
-            dtype term1 = std::pow(xi, 2) * x_sq * exp_term / (std::pow(n, 2) * r_sq);
-            dtype term2 = xi * x_sq * exp_term / (n * std::pow(r_sq, 1.5f));
-            dtype term3 = -xi * exp_term / (n * r);
+            dtype term1 = std::pow(xi, 2) * x_sq * exp_term / r_sq;
+            dtype term2 = xi * x_sq * exp_term / std::pow(r_sq, 1.5f);
+            dtype term3 = -xi * exp_term / r;
         
             result += term1 + term2 + term3;
         } else if (n == 2 && l == 0) {
-           dtype term1 = (2.f - (2.f * r) / n)
-                           * ((xi * xi * x_sq * exp_term) / (n * n * r_sq)
-                           + (xi * x_sq * exp_term) / (n * std::pow(r_sq, 1.5f))
-                           - (xi * exp_term) / (n * r));
+           dtype term1 = (2.f - r)
+                           * ((xi * xi * x_sq * exp_term) / (4.f * r_sq)
+                           + (xi * x_sq * exp_term) / (2.f * std::pow(r_sq, 1.5f))
+                           - (xi * exp_term) / (2.f * r));
         
-            dtype term2 = (4.f * xi * x_sq * exp_term) / (n * n * r_sq);
+            dtype term2 = (4.f * xi * x_sq * exp_term) / (4.f * r_sq);
         
-            dtype term3 = -(2.f * (1.f / r - x_sq / std::pow(r_sq, 1.5f)) * exp_term) / n;
+            dtype term3 = -(2.f * (1.f / r - x_sq / std::pow(r_sq, 1.5f)) * exp_term) / 2.f;
         
             result += term1 + term2 + term3;
         }
@@ -108,7 +108,9 @@ dtype psi_pp_div_psi(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n
     if (n == 1) {
         return std::pow(xi, 2) - 2.f * xi / r;
     } else if (n == 2 && l == 0) {
-        return 0.;
+        return std::pow(xi, 2) / 4.f + xi / (2.f - r) - xi / r - 2.f / ((2.f - r) * r);
+    } else {
+        return 0.f;
     }
 }
 

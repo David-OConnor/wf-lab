@@ -23,7 +23,7 @@
 // https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB
 // https://github.com/biubug6/Pytorch_Retinaface
 
-use std::mem;
+// Note on STOs: It appears that, for n=1: E = -(xi^2)/2.
 
 #[cfg(feature = "cuda")]
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
