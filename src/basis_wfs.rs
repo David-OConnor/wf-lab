@@ -493,6 +493,81 @@ impl Sto {
         Self::norm_term(n, l) * polynomial_term * exp_term
     }
 
+    /// From [Wikipedia](https://en.wikipedia.org/wiki/Slater-type_orbital)
+    pub fn radial_type2(&self, posit_sample: Vec3) -> f64 {
+        // todo: This currently ignores the spherical harmonic part; add that!
+        let r = (posit_sample - self.posit).magnitude();
+        let n = self.n;
+
+        // todo: What is alpha?
+        // let N = factorial(n) / alpha.powi(n+1);
+
+        let N = 1.;
+        let exp_term = (-self.xi * r).exp();
+
+        N * r.powi((n-1).into()) * exp_term
+    }
+
+
+    pub fn second_deriv_type2(&self, posit_sample: Vec3) -> Cplx {
+        let diff = posit_sample - self.posit;
+        let r_sq = diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2);
+
+        if r_sq < EPS_DIV0 {
+            return Cplx::new_zero();
+        }
+        let r = r_sq.sqrt();
+
+        let n = self.n;
+        // let l = self.l; // todo
+        let l = 0;
+        let nf = n as f64;
+        let xi = self.xi;
+
+        let exp_term = (-xi * r / nf).exp();
+
+        let mut result = 0.;
+
+        // Each part is the second deriv WRT to an orthogonal axis.
+        for x in [diff.x, diff.y, diff.z] {
+            let x_sq = x.powi(2);
+
+            let xyz_pow = r_sq.powf((n - 1.0) / 2.0);
+
+            let term1 = (xi.powi(2) * x.powi(2) * (-xi * r).exp()) / r_sq;
+            let term2 = (xi * x.powi(2) * (-xi * r).exp()) / r_sq.powf(3.0 / 2.0);
+            let term3 = -xi * (-xi * r).exp() / r;
+
+            let term4 = -2.0 * (n - 1.0) * xi * x.powi(2) * xyz_pow * (-xi * r).exp();
+            let term5 = 2.0 * ((n - 1.0) / 2.0 - 1.0) * (n - 1.0) * x.powi(2) * xyz_pow / r_sq;
+            let term6 = (n - 1.0) * xyz_pow * (-xi * r).exp();
+
+            result += xyz_pow * (term1 + term2 + term3) + term4 + term5 + term6
+
+        }
+
+        Cplx::from_real(result)
+    }
+
+    pub fn psi_pp_div_psi_type2(&self, posit_sample: Vec3) -> f64 {
+        let r = (posit_sample - self.posit).magnitude();
+        let n = self.n;
+        let nf = n as f64;
+        let xi = self.xi;
+
+        let N = 1.;
+        let exp_term = (-self.xi * r).exp();
+
+
+        0.
+        // let part0 = r.powi((n-3).into()) * exp_term;
+        // let part1 = 0.;
+        // let part1 = nf.powi(2) - nf * (2. * xi * r + 3.) + xi.powi(2) * r.powi(2) + 2. * xi * r + 2.;
+        //
+        // Cplx::from_real(N * part0 * part1)
+    }
+
+
     /// Analytic second derivative using analytic basis functions.
     /// See OneNote: `Exploring the WF, part 6`.
     ///
@@ -513,13 +588,11 @@ impl Sto {
         let r = r_sq.sqrt();
 
         let n = self.n;
-        // let l = self.l; // todo
-        let l = 0;
+        let l = self.l;
         let nf = n as f64;
         let xi = self.xi;
 
         let exp_term = (-xi * r / nf).exp();
-        // let _laguerre_param = 2. * r / nf;
 
         let mut result = 0.;
 
@@ -560,11 +633,8 @@ impl Sto {
     /// eliminated terms. Of note, the exponential term cancels out.
     ///
     /// Note: It appears that this is always real (Hermitian eigenvalues?)
-
     pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
-        // todo: Update A/R, and or deprecate.
-        let diff = posit_sample - self.posit;
-        let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
+        let r = (posit_sample - self.posit).magnitude();
 
         let xi = self.xi;
 
