@@ -220,7 +220,6 @@ pub(crate) fn balance_arr(arr: &mut Arr3dReal, balance: f64) {
     if balance.abs() < EPS_DIV0 {
         return;
     }
-    println!("BAL: {:?}", balance);
 
     let grid_n = arr.len();
 

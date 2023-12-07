@@ -36,6 +36,7 @@ dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n, uint1
         * exp_term;
 }
 
+// We mainly use this for numerical psi'''
 __device__
 double sto_val_f64(double3 posit_sample, double3 posit_nuc, double xi, uint16_t n, uint16_t l) {
     double r = calc_dist_f64(posit_sample, posit_nuc);
@@ -70,25 +71,45 @@ dtype sto_second_deriv(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t
     dtype r = std::sqrt(r_sq);
 
     dtype exp_term = std::exp(-xi * r / n);
-    dtype laguerre_param = 2.f * r / n;
+//     dtype laguerre_param = 2.f * r / n;
 
     dtype result = 0.;
 
     for (auto x : {diff.x, diff.y, diff.z}) {
-        double x_sq = std::pow(x, 2);
+        dtype x_sq = std::pow(x, 2);
 
         if (n == 1) {
-            double term1 = std::pow(xi, 2) * x_sq * exp_term / (std::pow(n, 2) * r_sq);
-            double term2 = xi * x_sq * exp_term / (n * std::pow(r_sq, 1.5f));
-            double term3 = -xi * exp_term / (n * r);
+            dtype term1 = std::pow(xi, 2) * x_sq * exp_term / (std::pow(n, 2) * r_sq);
+            dtype term2 = xi * x_sq * exp_term / (n * std::pow(r_sq, 1.5f));
+            dtype term3 = -xi * exp_term / (n * r);
         
             result += term1 + term2 + term3;
         } else if (n == 2 && l == 0) {
-            result += exp_term * (2.f - laguerre_param);
+           dtype term1 = (2.f - (2.f * r) / n)
+                           * ((xi * xi * x_sq * exp_term) / (n * n * r_sq)
+                           + (xi * x_sq * exp_term) / (n * std::pow(r_sq, 1.5f))
+                           - (xi * exp_term) / (n * r));
+        
+            dtype term2 = (4.f * xi * x_sq * exp_term) / (n * n * r_sq);
+        
+            dtype term3 = -(2.f * (1.f / r - x_sq / std::pow(r_sq, 1.5f)) * exp_term) / n;
+        
+            result += term1 + term2 + term3;
         }
     }
 
     return norm_term(n, l) * result;
+}
+
+__device__
+dtype psi_pp_div_psi(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n, uint16_t l) {
+    dtype r = calc_dist(posit_sample, posit_nuc);
+
+    if (n == 1) {
+        return std::pow(xi, 2) - 2.f * xi / r;
+    } else if (n == 2 && l == 0) {
+        return 0.;
+    }
 }
 
 // We use `double` here, due to numerical problems with `float`
@@ -202,7 +223,7 @@ void sto_val_or_deriv_kernel(
 
     for (size_t i = index; i < N_samples; i += stride) {
         if (deriv == true) {
-            if (n >= 2) {
+            if (n >= 3) {
                 // todo: Ideally, don't re-calc on pt here: Pass in, since you've likely
                 // todo already calculated it.
                 dtype psi_on_pt = sto_val(posits_sample[i], posit_nuc, xi, n, 0);
@@ -233,7 +254,7 @@ void sto_val_deriv_kernel(
     for (size_t i = index; i < N_samples; i += stride) {
         out_val[i] = sto_val(posits_sample[i], posit_nuc, xi, n, 0);
 
-        if (n >= 2) {
+        if (n >= 3) {
             out_second_deriv[i] = find_psi_pp_num(posits_sample[i], posit_nuc, xi, n, 0, out_val[i]);
         } else {
             out_second_deriv[i] = sto_second_deriv(posits_sample[i], posit_nuc, xi, n, 0);

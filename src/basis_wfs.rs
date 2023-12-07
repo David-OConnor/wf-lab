@@ -486,6 +486,9 @@ impl Sto {
         // "Please calculate the second derivative of "(see above)". Please output the result in
         // the form of a rust function. Please use the variable `r` in the resulting code when
         // possible, vice splitting it into its x, y, and z components."
+        //
+        // Note: In some cases when using Wolfram Alpha, don't define `b=` etc - just put in the full equation, or only use r=...;
+        // You can often copy things from WA to ChatGPT, to get them in the form of a rust fn.
 
         Self::norm_term(n, l) * polynomial_term * exp_term
     }
@@ -516,12 +519,12 @@ impl Sto {
         let xi = self.xi;
 
         let exp_term = (-xi * r / nf).exp();
-        let _laguerre_param = 2. * r / nf;
+        // let _laguerre_param = 2. * r / nf;
 
         let mut result = 0.;
 
         // Each part is the second deriv WRT to an orthogonal axis.
-        for (i, x) in [diff.x, diff.y, diff.z].iter().enumerate() {
+        for x in [diff.x, diff.y, diff.z] {
             let x_sq = x.powi(2);
 
             if n == 1 {
@@ -531,44 +534,16 @@ impl Sto {
 
                 result += term1 + term2 + term3
             } else if n == 2 && l == 0 {
-                let (x_, y, z) = if i == 0 {
-                    (diff.x, diff.y, diff.z)
-                } else if i == 1 {
-                    (diff.y, diff.z, diff.x)
-                } else {
-                    (diff.z, diff.x, diff.y)
-                };
-                
-                // Wolfram alpha concedes. ChatGPT gave me this; Unknown accuracy:
-                let term1 = -nf.powi(2) * (y.powi(2) + z.powi(2)) * r.powi(8);
-                let term2 = 2.0 * nf * x_.powi(2) * xi * r.powf(9.0 / 2.0);
-                let term3 = xi * (nf - r) * r.powf(5.0 / 2.0) * (nf * x_.powi(2) * r.powf(3.0 / 2.0) - nf * r.powf(5.0 / 2.0) + x_.powi(2) * xi * r.powi(4));
-                
-                let numerator = 2.0 * (term1 + term2 + term3) * exp_term;
-                let denominator = nf.powi(3) * r.powf(11.0 / 2.0);
+                let term1 = (2.0 - (2.0 * r) / nf)
+                    * ((xi.powi(2) * x_sq * exp_term) / (nf.powi(2) * r_sq)
+                    + (xi * x_sq * exp_term) / (nf * r_sq.powf(1.5))
+                    - (xi * exp_term) / (nf * r));
 
-                result += numerator / denominator;
+                let term2 = (4.0 * xi * x_sq * exp_term) / (nf.powi(2) * r_sq);
 
+                let term3 = -(2.0 * (1.0 / r - x_sq / r_sq.powf(1.5)) * exp_term) / nf;
 
-                // Uhoh! Wolfram alpha is  having a struggle! ChatGPT is giving me an answer in "simplified form",
-                // . Likely incorrect. Let's try anyhow.
-
-
-                // let term1 = match i {
-                //     // todo?
-                //     0 => -nf.powi(2) * (diff.y.powi(2) + diff.z.powi(2)) * r_sq.powi(2),
-                //     1 => -nf.powi(2) * (diff.x.powi(2) + diff.z.powi(2)) * r_sq.powi(2),
-                //     2 => -nf.powi(2) * (diff.x.powi(2) + diff.y.powi(2)) * r_sq.powi(2),
-                //     _ => unreachable!(),
-                // };
-                // 
-                // let term2 = 2.0 * nf * x_sq * xi * r_sq.powf(4.5);
-                // let term3 = xi
-                //     * (nf - r)
-                //     * r_sq.powf(2.5)
-                //     * (nf * x_sq * r.powi(3) - nf * r_sq.powf(2.5) + x_sq * xi * r_sq.powi(2));
-                // 
-                // result += 2.0 * (term1 + term2 + term3) * exp_term / (nf.powi(3) * r_sq.powf(5.5));
+                result += term1 + term2 + term3
             } else {
                 unimplemented!("Second deriv unimplemented for this n and l.")
             }
