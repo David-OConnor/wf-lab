@@ -21,15 +21,15 @@
 //!
 //! L^2 = d_psi_d_x^2 + d_psi_d_y^2 + d_psi_d_z^2
 
+use lin_alg2::f64::Vec3;
+
 use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{Arr3d, Arr3dVec},
+    util::EPS_DIV0,
     wf_ops::{self, ħ, K_C, Q_ELEC, Q_PROT},
 };
-
-use crate::util::EPS_DIV0;
-use lin_alg2::f64::Vec3;
 
 pub const KE_COEFF: f64 = -(ħ * ħ) / (2. * wf_ops::M_ELEC);
 pub const KE_COEFF_INV: f64 = 1. / KE_COEFF;

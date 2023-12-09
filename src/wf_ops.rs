@@ -25,9 +25,10 @@
 
 #[cfg(feature = "cuda")]
 use cudarc::driver::CudaDevice;
-
 use lin_alg2::f64::Vec3;
 
+#[cfg(feature = "cuda")]
+use crate::gpu;
 use crate::{
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
@@ -35,12 +36,8 @@ use crate::{
     grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, num_diff,
     types::ComputationDevice,
-    util::{self, unflatten_arr, MAX_PSI_FOR_NORM},
+    util::{self, unflatten_arr, EPS_DIV0, MAX_PSI_FOR_NORM},
 };
-
-#[cfg(feature = "cuda")]
-use crate::gpu;
-use crate::util::EPS_DIV0;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -201,7 +198,6 @@ pub fn wf_from_bases(
             }
             if let Some(ref mut ppd) = psi_pp_div_psi {
                 // todo: This is currently hard-coded for CPU, and n=1
-                // ppd[basis_i][i][j][k] = second_deriv(psi[basis_i][i][j][k], &basis, posit_sample);
                 ppd[basis_i][i][j][k] = basis.psi_pp_div_psi(posit_sample);
             }
 
@@ -210,6 +206,8 @@ pub fn wf_from_bases(
         //     }
         // }
 
+        // This normalization makes balancing the bases more intuitive, but isn't strictly required
+        // in the way normalizing the composite (squared) wave function is prior to generating charge.
         util::normalize_arr(&mut psi[basis_i], norm);
         if psi_pp.is_some() {
             util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
@@ -425,8 +423,8 @@ pub fn update_eigen_vals(
     let grid_n = psi.len();
 
     for (i, j, k) in iter_arr!(grid_n) {
-        // V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
-        V_total[i][j][k] = eigen_fns::calc_V_on_psi2(psi_pp_div_psi[i][j][k], E);
+        V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
+        // V_total[i][j][k] = eigen_fns::calc_V_on_psi2(psi_pp_div_psi[i][j][k], E);
         V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
 
         psi_pp_calculated[i][j][k] =
@@ -454,7 +452,6 @@ pub fn calc_E_from_bases(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> 
         let weight = Cplx::from_real(weights[i]);
         // let weight = weights[i];
 
-        // psi_pp_div_psi += weight * basis.psi_pp_div_psi(posit_corner);
         let psi_this = weight * basis.value(posit_corner);
         psi += psi_this;
 

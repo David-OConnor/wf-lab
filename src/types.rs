@@ -1,7 +1,7 @@
-#[cfg(feature = "cuda")]
-use cudarc::driver::CudaDevice;
 use std::sync::Arc;
 
+#[cfg(feature = "cuda")]
+use cudarc::driver::CudaDevice;
 use lin_alg2::f64::Vec3;
 
 use crate::{

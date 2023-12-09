@@ -2,6 +2,8 @@
 
 use lin_alg2::f64::Vec3;
 
+#[cfg(feature = "cuda")]
+use crate::gpu;
 use crate::{
     grid_setup::{Arr3dReal, Arr3dVec},
     iter_arr,
@@ -9,9 +11,6 @@ use crate::{
     wf_ops,
     wf_ops::K_C,
 };
-
-#[cfg(feature = "cuda")]
-use crate::gpu;
 
 // We use this to prevent numerical anomolies and divide-by-0 errors in coulomb interactions, where
 // the positions are very close to each other.

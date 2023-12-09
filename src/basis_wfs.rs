@@ -16,17 +16,15 @@
 
 use std::f64::consts::PI;
 
-use scilib;
 // todo: There's also a WIP scilib Quantum lib that can do these H orbital calculations
 // todo directly.
-
 use lin_alg2::f64::{Quaternion, Vec3};
+use scilib;
 
-use crate::util::EPS_DIV0;
 use crate::{
     complex_nums::{Cplx, IM},
     eigen_fns::KE_COEFF,
-    util::{self, factorial},
+    util::{self, factorial, EPS_DIV0},
 };
 
 // Hartree units.
@@ -175,6 +173,7 @@ impl Basis {
             Self::H(v) => v.value(posit_sample),
             Self::Gto(v) => v.value(posit_sample),
             Self::Sto(v) => v.value(posit_sample),
+            // Self::Sto(v) => Cplx::from_real(v.radial_type2(posit_sample)),
         }
     }
 
@@ -184,6 +183,7 @@ impl Basis {
             Self::H(v) => v.second_deriv(posit_sample),
             Self::Gto(_v) => unimplemented!(),
             Self::Sto(v) => v.second_deriv(posit_sample),
+            // Self::Sto(v) => v.second_deriv_type2(posit_sample),
         }
     }
 
@@ -192,6 +192,7 @@ impl Basis {
             Self::H(v) => v.psi_pp_div_psi(posit_sample),
             Self::Gto(v) => unimplemented!(),
             Self::Sto(v) => v.psi_pp_div_psi(posit_sample),
+            // Self::Sto(v) => v.psi_pp_div_psi_type2(posit_sample),
         }
     }
 
@@ -412,8 +413,8 @@ pub struct Sto {
 
 impl Sto {
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
-        // Cplx::from_real(self.radial(posit_sample)) * self.angular(posit_sample)
-        Cplx::from_real(self.radial(posit_sample))
+        Cplx::from_real(self.radial(posit_sample)) * self.angular(posit_sample)
+        // Cplx::from_real(self.radial(posit_sample))
     }
 
     /// Calculate the angular portion of a basis function's value at a given point.
@@ -465,19 +466,30 @@ impl Sto {
 
         let polynomial_term = (2. * r / (nf * A_0)).powi(l.into()) * L(2. * r / (nf * A_0));
 
-        // n=0: L(x) = 1.
-        // n=1: L(x) = α + 1. - b,
-        // n=2: L(x) = b.powi(2) / 2. - (α + 2.) * b + (α + 1.) * (α + 2.) / 2.,
+        // n_L = n - l - 1
+        // b = 2r / (n*A0)
+        // α = 2l + 1
+
+        // n_L=0: L(x) = 1.
+        // n_L=1: L(x) = α + 1. - b,
+        // n_L=2: L(x) = b.powi(2) / 2. - (α + 2.) * b + (α + 1.) * (α + 2.) / 2.,
 
         // If n=1, l=0, L= 1.
         // If n=2, l=0, L = 2. - b
+        // If n=2, l=1, L = 1.
         // If n=3, l=0, L = b^2 / 2 - 3b + 3
 
         // For the second derivative, try this in Wolfram Alpha:
         // n=1, l=0
         // `second derivative of exp(-r * xi / n) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
+
         // n=2, l=0
         // `second derivative of exp(-r * xi / n) * (2-b) with respect to x where r=sqrt(x^2 + y^2 + z^2) and b=2*r/n`
+
+        // n=2, l=1
+        // `second derivative of 2r/n * exp(-r * xi / n) with respect to x where r=sqrt(x^2 + y^2 + z^2)
+        // Or, with n in place: `second derivative of r * exp(-r * xi / 2) with respect to x where r=sqrt(x^2 + y^2 + z^2)`
+
         // n=3, l=0
         // todo: Redo this.
         // `second derivative of exp(-r * xi / n) * (b^2 / 2 - 3b + 3) with respect to x where r=sqrt(x^2 + y^2 + z^2) and b=2*r/n`
@@ -505,9 +517,8 @@ impl Sto {
         let N = 1.;
         let exp_term = (-self.xi * r).exp();
 
-        N * r.powi((n-1).into()) * exp_term
+        N * r.powi((n - 1).into()) * exp_term
     }
-
 
     pub fn second_deriv_type2(&self, posit_sample: Vec3) -> Cplx {
         let diff = posit_sample - self.posit;
@@ -519,12 +530,13 @@ impl Sto {
         let r = r_sq.sqrt();
 
         let n = self.n;
-        // let l = self.l; // todo
-        let l = 0;
+        let l = self.harmonic.l;
         let nf = n as f64;
         let xi = self.xi;
 
-        let exp_term = (-xi * r / nf).exp();
+        let exp_term = (-xi * r).exp();
+        let f = |q| r_sq.powf((nf - 1.) / 2. - q);
+        // let r_pow = r_sq.powf((nf - 1.0) / 2.0);
 
         let mut result = 0.;
 
@@ -532,41 +544,54 @@ impl Sto {
         for x in [diff.x, diff.y, diff.z] {
             let x_sq = x.powi(2);
 
-            let xyz_pow = r_sq.powf((n - 1.0) / 2.0);
+            // todo: QC all this.
 
-            let term1 = (xi.powi(2) * x.powi(2) * (-xi * r).exp()) / r_sq;
-            let term2 = (xi * x.powi(2) * (-xi * r).exp()) / r_sq.powf(3.0 / 2.0);
-            let term3 = -xi * (-xi * r).exp() / r;
+            let term1 = (xi.powi(2) * x_sq * exp_term) / r_sq;
+            let term2 = (xi * x_sq * exp_term) / r_sq.powf(1.5);
+            let term3 = -xi * exp_term / r;
 
-            let term4 = -2.0 * (n - 1.0) * xi * x.powi(2) * xyz_pow * (-xi * r).exp();
-            let term5 = 2.0 * ((n - 1.0) / 2.0 - 1.0) * (n - 1.0) * x.powi(2) * xyz_pow / r_sq;
-            let term6 = (n - 1.0) * xyz_pow * (-xi * r).exp();
+            // let term4 = -2.0 * (nf - 1.0) * xi * x_sq * r_pow * exp_term;
+            // let term5 = 2.0 * ((nf - 1.0) / 2.0 - 1.0) * (nf - 1.) * x_sq * r_pow / r_sq;
+            // let term6 = (nf - 1.0) * r_pow * exp_term;
+            //
+            // result += r_pow * (term1 + term2 + term3) + term4 + term5 + term6
 
-            result += xyz_pow * (term1 + term2 + term3) + term4 + term5 + term6
+            // Another run gave me this: (Same terms 1-3)
+            let term4 = -2. * (nf - 1.) * xi * x_sq * f(1.5) * exp_term;
+            let term5 = (2. * ((nf - 1.) / 2. - 1.) * (nf - 1.) * x_sq * f(2.) + (nf - 1.) * f(1.))
+                * exp_term;
 
+            result += f(0.) * (term1 + term2 + term3) + term4 + term5
         }
 
         Cplx::from_real(result)
     }
 
     pub fn psi_pp_div_psi_type2(&self, posit_sample: Vec3) -> f64 {
-        let r = (posit_sample - self.posit).magnitude();
+        let diff = posit_sample - self.posit;
+        let r_sq = diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2);
+        let r = r_sq.sqrt();
+
         let n = self.n;
         let nf = n as f64;
         let xi = self.xi;
 
-        let N = 1.;
-        let exp_term = (-self.xi * r).exp();
+        // These two simplifiers are unique to this function.
+        let r_term = 1. / r.powi((n - 1).into());
+        let f = |q| r_sq.powf((nf - 1.) / 2. - q);
 
+        // todo: QC all this.
 
-        0.
-        // let part0 = r.powi((n-3).into()) * exp_term;
-        // let part1 = 0.;
-        // let part1 = nf.powi(2) - nf * (2. * xi * r + 3.) + xi.powi(2) * r.powi(2) + 2. * xi * r + 2.;
-        //
-        // Cplx::from_real(N * part0 * part1)
+        let term1 = f(0.) * (xi.powi(2) - 2. * xi / r);
+
+        let term2 = -2. * (nf - 1.) * xi * f(1.5) * r_sq;
+
+        let term3 = 2. * ((nf - 1.) / 2. - 1.) * (nf - 1.) * f(2.) * r_sq;
+
+        let term4 = 3. * (nf - 1.) * f(1.);
+
+        r_term * (term1 + term2 + term3 + term4)
     }
-
 
     /// Analytic second derivative using analytic basis functions.
     /// See OneNote: `Exploring the WF, part 6`.
@@ -588,7 +613,7 @@ impl Sto {
         let r = r_sq.sqrt();
 
         let n = self.n;
-        let l = self.l;
+        let l = self.harmonic.l;
         let nf = n as f64;
         let xi = self.xi;
 
@@ -601,10 +626,6 @@ impl Sto {
             let x_sq = x.powi(2);
 
             if n == 1 {
-                // todo: Why do you have n here??
-                // let term1 = xi.powi(2) * x_sq * exp_term / (nf.powi(2) * r_sq);
-                // let term2 = xi * x_sq * exp_term / (nf * r_sq.powf(1.5));
-                // let term3 = -xi * exp_term / (nf * r);
                 let term1 = xi.powi(2) * x_sq * exp_term / r_sq;
                 let term2 = xi * x_sq * exp_term / r_sq.powf(1.5);
                 let term3 = -xi * exp_term / r;
@@ -621,6 +642,14 @@ impl Sto {
                 let term3 = -(2. * (1. / r - x_sq / r_sq.powf(1.5)) * exp_term) / 2.;
 
                 result += term1 + term2 + term3
+            } else if n == 2 && l == 1 {
+                let term1 = (xi.powi(2) * x.powi(2) * exp_term) / (4. * r_sq);
+                let term2 = (xi * x.powi(2) * exp_term) / (2. * r_sq.powf(1.5));
+                let term3 = (xi * exp_term) / (2. * r);
+                let term4 = (-xi * x.powi(2) * exp_term) / r_sq;
+                let term5 = (1.0 / r - x.powi(2) / r_sq.powf(1.5)) * exp_term;
+
+                result += r * (term1 + term2 - term3) - term4 + term5
             } else {
                 unimplemented!("Second deriv unimplemented for this n and l.")
             }
@@ -633,6 +662,8 @@ impl Sto {
     /// eliminated terms. Of note, the exponential term cancels out.
     ///
     /// Note: It appears that this is always real (Hermitian eigenvalues?)
+    /// Important: We currently don't use this: It may be incompatible with the way we
+    /// mix bases, due to OOP of adding and dividing mattering.
     pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
         let r = (posit_sample - self.posit).magnitude();
 
@@ -642,7 +673,9 @@ impl Sto {
         if self.n == 1 {
             xi.powi(2) - 2. * xi / r
         } else if self.n == 2 && self.harmonic.l == 0 {
-            xi.powi(2)/4. + xi/(2. - r) - xi / r - 2. / ((2. - r) * r)
+            xi.powi(2) / 4. + xi / (2. - r) - xi / r - 2. / ((2. - r) * r)
+    }         else if self.n == 2 && self.harmonic.l == 1 {
+            0.
         } else {
             unimplemented!()
         }

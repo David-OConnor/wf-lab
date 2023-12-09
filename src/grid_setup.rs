@@ -1,8 +1,8 @@
 //! This module contains code for setting up grids and sample points.
 
-use crate::{complex_nums::Cplx, iter_arr, util};
-
 use lin_alg2::f64::Vec3;
+
+use crate::{complex_nums::Cplx, iter_arr, util};
 
 // type Arr3d = Vec<Vec<Vec<f64>>>;
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;

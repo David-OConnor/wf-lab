@@ -228,7 +228,6 @@ pub(crate) fn balance_arr(arr: &mut Arr3dReal, balance: f64) {
     }
 }
 
-
 /// Flatten 3D data, prior passing to a GPU kernel.
 pub(crate) fn flatten_arr(vals_3d: &Arr3dVec, grid_n: usize) -> Vec<Vec3> {
     let mut result = Vec::new();

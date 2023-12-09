@@ -2,11 +2,13 @@
 
 use cudarc::driver::sys::cuTexObjectGetResourceViewDesc;
 use lin_alg2::f64::Vec3;
+use ndarray::prelude::*;
+use ndarray_linalg::SVD;
 
 use crate::{
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
-    eigen_fns::{calc_E_on_psi, calc_V_on_psi},
+    eigen_fns::{calc_E_on_psi, calc_V_on_psi, KE_COEFF_INV},
     grid_setup::{new_data, new_data_real, Arr3dReal, Arr3dVec},
     iter_arr,
     potential::{self, V_coulomb},
@@ -14,11 +16,6 @@ use crate::{
     util, wf_ops,
     wf_ops::Q_ELEC,
 };
-
-use crate::eigen_fns::KE_COEFF_INV;
-
-use ndarray::prelude::*;
-use ndarray_linalg::SVD;
 
 pub fn generate_sample_pts() -> Vec<Vec3> {
     // It's important that these sample points span points both close and far from the nuclei.
@@ -106,7 +103,6 @@ fn find_base_xi_E_common(
             smallest_diff = diff;
         }
 
-        // println!("XI: {:?}, Diff: {}", xi_trial, diff);
     }
 
     let base_xi = trial_base_xis[best_xi_i];
@@ -301,6 +297,7 @@ fn find_bases_system_of_eqs(
     // todo for each value.
     let mut psi_mat_ = Vec::new();
     let mut psi_pp_mat_ = Vec::new();
+    // let mut psi_pp_div_psi_mat_ = Vec::new();
 
     for xi in xis {
         let sto = Basis::Sto(Sto {
@@ -321,6 +318,7 @@ fn find_bases_system_of_eqs(
             let psi = sto.value(*posit_sample);
             psi_mat_.push(psi.real);
             psi_pp_mat_.push(wf_ops::second_deriv_cpu(psi, &sto, *posit_sample).real);
+            // psi_pp_div_psi_mat_.push(sto.psi_pp_div_psi(*posit_sample));
         }
     }
 
@@ -328,6 +326,8 @@ fn find_bases_system_of_eqs(
     let psi_mat = psi_mat.t();
     let psi_pp_mat = Array::from_shape_vec((xis.len(), sample_pts.len()), psi_pp_mat_).unwrap();
     let psi_pp_mat = psi_pp_mat.t();
+    // let psi_pp_div_psi_mat = Array::from_shape_vec((xis.len(), sample_pts.len()), psi_pp_div_psi_mat_).unwrap();
+    // let psi_pp_div_psi_mat = psi_pp_div_psi_mat.t();
 
     let rhs: Vec<f64> = V_to_match.iter().map(|V| KE_COEFF_INV * (V + E)).collect();
 
@@ -444,8 +444,7 @@ pub fn run(
     //     grid_charge,
     // );
     //
-    // xis[0] = base_xi;
-    println!("\nBase xi: {}. E: {}\n", base_xi, E);
+    xis[0] = base_xi;
 
     // Code regarding trial wave functions. We are currently not using it, assuming we can converge
     // on a solution from an arbitrary starting point. This seems acceptable for Helium.

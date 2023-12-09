@@ -4,12 +4,12 @@
 //! hit compared to f32. We'll switch to f32 as required, but this is still much faster
 //! than performing coulomb operations on the CPU.
 //!
-use std::sync::Arc;
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
 
-use crate::basis_wfs::Sto;
 use cudarc::driver::{CudaDevice, CudaSlice, LaunchAsync, LaunchConfig};
 use lin_alg2::f64::Vec3;
+
+use crate::basis_wfs::Sto;
 
 // type FDev = f64; // This makes switching between f32 and f64 easier.
 type FDev = f32; // This makes switching between f32 and f64 easier.

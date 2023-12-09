@@ -27,7 +27,6 @@
 
 #[cfg(feature = "cuda")]
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
-
 use lin_alg2::f64::Vec3;
 
 mod basis_finder;

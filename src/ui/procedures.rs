@@ -5,8 +5,7 @@ use graphics::{EngineUpdates, Scene};
 
 use crate::{
     basis_finder,
-    grid_setup::Arr3d,
-    grid_setup::{new_data, Arr3dReal},
+    grid_setup::{new_data, Arr3d, Arr3dReal},
     iter_arr, potential, render,
     types::SurfacesPerElec,
     util, wf_ops, ActiveElec, State,
