@@ -46,6 +46,7 @@ mod types;
 mod ui;
 mod util;
 mod wf_ops;
+mod forces;
 
 use crate::{
     basis_wfs::Basis,

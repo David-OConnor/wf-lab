@@ -121,8 +121,6 @@ pub fn wf_from_bases(
     grid_posits: &Arr3dVec,
     grid_n: usize,
 ) {
-    let mut norm = 0.;
-
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
     let mut posits_flat = None;
 
@@ -143,6 +141,8 @@ pub fn wf_from_bases(
     for (basis_i, basis) in bases.iter().enumerate() {
         // todo: Temp forcing CPU only while we confirm numerical stability issues with f32
         // todo on GPU aren't causing a problem.
+
+        let mut norm = 0.;
 
         // match dev {
         //     #[cfg(feature = "cuda")]
