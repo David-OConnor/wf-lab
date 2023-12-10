@@ -102,7 +102,6 @@ fn find_base_xi_E_common(
             best_xi_i = i;
             smallest_diff = diff;
         }
-
     }
 
     let base_xi = trial_base_xis[best_xi_i];

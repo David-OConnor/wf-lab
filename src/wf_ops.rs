@@ -505,7 +505,10 @@ pub(crate) fn sto_vals_derivs_cpu(
 
 /// Helper fn to help manage numerical vs analytic second derivs.
 pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3) -> Cplx {
-    if basis.n() >= 3 {
+    // todo temp, until we get analytic second derivs with harmonics.
+    return num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi);
+
+    if basis.n() >= 3 || basis.harmonic().l > 0 {
         num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi)
     } else {
         basis.second_deriv(posit)

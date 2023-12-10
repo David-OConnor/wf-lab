@@ -128,7 +128,9 @@ pub(crate) fn make_laguerre(n: u16, α: u16) -> impl Fn(f64) -> f64 {
     // }
 }
 
-/// Generate a Legendre polynomial for a given value. Used in the angular component of Hydrogen basis functions.
+/// Generate a non-Associated Legendre polynomial for a given value. Used in the angular component of
+/// Hydrogen basis functions. (The Associated version, which is a modification of htis, is part of the
+/// definition of spherical harmonics)
 pub(crate) fn _legendre(n: u16, x: f64) -> f64 {
     // todo: For now, we've just hard-coded some values for low n.
 

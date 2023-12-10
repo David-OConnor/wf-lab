@@ -237,7 +237,7 @@ impl Basis {
             Self::Gto(_) => "SO1",
             Self::Sto(_) => "SO2",
         }
-            .to_owned()
+        .to_owned()
     }
 }
 
@@ -421,13 +421,7 @@ impl Sto {
     /// Does not include weight.
     /// https://quantummechanics.ucsd.edu/ph130a/130_notes/node233.html
     pub fn angular(&self, posit_sample: Vec3) -> Cplx {
-        // todo: COnsider re-adding if aplicable to save computation, if you end up with lots of 0ed bases.
-        // if self.weight.abs() < EPS {
-        //     return Cplx::new_zero(); // saves some computation.
-        // }
-
         let diff = posit_sample - self.posit;
-        // let r = (diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2)).sqrt();
 
         let diff = self.harmonic.orientation.inverse().rotate_vec(diff);
 
@@ -634,8 +628,8 @@ impl Sto {
             } else if n == 2 && l == 0 {
                 let term1 = (2.0 - r)
                     * ((xi.powi(2) * x_sq * exp_term) / (4. * r_sq)
-                    + (xi * x_sq * exp_term) / (2. * r_sq.powf(1.5))
-                    - (xi * exp_term) / (2. * r));
+                        + (xi * x_sq * exp_term) / (2. * r_sq.powf(1.5))
+                        - (xi * exp_term) / (2. * r));
 
                 let term2 = (4. * xi * x_sq * exp_term) / (4. * r_sq);
 
@@ -674,7 +668,7 @@ impl Sto {
             xi.powi(2) - 2. * xi / r
         } else if self.n == 2 && self.harmonic.l == 0 {
             xi.powi(2) / 4. + xi / (2. - r) - xi / r - 2. / ((2. - r) * r)
-    }         else if self.n == 2 && self.harmonic.l == 1 {
+        } else if self.n == 2 && self.harmonic.l == 1 {
             0.
         } else {
             unimplemented!()
