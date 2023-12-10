@@ -454,7 +454,7 @@ fn bottom_items(
             wf_ops::combine_electron_charges(ae, &state.charges_from_electron, state.grid_n_charge);
 
         let sample_pts = basis_finder::generate_sample_pts();
-        let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
+        // let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
 
         let (bases, E) = basis_finder::run(
             &state.dev,
@@ -463,7 +463,7 @@ fn bottom_items(
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_charge,
             &sample_pts,
-            &xis,
+            &state.bases[ae]
         );
 
         state.surfaces_shared.E = E;

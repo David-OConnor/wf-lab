@@ -162,7 +162,8 @@ fn find_base_xi_E(
 fn find_base_xi_E2(
     V_to_match: &[f64],
     sample_pts: &[Vec3],
-    non_base_xis: &[f64],
+    // non_base_xis: &[f64],
+    bases: &Vec<Basis>,
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
@@ -191,13 +192,16 @@ fn find_base_xi_E2(
     let mut best_xi = 0.;
     let mut best_E = 0.;
 
-    let mut xis = vec![0.]; // This initial value is the base xi we update with each trial one.
-    for xi in non_base_xis {
-        xis.push(*xi);
-    }
+    // let mut xis = vec![0.]; // This initial value is the base xi we update with each trial one.
+    // for xi in non_base_xis {
+    //     xis.push(*xi);
+    // }
+
+    let mut bases = bases.clone();
 
     for xi_trial in &trial_base_xis {
-        xis[0] = *xi_trial;
+        // xis[0] = *xi_trial;
+        *bases[0].xi_mut() = *xi_trial;
 
         // let base_sto = Basis::Sto(Sto {
         //     posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
@@ -216,9 +220,9 @@ fn find_base_xi_E2(
         for E_trial in &trial_Es {
             let E_trial = *E_trial;
 
-            let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E_trial);
+            let bases_this_e = find_bases_system_of_eqs(&V_to_match, &bases, &sample_pts, E_trial);
 
-            let score = score_fit(V_to_match, sample_pts, &bases, E_trial);
+            let score = score_fit(V_to_match, sample_pts, &bases_this_e, E_trial);
 
             println!("Xi: {:.3}, E: {:.3} Score: {:.5}", xi_trial, E_trial, score);
 
@@ -285,7 +289,8 @@ fn find_charge_trial_wf(
 /// W is the weight vector we are solving for, and V is V from charge, with h^2/2m and E included.
 fn find_bases_system_of_eqs(
     V_to_match: &[f64],
-    xis: &[f64],
+    // bases: &[Sto],
+    bases: &[Basis],
     sample_pts: &[Vec3],
     E: f64,
 ) -> Vec<Basis> {
@@ -298,14 +303,14 @@ fn find_bases_system_of_eqs(
     let mut psi_pp_mat_ = Vec::new();
     // let mut psi_pp_div_psi_mat_ = Vec::new();
 
-    for xi in xis {
+    for basis in bases {
         let sto = Basis::Sto(Sto {
-            posit: Vec3::new_zero(), // todo: Hard-coded for now.
-            n: 1,
-            xi: *xi,
+            posit: basis.posit(),
+            n: basis.n(),
+            xi: basis.xi(),
             weight: 1., // Weight is 1 here.
-            charge_id: 0,
-            harmonic: Default::default(),
+            charge_id: basis.charge_id(),
+            harmonic: Default::default(), // todo
         });
 
         // todo: Cplx
@@ -321,9 +326,9 @@ fn find_bases_system_of_eqs(
         }
     }
 
-    let psi_mat = Array::from_shape_vec((xis.len(), sample_pts.len()), psi_mat_).unwrap();
+    let psi_mat = Array::from_shape_vec((bases.len(), sample_pts.len()), psi_mat_).unwrap();
     let psi_mat = psi_mat.t();
-    let psi_pp_mat = Array::from_shape_vec((xis.len(), sample_pts.len()), psi_pp_mat_).unwrap();
+    let psi_pp_mat = Array::from_shape_vec((bases.len(), sample_pts.len()), psi_pp_mat_).unwrap();
     let psi_pp_mat = psi_pp_mat.t();
     // let psi_pp_div_psi_mat = Array::from_shape_vec((xis.len(), sample_pts.len()), psi_pp_div_psi_mat_).unwrap();
     // let psi_pp_div_psi_mat = psi_pp_div_psi_mat.t();
@@ -360,14 +365,14 @@ fn find_bases_system_of_eqs(
 
     let mut result = Vec::new();
 
-    for (i, xi) in xis.iter().enumerate() {
+    for (i, basis) in bases.iter().enumerate() {
         result.push(Basis::Sto(Sto {
-            posit: Vec3::new_zero(), // todo: Hard-coded for now.
-            n: 1,
-            xi: *xi,
+            posit: basis.posit(),
+            n: basis.n(),
+            xi: basis.xi(),
             weight: weights_normalized[i],
-            charge_id: 0,
-            harmonic: Default::default(),
+            charge_id: basis.charge_id(),
+            harmonic: Default::default(), // todo
         }));
     }
 
@@ -418,9 +423,11 @@ pub fn run(
     // Note that this is an intermediate step while we manually experiment with
     // todo convergence algos and trial WFs.
     sample_pts: &[Vec3],
-    xis: &[f64],
+    bases: &Vec<Basis>,
+    // xis: &[f64],
 ) -> (Vec<Basis>, f64) {
-    let mut xis = Vec::from(xis);
+    // let mut xis = Vec::from(xis);
+    let mut bases = bases.clone();
 
     let mut V_to_match =
         potential::create_V_1d_from_elec(dev, sample_pts, charge_elec, grid_charge, grid_n_charge);
@@ -443,7 +450,8 @@ pub fn run(
     //     grid_charge,
     // );
     //
-    xis[0] = base_xi;
+    // xis[0] = base_xi;
+    *bases[0].xi_mut() = base_xi;
 
     // Code regarding trial wave functions. We are currently not using it, assuming we can converge
     // on a solution from an arbitrary starting point. This seems acceptable for Helium.
@@ -467,8 +475,9 @@ pub fn run(
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
 
-    // let bases = find_bases_system_of_eqs(&V_to_match, &additional_xis, base_xi, &sample_pts, E);
-    let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);
+    // let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);
+    // let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);
+    let bases = find_bases_system_of_eqs(&V_to_match, &bases, &sample_pts, E);
 
     (bases, E)
 }

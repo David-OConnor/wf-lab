@@ -58,7 +58,7 @@ use crate::{
 const NUM_SURFACES: usize = 11;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 14.;
+const GRID_MAX_RENDER: f64 = 5.;
 const GRID_MAX_CHARGE: f64 = 12.;
 const GRID_N_RENDER_DEFAULT: usize = 80;
 const GRID_N_CHARGE_DEFAULT: usize = 91;
@@ -374,8 +374,8 @@ fn main() {
     let max_basis_n = 1;
     let num_elecs = 2;
 
-    let posit_charge_1 = Vec3::new(-6., 0., 0.);
-    let posit_charge_2 = Vec3::new(6., 0., 0.);
+    let posit_charge_1 = Vec3::new(-0.5, 0., 0.);
+    let posit_charge_2 = Vec3::new(0.5, 0., 0.);
 
     let nuclei = vec![
         (posit_charge_1, Q_PROT * num_elecs as f64),

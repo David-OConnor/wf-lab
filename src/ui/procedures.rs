@@ -249,7 +249,7 @@ pub(crate) fn he_solver(state: &mut State) {
             state.grid_n_charge,
         );
 
-        let xis: Vec<f64> = state.bases[elec_id].iter().map(|b| b.xi()).collect();
+        // let xis: Vec<f64> = state.bases[elec_id].iter().map(|b| b.xi()).collect();
 
         let (bases, E) = basis_finder::run(
             &state.dev,
@@ -258,7 +258,8 @@ pub(crate) fn he_solver(state: &mut State) {
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_charge,
             &sample_pts,
-            &xis,
+            // &xis,
+            &state.bases[elec_id],
         );
 
         state.surfaces_shared.E = E;
