@@ -463,7 +463,7 @@ fn bottom_items(
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_charge,
             &sample_pts,
-            &state.bases[ae]
+            &state.bases[ae],
         );
 
         state.surfaces_shared.E = E;

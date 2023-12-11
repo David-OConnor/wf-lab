@@ -35,6 +35,7 @@ mod complex_nums;
 mod eigen_fns;
 mod elec_elec;
 mod eval;
+mod forces;
 #[cfg(feature = "cuda")]
 mod gpu;
 mod grid_setup;
@@ -46,7 +47,6 @@ mod types;
 mod ui;
 mod util;
 mod wf_ops;
-mod forces;
 
 use crate::{
     basis_wfs::Basis,
