@@ -88,7 +88,7 @@ pub fn initialize_bases(
             // (1.6, 0.),
             (2., 0.),
             (3., 0.),
-            (4., 0.),
+            // (4., 0.),
             // (5., 0.),
             // (6., 0.),
             // (7., 0.),
@@ -109,7 +109,17 @@ pub fn initialize_bases(
     }
 }
 
-/// Create psi, and optionally psi'', using basis functions. Does not mix bases; creates these
+/// Helper fn for `wf_from_bases`.
+fn add_to_norm(n: &mut f64, v: Cplx) {
+    let abs_sq = v.abs_sq();
+    if abs_sq < MAX_PSI_FOR_NORM {
+        *n += abs_sq; // todo: Handle norm on GPU?
+    } else {
+        println!("Exceeded norm thresh in create: {:?}", abs_sq);
+    }
+}
+
+/// Create psi, and optionally psi'', using basis functions. Creates one psi per basis. Does not mix bases; creates these
 /// values per-basis.
 /// todo: This currently keeps the bases unmixed. Do we want 2 variants: One mixed, one unmixed?
 pub fn wf_from_bases(
@@ -127,15 +137,6 @@ pub fn wf_from_bases(
     #[cfg(feature = "cuda")]
     if let ComputationDevice::Gpu(_) = dev {
         posits_flat = Some(util::flatten_arr(grid_posits, grid_n));
-    }
-
-    fn add_to_norm(n: &mut f64, v: Cplx) {
-        let abs_sq = v.abs_sq();
-        if abs_sq < MAX_PSI_FOR_NORM {
-            *n += abs_sq; // todo: Handle norm on GPU?
-        } else {
-            println!("Exceeded norm thresh in create: {:?}", abs_sq);
-        }
     }
 
     for (basis_i, basis) in bases.iter().enumerate() {

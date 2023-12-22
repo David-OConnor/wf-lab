@@ -1,10 +1,13 @@
 //! Calculations of intra-molecular and inter-molecular forces. Initial use case:
 //! estimating force on two hydrogen atoms in a molecule.
 
-use crate::grid_setup::{Arr3dReal, Arr3dVec};
-use crate::iter_arr;
-use crate::wf_ops::{K_C, Q_ELEC, Q_PROT};
 use lin_alg2::f64::Vec3;
+
+use crate::{
+    grid_setup::{Arr3dReal, Arr3dVec},
+    iter_arr,
+    wf_ops::{K_C, Q_ELEC, Q_PROT},
+};
 
 /// Returns the force on nuc0, then nuc1.
 pub(crate) fn h2_force(

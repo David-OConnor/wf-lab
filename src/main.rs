@@ -61,7 +61,7 @@ const NUM_SURFACES: usize = 11;
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_RENDER: f64 = 5.;
 const GRID_MAX_CHARGE: f64 = 12.;
-const GRID_N_RENDER_DEFAULT: usize = 80;
+const GRID_N_RENDER_DEFAULT: usize = 60;
 const GRID_N_CHARGE_DEFAULT: usize = 91;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
@@ -373,10 +373,10 @@ fn main() {
 
     let ui_active_elec = 0;
     let max_basis_n = 1;
-    let num_elecs = 2;
+    let num_elecs = 1;
 
-    let posit_charge_1 = Vec3::new(-0.5, 0., 0.);
-    let posit_charge_2 = Vec3::new(0.5, 0., 0.);
+    let posit_charge_1 = Vec3::new(-0.4, 0., 0.);
+    let posit_charge_2 = Vec3::new(0.4, 0., 0.);
 
     let nuclei = vec![
         (posit_charge_1, Q_PROT * num_elecs as f64),

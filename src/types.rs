@@ -98,8 +98,6 @@ pub struct SurfacesPerElec {
     /// V from the nucleii, and all other electrons. Does not include this electron's charge.
     /// We use this as a cache instead of generating it on the fly.
     pub V_acting_on_this: Arr3dReal,
-    // pub psi: PsiWDiffs,
-    // todo: Breaking change: Removing the stored diffs. We'll see if that works out.
     pub psi: Arr3d,
     /// From the Schrodinger equation based on psi and the other parameters.
     pub psi_pp_calculated: Arr3d,
@@ -111,8 +109,6 @@ pub struct SurfacesPerElec {
     pub psi_pp_per_basis: Vec<Arr3d>,
     // todo: An experiment where we analytically calculate this directly.
     pub psi_pp_div_psi_per_basis: Vec<Arr3dReal>,
-    // /// Charges from this electron, over 3d space. Computed from <ψ|ψ>.
-    // pub charge: Arr3dReal,
     /// Aux surfaces are for misc visualizations
     pub V_elec_eigen: Arr3dReal,
     pub V_total_eigen: Arr3dReal,

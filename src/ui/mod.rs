@@ -1,10 +1,17 @@
 use std::f64::consts::TAU;
 
-use egui::{self, Color32, RichText, Ui};
+use egui::{self, Button, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg2::f64::Vec3;
 
-use crate::{basis_finder, basis_wfs::Basis, potential, render, wf_ops, ActiveElec, State};
+use crate::{
+    basis_finder,
+    basis_wfs::Basis,
+    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
+    potential, render,
+    types::ComputationDevice,
+    wf_ops, ActiveElec, State,
+};
 
 pub(crate) mod procedures;
 
@@ -107,7 +114,7 @@ fn charge_editor(
         *updated_entities = true;
     }
 
-    if ui.add(egui::Button::new("Add charge")).clicked() {
+    if ui.add(Button::new("Add charge")).clicked() {
         charges.push((Vec3::new_zero(), crate::Q_PROT));
         *updated_evaled_wfs = true;
         *updated_basis_weights = true;
@@ -120,7 +127,6 @@ fn charge_editor(
 fn basis_fn_mixer(
     state: &mut State,
     updated_basis_weights: &mut bool,
-    updated_unweighted_basis_wfs: &mut bool,
     ui: &mut Ui,
     active_elec: usize,
 ) {
@@ -132,12 +138,9 @@ fn basis_fn_mixer(
             // We use this Vec to avoid double-mutable borrow issues.
             let mut bases_modified = Vec::new();
 
-            let weights: Vec<f64> = state.bases[active_elec]
-                .iter()
-                .map(|b| b.weight())
-                .collect();
-
             for (basis_i, basis) in state.bases[active_elec].iter_mut().enumerate() {
+                let mut recalc_this_basis = false;
+
                 ui.horizontal(|ui| {
                     ui.spacing_mut().slider_width = SLIDER_WIDTH_ORIENTATION; // Only affects sliders in this section.
 
@@ -162,8 +165,10 @@ fn basis_fn_mixer(
 
                     if basis.charge_id() != prev_charge_id {
                         *basis.posit_mut() = state.charges_fixed[basis.charge_id()].0;
+
+                        recalc_this_basis = true;
                         *updated_basis_weights = true;
-                        *updated_unweighted_basis_wfs = true;
+                        // *updated_unweighted_basis_wfs = true;
                     }
 
                     match basis {
@@ -209,7 +214,8 @@ fn basis_fn_mixer(
                                     *basis.m_mut() = basis.l() as i16
                                 }
 
-                                *updated_unweighted_basis_wfs = true;
+                                // *updated_unweighted_basis_wfs = true;
+                                recalc_this_basis = true;
                                 *updated_basis_weights = true;
                             }
                         }
@@ -284,12 +290,14 @@ fn basis_fn_mixer(
                                     b.harmonic.m = b.harmonic.l as i16
                                 }
 
-                                *updated_unweighted_basis_wfs = true;
+                                // *updated_unweighted_basis_wfs = true;
+                                recalc_this_basis = true;
                                 *updated_basis_weights = true;
                             }
 
                             if b.xi != xi_prev {
-                                *updated_unweighted_basis_wfs = true;
+                                // *updated_unweighted_basis_wfs = true;
+                                recalc_this_basis = true;
                                 *updated_basis_weights = true;
                             }
                         }
@@ -342,7 +350,30 @@ fn basis_fn_mixer(
                     //     }
                 });
 
-                // todo: Text edit or dropdown for n.
+                // Only update this particular basis; not all.
+                if recalc_this_basis {
+                    // Note: Extra memory use from this re-allocoating and cloning.
+                    let mut temp_psi = vec![new_data(state.grid_n_render)];
+                    let mut temp_psi_pp = vec![new_data(state.grid_n_render)];
+                    let mut temp_psi_pp_div_psi = vec![new_data_real(state.grid_n_render)];
+
+                    wf_ops::wf_from_bases(
+                        &state.dev,
+                        &mut temp_psi,
+                        Some(&mut temp_psi_pp),
+                        Some(&mut temp_psi_pp_div_psi),
+                        &[basis.clone()],
+                        &state.surfaces_shared.grid_posits,
+                        state.grid_n_render,
+                    );
+
+                    state.surfaces_per_elec[active_elec].psi_per_basis[basis_i] =
+                        temp_psi.remove(0);
+                    state.surfaces_per_elec[active_elec].psi_pp_per_basis[basis_i] =
+                        temp_psi_pp.remove(0);
+                    state.surfaces_per_elec[active_elec].psi_pp_div_psi_per_basis[basis_i] =
+                        temp_psi_pp_div_psi.remove(0);
+                }
 
                 ui.add(
                     egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
@@ -357,6 +388,9 @@ fn basis_fn_mixer(
                     })
                     .text("Wt"),
                 );
+
+                // Re-compute this basis WF. Eg, after changing n, l, m, xi, or the associated electron.
+                if ui.add(Button::new("C")).clicked() {}
             }
 
             if state.ui.weight_symmetry {
@@ -408,14 +442,14 @@ fn bottom_items(
     updated_evaluated_wfs: &mut bool,
 ) {
     ui.horizontal(|ui| {
-        // if ui.add(egui::Button::new("Empty e- charge")).clicked() {
+        // if ui.add(Button::new("Empty e- charge")).clicked() {
         //     state.charges_electron[active_elec] = grid_setup::new_data_real(state.grid_n);
         //
         //     *updated_meshes = true;
         // }
 
         if ui
-            .add(egui::Button::new("Create charge from this elec"))
+            .add(Button::new("Create charge from this elec"))
             .clicked()
         {
             let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
@@ -428,7 +462,7 @@ fn bottom_items(
         }
 
         if ui
-            .add(egui::Button::new("Update V acting on this elec"))
+            .add(Button::new("Update V acting on this elec"))
             .clicked()
         {
             procedures::update_V_acting_on_elec(state, ae);
@@ -437,7 +471,7 @@ fn bottom_items(
             *updated_meshes = true;
         }
 
-        if ui.add(egui::Button::new("Find E")).clicked() {
+        if ui.add(Button::new("Find E")).clicked() {
             state.surfaces_shared.E = wf_ops::calc_E_from_bases(
                 &state.bases[ae],
                 state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
@@ -449,7 +483,7 @@ fn bottom_items(
         }
     });
 
-    if ui.add(egui::Button::new("Find STO bases")).clicked() {
+    if ui.add(Button::new("Find STO bases")).clicked() {
         let charges_other_elecs =
             wf_ops::combine_electron_charges(ae, &state.charges_from_electron, state.grid_n_charge);
 
@@ -476,7 +510,7 @@ fn bottom_items(
         *updated_basis_weights = true;
     }
 
-    if ui.add(egui::Button::new("He solver")).clicked() {
+    if ui.add(Button::new("He solver")).clicked() {
         procedures::he_solver(state);
 
         // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.
@@ -758,7 +792,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 basis_fn_mixer(
                     state,
                     &mut updated_basis_weights,
-                    &mut updated_evaluated_wfs,
                     ui,
                     ae,
                 );
@@ -829,7 +862,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 // Multiply wave functions together, and stores in Shared surfaces.
                 // todo: This is an approximation
-                // if ui.add(egui::Button::new("Combine wavefunctions")).clicked() {
+                // if ui.add(Button::new("Combine wavefunctions")).clicked() {
                 //     procedures::combine_wfs(state);
                 //     updated_meshes = true;
                 //     engine_updates.entities = true;
