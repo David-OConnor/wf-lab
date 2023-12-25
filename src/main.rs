@@ -373,14 +373,14 @@ fn main() {
 
     let ui_active_elec = 0;
     let max_basis_n = 1;
-    let num_elecs = 1;
+    let num_elecs = 3;
 
-    let posit_charge_1 = Vec3::new(-0.4, 0., 0.);
+    let posit_charge_1 = Vec3::new(0., 0., 0.);
     let posit_charge_2 = Vec3::new(0.4, 0., 0.);
 
     let nuclei = vec![
         (posit_charge_1, Q_PROT * num_elecs as f64),
-        (posit_charge_2, Q_PROT * num_elecs as f64),
+        // (posit_charge_2, Q_PROT * num_elecs as f64),
     ];
 
     // Outer of these is per-elec.
