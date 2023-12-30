@@ -33,6 +33,9 @@ impl GpuArchitecture {
 ///
 /// Compiles our CUDA program using Nvidia's NVCC compiler
 fn main() {
+    #[cfg(not(feature = "cuda"))]
+    return
+
     // Tell Cargo that if the given file changes, to rerun this build script.
     println!("cargo:rerun-if-changed=src/cuda/cuda.cu");
     println!("cargo:rerun-if-changed=src/cuda/util.cu");

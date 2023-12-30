@@ -1,5 +1,6 @@
 //! Used to find weights and Xis for STOs.
 
+#[cfg(feature = "cuda")]
 use cudarc::driver::sys::cuTexObjectGetResourceViewDesc;
 use lin_alg2::f64::Vec3;
 use ndarray::prelude::*;

@@ -47,6 +47,7 @@ mod types;
 mod ui;
 mod util;
 mod wf_ops;
+mod dirac;
 
 use crate::{
     basis_wfs::Basis,
@@ -61,8 +62,8 @@ const NUM_SURFACES: usize = 11;
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_RENDER: f64 = 5.;
 const GRID_MAX_CHARGE: f64 = 12.;
-const GRID_N_RENDER_DEFAULT: usize = 60;
-const GRID_N_CHARGE_DEFAULT: usize = 91;
+const GRID_N_RENDER_DEFAULT: usize = 50;
+const GRID_N_CHARGE_DEFAULT: usize = 61;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?

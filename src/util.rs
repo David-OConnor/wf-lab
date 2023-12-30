@@ -102,6 +102,7 @@ pub(crate) fn make_laguerre(n: u16, α: u16) -> impl Fn(f64) -> f64 {
         }
         // 4 => {
         //
+
         // }
         _ => unimplemented!(),
     }

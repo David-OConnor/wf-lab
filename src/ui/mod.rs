@@ -15,7 +15,7 @@ use crate::{
 
 pub(crate) mod procedures;
 
-const UI_WIDTH: f32 = 300.;
+const UI_WIDTH: f32 = 280.;
 const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 260.;
 const SLIDER_WIDTH_ORIENTATION: f32 = 100.;

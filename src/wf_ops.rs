@@ -132,12 +132,11 @@ pub fn wf_from_bases(
     grid_n: usize,
 ) {
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
-    let mut posits_flat = None;
-
     #[cfg(feature = "cuda")]
-    if let ComputationDevice::Gpu(_) = dev {
-        posits_flat = Some(util::flatten_arr(grid_posits, grid_n));
-    }
+    let posits_flat = match dev {
+        ComputationDevice::Gpu(_) => Some(util::flatten_arr(grid_posits, grid_n)),
+        ComputationDevice::Cpu => None,
+    };
 
     for (basis_i, basis) in bases.iter().enumerate() {
         // todo: Temp forcing CPU only while we confirm numerical stability issues with f32
@@ -198,8 +197,7 @@ pub fn wf_from_bases(
                     second_deriv_cpu(psi[basis_i][i][j][k], &basis, posit_sample);
             }
             if let Some(ref mut ppd) = psi_pp_div_psi {
-                // todo: This is currently hard-coded for CPU, and n=1
-                ppd[basis_i][i][j][k] = basis.psi_pp_div_psi(posit_sample);
+                psi_pp_div_psi_cpu(psi[basis_i][i][j][k], &basis, posit_sample);
             }
 
             add_to_norm(&mut norm, psi[basis_i][i][j][k]);
@@ -513,5 +511,19 @@ pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3) -> Cplx {
         num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi)
     } else {
         basis.second_deriv(posit)
+    }
+}
+
+/// Helper fn to help manage numerical vs analytic second derivs.
+pub fn psi_pp_div_psi_cpu(psi: Cplx, basis: &Basis, posit: Vec3) -> f64 {
+    // todo temp, until we get analytic second derivs with harmonics.
+    let psi_pp = num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi);
+    return (psi_pp / psi).real;
+
+    if basis.n() >= 3 || basis.harmonic().l > 0 {
+        let psi_pp = num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi);
+        (psi_pp / psi).real
+    } else {
+        basis.psi_pp_div_psi(posit)
     }
 }
