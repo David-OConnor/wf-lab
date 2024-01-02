@@ -20,7 +20,7 @@ impl Cplx {
         Self { real, im }
     }
 
-    pub fn new_zero() -> Self {
+    pub const fn new_zero() -> Self {
         Self { real: 0., im: 0. }
     }
 

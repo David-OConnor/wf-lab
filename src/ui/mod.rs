@@ -789,12 +789,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 ui.heading("Basis functions and weights:");
 
-                basis_fn_mixer(
-                    state,
-                    &mut updated_basis_weights,
-                    ui,
-                    ae,
-                );
+                basis_fn_mixer(state, &mut updated_basis_weights, ui, ae);
 
                 ui.add_space(ITEM_SPACING);
 

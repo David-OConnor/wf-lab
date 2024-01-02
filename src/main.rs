@@ -32,6 +32,7 @@ use lin_alg2::f64::Vec3;
 mod basis_finder;
 mod basis_wfs;
 mod complex_nums;
+mod dirac;
 mod eigen_fns;
 mod elec_elec;
 mod eval;
@@ -47,7 +48,6 @@ mod types;
 mod ui;
 mod util;
 mod wf_ops;
-mod dirac;
 
 use crate::{
     basis_wfs::Basis,
