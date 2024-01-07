@@ -358,7 +358,7 @@ fn basis_fn_mixer(
                     let mut temp_psi_pp_div_psi = vec![new_data_real(state.grid_n_render)];
 
                     wf_ops::wf_from_bases(
-                        &state.dev,
+                        &state.dev_psi,
                         &mut temp_psi,
                         Some(&mut temp_psi_pp),
                         Some(&mut temp_psi_pp_div_psi),
@@ -491,7 +491,7 @@ fn bottom_items(
         // let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
 
         let (bases, E) = basis_finder::run(
-            &state.dev,
+            &state.dev_charge,
             &state.charges_fixed,
             &charges_other_elecs,
             &state.surfaces_shared.grid_posits_charge,
@@ -561,7 +561,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     surfaces_shared,
                     surfaces_per_elec,
                 ) = crate::init_from_grid(
-                    &state.dev,
+                    &state.dev_psi,
+                    &state.dev_charge,
                     state.grid_range_render,
                     state.grid_range_charge,
                     state.sample_factor_render,

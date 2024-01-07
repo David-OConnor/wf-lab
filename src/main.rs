@@ -117,8 +117,24 @@ impl Default for StateUi {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum PsiPpCalc {
+    Analytic,
+    Numeric,
+}
+
+impl Default for PsiPpCalc {
+    fn default() -> Self {
+        Self::Numeric
+    }
+}
+
 pub struct State {
-    pub dev: ComputationDevice,
+    /// Computation device for evaluating the very expensive charge potential computation.
+    pub dev_charge: ComputationDevice,
+    /// Computation device for evaluating psi. (And psi''?)
+    pub dev_psi: ComputationDevice,
+    pub psi_pp_calc_type: PsiPpCalc,
     /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
     /// due to electrons are stored in `Surfaces`.
     pub charges_fixed: Vec<(Vec3, f64)>,
@@ -177,7 +193,8 @@ impl SurfaceData {
 
 /// Run this whenever n changes. Ie, at init, or when n changes in the GUI.
 pub fn init_from_grid(
-    dev: &ComputationDevice,
+    dev_psi: &ComputationDevice,
+    dev_charge: &ComputationDevice,
     grid_range: (f64, f64),
     grid_range_charge: (f64, f64),
     spacing_factor: f64,
@@ -250,7 +267,7 @@ pub fn init_from_grid(
         let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_per_basis;
 
         wf_ops::wf_from_bases(
-            dev,
+            dev_psi,
             psi,
             Some(psi_pp),
             Some(psi_pp_div_psi),
@@ -294,7 +311,7 @@ pub fn init_from_grid(
             psi_charge.push(new_data(grid_n_charge));
         }
         wf_ops::wf_from_bases(
-            dev,
+            dev_psi,
             &mut psi_charge,
             None,
             None,
@@ -450,7 +467,9 @@ fn main() {
     // }
 
     let state = State {
-        dev,
+        dev_charge: dev.clone(), // todo: Is this ok?
+        dev_psi: dev,
+        psi_pp_calc_type: PsiPpCalc::Analytic,
         charges_fixed: nuclei,
         charges_from_electron: charges_electron,
         V_from_elecs,

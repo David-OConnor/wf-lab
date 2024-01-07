@@ -415,7 +415,7 @@ fn score_fit(V_to_match: &[f64], sample_pts: &[Vec3], bases_to_eval: &[Basis], E
 /// in this function from charges associated with nuclei, and other electrons; these must be calculated
 /// prior to passing in as parameters.
 pub fn run(
-    dev: &ComputationDevice,
+    dev_charge: &ComputationDevice,
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
@@ -431,7 +431,7 @@ pub fn run(
     let mut bases = bases.clone();
 
     let mut V_to_match =
-        potential::create_V_1d_from_elec(dev, sample_pts, charge_elec, grid_charge, grid_n_charge);
+        potential::create_V_1d_from_elecs(dev_charge, sample_pts, charge_elec, grid_charge, grid_n_charge);
 
     // Add the charge from nucleii.
     for (i, sample_pt) in sample_pts.iter().enumerate() {

@@ -107,7 +107,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_per_basis;
 
     wf_ops::wf_from_bases(
-        &state.dev,
+        &state.dev_psi,
         psi,
         Some(psi_pp),
         Some(psi_pp_div_psi),
@@ -117,7 +117,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     );
 
     wf_ops::wf_from_bases(
-        &state.dev,
+        &state.dev_psi,
         &mut state.psi_charge[ae],
         None,
         None,
@@ -188,7 +188,7 @@ pub(crate) fn update_V_acting_on_elec(state: &mut State, ae: usize) {
             wf_ops::combine_electron_charges(ae, &state.charges_from_electron, state.grid_n_charge);
 
         potential::create_V_from_elecs(
-            &state.dev,
+            &state.dev_charge,
             &mut state.V_from_elecs[ae],
             &state.surfaces_shared.grid_posits,
             &state.surfaces_shared.grid_posits_charge,
@@ -252,7 +252,7 @@ pub(crate) fn he_solver(state: &mut State) {
         // let xis: Vec<f64> = state.bases[elec_id].iter().map(|b| b.xi()).collect();
 
         let (bases, E) = basis_finder::run(
-            &state.dev,
+            &state.dev_charge,
             &state.charges_fixed,
             &charges_other_elecs,
             &state.surfaces_shared.grid_posits_charge,
@@ -267,7 +267,7 @@ pub(crate) fn he_solver(state: &mut State) {
         state.ui.active_elec = ActiveElec::PerElec(elec_id);
 
         wf_ops::wf_from_bases(
-            &state.dev,
+            &state.dev_psi,
             &mut state.psi_charge[elec_id],
             None,
             None,

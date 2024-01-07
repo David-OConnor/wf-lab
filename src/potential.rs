@@ -96,7 +96,7 @@ pub(crate) fn update_V_acting_on_elec(
 
 /// See `create_V`. This assumes the sample positions are flattened already, vice arranged in
 /// 3D grids. Note that it returns a result, vice modifying in place.
-pub(crate) fn create_V_1d_from_elec(
+pub(crate) fn create_V_1d_from_elecs(
     dev: &ComputationDevice,
     posits_sample: &[Vec3],
     charges_elec: &Arr3dReal,
