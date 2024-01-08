@@ -114,6 +114,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
         &state.bases[ae],
         &state.surfaces_shared.grid_posits,
         state.grid_n_render,
+        state.deriv_calc,
     );
 
     wf_ops::wf_from_bases(
@@ -124,6 +125,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
         &state.bases[ae],
         &state.surfaces_shared.grid_posits_charge,
         state.grid_n_charge,
+        state.deriv_calc,
     );
 }
 
@@ -260,6 +262,7 @@ pub(crate) fn he_solver(state: &mut State) {
             &sample_pts,
             // &xis,
             &state.bases[elec_id],
+            state.deriv_calc,
         );
 
         state.surfaces_shared.E = E;
@@ -274,6 +277,7 @@ pub(crate) fn he_solver(state: &mut State) {
             &state.bases[elec_id],
             &state.surfaces_shared.grid_posits_charge,
             state.grid_n_charge,
+            state.deriv_calc,
         );
 
         // We don't need to mix bases here, and that's handled at the end of the loop

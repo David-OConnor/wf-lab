@@ -58,6 +58,18 @@ pub enum _Spin {
     Dn,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum DerivCalc {
+    Analytic,
+    Numeric,
+}
+
+impl Default for DerivCalc {
+    fn default() -> Self {
+        Self::Numeric
+    }
+}
+
 /// [re]Create a set of basis functions, given fixed-charges representing nuclei.
 /// Use this in main and lib inits, and when you add or remove charges.
 pub fn initialize_bases(
@@ -130,6 +142,7 @@ pub fn wf_from_bases(
     bases: &[Basis],
     grid_posits: &Arr3dVec,
     grid_n: usize,
+    deriv_calc: DerivCalc,
 ) {
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
     #[cfg(feature = "cuda")]
@@ -144,66 +157,70 @@ pub fn wf_from_bases(
 
         let mut norm = 0.;
 
-        // match dev {
-        //     #[cfg(feature = "cuda")]
-        //     ComputationDevice::Gpu(cuda_dev) => {
-        //         let (psi_flat, psi_pp_flat) = if psi_pp.is_some() {
-        //             // Calculate both using the same kernel.
-        //             let (a, b) = gpu::sto_vals_derivs(
-        //                 cuda_dev,
-        //                 basis.xi(),
-        //                 basis.n(),
-        //                 &posits_flat.as_ref().unwrap(),
-        //                 basis.posit(),
-        //             );
-        //             (a, Some(b))
-        //         } else {
-        //             (
-        //                 gpu::sto_vals_or_derivs(
-        //                     cuda_dev,
-        //                     basis.xi(),
-        //                     basis.n(),
-        //                     &posits_flat.as_ref().unwrap(),
-        //                     basis.posit(),
-        //                     false,
-        //                 ),
-        //                 None,
-        //             )
-        //         };
-        //
-        //         let grid_n_sq = grid_n.pow(2);
-        //
-        //         // This is similar to util::unflatten, but with norm involved.
-        //         // todo: Try to use unflatten.
-        //         for (i, j, k) in iter_arr!(grid_n) {
-        //             let i_flat = i * grid_n_sq + j * grid_n + k;
-        //             psi[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
-        //
-        //             if let Some(pp) = psi_pp.as_mut() {
-        //                 pp[basis_i][i][j][k] =
-        //                     Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
-        //             }
-        //
-        //             add_to_norm(&mut norm, psi[basis_i][i][j][k]);
-        //         }
-        //     }
-        //     ComputationDevice::Cpu => {
-        for (i, j, k) in iter_arr!(grid_n) {
-            let posit_sample = grid_posits[i][j][k];
-            psi[basis_i][i][j][k] = basis.value(posit_sample);
+        match dev {
+            #[cfg(feature = "cuda")]
+            ComputationDevice::Gpu(cuda_dev) => {
+                let (psi_flat, psi_pp_flat) = if psi_pp.is_some() {
+                    // Calculate both using the same kernel.
+                    let (a, b) = gpu::sto_vals_derivs(
+                        cuda_dev,
+                        basis.xi(),
+                        basis.n(),
+                        &posits_flat.as_ref().unwrap(),
+                        basis.posit(),
+                    );
+                    (a, Some(b))
+                } else {
+                    (
+                        gpu::sto_vals_or_derivs(
+                            cuda_dev,
+                            basis.xi(),
+                            basis.n(),
+                            &posits_flat.as_ref().unwrap(),
+                            basis.posit(),
+                            false,
+                        ),
+                        None,
+                    )
+                };
 
-            if let Some(ref mut pp) = psi_pp {
-                pp[basis_i][i][j][k] =
-                    second_deriv_cpu(psi[basis_i][i][j][k], &basis, posit_sample);
-            }
-            if let Some(ref mut ppd) = psi_pp_div_psi {
-                psi_pp_div_psi_cpu(psi[basis_i][i][j][k], &basis, posit_sample);
-            }
+                let grid_n_sq = grid_n.pow(2);
 
-            add_to_norm(&mut norm, psi[basis_i][i][j][k]);
+                // This is similar to util::unflatten, but with norm involved.
+                // todo: Try to use unflatten.
+                for (i, j, k) in iter_arr!(grid_n) {
+                    let i_flat = i * grid_n_sq + j * grid_n + k;
+                    psi[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
+
+                    if let Some(pp) = psi_pp.as_mut() {
+                        pp[basis_i][i][j][k] =
+                            Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
+                    }
+
+                    add_to_norm(&mut norm, psi[basis_i][i][j][k]);
+                }
+            }
+            ComputationDevice::Cpu => {
+                for (i, j, k) in iter_arr!(grid_n) {
+                    let posit_sample = grid_posits[i][j][k];
+                    psi[basis_i][i][j][k] = basis.value(posit_sample);
+
+                    if let Some(ref mut pp) = psi_pp {
+                        pp[basis_i][i][j][k] = second_deriv_cpu(
+                            psi[basis_i][i][j][k],
+                            &basis,
+                            posit_sample,
+                            deriv_calc,
+                        );
+                    }
+                    if let Some(ref mut ppd) = psi_pp_div_psi {
+                        psi_pp_div_psi_cpu(psi[basis_i][i][j][k], &basis, posit_sample, deriv_calc);
+                    }
+
+                    add_to_norm(&mut norm, psi[basis_i][i][j][k]);
+                }
+            }
         }
-        //     }
-        // }
 
         // This normalization makes balancing the bases more intuitive, but isn't strictly required
         // in the way normalizing the composite (squared) wave function is prior to generating charge.
@@ -433,7 +450,12 @@ pub fn update_eigen_vals(
 
 /// Calculate E using the bases save functions. We assume V goes to 0 at +/- ∞, so
 /// edges are, perhaps, a good sample point for this calculation.
-pub fn calc_E_from_bases(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> f64 {
+pub fn calc_E_from_bases(
+    bases: &[Basis],
+    V_corner: f64,
+    posit_corner: Vec3,
+    deriv_calc: DerivCalc,
+) -> f64 {
     // Important: eval_pt should be close to +- infinity, but doing so may cause numerical issues
     // as both psi and psi'' go to 0.
 
@@ -454,7 +476,7 @@ pub fn calc_E_from_bases(bases: &[Basis], V_corner: f64, posit_corner: Vec3) -> 
         let psi_this = weight * basis.value(posit_corner);
         psi += psi_this;
 
-        psi_pp += second_deriv_cpu(psi_this, basis, posit_corner);
+        psi_pp += second_deriv_cpu(psi_this, basis, posit_corner, deriv_calc);
     }
 
     // todo: WIth the psi_pp_div_psi shortcut, you appear to be getting normalization issues.
@@ -493,19 +515,22 @@ pub(crate) fn sto_vals_derivs_cpu(
     grid_posits: &Arr3dVec,
     basis: &Basis,
     grid_n: usize,
+    deriv_calc: DerivCalc,
 ) {
     for (i, j, k) in iter_arr!(grid_n) {
         let posit_sample = grid_posits[i][j][k];
 
         psi[i][j][k] = basis.value(posit_sample);
-        psi_pp[i][j][k] = second_deriv_cpu(psi[i][j][k], basis, posit_sample);
+        psi_pp[i][j][k] = second_deriv_cpu(psi[i][j][k], basis, posit_sample, deriv_calc);
     }
 }
 
 /// Helper fn to help manage numerical vs analytic second derivs.
-pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3) -> Cplx {
+pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: DerivCalc) -> Cplx {
     // todo temp, until we get analytic second derivs with harmonics.
-    return num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi);
+    if deriv_calc == DerivCalc::Numeric {
+        return num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi);
+    }
 
     if basis.n() >= 3 || basis.harmonic().l > 0 {
         num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi)
@@ -515,10 +540,13 @@ pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3) -> Cplx {
 }
 
 /// Helper fn to help manage numerical vs analytic second derivs.
-pub fn psi_pp_div_psi_cpu(psi: Cplx, basis: &Basis, posit: Vec3) -> f64 {
+pub fn psi_pp_div_psi_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: DerivCalc) -> f64 {
     // todo temp, until we get analytic second derivs with harmonics.
     let psi_pp = num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi);
-    return (psi_pp / psi).real;
+
+    if deriv_calc == DerivCalc::Numeric {
+        return (psi_pp / psi).real;
+    }
 
     if basis.n() >= 3 || basis.harmonic().l > 0 {
         let psi_pp = num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi);

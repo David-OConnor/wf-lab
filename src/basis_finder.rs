@@ -15,7 +15,7 @@ use crate::{
     potential::{self, V_coulomb},
     types::ComputationDevice,
     util, wf_ops,
-    wf_ops::Q_ELEC,
+    wf_ops::{DerivCalc, Q_ELEC},
 };
 
 pub fn generate_sample_pts() -> Vec<Vec3> {
@@ -42,7 +42,12 @@ pub fn generate_sample_pts() -> Vec<Vec3> {
     result
 }
 
-fn find_E_from_base_xi(base_xi: f64, V_corner: f64, posit_corner: Vec3) -> f64 {
+fn find_E_from_base_xi(
+    base_xi: f64,
+    V_corner: f64,
+    posit_corner: Vec3,
+    deriv_calc: DerivCalc,
+) -> f64 {
     // Now that we've identified the base Xi, use it to calculate the energy of the system.
     // (The energy appears to be determined primarily by it.)
     let base_sto = Basis::Sto(Sto {
@@ -55,7 +60,7 @@ fn find_E_from_base_xi(base_xi: f64, V_corner: f64, posit_corner: Vec3) -> f64 {
     });
 
     let psi_corner = base_sto.value(posit_corner);
-    let psi_pp_corner = wf_ops::second_deriv_cpu(psi_corner, &base_sto, posit_corner);
+    let psi_pp_corner = wf_ops::second_deriv_cpu(psi_corner, &base_sto, posit_corner, deriv_calc);
 
     calc_E_on_psi(psi_corner, psi_pp_corner, V_corner)
 }
@@ -65,7 +70,7 @@ fn find_base_xi_E_common(
     posit_corner: Vec3,
     V_sample: f64,
     posit_sample: Vec3,
-    // base_xi_specified: f64,
+    deriv_calc: DerivCalc, // base_xi_specified: f64,
 ) -> (f64, f64) {
     let mut best_xi_i = 0;
     let mut smallest_diff = 99999.;
@@ -85,7 +90,7 @@ fn find_base_xi_E_common(
         });
 
         let psi_corner = sto.value(posit_corner);
-        let psi_pp_corner = wf_ops::second_deriv_cpu(psi_corner, &sto, posit_corner);
+        let psi_pp_corner = wf_ops::second_deriv_cpu(psi_corner, &sto, posit_corner, deriv_calc);
 
         let E_ = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
         Es[i] = E_;
@@ -94,7 +99,7 @@ fn find_base_xi_E_common(
         // see how close it is.
 
         let psi = sto.value(posit_sample);
-        let psi_pp = wf_ops::second_deriv_cpu(psi, &sto, posit_sample);
+        let psi_pp = wf_ops::second_deriv_cpu(psi, &sto, posit_sample, deriv_calc);
 
         let V_from_psi = calc_V_on_psi(psi, psi_pp, E_);
 
@@ -116,7 +121,7 @@ fn find_base_xi_E_common(
     // let base_xi = 1.50; // todo t!
 
     // Note: We calculate this above in `Es`, but not if we override it as here.
-    let E = find_E_from_base_xi(base_xi, V_corner, posit_corner);
+    let E = find_E_from_base_xi(base_xi, V_corner, posit_corner, deriv_calc);
 
     (base_xi, E)
 }
@@ -125,7 +130,7 @@ fn find_base_xi_E(
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
-    // base_xi_specified: f64,
+    deriv_calc: DerivCalc, // base_xi_specified: f64,
 ) -> (f64, f64) {
     const SAMPLE_DIST: f64 = 15.;
     let posit_corner = Vec3::new(SAMPLE_DIST, SAMPLE_DIST, SAMPLE_DIST);
@@ -150,6 +155,7 @@ fn find_base_xi_E(
         posit_corner,
         V_sample,
         posit_sample,
+        deriv_calc,
         // base_xi_specified,
     )
 }
@@ -168,6 +174,7 @@ fn find_base_xi_E2(
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
+    deriv_calc: DerivCalc,
 ) -> (f64, f64) {
     const SAMPLE_DIST: f64 = 20.;
     // let posit_corner = Vec3::new(SAMPLE_DIST, SAMPLE_DIST, SAMPLE_DIST);
@@ -221,9 +228,10 @@ fn find_base_xi_E2(
         for E_trial in &trial_Es {
             let E_trial = *E_trial;
 
-            let bases_this_e = find_bases_system_of_eqs(&V_to_match, &bases, &sample_pts, E_trial);
+            let bases_this_e =
+                find_bases_system_of_eqs(&V_to_match, &bases, &sample_pts, E_trial, deriv_calc);
 
-            let score = score_fit(V_to_match, sample_pts, &bases_this_e, E_trial);
+            let score = score_fit(V_to_match, sample_pts, &bases_this_e, E_trial, deriv_calc);
 
             println!("Xi: {:.3}, E: {:.3} Score: {:.5}", xi_trial, E_trial, score);
 
@@ -294,6 +302,7 @@ fn find_bases_system_of_eqs(
     bases: &[Basis],
     sample_pts: &[Vec3],
     E: f64,
+    deriv_calc: DerivCalc,
 ) -> Vec<Basis> {
     // Bases, from xi, are the rows; positions are the columns.
     // Set this up as a column-major Vec, for use with nalgebra.
@@ -322,7 +331,7 @@ fn find_bases_system_of_eqs(
             // todo: Real-only for now while building the algorithm, but in general, these are complex.
             let psi = sto.value(*posit_sample);
             psi_mat_.push(psi.real);
-            psi_pp_mat_.push(wf_ops::second_deriv_cpu(psi, &sto, *posit_sample).real);
+            psi_pp_mat_.push(wf_ops::second_deriv_cpu(psi, &sto, *posit_sample, deriv_calc).real);
             // psi_pp_div_psi_mat_.push(sto.psi_pp_div_psi(*posit_sample));
         }
     }
@@ -382,7 +391,13 @@ fn find_bases_system_of_eqs(
 
 /// Evaluate an estimated wave function, based on least-squares distance of V trial vs the V it's matching.
 /// We may use this for determining base wave function.
-fn score_fit(V_to_match: &[f64], sample_pts: &[Vec3], bases_to_eval: &[Basis], E: f64) -> f64 {
+fn score_fit(
+    V_to_match: &[f64],
+    sample_pts: &[Vec3],
+    bases_to_eval: &[Basis],
+    E: f64,
+    deriv_calc: DerivCalc,
+) -> f64 {
     let mut V_from_psi = vec![0.; sample_pts.len()];
 
     for (i, sample_pt) in sample_pts.iter().enumerate() {
@@ -392,7 +407,7 @@ fn score_fit(V_to_match: &[f64], sample_pts: &[Vec3], bases_to_eval: &[Basis], E
         for basis in bases_to_eval {
             let psi = basis.value(*sample_pt);
             psi_this_pt += psi;
-            psi_pp_this_pt += wf_ops::second_deriv_cpu(psi, basis, *sample_pt);
+            psi_pp_this_pt += wf_ops::second_deriv_cpu(psi, basis, *sample_pt, deriv_calc);
         }
         V_from_psi[i] = calc_V_on_psi(psi_this_pt, psi_pp_this_pt, E);
     }
@@ -426,12 +441,18 @@ pub fn run(
     sample_pts: &[Vec3],
     bases: &Vec<Basis>,
     // xis: &[f64],
+    deriv_calc: DerivCalc,
 ) -> (Vec<Basis>, f64) {
     // let mut xis = Vec::from(xis);
     let mut bases = bases.clone();
 
-    let mut V_to_match =
-        potential::create_V_1d_from_elecs(dev_charge, sample_pts, charge_elec, grid_charge, grid_n_charge);
+    let mut V_to_match = potential::create_V_1d_from_elecs(
+        dev_charge,
+        sample_pts,
+        charge_elec,
+        grid_charge,
+        grid_n_charge,
+    );
 
     // Add the charge from nucleii.
     for (i, sample_pt) in sample_pts.iter().enumerate() {
@@ -440,7 +461,7 @@ pub fn run(
         }
     }
 
-    let (base_xi, E) = find_base_xi_E(charges_fixed, charge_elec, grid_charge);
+    let (base_xi, E) = find_base_xi_E(charges_fixed, charge_elec, grid_charge, deriv_calc);
     // xis[0]);
     // let (base_xi, E) = find_base_xi_E2(
     //     &V_to_match,
@@ -478,7 +499,7 @@ pub fn run(
 
     // let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);
     // let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);
-    let bases = find_bases_system_of_eqs(&V_to_match, &bases, &sample_pts, E);
+    let bases = find_bases_system_of_eqs(&V_to_match, &bases, &sample_pts, E, deriv_calc);
 
     (bases, E)
 }

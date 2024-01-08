@@ -12,6 +12,7 @@ use crate::{
     num_diff,
     num_diff::H,
     wf_ops,
+    wf_ops::DerivCalc,
 };
 
 pub enum ComputationDevice {
@@ -203,6 +204,7 @@ impl _BasesEvaluated {
         bases: &[Basis],
         grid_posits: &Arr3dVec,
         grid_n: usize,
+        deriv_calc: DerivCalc,
     ) -> Self {
         let mut on_pt = Vec::new();
         let mut psi_pp_analytic = Vec::new();
@@ -226,9 +228,6 @@ impl _BasesEvaluated {
             z_next.push(empty.clone());
         }
 
-        // todo: TS questrionable psipp; forcing CPU.
-        let dev = &ComputationDevice::Cpu;
-
         wf_ops::wf_from_bases(
             dev,
             &mut on_pt,
@@ -237,6 +236,7 @@ impl _BasesEvaluated {
             bases,
             grid_posits,
             grid_n,
+            deriv_calc,
         );
 
         Self {

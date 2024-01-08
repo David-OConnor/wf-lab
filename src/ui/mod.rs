@@ -365,6 +365,7 @@ fn basis_fn_mixer(
                         &[basis.clone()],
                         &state.surfaces_shared.grid_posits,
                         state.grid_n_render,
+                        state.deriv_calc,
                     );
 
                     state.surfaces_per_elec[active_elec].psi_per_basis[basis_i] =
@@ -476,6 +477,7 @@ fn bottom_items(
                 &state.bases[ae],
                 state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
                 state.surfaces_shared.grid_posits[0][0][0],
+                state.deriv_calc,
             );
 
             *updated_E_or_V = true;
@@ -498,6 +500,7 @@ fn bottom_items(
             state.grid_n_charge,
             &sample_pts,
             &state.bases[ae],
+            state.deriv_calc,
         );
 
         state.surfaces_shared.E = E;
@@ -571,6 +574,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &state.bases,
                     &state.charges_fixed,
                     state.num_elecs,
+                    state.deriv_calc,
                 );
 
                 state.charges_from_electron = charges_electron;

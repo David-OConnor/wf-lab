@@ -54,7 +54,7 @@ use crate::{
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal},
     types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
     ui::procedures,
-    wf_ops::Q_PROT,
+    wf_ops::{DerivCalc, Q_PROT},
 };
 
 const NUM_SURFACES: usize = 11;
@@ -117,24 +117,12 @@ impl Default for StateUi {
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum PsiPpCalc {
-    Analytic,
-    Numeric,
-}
-
-impl Default for PsiPpCalc {
-    fn default() -> Self {
-        Self::Numeric
-    }
-}
-
 pub struct State {
     /// Computation device for evaluating the very expensive charge potential computation.
     pub dev_charge: ComputationDevice,
     /// Computation device for evaluating psi. (And psi''?)
     pub dev_psi: ComputationDevice,
-    pub psi_pp_calc_type: PsiPpCalc,
+    pub deriv_calc: DerivCalc,
     /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
     /// due to electrons are stored in `Surfaces`.
     pub charges_fixed: Vec<(Vec3, f64)>,
@@ -203,6 +191,7 @@ pub fn init_from_grid(
     bases_per_elec: &[Vec<Basis>],
     charges_fixed: &[(Vec3, f64)],
     num_electrons: usize,
+    deriv_calc: DerivCalc,
 ) -> (
     Vec<Arr3dReal>,
     Vec<Arr3dReal>,
@@ -274,6 +263,7 @@ pub fn init_from_grid(
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits,
             grid_n_sample,
+            deriv_calc,
         );
 
         let psi = &mut sfcs.psi;
@@ -318,6 +308,7 @@ pub fn init_from_grid(
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits_charge,
             grid_n_charge,
+            deriv_calc,
         );
 
         procedures::create_elec_charge(
@@ -364,7 +355,7 @@ pub fn init_from_grid(
 
 fn main() {
     #[cfg(feature = "cuda")]
-    let dev = {
+    let dev_charge = {
         // This is compiled in `build_`.
         let cuda_dev = CudaDevice::new(0).unwrap();
         cuda_dev
@@ -382,12 +373,14 @@ fn main() {
             )
             .unwrap();
 
-        println!("Using the GPU for computations.");
+        // println!("Using the GPU for computations.");
         ComputationDevice::Gpu(cuda_dev)
     };
 
     #[cfg(not(feature = "cuda"))]
-    let dev = ComputationDevice::Cpu;
+    let dev_charge = ComputationDevice::Cpu;
+
+    let dev_psi = ComputationDevice::Cpu;
 
     let ui_active_elec = 0;
     let max_basis_n = 1;
@@ -434,9 +427,12 @@ fn main() {
     let grid_n = GRID_N_RENDER_DEFAULT;
     let grid_n_charge = GRID_N_CHARGE_DEFAULT;
 
+    let psi_pp_calc = DerivCalc::Numeric;
+
     let (charges_electron, V_from_elecs, psi_charge, surfaces_shared, surfaces_per_elec) =
         init_from_grid(
-            &dev,
+            &dev_charge,
+            &dev_psi,
             (grid_min_render, grid_max_render),
             (grid_min_charge, grid_max_charge),
             spacing_factor,
@@ -445,6 +441,7 @@ fn main() {
             &bases_per_elec,
             &nuclei,
             num_elecs,
+            psi_pp_calc,
         );
 
     let surface_data = [
@@ -467,9 +464,9 @@ fn main() {
     // }
 
     let state = State {
-        dev_charge: dev.clone(), // todo: Is this ok?
-        dev_psi: dev,
-        psi_pp_calc_type: PsiPpCalc::Analytic,
+        dev_charge,
+        dev_psi,
+        deriv_calc: psi_pp_calc,
         charges_fixed: nuclei,
         charges_from_electron: charges_electron,
         V_from_elecs,
