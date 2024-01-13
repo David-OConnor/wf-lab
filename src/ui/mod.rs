@@ -10,6 +10,7 @@ use crate::{
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     potential, render,
     types::ComputationDevice,
+    wf_ops::DerivCalc,
     wf_ops, ActiveElec, State,
 };
 
@@ -651,10 +652,24 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         });
 
         ui.horizontal(|ui| {
+            // if ui
+            //     .checkbox(&mut state.ui.auto_gen_elec_V, "Auto elec V")
+            //     .clicked()
+            // {}
+
+            let mut deriv_numeric = state.deriv_calc == DerivCalc::Numeric;
+
             if ui
-                .checkbox(&mut state.ui.auto_gen_elec_V, "Auto elec V")
+                .checkbox(&mut deriv_numeric, "ψ'' num")
                 .clicked()
-            {}
+            {
+                // todo: recalc all bases.
+                state.deriv_calc = if deriv_numeric {
+                    DerivCalc::Numeric
+                } else {
+                    DerivCalc::Analytic
+                };
+            }
 
             if ui
                 .checkbox(&mut state.ui.weight_symmetry, "Weight sym")

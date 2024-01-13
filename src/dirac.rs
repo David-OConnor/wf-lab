@@ -14,6 +14,8 @@
 //! HX = EX.
 //!
 //! p̂ = -iħ∇
+//! p̂^2 = -ħ^2∇^2
+//! p̂^4 = ħ^4∇^4
 //!
 //! H = p̂^2/2m + V(r) [H0: Schrodinger eq] - p̂^4/(8m^3c^2) [(dH)_relativistic] +
 //! 1/(2m^2c^2)(1/r)(dV/dr)S L [spin orbit coupling; S is spin angular momentum; L is orbital
