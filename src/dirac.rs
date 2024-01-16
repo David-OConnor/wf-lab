@@ -39,13 +39,33 @@
 use na::{Matrix2, Matrix4};
 use nalgebra as na;
 
-use crate::complex_nums::{Cplx, IM};
-use crate::grid_setup::Arr3d;
+use crate::{
+    complex_nums::{Cplx, IM},
+    grid_setup::Arr3d,
+};
 
 // Matrix operators: alpha, beta, gamma. Gamma is 2x2. alpha and beta are (at least?) 4x4
 
 const C0: Cplx = Cplx::new_zero();
 const C1: Cplx = Cplx::new(1., 0.);
+
+/// Todo: Figure out how to use this...
+/// A 4-component spinor wave function.
+pub struct PsiSpinor {
+    pub a: Arr3d,
+    pub b: Arr3d,
+    pub c: Arr3d,
+    pub d: Arr3d,
+}
+
+impl PsiSpinor {
+    /// Multiply with γ on the left: γψ
+    pub fn multiply_with_gamma(&self, gamma: Matrix4<Cplx>) -> Self {}
+
+    /// Take the (numeric) first derivative of this wave function. Can be called multiple times
+    /// to calculate higher derivatives.
+    pub fn deriv(&self) -> Self {}
+}
 
 // todo: Cplx?
 #[rustfmt::skip]
@@ -199,7 +219,7 @@ fn a() {
 /// Calculate the Dirac equation with form (i γ^μ ∂_μ - m) ψ = 0.
 /// todo: How far does mu range?
 /// todo: Adopt tensor shortcut fns as you have in the Gravity sim?
-pub fn dirac_lhs(psi: &Arr3d, m: i8) -> Arr3d {
+pub fn dirac_lhs(psi: &PsiSpinor, m: i8) -> Arr3d {
     // todo: Solve numerically.
     let psi_p = psi.clone();
     let psi_p2 = psi.clone();
@@ -210,5 +230,3 @@ pub fn dirac_lhs(psi: &Arr3d, m: i8) -> Arr3d {
     // IM * (gamma(0) * psi + )
     psi.clone() // todo temp
 }
-
-

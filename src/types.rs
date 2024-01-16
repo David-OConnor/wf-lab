@@ -39,14 +39,24 @@ pub struct SurfacesShared {
     // todo: This may not be a good model: the wave function isn't a function of position
     // mapped to a value for multi-elecs. It's a function of a position for each elec.
     pub psi: WaveFunctionMultiElec,
-    // todo: Why do we have these as shared?
-    // pub psi_pp_calculated: Arr3d,
-    // pub psi_pp_measured: Arr3d,
     pub E: f64,
     // /// 2023-08-17: Another attempt at a 3d-grid-based save function
     // pub psi_numeric: Arr3d,
     /// In case we want to explore something like DFT
     pub charge_density_dft: Arr3dReal,
+    /// todo: We are experimenting with separating psi by spin, but otherwise combining for electrons.
+    pub psi_alpha: Arr3d,
+    pub psi_beta: Arr3d,
+    /// Charge density for all spin alpha electrons.
+    pub charge_alpha: Arr3dReal,
+    /// Charge density for all spin beta electrons.
+    pub charge_beta: Arr3dReal,
+    // Splitting up by charge density and spin density should be equivalent to splitting by
+    // spin up and spin down.
+    /// Electron density total
+    pub charge_density_all: Arr3dReal,
+    /// Charge density for all spin beta electrons.
+    pub spin_density: Arr3dReal,
 }
 
 impl SurfacesShared {
@@ -80,11 +90,15 @@ impl SurfacesShared {
             V_total: data_real.clone(),
             V_from_nuclei: data_real.clone(),
             psi: WaveFunctionMultiElec::new(num_elecs, n_grid),
-            // psi_pp_measured: data.clone(),
-            // psi_pp_calculated: data.clone(),
             E: -0.50,
             // psi_numeric: data,
-            charge_density_dft: data_real,
+            charge_density_dft: data_real.clone(),
+            psi_alpha: data.clone(),
+            psi_beta: data,
+            charge_alpha: data_real.clone(),
+            charge_beta: data_real.clone(),
+            charge_density_all: data_real.clone(),
+            spin_density: data_real,
         }
     }
 }

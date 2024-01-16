@@ -10,8 +10,9 @@ use crate::{
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     potential, render,
     types::ComputationDevice,
+    wf_ops,
     wf_ops::DerivCalc,
-    wf_ops, ActiveElec, State,
+    ActiveElec, State,
 };
 
 pub(crate) mod procedures;
@@ -659,10 +660,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             let mut deriv_numeric = state.deriv_calc == DerivCalc::Numeric;
 
-            if ui
-                .checkbox(&mut deriv_numeric, "ψ'' num")
-                .clicked()
-            {
+            if ui.checkbox(&mut deriv_numeric, "ψ'' num").clicked() {
                 // todo: recalc all bases.
                 state.deriv_calc = if deriv_numeric {
                     DerivCalc::Numeric
