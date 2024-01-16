@@ -40,10 +40,101 @@ use na::{Matrix2, Matrix4};
 use nalgebra as na;
 
 use crate::complex_nums::{Cplx, IM};
+use crate::grid_setup::Arr3d;
 
 // Matrix operators: alpha, beta, gamma. Gamma is 2x2. alpha and beta are (at least?) 4x4
 
 const C0: Cplx = Cplx::new_zero();
+const C1: Cplx = Cplx::new(1., 0.);
+
+// todo: Cplx?
+#[rustfmt::skip]
+/// Return a gamma matrix. [Gamma matrices](https://en.wikipedia.org/wiki/Gamma_matrices)
+// fn gamma(mu: u8) -> Matrix4<f64> {
+fn gamma(mu: u8) -> Matrix4<Cplx> {
+    match mu {
+        0 => Matrix4::new(
+            C1, C0, C0, C0,
+            C0, C1, C0, C0,
+            C0, C0, -C1, C0,
+            C0, C0, C0, -C1
+        ),
+        1 => Matrix4::new(
+            C0, C0, C0, C1,
+            C0, C0, C1, C0,
+            C0, -C1, C0, C0,
+            -C1, C0, C0, C0
+        ),
+        2 => Matrix4::new(
+            C0, C0, C0, -IM,
+            C0, C0, IM, C0,
+            C0, IM, C0, C0,
+            -IM, C0, C0, C0
+        ),
+        3 => Matrix4::new(
+            C1, C0, C1, C0,
+            C0, C0, C0, -C1,
+            -C1, C0, C0, C0,
+            C0, C1, C0, C0
+        ),
+        // The identity matrix.
+        4 => Matrix4::new(
+            C1, C0, C0, C0,
+            C0, C1, C0, C0,
+            C0, C0, C1, C0,
+            C0, C0, C0, C1
+        ),
+        // γ5 is not a proper member of the gamma group.
+        5 => Matrix4::new(
+            C0, C0, C1, C0,
+            C0, C0, C0, C1,
+            C1, C0, C0, C0,
+            C0, C1, C0, C0
+        ),
+        
+        
+        // 0 => Matrix4::new(
+        //     1., 0., 0., 0.,
+        //     0., 1., 0., 0.,
+        //     0., 0., -1., 0.,
+        //     0., 0., 0., -1.
+        // ),
+        // 1 => Matrix4::new(
+        //     0., 0., 0., 1.,
+        //     0., 0., 1., 0.,
+        //     0., -1., 0., 0.,
+        //     -1., 0., 0., 0.
+        // ),
+        // // todo: SOrt out how to mix cplx/real
+        // // 2 => Matrix4::new(
+        // //     C0, C0, C0, -IM,
+        // //     C0, C0, IM, C0,
+        // //     C0, IM, C0, C0,
+        // //     -IM, C0, C0, C0
+        // // ),
+        // 3 => Matrix4::new(
+        //     1., 0., 1., 0.,
+        //     0., 0., 0., -1.,
+        //     -1., 0., 0., 0.,
+        //     0., 1., 0., 0.
+        // ),
+        // // The identity matrix.
+        // 4 => Matrix4::new(
+        //     1., 0., 0., 0.,
+        //     0., 1., 0., 0.,
+        //     0., 0., 1., 0.,
+        //     0., 0., 0., 1.
+        // ),
+        // // γ5 is not a proper member of the gamma group.
+        // 5 => Matrix4::new(
+        //     0., 0., 1., 0.,
+        //     0., 0., 0., 1.,
+        //     1., 0., 0., 0.,
+        //     0., 1., 0., 0.
+        // ),
+        _ => panic!("Invalid gamma matrix; must be 0-5."),
+    }
+}
 
 #[rustfmt::skip]
 fn a() {
@@ -57,51 +148,6 @@ fn a() {
         0.0, 0.0,0.0, 0.0,
         0.0, 0.0,0.0, 0.0,
         0.0, 0.0,0.0, 0.0,
-    );
-
-    // [Gamma matrices](https://en.wikipedia.org/wiki/Gamma_matrices)
-    let gamma0: Matrix4<f64> = Matrix4::new(
-        1., 0., 0., 0.,
-        0., 1., 0., 0.,
-        0., 0., -1., 0.,
-        0., 0., 0., -1.
-    );
-
-    let gamma1: Matrix4<f64> = Matrix4::new(
-        0., 0., 0., 1.,
-        0., 0., 1., 0.,
-        0., -1., 0., 0.,
-        -1., 0., 0., 0.
-    );
-
-    let gamma2: Matrix4<Cplx> = Matrix4::new(
-        C0, C0, C0, -IM,
-        C0, C0, IM, C0,
-        C0, IM, C0, C0,
-        -IM, C0, C0, C0
-    );
-
-    let gamma3: Matrix4<f64> = Matrix4::new(
-        1., 0., 1., 0.,
-        0., 0., 0., -1.,
-        -1., 0., 0., 0.,
-        0., 1., 0., 0.
-    );
-
-    // The identity matrix.
-    let gamma4: Matrix4<f64> = Matrix4::new(
-        1., 0., 0., 0.,
-        0., 1., 0., 0.,
-        0., 0., 1., 0.,
-        0., 0., 0., 1.
-    );
-
-    // γ5 is not a proper member of the gamma group.
-    let gamma5: Matrix4<f64> = Matrix4::new(
-        0., 0., 1., 0.,
-        0., 0., 0., 1.,
-        1., 0., 0., 0.,
-        0., 1., 0., 0.
     );
 
     // [Pauli matrices](https://en.wikipedia.org/wiki/Pauli_matrices)
@@ -148,6 +194,21 @@ fn a() {
         0., 0., -1., 0.,
         0., 0., 0., -1.
     );
-
-
 }
+
+/// Calculate the Dirac equation with form (i γ^μ ∂_μ - m) ψ = 0.
+/// todo: How far does mu range?
+/// todo: Adopt tensor shortcut fns as you have in the Gravity sim?
+pub fn dirac_lhs(psi: &Arr3d, m: i8) -> Arr3d {
+    // todo: Solve numerically.
+    let psi_p = psi.clone();
+    let psi_p2 = psi.clone();
+    let psi_p3 = psi.clone();
+    let psi_p4 = psi.clone();
+
+    // todo: Sort out how this matrix multiplication works...
+    // IM * (gamma(0) * psi + )
+    psi.clone() // todo temp
+}
+
+
