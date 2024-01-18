@@ -38,11 +38,13 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
 
     // Prevents double borrow-mut error
     let psi = &mut sfcs.psi;
+    let charge_density = &mut sfcs.charge_density;
     let psi_pp = &mut sfcs.psi_pp_evaluated;
     let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_evaluated;
 
     wf_ops::mix_bases(
         psi,
+        Some(charge_density),
         Some(psi_pp),
         Some(psi_pp_div_psi),
         &sfcs.psi_per_basis,
@@ -80,6 +82,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
 
         wf_ops::mix_bases(
             &mut psi_charge_grid,
+            None,
             None,
             None,
             &state.psi_charge[ae],
@@ -156,7 +159,7 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
     }
 
     // Update sphere entity locations.
-    render::update_entities(&state.charges_fixed, &state.surface_data, scene);
+    render::update_entities(&state.charges_fixed, &state.surface_descs_per_elec, scene);
 }
 
 /// Create the electric charge from a single electron's wave function squared. Note that this
@@ -171,6 +174,7 @@ pub fn create_elec_charge(
 
     wf_ops::mix_bases(
         &mut psi_charge_grid,
+        None,
         None,
         None,
         psi_charge_per_basis,

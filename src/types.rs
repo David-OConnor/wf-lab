@@ -12,9 +12,8 @@ use crate::{
     num_diff,
     num_diff::H,
     wf_ops,
-    wf_ops::DerivCalc,
+    wf_ops::{DerivCalc, Spin},
 };
-use crate::wf_ops::Spin;
 
 pub enum ComputationDevice {
     Cpu,
@@ -44,14 +43,14 @@ pub struct SurfacesShared {
     // /// 2023-08-17: Another attempt at a 3d-grid-based save function
     // pub psi_numeric: Arr3d,
     /// In case we want to explore something like DFT
-    pub charge_density_dft: Arr3dReal,
+    // pub charge_density_dft: Arr3dReal,
     /// todo: We are experimenting with separating psi by spin, but otherwise combining for electrons.
     pub psi_alpha: Arr3d,
     pub psi_beta: Arr3d,
-    // /// Charge density for all spin alpha electrons.
-    // pub charge_alpha: Arr3dReal,
-    // /// Charge density for all spin beta electrons.
-    // pub charge_beta: Arr3dReal,
+    /// Charge density for all spin alpha electrons.
+    pub charge_alpha: Arr3dReal,
+    /// Charge density for all spin beta electrons.
+    pub charge_beta: Arr3dReal,
     // Splitting up by charge density and spin density should be equivalent to splitting by
     // spin up and spin down.
     /// Electron density total
@@ -93,11 +92,11 @@ impl SurfacesShared {
             psi: WaveFunctionMultiElec::new(num_elecs, n_grid),
             E: -0.50,
             // psi_numeric: data,
-            charge_density_dft: data_real.clone(),
+            // charge_density_dft: data_real.clone(),
             psi_alpha: data.clone(),
             psi_beta: data,
-            // charge_alpha: data_real.clone(),
-            // charge_beta: data_real.clone(),
+            charge_alpha: data_real.clone(),
+            charge_beta: data_real.clone(),
             charge_density_all: data_real.clone(),
             spin_density: data_real,
         }
@@ -116,6 +115,8 @@ pub struct SurfacesPerElec {
     /// We use this as a cache instead of generating it on the fly.
     pub V_acting_on_this: Arr3dReal,
     pub psi: Arr3d,
+    /// Electron charge * normalized psi^2
+    pub charge_density: Arr3dReal,
     /// From the Schrodinger equation based on psi and the other parameters.
     pub psi_pp_calculated: Arr3d,
     /// From an analytic or numeric computation from basis functions.
@@ -154,6 +155,7 @@ impl SurfacesPerElec {
             spin,
             V_acting_on_this: data_real.clone(),
             psi: data.clone(),
+            charge_density: data_real.clone(),
             psi_pp_calculated: data.clone(),
             psi_pp_evaluated: data.clone(),
             psi_pp_div_psi_evaluated: data_real.clone(),

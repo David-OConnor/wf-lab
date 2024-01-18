@@ -28,8 +28,7 @@ use grid_setup::Arr3d;
 use lin_alg2::f64::Vec3;
 use types::SurfacesPerElec;
 
-use crate::grid_setup::new_data;
-use crate::wf_ops::Spin;
+use crate::{grid_setup::new_data, wf_ops::Spin};
 
 /// Create trial wave functions for a given point-charge distibution. Currently
 /// a rough approach using low-energy STOs centered on the charges.

@@ -15,7 +15,7 @@ use crate::{
     complex_nums::Cplx,
     grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     types::{SurfacesPerElec, SurfacesShared},
-    util, State, SurfaceData, NUM_SURFACES,
+    util, State, SurfaceDesc, NUM_SURFACES_PER_ELEC,
 };
 
 type Color = (f32, f32, f32);
@@ -54,7 +54,7 @@ const CHARGE_SHINYNESS: f32 = 3.;
 
 // To make the WF and other surfaces more visually significant.
 const PSI_SCALER: f32 = 120.;
-const PSI_SQ_SCALER: f32 = 5_000.;
+const CHARGE_DENSITY_SCALER: f32 = 5_000.;
 const PSI_PP_SCALER: f32 = 20.;
 
 const V_SCALER: f32 = 1.;
@@ -240,7 +240,7 @@ pub fn update_meshes(
 
         // todo: Lots of DRY here that is fixable between multi-elec and single-elec
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER, grid_n),
+            &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, CHARGE_DENSITY_SCALER, grid_n),
             true,
         ));
 
@@ -307,11 +307,14 @@ pub fn update_meshes(
             true,
         ));
 
-        let mut psi_sq = new_data_real(grid_n);
-        util::norm_sq(&mut psi_sq, &surfaces.psi, grid_n);
-
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, PSI_SQ_SCALER, grid_n),
+            &prepare_2d_mesh_real(
+                grid_posits,
+                &surfaces.charge_density,
+                z_i,
+                CHARGE_DENSITY_SCALER,
+                grid_n,
+            ),
             true,
         ));
 
@@ -369,11 +372,11 @@ pub fn update_meshes(
 /// with surfaces.
 pub fn update_entities(
     charges: &[(Vec3F64, f64)],
-    surface_data: &[SurfaceData],
+    surface_data: &[SurfaceDesc],
     scene: &mut Scene,
 ) {
     let mut entities = Vec::new();
-    for i in 0..NUM_SURFACES {
+    for i in 0..NUM_SURFACES_PER_ELEC {
         if !surface_data[i].visible {
             continue;
         }
@@ -389,7 +392,7 @@ pub fn update_entities(
 
     for (posit, val) in charges {
         entities.push(Entity::new(
-            NUM_SURFACES, // Index 1 after surfaces.
+            NUM_SURFACES_PER_ELEC, // Index 1 after surfaces.
             Vec3::new(
                 posit.x as f32,
                 // We invert Y and Z due to diff coord systems
@@ -425,7 +428,7 @@ pub fn update_entities(
         Vec3::new(3., 2. * V_SCALER, 0.),
     ] {
         entities.push(Entity::new(
-            NUM_SURFACES, // Index 1 after surfaces.
+            NUM_SURFACES_PER_ELEC, // Index 1 after surfaces.
             *grid_marker,
             Quaternion::new_identity(),
             2.,
@@ -517,7 +520,11 @@ pub fn render(state: State) {
         false,
     );
 
-    update_entities(&state.charges_fixed, &state.surface_data, &mut scene);
+    update_entities(
+        &state.charges_fixed,
+        &state.surface_descs_per_elec,
+        &mut scene,
+    );
 
     let input_settings = InputSettings {
         initial_controls: ControlScheme::FreeCamera,

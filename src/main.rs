@@ -54,11 +54,10 @@ use crate::{
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal},
     types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
     ui::procedures,
-    wf_ops::{DerivCalc, Q_PROT},
+    wf_ops::{DerivCalc, Spin, Q_PROT},
 };
-use crate::wf_ops::Spin;
 
-const NUM_SURFACES: usize = 11;
+const NUM_SURFACES_PER_ELEC: usize = 11;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_RENDER: f64 = 5.;
@@ -153,7 +152,8 @@ pub struct State {
     pub psi_charge: Vec<Vec<Arr3d>>,
     // /// Amount to nudge next; stored based on sensitivity of previous nudge. Per-electron.
     // pub nudge_amount: Vec<f64>,
-    pub surface_data: [SurfaceData; NUM_SURFACES],
+    pub surface_descs_per_elec: Vec<SurfaceDesc>,
+    pub surface_descs_combined: Vec<SurfaceDesc>,
     pub grid_n_render: usize,
     /// This charge grid is generally denser than the main grid. This allows more fidelity for
     /// modelling electron charge, without evaluating the wave function at too many points.
@@ -171,12 +171,12 @@ pub struct State {
     pub ui: StateUi,
 }
 
-pub struct SurfaceData {
+pub struct SurfaceDesc {
     pub name: String,
     pub visible: bool,
 }
 
-impl SurfaceData {
+impl SurfaceDesc {
     /// This constructor simplifies syntax.
     pub fn new(name: &str, visible: bool) -> Self {
         Self {
@@ -274,12 +274,14 @@ pub fn init_from_grid(
         );
 
         let psi = &mut sfcs.psi;
+        let charge_density = &mut sfcs.charge_density;
         let psi_pp = &mut sfcs.psi_pp_evaluated;
         let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_evaluated;
 
         let weights: Vec<f64> = bases_per_elec[i_elec].iter().map(|b| b.weight()).collect();
         wf_ops::mix_bases(
             psi,
+            Some(charge_density),
             Some(psi_pp),
             Some(psi_pp_div_psi),
             &sfcs.psi_per_basis,
@@ -451,24 +453,31 @@ fn main() {
             psi_pp_calc,
         );
 
-    let surface_data = [
-        SurfaceData::new("V", true),
-        SurfaceData::new("ψ", false),
-        SurfaceData::new("ψ im", false),
-        SurfaceData::new("ψ²", false),
-        SurfaceData::new("ψ'' calc", false),
-        SurfaceData::new("ψ'' calc im", false),
-        SurfaceData::new("ψ'' meas", false),
-        SurfaceData::new("ψ'' meas im", false),
-        SurfaceData::new("Elec V from ψ ", false),
-        SurfaceData::new("Total V from ψ", true),
-        SurfaceData::new("V'_elec", false),
+    let surface_descs_per_elec = vec![
+        SurfaceDesc::new("V", true),
+        SurfaceDesc::new("ψ", false),
+        SurfaceDesc::new("ψ im", false),
+        SurfaceDesc::new("ρ", false),
+        SurfaceDesc::new("ψ'' calc", false),
+        SurfaceDesc::new("ψ'' calc im", false),
+        SurfaceDesc::new("ψ'' meas", false),
+        SurfaceDesc::new("ψ'' meas im", false),
+        SurfaceDesc::new("Elec V from ψ ", false),
+        SurfaceDesc::new("Total V from ψ", true),
+        SurfaceDesc::new("V'_elec", false),
     ];
-    //
-    // let mut charge_from_elecs = Vec::new();
-    // for _ in 0..num_elecs {
-    //     charge_from_elecs.push(new_data_real(grid_n_charge));
-    // }
+
+    let surface_descs_combined = vec![
+        SurfaceDesc::new("V", true),
+        SurfaceDesc::new("ψ_α", false),
+        SurfaceDesc::new("ψ_β", false),
+        SurfaceDesc::new("ψ_α im", false),
+        SurfaceDesc::new("ψ_β im", false),
+        SurfaceDesc::new("ρ_α", false),
+        SurfaceDesc::new("ρ_β", false),
+        SurfaceDesc::new("ρ", true),
+        SurfaceDesc::new("ρ spin", true),
+    ];
 
     let state = State {
         dev_charge,
@@ -481,7 +490,8 @@ fn main() {
         psi_charge,
         surfaces_shared,
         surfaces_per_elec,
-        surface_data,
+        surface_descs_per_elec,
+        surface_descs_combined,
         grid_n_render: grid_n,
         grid_n_charge,
         grid_range_render: (grid_min_render, grid_max_render),

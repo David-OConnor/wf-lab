@@ -228,7 +228,6 @@ pub fn wf_from_bases(
         if psi_pp.is_some() {
             util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
         }
-
         // We do not normalize psi''/psi: The (identical) normalization terms cancel out during division..
     }
 }
@@ -238,6 +237,7 @@ pub fn wf_from_bases(
 /// electron charge.
 pub fn mix_bases(
     psi: &mut Arr3d,
+    mut charge_density: Option<&mut Arr3dReal>,
     mut psi_pp: Option<&mut Arr3d>, // Not required for charge generation.
     mut psi_pp_div_psi: Option<&mut Arr3dReal>, // Not required for charge generation. // todo QC
     psi_per_basis: &[Arr3d],
@@ -291,12 +291,21 @@ pub fn mix_bases(
     if psi_pp_div_psi.is_some() {
         util::balance_arr(psi_pp_div_psi.as_mut().unwrap(), balance);
     }
+
+    // Update charge density as well, from this electron's wave function.
+    if charge_density.is_some() {
+        charge_from_psi(
+            charge_density.as_mut().unwrap(),
+            psi,
+            grid_n, // Render; not charge grid.
+        )
+    }
 }
 
 /// Convert an array of ψ to one of electron charge, through space. This is used to calculate potential
 /// from an electron. (And potential energy between electrons) Modifies in place
 /// to avoid unecessary allocations.
-/// `psi` must be normalized.
+/// `psi` must be normalized prior to being passed to this.
 pub(crate) fn charge_from_psi(
     charge: &mut Arr3dReal,
     psi_on_charge_grid: &Arr3d,

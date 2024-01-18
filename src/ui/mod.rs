@@ -607,7 +607,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 .selected_text(active_elec_text)
                 .show_ui(ui, |ui| {
                     // A value to select the composite wave function.
-                    // ui.selectable_value(&mut state.ui.active_elec, ActiveElec::Combined, "C");
+                    ui.selectable_value(&mut state.ui.active_elec, ActiveElec::Combined, "C");
 
                     // A value for each individual electron
                     for i in 0..state.surfaces_per_elec.len() {
@@ -641,20 +641,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             if ui
                 .checkbox(&mut state.ui.mag_phase, "Show mag, phase")
-                .clicked()
-            {
-                updated_meshes = true;
-            }
-
-            // todo: Only if Combined mode.
-            if ui
-                .checkbox(&mut state.ui.display_alpha, "Show α")
-                .clicked()
-            {
-                updated_meshes = true;
-            }
-            if ui
-                .checkbox(&mut state.ui.display_beta, "Show β")
                 .clicked()
             {
                 updated_meshes = true;
@@ -702,38 +688,92 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.add_space(ITEM_SPACING);
 
         ui.horizontal(|ui| {
-            ui.vertical(|ui| {
-                for (i, data) in state.surface_data.iter_mut().enumerate() {
-                    if i > 3 {
-                        continue;
-                    }
-                    if ui.checkbox(&mut data.visible, &data.name).clicked() {
-                        engine_updates.entities = true;
-                    }
-                }
-            });
-            // todo DRY
-            ui.vertical(|ui| {
-                for (i, data) in state.surface_data.iter_mut().enumerate() {
-                    if i <= 3 || i > 6 {
-                        continue;
-                    }
-                    if ui.checkbox(&mut data.visible, &data.name).clicked() {
-                        engine_updates.entities = true;
-                    }
-                }
-            });
+            // todo: Move this A/R. Function?
+            match state.ui.active_elec {
+                ActiveElec::PerElec(_) => {
+                    ui.vertical(|ui| {
+                        for (i, data) in state.surface_descs_per_elec.iter_mut().enumerate() {
+                            if i > 3 {
+                                continue;
+                            }
+                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                                engine_updates.entities = true;
+                            }
+                        }
+                    });
+                    // todo DRY
+                    ui.vertical(|ui| {
+                        for (i, data) in state.surface_descs_per_elec.iter_mut().enumerate() {
+                            if i <= 3 || i > 6 {
+                                continue;
+                            }
+                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                                engine_updates.entities = true;
+                            }
+                        }
+                    });
 
-            ui.vertical(|ui| {
-                for (i, data) in state.surface_data.iter_mut().enumerate() {
-                    if i <= 6 {
-                        continue;
-                    }
-                    if ui.checkbox(&mut data.visible, &data.name).clicked() {
-                        engine_updates.entities = true;
-                    }
+                    ui.vertical(|ui| {
+                        for (i, data) in state.surface_descs_per_elec.iter_mut().enumerate() {
+                            if i <= 6 {
+                                continue;
+                            }
+                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                                engine_updates.entities = true;
+                            }
+                        }
+                    });
                 }
-            });
+                // todo: This whole section is DRY!
+                ActiveElec::Combined => {
+                    ui.vertical(|ui| {
+                        for (i, data) in state.surface_descs_combined.iter_mut().enumerate() {
+                            if i > 3 {
+                                continue;
+                            }
+                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                                engine_updates.entities = true;
+                            }
+                        }
+                    });
+                    // todo DRY
+                    ui.vertical(|ui| {
+                        for (i, data) in state.surface_descs_combined.iter_mut().enumerate() {
+                            if i <= 3 || i > 6 {
+                                continue;
+                            }
+                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                                engine_updates.entities = true;
+                            }
+                        }
+                    });
+
+                    ui.vertical(|ui| {
+                        for (i, data) in state.surface_descs_combined.iter_mut().enumerate() {
+                            if i <= 6 {
+                                continue;
+                            }
+                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                                engine_updates.entities = true;
+                            }
+                        }
+                    });
+
+                    // We currently use separate surfaces for these, vice the toggles.
+                    // if ui
+                    //     .checkbox(&mut state.ui.display_alpha, "Show α")
+                    //     .clicked()
+                    // {
+                    //     updated_meshes = true;
+                    // }
+                    // if ui
+                    //     .checkbox(&mut state.ui.display_beta, "Show β")
+                    //     .clicked()
+                    // {
+                    //     updated_meshes = true;
+                    // }
+                }
+            }
         });
 
         ui.add(
@@ -865,27 +905,19 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             }
 
             ActiveElec::Combined => {
-                // DRY with per-elec E slider, but unable to delegate to our function due to
-                // borrow-checker issues.
-
-                // ui.heading(format!(
-                //     "ψ'' score: {:.10}",
-                //     state.surfaces_shared.psi_pp_score
-                // ));
-
-                ui.add(
-                    egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
-                        if let Some(v_) = v {
-                            state.surfaces_shared.E = v_;
-
-                            updated_E_or_V = true;
-                            updated_meshes = true;
-                        }
-
-                        state.surfaces_shared.E
-                    })
-                    .text("E"),
-                );
+                // ui.add(
+                //     egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
+                //         if let Some(v_) = v {
+                //             state.surfaces_shared.E = v_;
+                //
+                //             updated_E_or_V = true;
+                //             updated_meshes = true;
+                //         }
+                //
+                //         state.surfaces_shared.E
+                //     })
+                //     .text("E"),
+                // );
 
                 // Multiply wave functions together, and stores in Shared surfaces.
                 // todo: This is an approximation
@@ -903,7 +935,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         if engine_updates.entities {
             match state.ui.active_elec {
                 ActiveElec::PerElec(ae) => {
-                    render::update_entities(&state.charges_fixed, &state.surface_data, scene);
+                    render::update_entities(
+                        &state.charges_fixed,
+                        &state.surface_descs_per_elec,
+                        scene,
+                    );
                 }
                 ActiveElec::Combined => (),
             }

@@ -1,0 +1,33 @@
+For both Vs, smaller Xi corresponds to action farther from the nucleus.
+
+Xi effect on V-from-charges means positive value drops V at relevant radii.
+Xi effect on V-from-charges is relatively small.
+A larger base Xi has little effect on the WF, other than changes re above.
+
+
+Xi effect on V-from-psi means positive value drops V at relevant radii.
+Xi effect on V-from-psi is relatively large.
+A larger base Xi means the overall V-from-psi shifts up. (And therefore requires a closer-to-0 energy to compensate)
+
+
+The base xi (mostly? entirely?) determines the ground state(?) energy. (todo QC this)
+
+
+
+
+One idea, for helium iterative approach:
+
+- Guess a base Xi.
+- Generate Elec V from it (with no other xis)
+- On the elec acted on, adjust all basis weights until you have a match.
+- Re-evaluate V, and see if you still have a match. If you do, base Xi, and the whole
+solution is correct. If you don't, base xi is wrong.
+
+
+
+Another idea:
+- Pick base psi.
+- Gen elec V from it.
+- On other elec, set same base xi; update V acted on it
+- Update E to get the 2 Vs close.
+- If V-from-psi has more curve at the edges than V-from-charges xi is too high. (blue corners); If V-from-psi as less curve at the edges than V-from-charges, xi is too low (grey corners)
