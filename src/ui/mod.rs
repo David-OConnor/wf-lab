@@ -646,6 +646,20 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 updated_meshes = true;
             }
 
+            // todo: Only if Combined mode.
+            if ui
+                .checkbox(&mut state.ui.display_alpha, "Show α")
+                .clicked()
+            {
+                updated_meshes = true;
+            }
+            if ui
+                .checkbox(&mut state.ui.display_beta, "Show β")
+                .clicked()
+            {
+                updated_meshes = true;
+            }
+
             if ui
                 .checkbox(&mut state.ui.adjust_E_with_weights, "Auto adjust E")
                 .clicked()

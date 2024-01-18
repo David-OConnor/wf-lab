@@ -29,6 +29,7 @@ use lin_alg2::f64::Vec3;
 use types::SurfacesPerElec;
 
 use crate::grid_setup::new_data;
+use crate::wf_ops::Spin;
 
 /// Create trial wave functions for a given point-charge distibution. Currently
 /// a rough approach using low-energy STOs centered on the charges.
@@ -68,7 +69,7 @@ pub fn psi_from_pt_charges(
 
     let E = -0.5;
 
-    let mut sfcs = SurfacesPerElec::new(bases.len(), grid_n, grid_n);
+    let mut sfcs = SurfacesPerElec::new(bases.len(), grid_n, Spin::Alpha);
 
     let mut grid_posits = grid_setup::new_data_vec(grid_n);
 

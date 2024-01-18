@@ -53,9 +53,9 @@ pub const ħ: f64 = 1.;
 // pub const N: usize = 20;
 
 #[derive(Clone, Copy, Debug)]
-pub enum _Spin {
-    Up,
-    Dn,
+pub enum Spin {
+    Alpha,
+    Beta,
 }
 
 #[derive(Clone, Copy, PartialEq)]

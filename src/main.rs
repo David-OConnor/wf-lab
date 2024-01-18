@@ -56,6 +56,7 @@ use crate::{
     ui::procedures,
     wf_ops::{DerivCalc, Q_PROT},
 };
+use crate::wf_ops::Spin;
 
 const NUM_SURFACES: usize = 11;
 
@@ -98,6 +99,10 @@ pub struct StateUi {
     /// repulsion.
     pub create_2d_electron_V: bool,
     pub create_3d_electron_V: bool,
+    /// Allows toggling spin-alpha electrons.
+    pub display_alpha: bool,
+    /// Allows toggling spin-beta electrons.
+    pub display_beta: bool,
 }
 
 impl Default for StateUi {
@@ -113,6 +118,8 @@ impl Default for StateUi {
             // todo: Having issues choosing the correct 2D one; 3D for now.
             create_2d_electron_V: false,
             create_3d_electron_V: true,
+            display_alpha: true,
+            display_beta: true,
         }
     }
 }
@@ -201,7 +208,7 @@ pub fn init_from_grid(
 ) {
     let arr_real = new_data_real(grid_n_sample);
 
-    let sfcs_one_elec = SurfacesPerElec::new(bases_per_elec[0].len(), grid_n_sample, grid_n_charge);
+    let sfcs_one_elec = SurfacesPerElec::new(bases_per_elec[0].len(), grid_n_sample, Spin::Alpha);
 
     let mut surfaces_per_elec = Vec::new();
     for _ in 0..num_electrons {

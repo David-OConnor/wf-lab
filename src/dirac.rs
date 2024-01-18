@@ -39,15 +39,13 @@
 use na::{Matrix2, Matrix4};
 use nalgebra as na;
 
-use crate::{
-    complex_nums::{Cplx, IM},
-    grid_setup::Arr3d,
-};
+use crate::{complex_nums::{Cplx, IM}, grid_setup::Arr3d, iter_arr};
+use crate::grid_setup::new_data;
 
 // Matrix operators: alpha, beta, gamma. Gamma is 2x2. alpha and beta are (at least?) 4x4
 
 const C0: Cplx = Cplx::new_zero();
-const C1: Cplx = Cplx::new(1., 0.);
+const C1: Cplx = Cplx { real:1., im: 0.};
 
 /// Todo: Figure out how to use this...
 /// A 4-component spinor wave function.
@@ -60,11 +58,38 @@ pub struct PsiSpinor {
 
 impl PsiSpinor {
     /// Multiply with γ on the left: γψ
-    pub fn multiply_with_gamma(&self, gamma: Matrix4<Cplx>) -> Self {}
+    pub fn multiply_with_gamma(&self, gamma: Matrix4<Cplx>) -> Self {
+        let n = self.a.len();
+        let data = new_data(n);
+        let mut result = Self {
+            a: data.clone(),
+            b: data.clone(),
+            c: data.clone(),
+            d: data,
+        };
 
-    /// Take the (numeric) first derivative of this wave function. Can be called multiple times
-    /// to calculate higher derivatives.
-    pub fn deriv(&self) -> Self {}
+        for (i, j, k) in iter_arr!(n) {
+            // Code simplifiers
+            let a = self.a[i][j][k];
+            let b = self.b[i][j][k];
+            let c = self.c[i][j][k];
+            let d = self.d[i][j][k];
+
+            // todo: Confirm this indexing is in the correct order.
+            result.a[i][j][k] = gamma[(0, 0)] * a + gamma[(0, 1)] * b + gamma[(0, 2)] * c + gamma[(0, 3)] * d;
+            result.b[i][j][k] = gamma[(1, 0)] * a + gamma[(1, 1)] * b + gamma[(1, 2)] * c + gamma[(1, 3)] * d;
+            result.c[i][j][k] = gamma[(2, 0)] * a + gamma[(2, 1)] * b + gamma[(2, 2)] * c + gamma[(2, 3)] * d;
+            result.d[i][j][k] = gamma[(3, 0)] * a + gamma[(3, 1)] * b + gamma[(3, 2)] * c + gamma[(3, 3)] * d;
+        }
+
+        result
+    }
+
+    // /// Take the (numeric) first derivative of this wave function. Can be called multiple times
+    // /// to calculate higher derivatives.
+    // pub fn deriv(&self) -> Self {
+    //
+    // }
 }
 
 // todo: Cplx?
@@ -216,10 +241,12 @@ fn a() {
     );
 }
 
+
 /// Calculate the Dirac equation with form (i γ^μ ∂_μ - m) ψ = 0.
 /// todo: How far does mu range?
 /// todo: Adopt tensor shortcut fns as you have in the Gravity sim?
-pub fn dirac_lhs(psi: &PsiSpinor, m: i8) -> Arr3d {
+// pub fn dirac_lhs(psi: &PsiSpinor, m: i8) -> PsiSpinor {
+pub fn dirac_lhs(psi: &PsiSpinor, m: i8) { // todo temp to get it to compile
     // todo: Solve numerically.
     let psi_p = psi.clone();
     let psi_p2 = psi.clone();
@@ -228,5 +255,4 @@ pub fn dirac_lhs(psi: &PsiSpinor, m: i8) -> Arr3d {
 
     // todo: Sort out how this matrix multiplication works...
     // IM * (gamma(0) * psi + )
-    psi.clone() // todo temp
 }

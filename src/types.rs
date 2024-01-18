@@ -14,6 +14,7 @@ use crate::{
     wf_ops,
     wf_ops::DerivCalc,
 };
+use crate::wf_ops::Spin;
 
 pub enum ComputationDevice {
     Cpu,
@@ -47,10 +48,10 @@ pub struct SurfacesShared {
     /// todo: We are experimenting with separating psi by spin, but otherwise combining for electrons.
     pub psi_alpha: Arr3d,
     pub psi_beta: Arr3d,
-    /// Charge density for all spin alpha electrons.
-    pub charge_alpha: Arr3dReal,
-    /// Charge density for all spin beta electrons.
-    pub charge_beta: Arr3dReal,
+    // /// Charge density for all spin alpha electrons.
+    // pub charge_alpha: Arr3dReal,
+    // /// Charge density for all spin beta electrons.
+    // pub charge_beta: Arr3dReal,
     // Splitting up by charge density and spin density should be equivalent to splitting by
     // spin up and spin down.
     /// Electron density total
@@ -95,8 +96,8 @@ impl SurfacesShared {
             charge_density_dft: data_real.clone(),
             psi_alpha: data.clone(),
             psi_beta: data,
-            charge_alpha: data_real.clone(),
-            charge_beta: data_real.clone(),
+            // charge_alpha: data_real.clone(),
+            // charge_beta: data_real.clone(),
             charge_density_all: data_real.clone(),
             spin_density: data_real,
         }
@@ -110,6 +111,7 @@ impl SurfacesShared {
 /// `Vec`s here generally mean per-electron.
 #[derive(Clone)]
 pub struct SurfacesPerElec {
+    pub spin: Spin,
     /// V from the nucleii, and all other electrons. Does not include this electron's charge.
     /// We use this as a cache instead of generating it on the fly.
     pub V_acting_on_this: Arr3dReal,
@@ -132,7 +134,7 @@ pub struct SurfacesPerElec {
 
 impl SurfacesPerElec {
     /// Fills with 0.s
-    pub fn new(num_bases: usize, n_grid_sample: usize, n_grid_charge: usize) -> Self {
+    pub fn new(num_bases: usize, n_grid_sample: usize, spin: Spin) -> Self {
         let data = new_data(n_grid_sample);
         let data_real = new_data_real(n_grid_sample);
 
@@ -149,6 +151,7 @@ impl SurfacesPerElec {
         }
 
         Self {
+            spin,
             V_acting_on_this: data_real.clone(),
             psi: data.clone(),
             psi_pp_calculated: data.clone(),
