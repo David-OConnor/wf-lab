@@ -38,6 +38,7 @@ use crate::{
     types::ComputationDevice,
     util::{self, unflatten_arr, EPS_DIV0, MAX_PSI_FOR_NORM},
 };
+use crate::types::SurfacesShared;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -245,6 +246,8 @@ pub fn mix_bases(
     psi_pp_div_psi_per_basis: Option<&[Arr3dReal]>, // Not required for charge generation. todo: Consider if you want this
     grid_n: usize,
     weights: &[f64],
+    // todo: Experiment with this API A/R
+    // mut shared: Option<&mut SurfacesShared>,
 ) {
     // todo: GPU option?
     let mut norm = 0.;
@@ -300,6 +303,11 @@ pub fn mix_bases(
             grid_n, // Render; not charge grid.
         )
     }
+
+    // // todo: Think about where you want to handle this.
+    // if shared.is_some() {
+    //
+    // }
 }
 
 /// Convert an array of ψ to one of electron charge, through space. This is used to calculate potential

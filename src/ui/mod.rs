@@ -941,7 +941,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         scene,
                     );
                 }
-                ActiveElec::Combined => (),
+                ActiveElec::Combined => {
+                    render::update_entities(
+                        &state.charges_fixed,
+                        &state.surface_descs_combined,
+                        scene,
+                    );
+                }
             }
         }
 

@@ -208,6 +208,48 @@ pub fn update_meshes(
             &prepare_2d_mesh_real(grid_posits, &surfaces_shared.V_total, z_i, V_SCALER, grid_n),
             true,
         ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(grid_posits, &surfaces_shared.psi_alpha, z_i, PSI_SCALER, mag_phase, false, grid_n),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(grid_posits, &surfaces_shared.psi_beta, z_i, PSI_SCALER, mag_phase,false, grid_n),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(grid_posits, &surfaces_shared.psi_alpha, z_i, PSI_SCALER, mag_phase, true, grid_n),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(grid_posits, &surfaces_shared.psi_beta, z_i, PSI_SCALER, mag_phase,true, grid_n),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(grid_posits, &surfaces_shared.charge_alpha, z_i, CHARGE_DENSITY_SCALER, grid_n),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(grid_posits, &surfaces_shared.charge_beta, z_i, CHARGE_DENSITY_SCALER, grid_n),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(grid_posits, &surfaces_shared.charge_density_all, z_i, CHARGE_DENSITY_SCALER, grid_n),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh_real(grid_posits, &surfaces_shared.spin_density, z_i, CHARGE_DENSITY_SCALER, grid_n),
+            true,
+        ));
+
+
         //
         // meshes.push(Mesh::new_surface(
         //     &prepare_2d_mesh(
@@ -235,14 +277,12 @@ pub fn update_meshes(
         //     true,
         // ));
         //
-        let mut psi_sq = new_data_real(grid_n);
-        // util::norm_sq(&mut psi_sq, &surfaces_shared.psi.psi_marginal.on_pt, grid_n);
 
         // todo: Lots of DRY here that is fixable between multi-elec and single-elec
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, CHARGE_DENSITY_SCALER, grid_n),
-            true,
-        ));
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, CHARGE_DENSITY_SCALER, grid_n),
+        //     true,
+        // ));
 
         // for (scaler, sfc) in [
         //     (PSI_PP_SCALER, &surfaces_shared.psi_pp_calculated),
@@ -372,12 +412,13 @@ pub fn update_meshes(
 /// with surfaces.
 pub fn update_entities(
     charges: &[(Vec3F64, f64)],
-    surface_data: &[SurfaceDesc],
+    surface_descs: &[SurfaceDesc],
     scene: &mut Scene,
 ) {
+    let num_sfcs = surface_descs.len();
     let mut entities = Vec::new();
-    for i in 0..NUM_SURFACES_PER_ELEC {
-        if !surface_data[i].visible {
+    for i in 0..num_sfcs {
+        if !surface_descs[i].visible {
             continue;
         }
         entities.push(Entity::new(
@@ -392,7 +433,7 @@ pub fn update_entities(
 
     for (posit, val) in charges {
         entities.push(Entity::new(
-            NUM_SURFACES_PER_ELEC, // Index 1 after surfaces.
+            num_sfcs, // Index 1 after surfaces.
             Vec3::new(
                 posit.x as f32,
                 // We invert Y and Z due to diff coord systems
@@ -428,7 +469,7 @@ pub fn update_entities(
         Vec3::new(3., 2. * V_SCALER, 0.),
     ] {
         entities.push(Entity::new(
-            NUM_SURFACES_PER_ELEC, // Index 1 after surfaces.
+            num_sfcs, // Index 1 after surfaces.
             *grid_marker,
             Quaternion::new_identity(),
             2.,

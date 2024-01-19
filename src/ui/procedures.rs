@@ -52,6 +52,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         Some(&sfcs.psi_pp_div_psi_per_basis),
         state.grid_n_render,
         &weights,
+        // Some(&mut state.surfaces_shared),
     );
 
     wf_ops::update_eigen_vals(
@@ -90,6 +91,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
             None,
             state.grid_n_charge,
             &weights,
+            // None,
         );
 
         wf_ops::charge_from_psi(
@@ -182,6 +184,7 @@ pub fn create_elec_charge(
         None,
         grid_n_charge,
         weights,
+        // None,
     );
 
     wf_ops::charge_from_psi(charge_electron, &psi_charge_grid, grid_n_charge);
