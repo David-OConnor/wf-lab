@@ -11,7 +11,7 @@ use crate::{
     potential, render,
     types::ComputationDevice,
     wf_ops,
-    wf_ops::DerivCalc,
+    wf_ops::{DerivCalc, Spin},
     ActiveElec, State,
 };
 
@@ -242,6 +242,7 @@ fn basis_fn_mixer(
                             // if response.changed() {
                             //     b.c = entry.parse().unwrap_or(1.);
                             // }
+
                             ui.heading("n:");
                             let mut entry = b.n.to_string(); // angle
                             let response =
@@ -842,6 +843,33 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     })
                     .text("E"),
                 );
+
+                let prev_spin = state.surfaces_per_elec[ae].spin;
+                // Combobox to select the active electron, or select the combined wave functino.
+                egui::ComboBox::from_id_source(0)
+                    .width(30.)
+                    .selected_text(prev_spin.to_string())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut state.surfaces_per_elec[ae].spin,
+                            Spin::Alpha,
+                            Spin::Alpha.to_string(),
+                        );
+                        ui.selectable_value(
+                            &mut state.surfaces_per_elec[ae].spin,
+                            Spin::Beta,
+                            Spin::Beta.to_string(),
+                        );
+                    });
+
+                if prev_spin != state.surfaces_per_elec[ae].spin {
+                    wf_ops::update_combined(
+                        &mut state.surfaces_shared,
+                        &state.surfaces_per_elec,
+                        state.grid_n_render,
+                    );
+                    updated_meshes = true;
+                }
 
                 ui.add_space(ITEM_SPACING);
 

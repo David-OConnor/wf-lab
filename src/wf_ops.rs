@@ -33,12 +33,11 @@ use crate::{
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
     eigen_fns::{self, KE_COEFF},
-    grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, num_diff,
-    types::ComputationDevice,
+    types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
     util::{self, unflatten_arr, EPS_DIV0, MAX_PSI_FOR_NORM},
 };
-use crate::types::SurfacesShared;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -53,10 +52,20 @@ pub const ħ: f64 = 1.;
 // Memory use and some parts of computation scale with the cube of this.
 // pub const N: usize = 20;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Spin {
     Alpha,
     Beta,
+}
+
+impl Spin {
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::Alpha => "α",
+            Self::Beta => "β",
+        }
+        .to_string()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -570,5 +579,49 @@ pub fn psi_pp_div_psi_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: Der
         (psi_pp / psi).real
     } else {
         basis.psi_pp_div_psi(posit)
+    }
+}
+
+/// Update surfaces releated to multi-electron wave functions. This includes things related to
+/// spin, and charge density of all electrons. This should be run after changing any electron wave
+/// function, or nucleus charge.
+pub(crate) fn update_combined(
+    shared: &mut SurfacesShared,
+    per_elec: &[SurfacesPerElec],
+    grid_n: usize,
+) {
+    // Remove previous V from electrons.
+    shared.V_total = shared.V_from_nuclei.clone();
+    shared.psi_alpha = new_data(grid_n);
+    shared.psi_beta = new_data(grid_n);
+    shared.charge_alpha = new_data_real(grid_n);
+    shared.charge_beta = new_data_real(grid_n);
+    shared.charge_density_all = new_data_real(grid_n);
+    shared.spin_density = new_data_real(grid_n);
+    // todo: psi_all too?
+
+    for i_elec in 0..per_elec.len() {
+        for (i, j, k) in iter_arr!(grid_n) {
+            // todo: Handle this.
+            // shared.V_total[i][j][k] += V_from_elecs[i_elec][i][j][k];
+
+            // todo: Raise this if out of the triple loop?
+            match per_elec[i_elec].spin {
+                Spin::Alpha => {
+                    shared.psi_alpha[i][j][k] += per_elec[i_elec].psi[i][j][k];
+                    shared.charge_alpha[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
+
+                    shared.spin_density[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
+                }
+                Spin::Beta => {
+                    shared.psi_beta[i][j][k] += per_elec[i_elec].psi[i][j][k];
+                    shared.charge_beta[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
+
+                    shared.spin_density[i][j][k] -= per_elec[i_elec].charge_density[i][j][k];
+                }
+            }
+
+            shared.charge_density_all[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
+        }
     }
 }

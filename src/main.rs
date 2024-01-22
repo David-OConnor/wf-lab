@@ -354,42 +354,7 @@ pub fn init_from_grid(
         }
     }
 
-    // todo: fn A/R
-    // Update the shared surfaces
-
-    // Remove previous V from electrons.
-    surfaces_shared.V_total = surfaces_shared.V_from_nuclei.clone();
-    surfaces_shared.psi_alpha = new_data(grid_n_sample);
-    surfaces_shared.psi_beta = new_data(grid_n_sample);
-    surfaces_shared.charge_alpha = new_data_real(grid_n_sample);
-    surfaces_shared.charge_beta = new_data_real(grid_n_sample);
-    surfaces_shared.charge_density_all = new_data_real(grid_n_sample);
-    surfaces_shared.spin_density = new_data_real(grid_n_sample);
-    // todo: psi_all too?
-
-    for i_elec in 0..num_electrons {
-        for (i, j, k) in iter_arr!(grid_n_sample) {
-            surfaces_shared.V_total[i][j][k] += V_from_elecs[i_elec][i][j][k];
-            // todo: Raise this if out of the triple loop?
-            match surfaces_per_elec[i_elec].spin {
-                Spin::Alpha => {
-                    surfaces_shared.psi_alpha[i][j][k] += surfaces_per_elec[i_elec].psi[i][j][k];
-                    surfaces_shared.charge_alpha[i][j][k] += surfaces_per_elec[i_elec].charge_density[i][j][k];
-
-                    surfaces_shared.spin_density[i][j][k] += surfaces_per_elec[i_elec].charge_density[i][j][k];
-                }
-                Spin::Beta => {
-                    surfaces_shared.psi_alpha[i][j][k] += surfaces_per_elec[i_elec].psi[i][j][k];
-                    surfaces_shared.charge_alpha[i][j][k] += surfaces_per_elec[i_elec].charge_density[i][j][k];
-
-                    surfaces_shared.spin_density[i][j][k] -= surfaces_per_elec[i_elec].charge_density[i][j][k];
-                }
-            }
-
-            surfaces_shared.charge_density_all[i][j][k] += surfaces_per_elec[i_elec].charge_density[i][j][k];
-        }
-    }
-
+    wf_ops::update_combined(&mut surfaces_shared, &surfaces_per_elec, grid_n_sample);
 
     (
         charges_electron,

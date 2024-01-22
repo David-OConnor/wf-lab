@@ -210,45 +210,100 @@ pub fn update_meshes(
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits, &surfaces_shared.psi_alpha, z_i, PSI_SCALER, mag_phase, false, grid_n),
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces_shared.psi_alpha,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
             true,
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits, &surfaces_shared.psi_beta, z_i, PSI_SCALER, mag_phase,false, grid_n),
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces_shared.psi_beta,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
             true,
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits, &surfaces_shared.psi_alpha, z_i, PSI_SCALER, mag_phase, true, grid_n),
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces_shared.psi_alpha,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                true,
+                grid_n,
+            ),
             true,
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits, &surfaces_shared.psi_beta, z_i, PSI_SCALER, mag_phase,true, grid_n),
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces_shared.psi_beta,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                true,
+                grid_n,
+            ),
             true,
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces_shared.charge_alpha, z_i, CHARGE_DENSITY_SCALER, grid_n),
+            &prepare_2d_mesh_real(
+                grid_posits,
+                &surfaces_shared.charge_alpha,
+                z_i,
+                CHARGE_DENSITY_SCALER,
+                grid_n,
+            ),
             true,
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces_shared.charge_beta, z_i, CHARGE_DENSITY_SCALER, grid_n),
+            &prepare_2d_mesh_real(
+                grid_posits,
+                &surfaces_shared.charge_beta,
+                z_i,
+                CHARGE_DENSITY_SCALER,
+                grid_n,
+            ),
             true,
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces_shared.charge_density_all, z_i, CHARGE_DENSITY_SCALER, grid_n),
+            &prepare_2d_mesh_real(
+                grid_posits,
+                &surfaces_shared.charge_density_all,
+                z_i,
+                CHARGE_DENSITY_SCALER,
+                grid_n,
+            ),
             true,
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces_shared.spin_density, z_i, CHARGE_DENSITY_SCALER, grid_n),
+            &prepare_2d_mesh_real(
+                grid_posits,
+                &surfaces_shared.spin_density,
+                z_i,
+                CHARGE_DENSITY_SCALER,
+                grid_n,
+            ),
             true,
         ));
-
 
         //
         // meshes.push(Mesh::new_surface(
