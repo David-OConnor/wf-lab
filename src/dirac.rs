@@ -36,13 +36,16 @@
 //!
 //! Dirac psi amplitude: 4 components: 2 large; 2 small (vector)
 
+use core::ops::{Add, Mul};
+
 use na::{Matrix2, Matrix4};
 use nalgebra as na;
 
 use crate::{
     complex_nums::{Cplx, IM},
     grid_setup::{new_data, Arr3d},
-    iter_arr,
+    iter_arr, num_diff,
+    wf_ops::M_ELEC,
 };
 
 // Matrix operators: alpha, beta, gamma. Gamma is 2x2. alpha and beta are (at least?) 4x4
@@ -52,6 +55,7 @@ const C1: Cplx = Cplx { real: 1., im: 0. };
 
 /// Todo: Figure out how to use this...
 /// A 4-component spinor wave function.
+#[derive(Clone, Default)]
 pub struct PsiSpinor {
     pub a: Arr3d,
     pub b: Arr3d,
@@ -60,16 +64,25 @@ pub struct PsiSpinor {
 }
 
 impl PsiSpinor {
+    pub fn differentiate(&self, grid_spacing: f64) -> Self {
+        let mut result = Self::default();
+
+        result.a = num_diff::differentiate_grid_all(&self.a, grid_spacing);
+        result.b = num_diff::differentiate_grid_all(&self.b, grid_spacing);
+        result.c = num_diff::differentiate_grid_all(&self.c, grid_spacing);
+        result.d = num_diff::differentiate_grid_all(&self.d, grid_spacing);
+
+        result
+    }
+}
+
+impl Mul<Matrix4<Cplx>> for PsiSpinor {
+    type Output = Self;
+
     /// Multiply with γ on the left: γψ
-    pub fn multiply_with_gamma(&self, gamma: Matrix4<Cplx>) -> Self {
+    fn mul(self, rhs: Matrix4<Cplx>) -> Self::Output {
         let n = self.a.len();
-        let data = new_data(n);
-        let mut result = Self {
-            a: data.clone(),
-            b: data.clone(),
-            c: data.clone(),
-            d: data,
-        };
+        let mut result = self.clone();
 
         for (i, j, k) in iter_arr!(n) {
             // Code simplifiers
@@ -80,23 +93,53 @@ impl PsiSpinor {
 
             // todo: Confirm this indexing is in the correct order.
             result.a[i][j][k] =
-                gamma[(0, 0)] * a + gamma[(0, 1)] * b + gamma[(0, 2)] * c + gamma[(0, 3)] * d;
+                rhs[(0, 0)] * a + rhs[(0, 1)] * b + rhs[(0, 2)] * c + rhs[(0, 3)] * d;
             result.b[i][j][k] =
-                gamma[(1, 0)] * a + gamma[(1, 1)] * b + gamma[(1, 2)] * c + gamma[(1, 3)] * d;
+                rhs[(1, 0)] * a + rhs[(1, 1)] * b + rhs[(1, 2)] * c + rhs[(1, 3)] * d;
             result.c[i][j][k] =
-                gamma[(2, 0)] * a + gamma[(2, 1)] * b + gamma[(2, 2)] * c + gamma[(2, 3)] * d;
+                rhs[(2, 0)] * a + rhs[(2, 1)] * b + rhs[(2, 2)] * c + rhs[(2, 3)] * d;
             result.d[i][j][k] =
-                gamma[(3, 0)] * a + gamma[(3, 1)] * b + gamma[(3, 2)] * c + gamma[(3, 3)] * d;
+                rhs[(3, 0)] * a + rhs[(3, 1)] * b + rhs[(3, 2)] * c + rhs[(3, 3)] * d;
         }
 
         result
     }
+}
 
-    // /// Take the (numeric) first derivative of this wave function. Can be called multiple times
-    // /// to calculate higher derivatives.
-    // pub fn deriv(&self) -> Self {
-    //
-    // }
+impl Mul<Cplx> for PsiSpinor {
+    type Output = Self;
+
+    fn mul(self, rhs: Cplx) -> Self::Output {
+        let n = self.a.len();
+        let mut result = self.clone();
+
+        for (i, j, k) in iter_arr!(n) {
+            result.a[i][j][k] *= rhs;
+            result.b[i][j][k] *= rhs;
+            result.c[i][j][k] *= rhs;
+            result.d[i][j][k] *= rhs;
+        }
+
+        result
+    }
+}
+
+impl Add<Self> for PsiSpinor {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let n = self.a.len();
+        let mut result = self.clone();
+
+        for (i, j, k) in iter_arr!(n) {
+            self.a[i][j][k] += rhs.a[i][j][k];
+            self.b[i][j][k] += rhs.b[i][j][k];
+            self.c[i][j][k] += rhs.c[i][j][k];
+            self.d[i][j][k] += rhs.d[i][j][k];
+        }
+
+        result
+    }
 }
 
 // todo: Cplx?
@@ -248,18 +291,22 @@ fn a() {
     );
 }
 
-/// Calculate the Dirac equation with form (i γ^μ ∂_μ - m) ψ = 0.
-/// todo: How far does mu range?
+/// Calculate the left-hand-side of the Dirac equation, of form (iħ γ^μ ∂_μ - mc) ψ = 0.
+/// We assume ħ = c = 1.
 /// todo: Adopt tensor shortcut fns as you have in the Gravity sim?
 // pub fn dirac_lhs(psi: &PsiSpinor, m: i8) -> PsiSpinor {
-pub fn dirac_lhs(psi: &PsiSpinor, m: i8) {
+pub fn dirac_lhs(psi: &PsiSpinor, grid_spacing: f64) {
     // todo temp to get it to compile
     // todo: Solve numerically.
-    let psi_p = psi.clone();
-    let psi_p2 = psi.clone();
-    let psi_p3 = psi.clone();
-    let psi_p4 = psi.clone();
+    let psi_p = psi.differentiate(grid_spacing);
+    let psi_p2 = psi_p.differentiate(grid_spacing);
+    let psi_p3 = psi_p2.differentiate(grid_spacing);
 
-    // todo: Sort out how this matrix multiplication works...
-    // IM * (gamma(0) * psi + )
+    let part0 = psi.multiply_with_gamma(gamma(0));
+    let part1 = psi_p.multiply_with_gamma(gamma(1));
+    let part2 = psi_p2.multiply_with_gamma(gamma(2));
+    let part3 = psi_p3.multiply_with_gamma(gamma(3));
+
+    // todo: Confirm M is electron mass; not quantum number.
+    (part0 + part1 + part2 + part3) * IM - psi * Cplx::from_real(4. * M_ELEC);
 }

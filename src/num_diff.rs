@@ -4,7 +4,12 @@
 
 use lin_alg2::f64::Vec3;
 
-use crate::{basis_wfs::Basis, complex_nums::Cplx};
+use crate::{
+    basis_wfs::Basis,
+    complex_nums::Cplx,
+    grid_setup::{new_data, Arr3d},
+    iter_arr,
+};
 
 // Used for calculating numerical ψ''.
 // Smaller is more accurate. Too small might lead to numerical issues though (?)
@@ -88,4 +93,43 @@ pub(crate) fn find_ψ_pp_num_fm_bases(
     (psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - ψ_sample_loc * 6.)
         / H_SQ
+}
+
+/// Differentiate a 3D complex array. Note that this may exhibit numerical inaccuracies due to the large
+/// difference between grid points. Call this in series to calculate higher derivatives.
+pub(crate) fn differentiate_grid(
+    data: &Arr3d,
+    index: (usize, usize, usize),
+    grid_spacing: f64, // ie H.
+) -> Cplx {
+    let n = data.len();
+    let (i, j, k) = index;
+
+    // We are unable to calculate values at the grid edge using this approach.
+    if i == 0 || i == n - 1 || j == 0 || j == n - 1 || k == 0 || k == n - 1 {
+        return Cplx::new_zero();
+    }
+
+    let sample_loc = data[i][j][k];
+
+    let x_prev = data[i - 1][j][k];
+    let x_next = data[i + 1][j][k];
+    let y_prev = data[i][j - 1][k];
+    let y_next = data[i][j + 1][k];
+    let z_prev = data[i][j][k - 1];
+    let z_next = data[i][j][k + 1];
+    // Note: We currently handle norm downstream.
+
+    (x_prev + x_next + y_prev + y_next + z_prev + z_next - sample_loc * 6.) / grid_spacing.powi(2)
+}
+
+pub(crate) fn differentiate_grid_all(data: &Arr3d, grid_spacing: f64) -> Arr3d {
+    let n = data.len();
+    let mut result = new_data(n);
+
+    for (i, j, k) in iter_arr!(n) {
+        result[i][j][k] = differentiate_grid(data, (i, j, k), grid_spacing);
+    }
+
+    result
 }
