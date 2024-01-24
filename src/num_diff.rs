@@ -97,6 +97,7 @@ pub(crate) fn find_ψ_pp_num_fm_bases(
 
 /// Differentiate a 3D complex array. Note that this may exhibit numerical inaccuracies due to the large
 /// difference between grid points. Call this in series to calculate higher derivatives.
+/// todo: This is a second deriv; not first!
 pub(crate) fn differentiate_grid(
     data: &Arr3d,
     index: (usize, usize, usize),

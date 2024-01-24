@@ -53,24 +53,32 @@ use crate::{
 const C0: Cplx = Cplx::new_zero();
 const C1: Cplx = Cplx { real: 1., im: 0. };
 
+#[derive(Clone, Copy, PartialEq)]
+enum Component {
+    T,
+    X,
+    Y,
+    Z
+}
+
 /// Todo: Figure out how to use this...
 /// A 4-component spinor wave function.
 #[derive(Clone, Default)]
 pub struct PsiSpinor {
-    pub a: Arr3d,
-    pub b: Arr3d,
-    pub c: Arr3d,
-    pub d: Arr3d,
+    pub t: Arr3d,
+    pub x: Arr3d,
+    pub y: Arr3d,
+    pub z: Arr3d,
 }
 
 impl PsiSpinor {
-    pub fn differentiate(&self, grid_spacing: f64) -> Self {
+    pub fn differentiate(&self, component: Component, grid_spacing: f64) -> Self {
         let mut result = Self::default();
 
-        result.a = num_diff::differentiate_grid_all(&self.a, grid_spacing);
-        result.b = num_diff::differentiate_grid_all(&self.b, grid_spacing);
-        result.c = num_diff::differentiate_grid_all(&self.c, grid_spacing);
-        result.d = num_diff::differentiate_grid_all(&self.d, grid_spacing);
+        result.t = num_diff::differentiate_grid_all(&self.t, grid_spacing);
+        result.x = num_diff::differentiate_grid_all(&self.x, grid_spacing);
+        result.y = num_diff::differentiate_grid_all(&self.y, grid_spacing);
+        result.z = num_diff::differentiate_grid_all(&self.z, grid_spacing);
 
         result
     }
@@ -81,24 +89,24 @@ impl Mul<Matrix4<Cplx>> for PsiSpinor {
 
     /// Multiply with γ on the left: γψ
     fn mul(self, rhs: Matrix4<Cplx>) -> Self::Output {
-        let n = self.a.len();
+        let n = self.t.len();
         let mut result = self.clone();
 
         for (i, j, k) in iter_arr!(n) {
             // Code simplifiers
-            let a = self.a[i][j][k];
-            let b = self.b[i][j][k];
-            let c = self.c[i][j][k];
-            let d = self.d[i][j][k];
+            let a = self.t[i][j][k];
+            let b = self.x[i][j][k];
+            let c = self.y[i][j][k];
+            let d = self.z[i][j][k];
 
             // todo: Confirm this indexing is in the correct order.
-            result.a[i][j][k] =
+            result.t[i][j][k] =
                 rhs[(0, 0)] * a + rhs[(0, 1)] * b + rhs[(0, 2)] * c + rhs[(0, 3)] * d;
-            result.b[i][j][k] =
+            result.x[i][j][k] =
                 rhs[(1, 0)] * a + rhs[(1, 1)] * b + rhs[(1, 2)] * c + rhs[(1, 3)] * d;
-            result.c[i][j][k] =
+            result.y[i][j][k] =
                 rhs[(2, 0)] * a + rhs[(2, 1)] * b + rhs[(2, 2)] * c + rhs[(2, 3)] * d;
-            result.d[i][j][k] =
+            result.z[i][j][k] =
                 rhs[(3, 0)] * a + rhs[(3, 1)] * b + rhs[(3, 2)] * c + rhs[(3, 3)] * d;
         }
 
@@ -110,14 +118,14 @@ impl Mul<Cplx> for PsiSpinor {
     type Output = Self;
 
     fn mul(self, rhs: Cplx) -> Self::Output {
-        let n = self.a.len();
+        let n = self.t.len();
         let mut result = self.clone();
 
         for (i, j, k) in iter_arr!(n) {
-            result.a[i][j][k] *= rhs;
-            result.b[i][j][k] *= rhs;
-            result.c[i][j][k] *= rhs;
-            result.d[i][j][k] *= rhs;
+            result.t[i][j][k] *= rhs;
+            result.x[i][j][k] *= rhs;
+            result.y[i][j][k] *= rhs;
+            result.z[i][j][k] *= rhs;
         }
 
         result
@@ -128,14 +136,14 @@ impl Add<Self> for PsiSpinor {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let n = self.a.len();
+        let n = self.t.len();
         let mut result = self.clone();
 
         for (i, j, k) in iter_arr!(n) {
-            self.a[i][j][k] += rhs.a[i][j][k];
-            self.b[i][j][k] += rhs.b[i][j][k];
-            self.c[i][j][k] += rhs.c[i][j][k];
-            self.d[i][j][k] += rhs.d[i][j][k];
+            self.t[i][j][k] += rhs.t[i][j][k];
+            self.x[i][j][k] += rhs.x[i][j][k];
+            self.y[i][j][k] += rhs.y[i][j][k];
+            self.z[i][j][k] += rhs.z[i][j][k];
         }
 
         result
@@ -186,47 +194,6 @@ fn gamma(mu: u8) -> Matrix4<Cplx> {
             C1, C0, C0, C0,
             C0, C1, C0, C0
         ),
-        
-        
-        // 0 => Matrix4::new(
-        //     1., 0., 0., 0.,
-        //     0., 1., 0., 0.,
-        //     0., 0., -1., 0.,
-        //     0., 0., 0., -1.
-        // ),
-        // 1 => Matrix4::new(
-        //     0., 0., 0., 1.,
-        //     0., 0., 1., 0.,
-        //     0., -1., 0., 0.,
-        //     -1., 0., 0., 0.
-        // ),
-        // // todo: SOrt out how to mix cplx/real
-        // // 2 => Matrix4::new(
-        // //     C0, C0, C0, -IM,
-        // //     C0, C0, IM, C0,
-        // //     C0, IM, C0, C0,
-        // //     -IM, C0, C0, C0
-        // // ),
-        // 3 => Matrix4::new(
-        //     1., 0., 1., 0.,
-        //     0., 0., 0., -1.,
-        //     -1., 0., 0., 0.,
-        //     0., 1., 0., 0.
-        // ),
-        // // The identity matrix.
-        // 4 => Matrix4::new(
-        //     1., 0., 0., 0.,
-        //     0., 1., 0., 0.,
-        //     0., 0., 1., 0.,
-        //     0., 0., 0., 1.
-        // ),
-        // // γ5 is not a proper member of the gamma group.
-        // 5 => Matrix4::new(
-        //     0., 0., 1., 0.,
-        //     0., 0., 0., 1.,
-        //     1., 0., 0., 0.,
-        //     0., 1., 0., 0.
-        // ),
         _ => panic!("Invalid gamma matrix; must be 0-5."),
     }
 }
@@ -294,19 +261,16 @@ fn a() {
 /// Calculate the left-hand-side of the Dirac equation, of form (iħ γ^μ ∂_μ - mc) ψ = 0.
 /// We assume ħ = c = 1.
 /// todo: Adopt tensor shortcut fns as you have in the Gravity sim?
+/// // "rememer tho that hbar omega= E"
 // pub fn dirac_lhs(psi: &PsiSpinor, m: i8) -> PsiSpinor {
 pub fn dirac_lhs(psi: &PsiSpinor, grid_spacing: f64) {
     // todo temp to get it to compile
     // todo: Solve numerically.
-    let psi_p = psi.differentiate(grid_spacing);
-    let psi_p2 = psi_p.differentiate(grid_spacing);
-    let psi_p3 = psi_p2.differentiate(grid_spacing);
 
-    let part0 = psi.multiply_with_gamma(gamma(0));
-    let part1 = psi_p.multiply_with_gamma(gamma(1));
-    let part2 = psi_p2.multiply_with_gamma(gamma(2));
-    let part3 = psi_p3.multiply_with_gamma(gamma(3));
+    let part0 = psi.differentiate(Component::T, grid_spacing) * gamma(0);
+    let part1 = psi.differentiate(Component::X, grid_spacing) * gamma(1);
+    let part2 = psi.differentiate(Component::Y, grid_spacing) * gamma(2);
+    let part3 = psi.differentiate(Component::Z, grid_spacing) * gamma(3);
 
-    // todo: Confirm M is electron mass; not quantum number.
-    (part0 + part1 + part2 + part3) * IM - psi * Cplx::from_real(4. * M_ELEC);
+    (part0 + part1 + part2 + part3) * IM - psi * Cplx::from_real(* M_ELEC);
 }
