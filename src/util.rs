@@ -18,6 +18,17 @@ macro_rules! iter_arr {
     };
 }
 
+// This is an abstraction over a quadruple-nested loop. We use it to iterate over 4d arrays.
+#[macro_export]
+macro_rules! iter_arr_4 {
+    ($n:expr) => {
+        (0..$n).flat_map(move |i| {
+            (0..$n)
+                .flat_map(move |j| (0..$n).flat_map((move |k| (0..$n).map(move |l| (i, j, k, l)))))
+        })
+    };
+}
+
 /// Create a set of values in a given range, with a given number of values.
 /// Similar to `numpy.linspace`.
 /// The result terminates one step before the end of the range.

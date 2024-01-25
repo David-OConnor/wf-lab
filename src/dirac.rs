@@ -36,15 +36,15 @@
 //!
 //! Dirac psi amplitude: 4 components: 2 large; 2 small (vector)
 
-use core::ops::{Add, Mul};
+use core::ops::{Add, Mul, Sub};
 
 use na::{Matrix2, Matrix4};
 use nalgebra as na;
 
 use crate::{
     complex_nums::{Cplx, IM},
-    grid_setup::{new_data, Arr3d},
-    iter_arr, num_diff,
+    grid_setup::{Arr3d, Arr4d},
+    iter_arr, iter_arr_4,
     wf_ops::M_ELEC,
 };
 
@@ -58,27 +58,56 @@ enum Component {
     T,
     X,
     Y,
-    Z
+    Z,
 }
 
 /// Todo: Figure out how to use this...
 /// A 4-component spinor wave function.
 #[derive(Clone, Default)]
 pub struct PsiSpinor {
-    pub t: Arr3d,
-    pub x: Arr3d,
-    pub y: Arr3d,
-    pub z: Arr3d,
+    pub t: Arr4d,
+    pub x: Arr4d,
+    pub y: Arr4d,
+    pub z: Arr4d,
 }
 
 impl PsiSpinor {
     pub fn differentiate(&self, component: Component, grid_spacing: f64) -> Self {
+        let n = self.t.len();
         let mut result = Self::default();
 
-        result.t = num_diff::differentiate_grid_all(&self.t, grid_spacing);
-        result.x = num_diff::differentiate_grid_all(&self.x, grid_spacing);
-        result.y = num_diff::differentiate_grid_all(&self.y, grid_spacing);
-        result.z = num_diff::differentiate_grid_all(&self.z, grid_spacing);
+        // For use with our midpoint formula.
+        let diff = grid_spacing / 2.;
+
+        for (i, j, k, l) in iter_arr_4!(n) {
+            match component {
+                Component::T => {
+                    // todo: QC this approach. Ask about it on the Discord.
+                    result.t[i][j][k][l] = (self.t[i + 1][j][k][l] - self.t[i - 1][j][k][l]) / diff;
+                    result.x[i][j][k][l] = (self.x[i + 1][j][k][l] - self.x[i - 1][j][k][l]) / diff;
+                    result.y[i][j][k][l] = (self.y[i + 1][j][k][l] - self.y[i - 1][j][k][l]) / diff;
+                    result.z[i][j][k][l] = (self.z[i + 1][j][k][l] - self.z[i - 1][j][k][l]) / diff;
+                }
+                Component::X => {
+                    result.t[i][j][k][l] = (self.t[i][j + 1][k][l] - self.t[i][j - 1][k][l]) / diff;
+                    result.x[i][j][k][l] = (self.x[i][j + 1][k][l] - self.x[i][j - 1][k][l]) / diff;
+                    result.y[i][j][k][l] = (self.y[i][j + 1][k][l] - self.y[i][j - 1][k][l]) / diff;
+                    result.z[i][j][k][l] = (self.z[i][j + 1][k][l] - self.z[i][j - 1][k][l]) / diff;
+                }
+                Component::Y => {
+                    result.t[i][j][k][l] = (self.t[i][j][k + 1][l] - self.t[i][j][k - 1][l]) / diff;
+                    result.x[i][j][k][l] = (self.x[i][j][k + 1][l] - self.x[i][j][k - 1][l]) / diff;
+                    result.y[i][j][k][l] = (self.y[i][j][k + 1][l] - self.y[i][j][k - 1][l]) / diff;
+                    result.z[i][j][k][l] = (self.z[i][j][k + 1][l] - self.z[i][j][k - 1][l]) / diff;
+                }
+                Component::Z => {
+                    result.t[i][j][k][l] = (self.t[i][j][k][l + 1] - self.t[i][j][k][l - 1]) / diff;
+                    result.x[i][j][k][l] = (self.x[i][j][k][l + 1] - self.x[i][j][k][l - 1]) / diff;
+                    result.y[i][j][k][l] = (self.y[i][j][k][l + 1] - self.y[i][j][k][l - 1]) / diff;
+                    result.z[i][j][k][l] = (self.z[i][j][k][l + 1] - self.z[i][j][k][l - 1]) / diff;
+                }
+            }
+        }
 
         result
     }
@@ -92,22 +121,51 @@ impl Mul<Matrix4<Cplx>> for PsiSpinor {
         let n = self.t.len();
         let mut result = self.clone();
 
-        for (i, j, k) in iter_arr!(n) {
+        // for (i, j, k) in iter_arr!(n) {
+        for (i, j, k, l) in iter_arr_4!(n) {
             // Code simplifiers
-            let a = self.t[i][j][k];
-            let b = self.x[i][j][k];
-            let c = self.y[i][j][k];
-            let d = self.z[i][j][k];
+            let a = self.t[i][j][k][l];
+            let b = self.x[i][j][k][l];
+            let c = self.y[i][j][k][l];
+            let d = self.z[i][j][k][l];
 
             // todo: Confirm this indexing is in the correct order.
-            result.t[i][j][k] =
+            // result.t[i][j][k] =
+            //     rhs[(0, 0)] * a + rhs[(0, 1)] * b + rhs[(0, 2)] * c + rhs[(0, 3)] * d;
+            // result.x[i][j][k] =
+            //     rhs[(1, 0)] * a + rhs[(1, 1)] * b + rhs[(1, 2)] * c + rhs[(1, 3)] * d;
+            // result.y[i][j][k] =
+            //     rhs[(2, 0)] * a + rhs[(2, 1)] * b + rhs[(2, 2)] * c + rhs[(2, 3)] * d;
+            // result.z[i][j][k] =
+            //     rhs[(3, 0)] * a + rhs[(3, 1)] * b + rhs[(3, 2)] * c + rhs[(3, 3)] * d;
+
+            // todo?
+            result.t[i][j][k][l] =
                 rhs[(0, 0)] * a + rhs[(0, 1)] * b + rhs[(0, 2)] * c + rhs[(0, 3)] * d;
-            result.x[i][j][k] =
+            result.x[i][j][k][l] =
                 rhs[(1, 0)] * a + rhs[(1, 1)] * b + rhs[(1, 2)] * c + rhs[(1, 3)] * d;
-            result.y[i][j][k] =
+            result.y[i][j][k][l] =
                 rhs[(2, 0)] * a + rhs[(2, 1)] * b + rhs[(2, 2)] * c + rhs[(2, 3)] * d;
-            result.z[i][j][k] =
+            result.z[i][j][k][l] =
                 rhs[(3, 0)] * a + rhs[(3, 1)] * b + rhs[(3, 2)] * c + rhs[(3, 3)] * d;
+        }
+
+        result
+    }
+}
+
+impl Mul<Cplx> for &PsiSpinor {
+    type Output = PsiSpinor;
+
+    fn mul(self, rhs: Cplx) -> Self::Output {
+        let n = self.t.len();
+        let mut result = self.clone();
+
+        for (i, j, k, l) in iter_arr_4!(n) {
+            result.t[i][j][k][l] *= rhs;
+            result.x[i][j][k][l] *= rhs;
+            result.y[i][j][k][l] *= rhs;
+            result.z[i][j][k][l] *= rhs;
         }
 
         result
@@ -121,11 +179,11 @@ impl Mul<Cplx> for PsiSpinor {
         let n = self.t.len();
         let mut result = self.clone();
 
-        for (i, j, k) in iter_arr!(n) {
-            result.t[i][j][k] *= rhs;
-            result.x[i][j][k] *= rhs;
-            result.y[i][j][k] *= rhs;
-            result.z[i][j][k] *= rhs;
+        for (i, j, k, l) in iter_arr_4!(n) {
+            result.t[i][j][k][l] *= rhs;
+            result.x[i][j][k][l] *= rhs;
+            result.y[i][j][k][l] *= rhs;
+            result.z[i][j][k][l] *= rhs;
         }
 
         result
@@ -139,11 +197,29 @@ impl Add<Self> for PsiSpinor {
         let n = self.t.len();
         let mut result = self.clone();
 
-        for (i, j, k) in iter_arr!(n) {
-            self.t[i][j][k] += rhs.t[i][j][k];
-            self.x[i][j][k] += rhs.x[i][j][k];
-            self.y[i][j][k] += rhs.y[i][j][k];
-            self.z[i][j][k] += rhs.z[i][j][k];
+        for (i, j, k, l) in iter_arr_4!(n) {
+            result.t[i][j][k][l] += rhs.t[i][j][k][l];
+            result.x[i][j][k][l] += rhs.x[i][j][k][l];
+            result.y[i][j][k][l] += rhs.y[i][j][k][l];
+            result.z[i][j][k][l] += rhs.z[i][j][k][l];
+        }
+
+        result
+    }
+}
+
+impl Sub<Self> for PsiSpinor {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        let n = self.t.len();
+        let mut result = self.clone();
+
+        for (i, j, k, l) in iter_arr_4!(n) {
+            result.t[i][j][k][l] -= rhs.t[i][j][k][l];
+            result.x[i][j][k][l] -= rhs.x[i][j][k][l];
+            result.y[i][j][k][l] -= rhs.y[i][j][k][l];
+            result.z[i][j][k][l] -= rhs.z[i][j][k][l];
         }
 
         result
@@ -262,15 +338,11 @@ fn a() {
 /// We assume ħ = c = 1.
 /// todo: Adopt tensor shortcut fns as you have in the Gravity sim?
 /// // "rememer tho that hbar omega= E"
-// pub fn dirac_lhs(psi: &PsiSpinor, m: i8) -> PsiSpinor {
 pub fn dirac_lhs(psi: &PsiSpinor, grid_spacing: f64) {
-    // todo temp to get it to compile
-    // todo: Solve numerically.
-
     let part0 = psi.differentiate(Component::T, grid_spacing) * gamma(0);
     let part1 = psi.differentiate(Component::X, grid_spacing) * gamma(1);
     let part2 = psi.differentiate(Component::Y, grid_spacing) * gamma(2);
     let part3 = psi.differentiate(Component::Z, grid_spacing) * gamma(3);
 
-    (part0 + part1 + part2 + part3) * IM - psi * Cplx::from_real(* M_ELEC);
+    (part0 - part1 - part2 - part3) * IM - psi * Cplx::from_real(M_ELEC);
 }

@@ -8,6 +8,7 @@ use crate::{complex_nums::Cplx, iter_arr, util};
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
 
 pub type Arr3d = Vec<Vec<Vec<Cplx>>>;
+pub type Arr4d = Vec<Vec<Vec<Vec<Cplx>>>>;
 // pub type Arr3dBasis = Vec<Vec<Vec<SinExpBasisPt>>>;
 
 pub type Arr3dVec = Vec<Vec<Vec<Vec3>>>;
