@@ -10,6 +10,7 @@ use crate::{
     grid_setup::{new_data, Arr3d},
     iter_arr,
 };
+use crate::types::Derivatives;
 
 // Used for calculating numerical ψ''.
 // Smaller is more accurate. Too small might lead to numerical issues though (?)
@@ -17,43 +18,6 @@ use crate::{
 pub const H: f64 = 0.01;
 pub const H_SQ: f64 = H * H;
 
-/// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.
-/// Calculate ψ'' based on a numerical derivative of psi in 3D.
-///
-/// This solves, numerically, the eigenvalue equation for the Hamiltonian operator.
-///
-/// todo: This may replace the one below by using cached values of each wf at this point,
-/// todo and neighbors.
-pub(crate) fn _find_ψ_pp_meas(
-    // todo: Combine these into a single struct a/r
-    psi_on_pt: Cplx,
-    psi_x_prev: Cplx,
-    psi_x_next: Cplx,
-    psi_y_prev: Cplx,
-    psi_y_next: Cplx,
-    psi_z_prev: Cplx,
-    psi_z_next: Cplx,
-) -> Cplx {
-    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-        - psi_on_pt * 6.;
-
-    result / H_SQ
-}
-
-pub(crate) fn _find_pp_real(
-    psi_on_pt: f64,
-    psi_x_prev: f64,
-    psi_x_next: f64,
-    psi_y_prev: f64,
-    psi_y_next: f64,
-    psi_z_prev: f64,
-    psi_z_next: f64,
-) -> f64 {
-    let result = psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
-        - psi_on_pt * 6.;
-
-    result / H_SQ
-}
 
 /// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.
 /// Calculate ψ'' based on a numerical derivative of psi in 3D.
@@ -95,7 +59,7 @@ pub(crate) fn find_ψ_pp_num_fm_bases(
         / H_SQ
 }
 
-/// Differentiate a 3D complex array. Note that this may exhibit numerical inaccuracies due to the large
+/// Differentiate a 3D complex array. Total derivative. (dx + dy + dz) Note that this may exhibit numerical inaccuracies due to the large
 /// difference between grid points. Call this in series to calculate higher derivatives.
 /// todo: This is a second deriv; not first!
 pub(crate) fn differentiate_grid(
@@ -133,4 +97,47 @@ pub(crate) fn differentiate_grid_all(data: &Arr3d, grid_spacing: f64) -> Arr3d {
     }
 
     result
+}
+
+// todo: Similar fn from analytic bases.
+impl Derivatives {
+    // todo: Move this to a different function A/R
+    /// Create a derivatives struct using numeric derivatives of a wave function
+    pub fn numeric_fm_psi(psi: &Arr3d, grid_spacing: f64) -> Self {
+        let n = psi.len();
+
+        // For usue with midpoint first derivatives.
+        let grid_spacing_sq = grid_spacing.powi(2);
+        let mid_pt_diff = grid_spacing * 2.;
+
+        let mut result = Self::new(n);
+
+        for (i, j, k) in iter_arr!(n) {
+            // We are unable to calculate values at the grid edge using this approach.
+            if i == 0 || i == n - 1 || j == 0 || j == n - 1 || k == 0 || k == n - 1 {
+                continue
+            }
+
+            let on_pt = psi[i][j][k];
+            let x_prev = psi[i - 1][j][k];
+            let x_next = psi[i + 1][j][k];
+            let y_prev = psi[i][j - 1][k];
+            let y_next = psi[i][j + 1][k];
+            let z_prev = psi[i][j][k - 1];
+            let z_next = psi[i][j][k + 1];
+
+            result.dx[i][j][k] = (x_next - x_prev) / mid_pt_diff;
+            result.dy[i][j][k] = (y_next - y_prev) / mid_pt_diff;
+            result.dz[i][j][k] = (z_next - z_prev) / mid_pt_diff;
+
+            result.d2x[i][j][k] = (x_next + x_prev - on_pt * 2.) / grid_spacing_sq;
+            result.d2y[i][j][k] = (y_next + y_prev - on_pt * 2.) / grid_spacing_sq;
+            result.d2z[i][j][k] = (z_next + z_prev - on_pt * 2.) / grid_spacing_sq;
+
+            result.d2_sum[i][j][k] = result.d2x[i][j][k] + result.d2y[i][j][k] + result.d2z[i][j][k];
+
+        }
+
+        result
+    }
 }
