@@ -82,28 +82,44 @@ impl PsiSpinor {
         for (i, j, k, l) in iter_arr_4!(n) {
             match component {
                 Component::T => {
-                    result.c0[i][j][k][l] = (self.c0[i + 1][j][k][l] - self.c0[i - 1][j][k][l]) / diff;
-                    result.c1[i][j][k][l] = (self.c1[i + 1][j][k][l] - self.c1[i - 1][j][k][l]) / diff;
-                    result.c2[i][j][k][l] = (self.c2[i + 1][j][k][l] - self.c2[i - 1][j][k][l]) / diff;
-                    result.c3[i][j][k][l] = (self.c3[i + 1][j][k][l] - self.c3[i - 1][j][k][l]) / diff;
+                    result.c0[i][j][k][l] =
+                        (self.c0[i + 1][j][k][l] - self.c0[i - 1][j][k][l]) / diff;
+                    result.c1[i][j][k][l] =
+                        (self.c1[i + 1][j][k][l] - self.c1[i - 1][j][k][l]) / diff;
+                    result.c2[i][j][k][l] =
+                        (self.c2[i + 1][j][k][l] - self.c2[i - 1][j][k][l]) / diff;
+                    result.c3[i][j][k][l] =
+                        (self.c3[i + 1][j][k][l] - self.c3[i - 1][j][k][l]) / diff;
                 }
                 Component::X => {
-                    result.c0[i][j][k][l] = (self.c0[i][j + 1][k][l] - self.c0[i][j - 1][k][l]) / diff;
-                    result.c1[i][j][k][l] = (self.c1[i][j + 1][k][l] - self.c1[i][j - 1][k][l]) / diff;
-                    result.c2[i][j][k][l] = (self.c2[i][j + 1][k][l] - self.c2[i][j - 1][k][l]) / diff;
-                    result.c3[i][j][k][l] = (self.c3[i][j + 1][k][l] - self.c3[i][j - 1][k][l]) / diff;
+                    result.c0[i][j][k][l] =
+                        (self.c0[i][j + 1][k][l] - self.c0[i][j - 1][k][l]) / diff;
+                    result.c1[i][j][k][l] =
+                        (self.c1[i][j + 1][k][l] - self.c1[i][j - 1][k][l]) / diff;
+                    result.c2[i][j][k][l] =
+                        (self.c2[i][j + 1][k][l] - self.c2[i][j - 1][k][l]) / diff;
+                    result.c3[i][j][k][l] =
+                        (self.c3[i][j + 1][k][l] - self.c3[i][j - 1][k][l]) / diff;
                 }
                 Component::Y => {
-                    result.c0[i][j][k][l] = (self.c0[i][j][k + 1][l] - self.c0[i][j][k - 1][l]) / diff;
-                    result.c1[i][j][k][l] = (self.c1[i][j][k + 1][l] - self.c1[i][j][k - 1][l]) / diff;
-                    result.c2[i][j][k][l] = (self.c2[i][j][k + 1][l] - self.c2[i][j][k - 1][l]) / diff;
-                    result.c3[i][j][k][l] = (self.c3[i][j][k + 1][l] - self.c3[i][j][k - 1][l]) / diff;
+                    result.c0[i][j][k][l] =
+                        (self.c0[i][j][k + 1][l] - self.c0[i][j][k - 1][l]) / diff;
+                    result.c1[i][j][k][l] =
+                        (self.c1[i][j][k + 1][l] - self.c1[i][j][k - 1][l]) / diff;
+                    result.c2[i][j][k][l] =
+                        (self.c2[i][j][k + 1][l] - self.c2[i][j][k - 1][l]) / diff;
+                    result.c3[i][j][k][l] =
+                        (self.c3[i][j][k + 1][l] - self.c3[i][j][k - 1][l]) / diff;
                 }
                 Component::Z => {
-                    result.c0[i][j][k][l] = (self.c0[i][j][k][l + 1] - self.c0[i][j][k][l - 1]) / diff;
-                    result.c1[i][j][k][l] = (self.c1[i][j][k][l + 1] - self.c1[i][j][k][l - 1]) / diff;
-                    result.c2[i][j][k][l] = (self.c2[i][j][k][l + 1] - self.c2[i][j][k][l - 1]) / diff;
-                    result.c3[i][j][k][l] = (self.c3[i][j][k][l + 1] - self.c3[i][j][k][l - 1]) / diff;
+                    result.c0[i][j][k][l] =
+                        (self.c0[i][j][k][l + 1] - self.c0[i][j][k][l - 1]) / diff;
+                    result.c1[i][j][k][l] =
+                        (self.c1[i][j][k][l + 1] - self.c1[i][j][k][l - 1]) / diff;
+                    result.c2[i][j][k][l] =
+                        (self.c2[i][j][k][l + 1] - self.c2[i][j][k][l - 1]) / diff;
+                    result.c3[i][j][k][l] =
+                        (self.c3[i][j][k][l + 1] - self.c3[i][j][k][l - 1]) / diff;
                 }
             }
         }

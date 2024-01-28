@@ -133,15 +133,15 @@ impl Derivatives {
     }
 }
 
-/// Extract references to the `d2_sum` field, for use with APIs that accept &[Arr3d], eg for psi_pp.
-pub fn extract_d2_sum(derivs: &[Derivatives]) -> Vec<&Arr3d> {
-    derivs.iter().map(|d| d.d2_sum).collect()
-}
-
-/// Extract references to the `d2_sum` field, for use with APIs that accept &[Arr3d], eg for psi_pp.
-pub fn extract_d2_sum_mut(derivs: &mut [Derivatives]) -> Vec<&mut Arr3d> {
-    derivs.iter().map(|d| d.d2_sum).collect()
-}
+// /// Extract references to the `d2_sum` field, for use with APIs that accept &[Arr3d], eg for psi_pp.
+// pub fn extract_d2_sum(derivs: &[Derivatives]) -> Vec<&Arr3d> {
+//     derivs.iter().map(|d| d.d2_sum).collect()
+// }
+//
+// /// Extract references to the `d2_sum` field, for use with APIs that accept &[Arr3d], eg for psi_pp.
+// pub fn extract_d2_sum_mut(derivs: &mut [Derivatives]) -> Vec<&mut Arr3d> {
+//     derivs.iter().map(|d| d.d2_sum).collect()
+// }
 
 /// Represents important data, in describe 3D arrays.
 /// We use Vecs, since these can be large, and we don't want
@@ -277,12 +277,16 @@ impl _BasesEvaluated {
         let mut y_next = Vec::new();
         let mut z_prev = Vec::new();
         let mut z_next = Vec::new();
+        let mut derivs = Vec::new();
+
+        let derivs_empty = Derivatives::new(grid_n);
 
         let empty = new_data(grid_n);
 
         for _ in 0..bases.len() {
             on_pt.push(empty.clone());
             psi_pp_analytic.push(empty.clone());
+            derivs.push(derivs_empty.clone());
             x_prev.push(empty.clone());
             x_next.push(empty.clone());
             y_prev.push(empty.clone());
@@ -294,7 +298,7 @@ impl _BasesEvaluated {
         wf_ops::wf_from_bases(
             dev,
             &mut on_pt,
-            Some(&mut psi_pp_analytic),
+            Some(&mut derivs),
             None,
             bases,
             grid_posits,

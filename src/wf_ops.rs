@@ -35,7 +35,7 @@ use crate::{
     eigen_fns::{self, KE_COEFF},
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, num_diff,
-    types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
+    types::{ComputationDevice, Derivatives, SurfacesPerElec, SurfacesShared},
     util::{self, unflatten_arr, EPS_DIV0, MAX_PSI_FOR_NORM},
 };
 
@@ -146,9 +146,10 @@ fn add_to_norm(n: &mut f64, v: Cplx) {
 /// todo: This currently keeps the bases unmixed. Do we want 2 variants: One mixed, one unmixed?
 pub fn wf_from_bases(
     dev: &ComputationDevice,
-    psi: &mut [Arr3d],
-    mut psi_pp: Option<&mut [&mut Arr3d]>, // None for charge calcs.
-    mut psi_pp_div_psi: Option<&mut [Arr3dReal]>, // None for charge calcs. todo: Experimenting.
+    psi_per_basis: &mut [Arr3d],
+    // mut psi_pp: Option<&mut [Arr3d]>, // None for charge calcs.
+    mut psi_pp_per_basis: Option<&mut [Derivatives]>, // None for charge calcs.
+    mut psi_pp_div_psi_per_basis: Option<&mut [Arr3dReal]>, // None for charge calcs. todo: Experimenting.
     bases: &[Basis],
     grid_posits: &Arr3dVec,
     grid_n: usize,
@@ -170,7 +171,7 @@ pub fn wf_from_bases(
         match dev {
             #[cfg(feature = "cuda")]
             ComputationDevice::Gpu(cuda_dev) => {
-                let (psi_flat, psi_pp_flat) = if psi_pp.is_some() {
+                let (psi_flat, psi_pp_flat) = if psi_pp_per_basis.is_some() {
                     // Calculate both using the same kernel.
                     let (a, b) = gpu::sto_vals_derivs(
                         cuda_dev,
@@ -200,43 +201,51 @@ pub fn wf_from_bases(
                 // todo: Try to use unflatten.
                 for (i, j, k) in iter_arr!(grid_n) {
                     let i_flat = i * grid_n_sq + j * grid_n + k;
-                    psi[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
+                    psi_per_basis[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
 
-                    if let Some(pp) = psi_pp.as_mut() {
-                        pp[basis_i][i][j][k] =
+                    if let Some(pp) = psi_pp_per_basis.as_mut() {
+                        pp[basis_i].d2_sum[i][j][k] =
                             Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
                     }
 
-                    add_to_norm(&mut norm, psi[basis_i][i][j][k]);
+                    add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
                 }
             }
             ComputationDevice::Cpu => {
                 for (i, j, k) in iter_arr!(grid_n) {
                     let posit_sample = grid_posits[i][j][k];
-                    psi[basis_i][i][j][k] = basis.value(posit_sample);
+                    psi_per_basis[basis_i][i][j][k] = basis.value(posit_sample);
 
-                    if let Some(ref mut pp) = psi_pp {
-                        pp[basis_i][i][j][k] = second_deriv_cpu(
-                            psi[basis_i][i][j][k],
+                    if let Some(ref mut pp) = psi_pp_per_basis {
+                        pp[basis_i].d2_sum[i][j][k] = second_deriv_cpu(
+                            psi_per_basis[basis_i][i][j][k],
                             &basis,
                             posit_sample,
                             deriv_calc,
                         );
                     }
-                    if let Some(ref mut ppd) = psi_pp_div_psi {
-                        psi_pp_div_psi_cpu(psi[basis_i][i][j][k], &basis, posit_sample, deriv_calc);
+                    if let Some(ref mut ppd) = psi_pp_div_psi_per_basis {
+                        psi_pp_div_psi_cpu(
+                            psi_per_basis[basis_i][i][j][k],
+                            &basis,
+                            posit_sample,
+                            deriv_calc,
+                        );
                     }
 
-                    add_to_norm(&mut norm, psi[basis_i][i][j][k]);
+                    add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
                 }
             }
         }
 
         // This normalization makes balancing the bases more intuitive, but isn't strictly required
         // in the way normalizing the composite (squared) wave function is prior to generating charge.
-        util::normalize_arr(&mut psi[basis_i], norm);
-        if psi_pp.is_some() {
-            util::normalize_arr(&mut psi_pp.as_mut().unwrap()[basis_i], norm);
+        util::normalize_arr(&mut psi_per_basis[basis_i], norm);
+        if psi_pp_per_basis.is_some() {
+            util::normalize_arr(
+                &mut psi_pp_per_basis.as_mut().unwrap()[basis_i].d2_sum,
+                norm,
+            );
         }
         // We do not normalize psi''/psi: The (identical) normalization terms cancel out during division..
     }
@@ -248,10 +257,12 @@ pub fn wf_from_bases(
 pub fn mix_bases(
     psi: &mut Arr3d,
     mut charge_density: Option<&mut Arr3dReal>,
-    mut psi_pp: Option<&mut Arr3d>, // Not required for charge generation.
+    // mut psi_pp: Option<&mut Arr3d>, // Not required for charge generation.
+    mut psi_pp: Option<&mut Derivatives>, // Not required for charge generation.
     mut psi_pp_div_psi: Option<&mut Arr3dReal>, // Not required for charge generation. // todo QC
     psi_per_basis: &[Arr3d],
-    psi_pp_per_basis: Option<&[&Arr3d]>, // Not required for charge generation.
+    // psi_pp_per_basis: Option<&[Arr3d]>, // Not required for charge generation.
+    psi_pp_per_basis: Option<&[Derivatives]>, // Not required for charge generation.
     psi_pp_div_psi_per_basis: Option<&[Arr3dReal]>, // Not required for charge generation. todo: Consider if you want this
     grid_n: usize,
     weights: &[f64],
@@ -265,7 +276,7 @@ pub fn mix_bases(
     for (i, j, k) in iter_arr!(grid_n) {
         psi[i][j][k] = Cplx::new_zero();
         if let Some(pp) = psi_pp.as_mut() {
-            pp[i][j][k] = Cplx::new_zero();
+            pp.d2_sum[i][j][k] = Cplx::new_zero();
         }
         if let Some(ppd) = psi_pp_div_psi.as_mut() {
             ppd[i][j][k] = 0.;
@@ -277,7 +288,8 @@ pub fn mix_bases(
             psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
 
             if let Some(pp) = psi_pp.as_mut() {
-                pp[i][j][k] += psi_pp_per_basis.as_ref().unwrap()[i_basis][i][j][k] * scaler;
+                pp.d2_sum[i][j][k] +=
+                    psi_pp_per_basis.as_ref().unwrap()[i_basis].d2_sum[i][j][k] * scaler;
             }
             if let Some(ppd) = psi_pp_div_psi.as_mut() {
                 ppd[i][j][k] +=
@@ -295,7 +307,7 @@ pub fn mix_bases(
 
     util::normalize_arr(psi, norm);
     if psi_pp.is_some() {
-        util::normalize_arr(psi_pp.as_mut().unwrap(), norm);
+        util::normalize_arr(&mut psi_pp.as_mut().unwrap().d2_sum, norm);
     }
 
     // We are experimenting with how to *normalize* psi_pp_div_psi. Perhaps *balance* is a better word.
@@ -456,7 +468,8 @@ pub fn update_eigen_vals(
     V_total: &mut Arr3dReal,
     psi_pp_calculated: &mut Arr3d,
     psi: &Arr3d,
-    psi_pp: &Arr3d,
+    // psi_pp: &Arr3d,
+    psi_pp: &Derivatives,
     psi_pp_div_psi: &Arr3dReal, // todo: Experimenting
     V_acting_on_this: &Arr3dReal,
     E: f64,
@@ -465,7 +478,7 @@ pub fn update_eigen_vals(
     let grid_n = psi.len();
 
     for (i, j, k) in iter_arr!(grid_n) {
-        V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
+        V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp.d2_sum[i][j][k], E);
         // V_total[i][j][k] = eigen_fns::calc_V_on_psi2(psi_pp_div_psi[i][j][k], E);
         V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
 

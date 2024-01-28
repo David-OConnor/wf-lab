@@ -9,7 +9,7 @@ use crate::{
     basis_wfs::Basis,
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     potential, render,
-    types::ComputationDevice,
+    types::{ComputationDevice, Derivatives},
     wf_ops,
     wf_ops::{DerivCalc, Spin},
     ActiveElec, State,
@@ -357,7 +357,9 @@ fn basis_fn_mixer(
                 if recalc_this_basis {
                     // Note: Extra memory use from this re-allocoating and cloning.
                     let mut temp_psi = vec![new_data(state.grid_n_render)];
-                    let mut temp_psi_pp = vec![&mut new_data(state.grid_n_render)];
+                    let mut temp_psi_pp = vec![new_data(state.grid_n_render)];
+
+                    let mut temp_psi_pp = vec![Derivatives::new(state.grid_n_render)];
                     let mut temp_psi_pp_div_psi = vec![new_data_real(state.grid_n_render)];
 
                     wf_ops::wf_from_bases(
