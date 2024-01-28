@@ -103,6 +103,46 @@ impl SurfacesShared {
     }
 }
 
+/// Used for storing various derivatives, on grids, used in our eigenfunctions. Most are used only
+/// by the momentum eigen functions.
+#[derive(Clone)]
+pub struct Derivatives {
+    pub dx: Arr3d,
+    pub dy: Arr3d,
+    pub dz: Arr3d,
+    pub d2x: Arr3d,
+    pub d2y: Arr3d,
+    pub d2z: Arr3d,
+    /// Used in the energy eigenfunction, ie Schrodinger equation.
+    pub d2_sum: Arr3d,
+}
+
+impl Derivatives {
+    pub fn new(grid_n: usize) -> Self {
+        let data = new_data(grid_n);
+
+        Self {
+            dx: data.clone(),
+            dy: data.clone(),
+            dz: data.clone(),
+            d2x: data.clone(),
+            d2y: data.clone(),
+            d2z: data.clone(),
+            d2_sum: data,
+        }
+    }
+}
+
+/// Extract references to the `d2_sum` field, for use with APIs that accept &[Arr3d], eg for psi_pp.
+pub fn extract_d2_sum(derivs: &[Derivatives]) -> Vec<&Arr3d> {
+    derivs.iter().map(|d| d.d2_sum).collect()
+}
+
+/// Extract references to the `d2_sum` field, for use with APIs that accept &[Arr3d], eg for psi_pp.
+pub fn extract_d2_sum_mut(derivs: &mut [Derivatives]) -> Vec<&mut Arr3d> {
+    derivs.iter().map(|d| d.d2_sum).collect()
+}
+
 /// Represents important data, in describe 3D arrays.
 /// We use Vecs, since these can be large, and we don't want
 /// to put them on the stack. Although, they are fixed-size.
@@ -120,11 +160,11 @@ pub struct SurfacesPerElec {
     /// From the Schrodinger equation based on psi and the other parameters.
     pub psi_pp_calculated: Arr3d,
     /// From an analytic or numeric computation from basis functions.
-    pub psi_pp_evaluated: Arr3d,
+    pub derivs: Derivatives,
     // todo: An experiment where we analytically calculate this directly.
     pub psi_pp_div_psi_evaluated: Arr3dReal,
     pub psi_per_basis: Vec<Arr3d>,
-    pub psi_pp_per_basis: Vec<Arr3d>,
+    pub derivs_per_basis: Vec<Derivatives>,
     // todo: An experiment where we analytically calculate this directly.
     pub psi_pp_div_psi_per_basis: Vec<Arr3dReal>,
     /// Aux surfaces are for misc visualizations
@@ -135,19 +175,21 @@ pub struct SurfacesPerElec {
 
 impl SurfacesPerElec {
     /// Fills with 0.s
-    pub fn new(num_bases: usize, n_grid_sample: usize, spin: Spin) -> Self {
-        let data = new_data(n_grid_sample);
-        let data_real = new_data_real(n_grid_sample);
+    pub fn new(num_bases: usize, grid_n: usize, spin: Spin) -> Self {
+        let data = new_data(grid_n);
+        let data_real = new_data_real(grid_n);
+        let derivs = Derivatives::new(grid_n);
 
         // Set up a regular grid using this; this will allow us to convert to an irregular grid
         // later, once we've verified this works.
 
         let mut psi_per_basis = Vec::new();
-        let mut psi_pp_per_basis = Vec::new();
+        let mut derivs_per_basis = Vec::new();
+
         let mut psi_pp_div_psi_per_basis = Vec::new();
         for _ in 0..num_bases {
             psi_per_basis.push(data.clone());
-            psi_pp_per_basis.push(data.clone());
+            derivs_per_basis.push(derivs.clone());
             psi_pp_div_psi_per_basis.push(data_real.clone());
         }
 
@@ -157,10 +199,12 @@ impl SurfacesPerElec {
             psi: data.clone(),
             charge_density: data_real.clone(),
             psi_pp_calculated: data.clone(),
-            psi_pp_evaluated: data.clone(),
+            // derivs: data.clone(),
+            derivs,
             psi_pp_div_psi_evaluated: data_real.clone(),
             psi_per_basis,
-            psi_pp_per_basis,
+            // derivs_per_basis: psi_pp_per_basis,
+            derivs_per_basis,
             psi_pp_div_psi_per_basis,
             // charge: new_data_real(n_grid_charge),
             V_elec_eigen: data_real.clone(),

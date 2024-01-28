@@ -357,7 +357,7 @@ fn basis_fn_mixer(
                 if recalc_this_basis {
                     // Note: Extra memory use from this re-allocoating and cloning.
                     let mut temp_psi = vec![new_data(state.grid_n_render)];
-                    let mut temp_psi_pp = vec![new_data(state.grid_n_render)];
+                    let mut temp_psi_pp = vec![&mut new_data(state.grid_n_render)];
                     let mut temp_psi_pp_div_psi = vec![new_data_real(state.grid_n_render)];
 
                     wf_ops::wf_from_bases(
@@ -373,7 +373,7 @@ fn basis_fn_mixer(
 
                     state.surfaces_per_elec[active_elec].psi_per_basis[basis_i] =
                         temp_psi.remove(0);
-                    state.surfaces_per_elec[active_elec].psi_pp_per_basis[basis_i] =
+                    state.surfaces_per_elec[active_elec].derivs_per_basis[basis_i] =
                         temp_psi_pp.remove(0);
                     state.surfaces_per_elec[active_elec].psi_pp_div_psi_per_basis[basis_i] =
                         temp_psi_pp_div_psi.remove(0);

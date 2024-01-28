@@ -415,7 +415,7 @@ pub fn update_meshes(
 
         for (scaler, sfc) in [
             (PSI_PP_SCALER, &surfaces.psi_pp_calculated),
-            (PSI_PP_SCALER, &surfaces.psi_pp_evaluated),
+            (PSI_PP_SCALER, &surfaces.derivs.d2_sum),
         ] {
             meshes.push(Mesh::new_surface(
                 &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false, grid_n),

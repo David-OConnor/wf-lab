@@ -22,7 +22,7 @@ pub fn update_E_or_V(
         &mut sfcs.V_total_eigen,
         &mut sfcs.psi_pp_calculated,
         &sfcs.psi,
-        &sfcs.psi_pp_evaluated,
+        &sfcs.derivs,
         &sfcs.psi_pp_div_psi_evaluated,
         &sfcs.V_acting_on_this,
         E,
@@ -39,7 +39,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     // Prevents double borrow-mut error
     let psi = &mut sfcs.psi;
     let charge_density = &mut sfcs.charge_density;
-    let psi_pp = &mut sfcs.psi_pp_evaluated;
+    let psi_pp = &mut sfcs.derivs;
     let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_evaluated;
 
     wf_ops::mix_bases(
@@ -48,7 +48,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         Some(psi_pp),
         Some(psi_pp_div_psi),
         &sfcs.psi_per_basis,
-        Some(&sfcs.psi_pp_per_basis),
+        Some(&sfcs.derivs_per_basis),
         Some(&sfcs.psi_pp_div_psi_per_basis),
         state.grid_n_render,
         &weights,
@@ -60,7 +60,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &mut sfcs.V_total_eigen,
         &mut sfcs.psi_pp_calculated,
         &sfcs.psi,
-        &sfcs.psi_pp_evaluated,
+        &sfcs.derivs,
         &sfcs.psi_pp_div_psi_evaluated,
         &sfcs.V_acting_on_this,
         state.surfaces_shared.E,
@@ -108,7 +108,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
 
     // Prevents double borrow-mut error
     let psi = &mut sfcs.psi_per_basis;
-    let psi_pp = &mut sfcs.psi_pp_per_basis;
+    let psi_pp = &mut sfcs.derivs_per_basis;
     let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_per_basis;
 
     wf_ops::wf_from_bases(

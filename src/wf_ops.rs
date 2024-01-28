@@ -147,7 +147,7 @@ fn add_to_norm(n: &mut f64, v: Cplx) {
 pub fn wf_from_bases(
     dev: &ComputationDevice,
     psi: &mut [Arr3d],
-    mut psi_pp: Option<&mut [Arr3d]>, // None for charge calcs.
+    mut psi_pp: Option<&mut [&mut Arr3d]>, // None for charge calcs.
     mut psi_pp_div_psi: Option<&mut [Arr3dReal]>, // None for charge calcs. todo: Experimenting.
     bases: &[Basis],
     grid_posits: &Arr3dVec,
@@ -251,7 +251,7 @@ pub fn mix_bases(
     mut psi_pp: Option<&mut Arr3d>, // Not required for charge generation.
     mut psi_pp_div_psi: Option<&mut Arr3dReal>, // Not required for charge generation. // todo QC
     psi_per_basis: &[Arr3d],
-    psi_pp_per_basis: Option<&[Arr3d]>, // Not required for charge generation.
+    psi_pp_per_basis: Option<&[&Arr3d]>, // Not required for charge generation.
     psi_pp_div_psi_per_basis: Option<&[Arr3dReal]>, // Not required for charge generation. todo: Consider if you want this
     grid_n: usize,
     weights: &[f64],

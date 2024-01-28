@@ -259,13 +259,14 @@ pub fn init_from_grid(
 
         // Assigning vars prevents multiple-borrow-mut vars.
         let psi = &mut sfcs.psi_per_basis;
-        let psi_pp = &mut sfcs.psi_pp_per_basis;
+        // let psi_pp = &mut sfcs.derivs_per_basis;
+        let psi_pp = types::extract_d2_sum_mut(&mut sfcs.derivs_per_basis);
         let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_per_basis;
 
         wf_ops::wf_from_bases(
             dev_psi,
             psi,
-            Some(psi_pp),
+            Some(&mut psi_pp),
             Some(psi_pp_div_psi),
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits,
@@ -275,8 +276,9 @@ pub fn init_from_grid(
 
         let psi = &mut sfcs.psi;
         let charge_density = &mut sfcs.charge_density;
-        let psi_pp = &mut sfcs.psi_pp_evaluated;
+        let psi_pp = &mut sfcs.derivs.d2_sum;
         let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_evaluated;
+        let psi_pp_per_basis = types::extract_d2_sum(&sfcs.derivs_per_basis);
 
         let weights: Vec<f64> = bases_per_elec[i_elec].iter().map(|b| b.weight()).collect();
         wf_ops::mix_bases(
@@ -285,7 +287,8 @@ pub fn init_from_grid(
             Some(psi_pp),
             Some(psi_pp_div_psi),
             &sfcs.psi_per_basis,
-            Some(&sfcs.psi_pp_per_basis),
+            // Some(&sfcs.derivs_per_basis),
+            Some(&psi_pp_per_basis),
             Some(&sfcs.psi_pp_div_psi_per_basis),
             grid_n_sample,
             &weights,
@@ -297,7 +300,7 @@ pub fn init_from_grid(
             &mut sfcs.V_total_eigen,
             &mut sfcs.psi_pp_calculated,
             &sfcs.psi,
-            &sfcs.psi_pp_evaluated,
+            &sfcs.derivs.d2_sum,
             &sfcs.psi_pp_div_psi_evaluated,
             &sfcs.V_acting_on_this,
             surfaces_shared.E,
