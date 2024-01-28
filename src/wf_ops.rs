@@ -217,12 +217,21 @@ pub fn wf_from_bases(
                     psi_per_basis[basis_i][i][j][k] = basis.value(posit_sample);
 
                     if let Some(ref mut pp) = psi_pp_per_basis {
+                        // pp[basis_i].d2_sum[i][j][k] = second_deriv_cpu(
+                        //     psi_per_basis[basis_i][i][j][k],
+                        //     &basis,
+                        //     posit_sample,
+                        //     deriv_calc,
+                        // );
+
                         pp[basis_i].d2_sum[i][j][k] = second_deriv_cpu(
                             psi_per_basis[basis_i][i][j][k],
                             &basis,
                             posit_sample,
                             deriv_calc,
                         );
+                        // todo: Impl your Derivatives construction from GPU as well, but we'll use CPU for calculating
+                        // todo these for now.
                     }
                     if let Some(ref mut ppd) = psi_pp_div_psi_per_basis {
                         psi_pp_div_psi_cpu(

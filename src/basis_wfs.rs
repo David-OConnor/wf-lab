@@ -652,6 +652,8 @@ impl Sto {
         Cplx::from_real(Self::norm_term(n, l) * result)
     }
 
+    // todo: analytic first derivs, and individual second deriv components.
+
     /// Saves some minor computations over calculating them individually, due to
     /// eliminated terms. Of note, the exponential term cancels out.
     ///

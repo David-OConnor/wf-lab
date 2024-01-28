@@ -103,6 +103,18 @@ impl SurfacesShared {
     }
 }
 
+#[derive(Clone, Default)]
+/// A set of derivatives at a single point
+pub struct DerivativesSingle {
+    pub dx: Cplx,
+    pub dy: Cplx,
+    pub dz: Cplx,
+    pub d2x: Cplx,
+    pub d2y: Cplx,
+    pub d2z: Cplx,
+    pub d2_sum: Cplx,
+}
+
 /// Used for storing various derivatives, on grids, used in our eigenfunctions. Most are used only
 /// by the momentum eigen functions.
 #[derive(Clone)]
