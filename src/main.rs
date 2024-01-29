@@ -29,6 +29,7 @@
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
 use lin_alg2::f64::Vec3;
 
+mod angular_p;
 mod basis_finder;
 mod basis_wfs;
 mod complex_nums;

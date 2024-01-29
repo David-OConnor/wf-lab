@@ -577,11 +577,11 @@ pub(crate) fn sto_vals_derivs_cpu(
 pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: DerivCalc) -> Cplx {
     // todo temp, until we get analytic second derivs with harmonics.
     if deriv_calc == DerivCalc::Numeric {
-        return num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi);
+        return num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);
     }
 
     if basis.n() >= 3 || basis.harmonic().l > 0 {
-        num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi)
+        num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi)
     } else {
         basis.second_deriv(posit)
     }
@@ -590,14 +590,14 @@ pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: Deriv
 /// Helper fn to help manage numerical vs analytic second derivs.
 pub fn psi_pp_div_psi_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: DerivCalc) -> f64 {
     // todo temp, until we get analytic second derivs with harmonics.
-    let psi_pp = num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi);
+    let psi_pp = num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);
 
     if deriv_calc == DerivCalc::Numeric {
         return (psi_pp / psi).real;
     }
 
     if basis.n() >= 3 || basis.harmonic().l > 0 {
-        let psi_pp = num_diff::find_ψ_pp_num_fm_bases(posit, &[basis.clone()], psi);
+        let psi_pp = num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);
         (psi_pp / psi).real
     } else {
         basis.psi_pp_div_psi(posit)
