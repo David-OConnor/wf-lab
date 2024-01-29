@@ -299,7 +299,7 @@ pub fn init_from_grid(
             &mut sfcs.psi_pp_calculated,
             &sfcs.psi,
             &sfcs.derivs,
-            &sfcs.psi_pp_div_psi_evaluated,
+            // &sfcs.psi_pp_div_psi_evaluated,
             &sfcs.V_acting_on_this,
             surfaces_shared.E,
             &surfaces_shared.V_from_nuclei,

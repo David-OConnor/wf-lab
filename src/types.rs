@@ -1,12 +1,20 @@
-use std::ops::Add;
-use std::sync::Arc;
+use std::{ops::Add, sync::Arc};
 
 #[cfg(feature = "cuda")]
 use cudarc::driver::CudaDevice;
 use lin_alg2::f64::Vec3;
 
-use crate::{basis_wfs::Basis, complex_nums::Cplx, elec_elec::WaveFunctionMultiElec, grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec}, iter_arr_4, num_diff, num_diff::H, wf_ops, wf_ops::{DerivCalc, Spin}};
-use crate::dirac::PsiSpinor;
+use crate::{
+    basis_wfs::Basis,
+    complex_nums::Cplx,
+    dirac::PsiSpinor,
+    elec_elec::WaveFunctionMultiElec,
+    grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
+    iter_arr_4, num_diff,
+    num_diff::H,
+    wf_ops,
+    wf_ops::{DerivCalc, Spin},
+};
 
 pub enum ComputationDevice {
     Cpu,
@@ -185,7 +193,7 @@ pub struct SurfacesPerElec {
     /// From an analytic or numeric computation from basis functions.
     pub derivs: Derivatives,
     // todo: An experiment where we analytically calculate this directly.
-    pub psi_pp_div_psi_evaluated: Arr3dReal,
+    // pub psi_pp_div_psi_evaluated: Arr3dReal,
     pub psi_per_basis: Vec<Arr3d>,
     pub derivs_per_basis: Vec<Derivatives>,
     // // todo: An experiment where we analytically calculate this directly.
@@ -227,11 +235,11 @@ impl SurfacesPerElec {
             psi_pp_calculated: data.clone(),
             // derivs: data.clone(),
             derivs,
-            psi_pp_div_psi_evaluated: data_real.clone(),
+            // psi_pp_div_psi_evaluated: data_real.clone(),
             psi_per_basis,
             // derivs_per_basis: psi_pp_per_basis,
             derivs_per_basis,
-            psi_pp_div_psi_per_basis,
+            // psi_pp_div_psi_per_basis,
             // charge: new_data_real(n_grid_charge),
             V_elec_eigen: data_real.clone(),
             V_total_eigen: data_real.clone(),
@@ -327,7 +335,7 @@ impl _BasesEvaluated {
             dev,
             &mut on_pt,
             Some(&mut derivs),
-            None,
+            // None,
             bases,
             grid_posits,
             grid_n,

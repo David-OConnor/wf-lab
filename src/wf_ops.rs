@@ -35,10 +35,9 @@ use crate::{
     eigen_fns::{self, KE_COEFF},
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, num_diff,
-    types::{ComputationDevice, Derivatives, SurfacesPerElec, SurfacesShared},
+    types::{ComputationDevice, Derivatives, DerivativesSingle, SurfacesPerElec, SurfacesShared},
     util::{self, unflatten_arr, EPS_DIV0, MAX_PSI_FOR_NORM},
 };
-use crate::types::DerivativesSingle;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -225,7 +224,7 @@ pub fn wf_from_bases(
                         //     deriv_calc,
                         // );
 
-                        pp[basis_i].d2_sum[i][j][k] = calc_derivs_cpu(
+                        pp[basis_i].d2_sum[i][j][k] = second_deriv_cpu(
                             psi_per_basis[basis_i][i][j][k],
                             &basis,
                             posit_sample,
@@ -281,7 +280,7 @@ pub fn mix_bases(
 ) {
     // todo: GPU option?
     let mut norm = 0.;
-    let balance = weights.iter().sum(); // todo: Only if psipp_div_psi is some A/R.
+    // let balance = weights.iter().sum(); // todo: Only if psipp_div_psi is some A/R.
 
     for (i, j, k) in iter_arr!(grid_n) {
         psi[i][j][k] = Cplx::new_zero();
@@ -480,7 +479,7 @@ pub fn update_eigen_vals(
     psi: &Arr3d,
     // psi_pp: &Arr3d,
     psi_pp: &Derivatives,
-    psi_pp_div_psi: &Arr3dReal, // todo: Experimenting
+    // psi_pp_div_psi: &Arr3dReal, // todo: Experimenting
     V_acting_on_this: &Arr3dReal,
     E: f64,
     V_nuc: &Arr3dReal,
@@ -525,9 +524,7 @@ pub fn calc_E_from_bases(
         let psi_this = weight * basis.value(posit_corner);
         psi += psi_this;
 
-        // psi_pp += calc_derivs_cpu(psi_this, basis, posit_corner, deriv_calc);
-        // todo: Re-instate a calc_psi_pp etc: This does more computation than you need.
-        psi_pp += calc_derivs_cpu(psi_this, &[basis.clone()], posit_corner, deriv_calc).d2_sum;
+        psi_pp += second_deriv_cpu(psi_this, basis, posit_corner, deriv_calc);
     }
 
     // todo: WIth the psi_pp_div_psi shortcut, you appear to be getting normalization issues.
@@ -580,17 +577,22 @@ pub(crate) fn calc_vals_derivs_cpu(
 
         let d = calc_derivs_cpu(psi[i][j][k], &b, posit, deriv_calc);
         derivs.dx[i][j][k] = d.dx;
-        derivs.dy[i][j][k]  = d.dy;
-        derivs.dz[i][j][k]  = d.dz;
-        derivs.d2x[i][j][k]  = d.d2x;
-        derivs.d2y[i][j][k]  = d.d2z;
-        derivs.d2z[i][j][k]  = d.d2z;
-        derivs.d2_sum[i][j][k]  = d.d2_sum;
+        derivs.dy[i][j][k] = d.dy;
+        derivs.dz[i][j][k] = d.dz;
+        derivs.d2x[i][j][k] = d.d2x;
+        derivs.d2y[i][j][k] = d.d2z;
+        derivs.d2z[i][j][k] = d.d2z;
+        derivs.d2_sum[i][j][k] = d.d2_sum;
     }
 }
 
 /// Helper function to help manage numerical vs analytic derivatives. Operates at a single location.
-pub fn calc_derivs_cpu(psi: Cplx, basis: &[Basis], posit: Vec3, deriv_calc: DerivCalc) -> DerivativesSingle {
+pub fn calc_derivs_cpu(
+    psi: Cplx,
+    basis: &[Basis],
+    posit: Vec3,
+    deriv_calc: DerivCalc,
+) -> DerivativesSingle {
     if deriv_calc == DerivCalc::Numeric {
         return DerivativesSingle::from_bases(posit, basis, psi);
         // return num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);
@@ -605,6 +607,23 @@ pub fn calc_derivs_cpu(psi: Cplx, basis: &[Basis], posit: Vec3, deriv_calc: Deri
     // } else {
     //     unimplemented!()
     //     // basis.second_deriv(posit)
+    // }
+}
+
+/// Helper fn to help manage numerical vs analytic second derivs. Use this for when we only require
+/// the summed second derivative, vice all derivatives.
+pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: DerivCalc) -> Cplx {
+    // todo temp, until we get analytic second derivs with harmonics.
+    if deriv_calc == DerivCalc::Numeric {
+        return num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);
+    } else {
+        unimplemented!()
+    }
+
+    // if basis.n() >= 3 || basis.harmonic().l > 0 {
+    //     num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi)
+    // } else {
+    //     basis.second_deriv(posit)
     // }
 }
 

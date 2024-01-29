@@ -23,7 +23,7 @@ pub fn update_E_or_V(
         &mut sfcs.psi_pp_calculated,
         &sfcs.psi,
         &sfcs.derivs,
-        &sfcs.psi_pp_div_psi_evaluated,
+        // &sfcs.psi_pp_div_psi_evaluated,
         &sfcs.V_acting_on_this,
         E,
         V_from_nuclei,
@@ -40,7 +40,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     let psi = &mut sfcs.psi;
     let charge_density = &mut sfcs.charge_density;
     let psi_pp = &mut sfcs.derivs;
-    let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_evaluated;
+    // let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_evaluated;
 
     wf_ops::mix_bases(
         psi,
@@ -61,7 +61,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &mut sfcs.psi_pp_calculated,
         &sfcs.psi,
         &sfcs.derivs,
-        &sfcs.psi_pp_div_psi_evaluated,
+        // &sfcs.psi_pp_div_psi_evaluated,
         &sfcs.V_acting_on_this,
         state.surfaces_shared.E,
         &state.surfaces_shared.V_from_nuclei,
