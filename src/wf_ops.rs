@@ -38,6 +38,7 @@ use crate::{
     types::{ComputationDevice, Derivatives, SurfacesPerElec, SurfacesShared},
     util::{self, unflatten_arr, EPS_DIV0, MAX_PSI_FOR_NORM},
 };
+use crate::types::DerivativesSingle;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -224,7 +225,7 @@ pub fn wf_from_bases(
                         //     deriv_calc,
                         // );
 
-                        pp[basis_i].d2_sum[i][j][k] = second_deriv_cpu(
+                        pp[basis_i].d2_sum[i][j][k] = calc_derivs_cpu(
                             psi_per_basis[basis_i][i][j][k],
                             &basis,
                             posit_sample,
@@ -524,7 +525,7 @@ pub fn calc_E_from_bases(
         let psi_this = weight * basis.value(posit_corner);
         psi += psi_this;
 
-        psi_pp += second_deriv_cpu(psi_this, basis, posit_corner, deriv_calc);
+        psi_pp += calc_derivs_cpu(psi_this, basis, posit_corner, deriv_calc);
     }
 
     // todo: WIth the psi_pp_div_psi shortcut, you appear to be getting normalization issues.
@@ -557,34 +558,52 @@ pub(crate) fn combine_electron_charges(
 }
 
 /// Get STO values, and second-derivative values, using the CPU.
-pub(crate) fn sto_vals_derivs_cpu(
+pub(crate) fn calc_vals_derivs_cpu(
     psi: &mut Arr3d,
-    psi_pp: &mut Arr3d,
+    // psi_pp: &mut Arr3d,
+    derivs: &mut Derivatives,
     grid_posits: &Arr3dVec,
     basis: &Basis,
     grid_n: usize,
     deriv_calc: DerivCalc,
 ) {
-    for (i, j, k) in iter_arr!(grid_n) {
-        let posit_sample = grid_posits[i][j][k];
+    // *derivs = Derivatives::from_bases(psi, &[basis.clone()], grid_posits);
 
-        psi[i][j][k] = basis.value(posit_sample);
-        psi_pp[i][j][k] = second_deriv_cpu(psi[i][j][k], basis, posit_sample, deriv_calc);
+    let b = [basis.clone()]; // Our API takes &[], not &[&]]
+    for (i, j, k) in iter_arr!(grid_n) {
+        let posit = grid_posits[i][j][k];
+
+        psi[i][j][k] = basis.value(posit);
+        // psi_pp[i][j][k] = calc_derivs_cpu(psi[i][j][k], basis, posit_sample, deriv_calc);
+
+        let d = calc_derivs_cpu(psi[i][j][k], &b, posit, deriv_calc);
+        derivs.dx[i][j][k] = d.dx;
+        derivs.dy[i][j][k]  = d.dy;
+        derivs.dz[i][j][k]  = d.dz;
+        derivs.d2x[i][j][k]  = d.d2x;
+        derivs.d2y[i][j][k]  = d.d2z;
+        derivs.d2z[i][j][k]  = d.d2z;
+        derivs.d2_sum[i][j][k]  = d.d2_sum;
     }
 }
 
 /// Helper fn to help manage numerical vs analytic second derivs.
-pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: DerivCalc) -> Cplx {
-    // todo temp, until we get analytic second derivs with harmonics.
+pub fn calc_derivs_cpu(psi: Cplx, basis: &[Basis], posit: Vec3, deriv_calc: DerivCalc) -> DerivativesSingle {
     if deriv_calc == DerivCalc::Numeric {
-        return num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);
+        return DerivativesSingle::from_bases(posit, basis, psi);
+        // return num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);
+    } else {
+        unimplemented!()
     }
 
-    if basis.n() >= 3 || basis.harmonic().l > 0 {
-        num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi)
-    } else {
-        basis.second_deriv(posit)
-    }
+    // todo: Put back if you are able to get analytic derivs of harmonics etc.
+    // if basis.n() >= 3 || basis.harmonic().l > 0 {
+    //     // num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi)
+    //     DerivativesSingle::from_bases(posit, basis, psi)
+    // } else {
+    //     unimplemented!()
+    //     // basis.second_deriv(posit)
+    // }
 }
 
 /// Helper fn to help manage numerical vs analytic second derivs.

@@ -60,7 +60,7 @@ fn find_E_from_base_xi(
     });
 
     let psi_corner = base_sto.value(posit_corner);
-    let psi_pp_corner = wf_ops::second_deriv_cpu(psi_corner, &base_sto, posit_corner, deriv_calc);
+    let psi_pp_corner = wf_ops::calc_derivs_cpu(psi_corner, &base_sto, posit_corner, deriv_calc);
 
     calc_E_on_psi(psi_corner, psi_pp_corner, V_corner)
 }
@@ -90,7 +90,7 @@ fn find_base_xi_E_common(
         });
 
         let psi_corner = sto.value(posit_corner);
-        let psi_pp_corner = wf_ops::second_deriv_cpu(psi_corner, &sto, posit_corner, deriv_calc);
+        let psi_pp_corner = wf_ops::calc_derivs_cpu(psi_corner, &sto, posit_corner, deriv_calc);
 
         let E_ = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
         Es[i] = E_;
@@ -99,7 +99,7 @@ fn find_base_xi_E_common(
         // see how close it is.
 
         let psi = sto.value(posit_sample);
-        let psi_pp = wf_ops::second_deriv_cpu(psi, &sto, posit_sample, deriv_calc);
+        let psi_pp = wf_ops::calc_derivs_cpu(psi, &sto, posit_sample, deriv_calc);
 
         let V_from_psi = calc_V_on_psi(psi, psi_pp, E_);
 
@@ -331,7 +331,7 @@ fn find_bases_system_of_eqs(
             // todo: Real-only for now while building the algorithm, but in general, these are complex.
             let psi = sto.value(*posit_sample);
             psi_mat_.push(psi.real);
-            psi_pp_mat_.push(wf_ops::second_deriv_cpu(psi, &sto, *posit_sample, deriv_calc).real);
+            psi_pp_mat_.push(wf_ops::calc_derivs_cpu(psi, &sto, *posit_sample, deriv_calc).real);
             // psi_pp_div_psi_mat_.push(sto.psi_pp_div_psi(*posit_sample));
         }
     }
@@ -407,7 +407,7 @@ fn score_fit(
         for basis in bases_to_eval {
             let psi = basis.value(*sample_pt);
             psi_this_pt += psi;
-            psi_pp_this_pt += wf_ops::second_deriv_cpu(psi, basis, *sample_pt, deriv_calc);
+            psi_pp_this_pt += wf_ops::calc_derivs_cpu(psi, basis, *sample_pt, deriv_calc);
         }
         V_from_psi[i] = calc_V_on_psi(psi_this_pt, psi_pp_this_pt, E);
     }
