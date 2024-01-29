@@ -15,7 +15,9 @@ use crate::{
     wf_ops,
     wf_ops::{DerivCalc, Spin},
 };
+use crate::grid_setup::Arr3dDeriv;
 
+#[derive(Debug)]
 pub enum ComputationDevice {
     Cpu,
     #[cfg(feature = "cuda")]
@@ -104,7 +106,7 @@ impl SurfacesShared {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 /// A set of derivatives at a single point
 pub struct DerivativesSingle {
     pub dx: Cplx,
@@ -163,6 +165,14 @@ impl Derivatives {
         }
     }
 }
+
+// // todo: Switch to this A/R. Likely cleaner code.
+// /// Used for storing various derivatives, on grids, used in our eigenfunctions. Most are used only
+// /// by the momentum eigen functions.
+// #[derive(Clone, Default)]
+// pub struct Derivatives {
+//     pub v: Arr3dDeriv,
+// }
 
 // /// Extract references to the `d2_sum` field, for use with APIs that accept &[Arr3d], eg for psi_pp.
 // pub fn extract_d2_sum(derivs: &[Derivatives]) -> Vec<&Arr3d> {

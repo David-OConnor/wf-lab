@@ -303,6 +303,9 @@ pub fn init_from_grid(
             &sfcs.V_acting_on_this,
             surfaces_shared.E,
             &surfaces_shared.V_from_nuclei,
+            &surfaces_shared.grid_posits,
+            &mut sfcs.psi_fm_L2,
+            &mut sfcs.psi_fm_Lz,
         );
 
         let mut psi_charge = Vec::new();
@@ -311,6 +314,7 @@ pub fn init_from_grid(
             // Handle the charge-grid-evaluated psi.
             psi_charge.push(new_data(grid_n_charge));
         }
+
         wf_ops::wf_from_bases(
             dev_psi,
             &mut psi_charge,
@@ -444,8 +448,8 @@ fn main() {
 
     let (charges_electron, V_from_elecs, psi_charge, surfaces_shared, surfaces_per_elec) =
         init_from_grid(
-            &dev_charge,
             &dev_psi,
+            &dev_charge,
             (grid_min_render, grid_max_render),
             (grid_min_charge, grid_max_charge),
             spacing_factor,
@@ -471,6 +475,11 @@ fn main() {
         SurfaceDesc::new("V'_elec", false),
         SurfaceDesc::new("ψ (L)", false),
         SurfaceDesc::new("ψ_z (L)", false),
+        // todo: These likely temp to verify.
+        SurfaceDesc::new("dx", false),
+        SurfaceDesc::new("dy", false),
+        SurfaceDesc::new("dz", false),
+        SurfaceDesc::new("d2x", false),
     ];
 
     let surface_descs_combined = vec![

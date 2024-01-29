@@ -8,9 +8,10 @@ use crate::{
     types::DerivativesSingle,
 };
 
-/// todo: lx and ly?
-pub(crate) fn calc_l_z(d: &DerivativesSingle) -> Cplx {
-    -IM * d.dz
+/// We choose z by convention; we need one of any dimension.
+/// Uses the momentum eigenfunction p_a = -i hbar d/da
+pub(crate) fn calc_l_z(posit: Vec3, d: &DerivativesSingle) -> Cplx {
+    -IM * (d.dy * posit.x - d.dx * posit.y)
 }
 
 /// Calculate L^2, given derivatives. Used in one of the two momentum eigenfunctions. See Onenote: Exploring the WF, part 9

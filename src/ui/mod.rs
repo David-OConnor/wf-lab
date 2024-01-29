@@ -696,7 +696,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 ActiveElec::PerElec(_) => {
                     ui.vertical(|ui| {
                         for (i, data) in state.surface_descs_per_elec.iter_mut().enumerate() {
-                            if i > 3 {
+                            if i > 5 {
                                 continue;
                             }
                             if ui.checkbox(&mut data.visible, &data.name).clicked() {
@@ -707,7 +707,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     // todo DRY
                     ui.vertical(|ui| {
                         for (i, data) in state.surface_descs_per_elec.iter_mut().enumerate() {
-                            if i <= 3 || i > 6 {
+                            if i <= 5 || i > 10 {
                                 continue;
                             }
                             if ui.checkbox(&mut data.visible, &data.name).clicked() {
@@ -718,7 +718,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                     ui.vertical(|ui| {
                         for (i, data) in state.surface_descs_per_elec.iter_mut().enumerate() {
-                            if i <= 6 {
+                            if i <= 10 {
                                 continue;
                             }
                             if ui.checkbox(&mut data.visible, &data.name).clicked() {
@@ -930,6 +930,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         // state.eval_data_shared.grid_n,
                         state.grid_n_render,
                         state.surfaces_shared.E,
+                        &state.surfaces_shared.grid_posits,
                     );
                 }
             }

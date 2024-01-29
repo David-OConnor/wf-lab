@@ -35,7 +35,7 @@ const COLOR_PSI_PP_MEAS_1D: Color = (0., 0.5, 0.5);
 
 const CHARGE_SPHERE_SIZE: f32 = 0.05;
 
-const SURFACE_COLORS: [Color; 11] = [
+const SURFACE_COLORS: [Color; 17] = [
     (0., 0., 1.),
     (0., 0.5, 0.2),
     (1., 0., 0.),
@@ -47,6 +47,12 @@ const SURFACE_COLORS: [Color; 11] = [
     (0.5, 0.4, 0.2),
     (0.5, 0.4, 0.3),
     (0.3, 0.9, 0.3),
+    (0.2, 0.8, 0.3),
+    (0.8, 0.2, 0.3),
+    (0.8, 0.2, 0.3),
+    (0.8, 0.5, 0.8),
+    (0.8, 0.2, 0.8),
+    (0.1, 0.5, 0.9),
 ];
 
 const SURFACE_SHINYNESS: f32 = 10.5;
@@ -304,66 +310,6 @@ pub fn update_meshes(
             ),
             true,
         ));
-
-        //
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces_shared.psi.psi_marginal.on_pt,
-        //         z_i,
-        //         PSI_SCALER,
-        //         mag_phase,
-        //         false,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        //
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces_shared.psi.psi_marginal.on_pt,
-        //         z_i,
-        //         PSI_SCALER,
-        //         mag_phase,
-        //         true,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        //
-
-        // todo: Lots of DRY here that is fixable between multi-elec and single-elec
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh_real(grid_posits, &psi_sq, z_i, CHARGE_DENSITY_SCALER, grid_n),
-        //     true,
-        // ));
-
-        // for (scaler, sfc) in [
-        //     (PSI_PP_SCALER, &surfaces_shared.psi_pp_calculated),
-        //     (PSI_PP_SCALER, &surfaces_shared.psi_pp_measured),
-        // ] {
-        //     meshes.push(Mesh::new_surface(
-        //         &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false, grid_n),
-        //         true,
-        //     ));
-        //
-        //     meshes.push(Mesh::new_surface(
-        //         &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, true, grid_n),
-        //         true,
-        //     ));
-        // }
-
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh_real(
-        //         grid_posits,
-        //         charges_electron,
-        //         z_i,
-        //         ELEC_CHARGE_SCALER,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
     } else {
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh_real(
@@ -443,6 +389,35 @@ pub fn update_meshes(
             &prepare_2d_mesh_real(grid_posits, &surfaces.aux3, z_i, V_SCALER, grid_n),
             true,
         ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(grid_posits,  &surfaces.psi_fm_L2, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(grid_posits,  &surfaces.psi_fm_Lz, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
+            true,
+        ));
+
+        // todo: Likely temp.
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(grid_posits,  &surfaces.derivs.dx, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(grid_posits,  &surfaces.derivs.dy, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(grid_posits,  &surfaces.derivs.dz, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(grid_posits,  &surfaces.derivs.d2x, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
+            true,
+        ));
+
 
         // meshes.push(Mesh::new_surface(
         //     &prepare_2d_mesh_real(

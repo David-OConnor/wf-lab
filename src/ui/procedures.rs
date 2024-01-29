@@ -10,12 +10,15 @@ use crate::{
     types::SurfacesPerElec,
     util, wf_ops, ActiveElec, State,
 };
+use crate::grid_setup::Arr3dVec;
 
 pub fn update_E_or_V(
     sfcs: &mut SurfacesPerElec,
     V_from_nuclei: &Arr3dReal,
     grid_n_render: usize,
     E: f64,
+    // for p eigen
+    grid_posits: &Arr3dVec
 ) {
     wf_ops::update_eigen_vals(
         &mut sfcs.V_elec_eigen,
@@ -27,6 +30,9 @@ pub fn update_E_or_V(
         &sfcs.V_acting_on_this,
         E,
         V_from_nuclei,
+        grid_posits,
+        &mut sfcs.psi_fm_L2,
+        &mut sfcs.psi_fm_Lz,
     );
 }
 
@@ -65,6 +71,9 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &sfcs.V_acting_on_this,
         state.surfaces_shared.E,
         &state.surfaces_shared.V_from_nuclei,
+        &state.surfaces_shared.grid_posits,
+        &mut sfcs.psi_fm_L2,
+        &mut sfcs.psi_fm_Lz,
     );
 
     // // For now, we are setting the V elec that must be acting on this WF if it were to be valid.

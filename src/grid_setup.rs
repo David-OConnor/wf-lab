@@ -3,9 +3,11 @@
 use lin_alg2::f64::Vec3;
 
 use crate::{complex_nums::Cplx, iter_arr, util};
+use crate::types::DerivativesSingle;
 
 // type Arr3d = Vec<Vec<Vec<f64>>>;
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
+pub type Arr3dDeriv = Vec<Vec<Vec<DerivativesSingle>>>;
 
 pub type Arr3d = Vec<Vec<Vec<Cplx>>>;
 pub type Arr4d = Vec<Vec<Vec<Vec<Cplx>>>>;
