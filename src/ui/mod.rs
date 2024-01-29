@@ -360,13 +360,13 @@ fn basis_fn_mixer(
                     let mut temp_psi_pp = vec![new_data(state.grid_n_render)];
 
                     let mut temp_psi_pp = vec![Derivatives::new(state.grid_n_render)];
-                    let mut temp_psi_pp_div_psi = vec![new_data_real(state.grid_n_render)];
+                    // let mut temp_psi_pp_div_psi = vec![new_data_real(state.grid_n_render)];
 
                     wf_ops::wf_from_bases(
                         &state.dev_psi,
                         &mut temp_psi,
                         Some(&mut temp_psi_pp),
-                        Some(&mut temp_psi_pp_div_psi),
+                        // Some(&mut temp_psi_pp_div_psi),
                         &[basis.clone()],
                         &state.surfaces_shared.grid_posits,
                         state.grid_n_render,
@@ -377,8 +377,8 @@ fn basis_fn_mixer(
                         temp_psi.remove(0);
                     state.surfaces_per_elec[active_elec].derivs_per_basis[basis_i] =
                         temp_psi_pp.remove(0);
-                    state.surfaces_per_elec[active_elec].psi_pp_div_psi_per_basis[basis_i] =
-                        temp_psi_pp_div_psi.remove(0);
+                    // state.surfaces_per_elec[active_elec].psi_pp_div_psi_per_basis[basis_i] =
+                    //     temp_psi_pp_div_psi.remove(0);
                 }
 
                 ui.add(

@@ -168,31 +168,31 @@ impl Sto {
         Cplx::from_real(result)
     }
 
-    pub fn psi_pp_div_psi_type2(&self, posit_sample: Vec3) -> f64 {
-        let diff = posit_sample - self.posit;
-        let r_sq = diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2);
-        let r = r_sq.sqrt();
-
-        let n = self.n;
-        let nf = n as f64;
-        let xi = self.xi;
-
-        // These two simplifiers are unique to this function.
-        let r_term = 1. / r.powi((n - 1).into());
-        let f = |q| r_sq.powf((nf - 1.) / 2. - q);
-
-        // todo: QC all this.
-
-        let term1 = f(0.) * (xi.powi(2) - 2. * xi / r);
-
-        let term2 = -2. * (nf - 1.) * xi * f(1.5) * r_sq;
-
-        let term3 = 2. * ((nf - 1.) / 2. - 1.) * (nf - 1.) * f(2.) * r_sq;
-
-        let term4 = 3. * (nf - 1.) * f(1.);
-
-        r_term * (term1 + term2 + term3 + term4)
-    }
+    // pub fn psi_pp_div_psi_type2(&self, posit_sample: Vec3) -> f64 {
+    //     let diff = posit_sample - self.posit;
+    //     let r_sq = diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2);
+    //     let r = r_sq.sqrt();
+    //
+    //     let n = self.n;
+    //     let nf = n as f64;
+    //     let xi = self.xi;
+    //
+    //     // These two simplifiers are unique to this function.
+    //     let r_term = 1. / r.powi((n - 1).into());
+    //     let f = |q| r_sq.powf((nf - 1.) / 2. - q);
+    //
+    //     // todo: QC all this.
+    //
+    //     let term1 = f(0.) * (xi.powi(2) - 2. * xi / r);
+    //
+    //     let term2 = -2. * (nf - 1.) * xi * f(1.5) * r_sq;
+    //
+    //     let term3 = 2. * ((nf - 1.) / 2. - 1.) * (nf - 1.) * f(2.) * r_sq;
+    //
+    //     let term4 = 3. * (nf - 1.) * f(1.);
+    //
+    //     r_term * (term1 + term2 + term3 + term4)
+    // }
 
     /// Analytic first derivative, with respect to x.
     pub fn dx(&self, posit_sample: Vec3) -> Cplx {
@@ -292,28 +292,28 @@ impl Sto {
 
     // todo: analytic first derivs, and individual second deriv components.
 
-    /// Saves some minor computations over calculating them individually, due to
-    /// eliminated terms. Of note, the exponential term cancels out.
-    ///
-    /// Note: It appears that this is always real (Hermitian eigenvalues?)
-    /// Important: We currently don't use this: It may be incompatible with the way we
-    /// mix bases, due to OOP of adding and dividing mattering.
-    pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
-        let r = (posit_sample - self.posit).magnitude();
-
-        let xi = self.xi;
-
-        // this is our ideal approach
-        if self.n == 1 {
-            xi.powi(2) - 2. * xi / r
-        } else if self.n == 2 && self.harmonic.l == 0 {
-            xi.powi(2) / 4. + xi / (2. - r) - xi / r - 2. / ((2. - r) * r)
-        } else if self.n == 2 && self.harmonic.l == 1 {
-            0.
-        } else {
-            unimplemented!()
-        }
-    }
+    // /// Saves some minor computations over calculating them individually, due to
+    // /// eliminated terms. Of note, the exponential term cancels out.
+    // ///
+    // /// Note: It appears that this is always real (Hermitian eigenvalues?)
+    // /// Important: We currently don't use this: It may be incompatible with the way we
+    // /// mix bases, due to OOP of adding and dividing mattering.
+    // pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
+    //     let r = (posit_sample - self.posit).magnitude();
+    //
+    //     let xi = self.xi;
+    //
+    //     // this is our ideal approach
+    //     if self.n == 1 {
+    //         xi.powi(2) - 2. * xi / r
+    //     } else if self.n == 2 && self.harmonic.l == 0 {
+    //         xi.powi(2) / 4. + xi / (2. - r) - xi / r - 2. / ((2. - r) * r)
+    //     } else if self.n == 2 && self.harmonic.l == 1 {
+    //         0.
+    //     } else {
+    //         unimplemented!()
+    //     }
+    // }
 
     pub fn V_p_from_psi(&self, posit_sample: Vec3) -> f64 {
         // From Wolfram alpha // todo: What query? What is this?

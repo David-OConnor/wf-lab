@@ -155,8 +155,8 @@ impl HOrbital {
         Cplx::new_zero()
     }
 
-    pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
-        // todo: Do this.
-        0.
-    }
+    // pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
+    //     // todo: Do this.
+    //     0.
+    // }
 }

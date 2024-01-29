@@ -150,7 +150,7 @@ pub fn wf_from_bases(
     psi_per_basis: &mut [Arr3d],
     // mut psi_pp: Option<&mut [Arr3d]>, // None for charge calcs.
     mut psi_pp_per_basis: Option<&mut [Derivatives]>, // None for charge calcs.
-    mut psi_pp_div_psi_per_basis: Option<&mut [Arr3dReal]>, // None for charge calcs. todo: Experimenting.
+    // mut psi_pp_div_psi_per_basis: Option<&mut [Arr3dReal]>, // None for charge calcs. todo: Experimenting.
     bases: &[Basis],
     grid_posits: &Arr3dVec,
     grid_n: usize,
@@ -234,14 +234,14 @@ pub fn wf_from_bases(
                         // todo: Impl your Derivatives construction from GPU as well, but we'll use CPU for calculating
                         // todo these for now.
                     }
-                    if let Some(ref mut ppd) = psi_pp_div_psi_per_basis {
-                        psi_pp_div_psi_cpu(
-                            psi_per_basis[basis_i][i][j][k],
-                            &basis,
-                            posit_sample,
-                            deriv_calc,
-                        );
-                    }
+                    // if let Some(ref mut ppd) = psi_pp_div_psi_per_basis {
+                    //     psi_pp_div_psi_cpu(
+                    //         psi_per_basis[basis_i][i][j][k],
+                    //         &basis,
+                    //         posit_sample,
+                    //         deriv_calc,
+                    //     );
+                    // }
 
                     add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
                 }
@@ -269,11 +269,11 @@ pub fn mix_bases(
     mut charge_density: Option<&mut Arr3dReal>,
     // mut psi_pp: Option<&mut Arr3d>, // Not required for charge generation.
     mut psi_pp: Option<&mut Derivatives>, // Not required for charge generation.
-    mut psi_pp_div_psi: Option<&mut Arr3dReal>, // Not required for charge generation. // todo QC
+    // mut psi_pp_div_psi: Option<&mut Arr3dReal>, // Not required for charge generation. // todo QC
     psi_per_basis: &[Arr3d],
     // psi_pp_per_basis: Option<&[Arr3d]>, // Not required for charge generation.
     psi_pp_per_basis: Option<&[Derivatives]>, // Not required for charge generation.
-    psi_pp_div_psi_per_basis: Option<&[Arr3dReal]>, // Not required for charge generation. todo: Consider if you want this
+    // psi_pp_div_psi_per_basis: Option<&[Arr3dReal]>, // Not required for charge generation. todo: Consider if you want this
     grid_n: usize,
     weights: &[f64],
     // todo: Experiment with this API A/R
@@ -288,9 +288,9 @@ pub fn mix_bases(
         if let Some(pp) = psi_pp.as_mut() {
             pp.d2_sum[i][j][k] = Cplx::new_zero();
         }
-        if let Some(ppd) = psi_pp_div_psi.as_mut() {
-            ppd[i][j][k] = 0.;
-        }
+        // if let Some(ppd) = psi_pp_div_psi.as_mut() {
+        //     ppd[i][j][k] = 0.;
+        // }
 
         for (i_basis, weight) in weights.iter().enumerate() {
             let scaler = *weight;
@@ -301,10 +301,10 @@ pub fn mix_bases(
                 pp.d2_sum[i][j][k] +=
                     psi_pp_per_basis.as_ref().unwrap()[i_basis].d2_sum[i][j][k] * scaler;
             }
-            if let Some(ppd) = psi_pp_div_psi.as_mut() {
-                ppd[i][j][k] +=
-                    psi_pp_div_psi_per_basis.as_ref().unwrap()[i_basis][i][j][k] * scaler;
-            }
+            // if let Some(ppd) = psi_pp_div_psi.as_mut() {
+            //     ppd[i][j][k] +=
+            //         psi_pp_div_psi_per_basis.as_ref().unwrap()[i_basis][i][j][k] * scaler;
+            // }
         }
 
         let abs_sq = psi[i][j][k].abs_sq();
@@ -320,11 +320,11 @@ pub fn mix_bases(
         util::normalize_arr(&mut psi_pp.as_mut().unwrap().d2_sum, norm);
     }
 
-    // We are experimenting with how to *normalize* psi_pp_div_psi. Perhaps *balance* is a better word.
-    // I don't fully understand this, but it appears that something to this effect is required.
-    if psi_pp_div_psi.is_some() {
-        util::balance_arr(psi_pp_div_psi.as_mut().unwrap(), balance);
-    }
+    // // We are experimenting with how to *normalize* psi_pp_div_psi. Perhaps *balance* is a better word.
+    // // I don't fully understand this, but it appears that something to this effect is required.
+    // if psi_pp_div_psi.is_some() {
+    //     util::balance_arr(psi_pp_div_psi.as_mut().unwrap(), balance);
+    // }
 
     // Update charge density as well, from this electron's wave function.
     if charge_density.is_some() {
@@ -557,7 +557,7 @@ pub(crate) fn combine_electron_charges(
     result
 }
 
-/// Get STO values, and second-derivative values, using the CPU.
+/// Get basis values, and derivatives, using the CPU.
 pub(crate) fn calc_vals_derivs_cpu(
     psi: &mut Arr3d,
     // psi_pp: &mut Arr3d,
@@ -587,7 +587,7 @@ pub(crate) fn calc_vals_derivs_cpu(
     }
 }
 
-/// Helper fn to help manage numerical vs analytic second derivs.
+/// Helper function to help manage numerical vs analytic derivatives.
 pub fn calc_derivs_cpu(psi: Cplx, basis: &[Basis], posit: Vec3, deriv_calc: DerivCalc) -> DerivativesSingle {
     if deriv_calc == DerivCalc::Numeric {
         return DerivativesSingle::from_bases(posit, basis, psi);
@@ -606,22 +606,22 @@ pub fn calc_derivs_cpu(psi: Cplx, basis: &[Basis], posit: Vec3, deriv_calc: Deri
     // }
 }
 
-/// Helper fn to help manage numerical vs analytic second derivs.
-pub fn psi_pp_div_psi_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: DerivCalc) -> f64 {
-    // todo temp, until we get analytic second derivs with harmonics.
-    let psi_pp = num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);
-
-    if deriv_calc == DerivCalc::Numeric {
-        return (psi_pp / psi).real;
-    }
-
-    if basis.n() >= 3 || basis.harmonic().l > 0 {
-        let psi_pp = num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);
-        (psi_pp / psi).real
-    } else {
-        basis.psi_pp_div_psi(posit)
-    }
-}
+// /// Helper function to help manage numerical vs analytic derivatives,
+// pub fn psi_pp_div_psi_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: DerivCalc) -> f64 {
+//     // todo temp, until we get analytic second derivs with harmonics.
+//     let psi_pp = num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);
+//
+//     if deriv_calc == DerivCalc::Numeric {
+//         return (psi_pp / psi).real;
+//     }
+//
+//     if basis.n() >= 3 || basis.harmonic().l > 0 {
+//         let psi_pp = num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);
+//         (psi_pp / psi).real
+//     } else {
+//         basis.psi_pp_div_psi(posit)
+//     }
+// }
 
 /// Update surfaces releated to multi-electron wave functions. This includes things related to
 /// spin, and charge density of all electrons. This should be run after changing any electron wave

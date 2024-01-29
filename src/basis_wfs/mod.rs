@@ -238,15 +238,15 @@ impl Basis {
             // Self::Sto(v) => v.second_deriv_type2(posit_sample),
         }
     }
-
-    pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
-        match self {
-            Self::H(v) => v.psi_pp_div_psi(posit_sample),
-            Self::Gto(v) => unimplemented!(),
-            Self::Sto(v) => v.psi_pp_div_psi(posit_sample),
-            // Self::Sto(v) => v.psi_pp_div_psi_type2(posit_sample),
-        }
-    }
+    //
+    // pub fn psi_pp_div_psi(&self, posit_sample: Vec3) -> f64 {
+    //     match self {
+    //         Self::H(v) => v.psi_pp_div_psi(posit_sample),
+    //         Self::Gto(v) => unimplemented!(),
+    //         Self::Sto(v) => v.psi_pp_div_psi(posit_sample),
+    //         // Self::Sto(v) => v.psi_pp_div_psi_type2(posit_sample),
+    //     }
+    // }
 
     pub fn V_p_from_psi(&self, posit_sample: Vec3) -> f64 {
         match self {

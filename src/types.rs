@@ -177,8 +177,8 @@ pub struct SurfacesPerElec {
     pub psi_pp_div_psi_evaluated: Arr3dReal,
     pub psi_per_basis: Vec<Arr3d>,
     pub derivs_per_basis: Vec<Derivatives>,
-    // todo: An experiment where we analytically calculate this directly.
-    pub psi_pp_div_psi_per_basis: Vec<Arr3dReal>,
+    // // todo: An experiment where we analytically calculate this directly.
+    // pub psi_pp_div_psi_per_basis: Vec<Arr3dReal>,
     /// Aux surfaces are for misc visualizations
     pub V_elec_eigen: Arr3dReal,
     pub V_total_eigen: Arr3dReal,
