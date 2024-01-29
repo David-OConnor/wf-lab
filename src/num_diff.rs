@@ -17,6 +17,7 @@ use crate::{
 // Applies to dx, dy, and dz
 pub const H: f64 = 0.01;
 pub const H_SQ: f64 = H * H;
+pub const H_2: f64 = 2. * H;
 
 /// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.
 /// Calculate ψ'' based on a numerical derivative of psi in 3D.
@@ -99,10 +100,9 @@ pub(crate) fn differentiate_grid_all(data: &Arr3d, grid_spacing: f64) -> Arr3d {
 
 impl DerivativesSingle {
     pub(crate) fn from_bases(posit_sample: Vec3, bases: &[Basis], ψ_sample_loc: Cplx) -> Self {
-        let mid_pt_diff = H * 2.;
-
         let mut result = Self::default();
 
+        // todo: DRY with the above variant.
         let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
         let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
         let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
@@ -126,9 +126,9 @@ impl DerivativesSingle {
             psi_z_next += basis.value(z_next);
         }
 
-        result.dx = (psi_x_next - psi_x_prev) / mid_pt_diff;
-        result.dy = (psi_y_next - psi_y_prev) / mid_pt_diff;
-        result.dz = (psi_z_next - psi_z_prev) / mid_pt_diff;
+        result.dx = (psi_x_next - psi_x_prev) / H_2;
+        result.dy = (psi_y_next - psi_y_prev) / H_2;
+        result.dz = (psi_z_next - psi_z_prev) / H_2;
 
         result.d2x = (psi_x_next + psi_x_prev - ψ_sample_loc * 2.) / H_SQ;
         result.d2y = (psi_y_next + psi_y_prev - ψ_sample_loc * 2.) / H_SQ;

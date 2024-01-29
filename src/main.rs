@@ -469,6 +469,8 @@ fn main() {
         SurfaceDesc::new("Elec V from ψ ", false),
         SurfaceDesc::new("Total V from ψ", true),
         SurfaceDesc::new("V'_elec", false),
+        SurfaceDesc::new("ψ (L)", false),
+        SurfaceDesc::new("ψ_z (L)", false),
     ];
 
     let surface_descs_combined = vec![
