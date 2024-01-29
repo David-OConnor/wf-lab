@@ -1,19 +1,12 @@
+use std::ops::Add;
 use std::sync::Arc;
 
 #[cfg(feature = "cuda")]
 use cudarc::driver::CudaDevice;
 use lin_alg2::f64::Vec3;
 
-use crate::{
-    basis_wfs::Basis,
-    complex_nums::Cplx,
-    elec_elec::WaveFunctionMultiElec,
-    grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
-    num_diff,
-    num_diff::H,
-    wf_ops,
-    wf_ops::{DerivCalc, Spin},
-};
+use crate::{basis_wfs::Basis, complex_nums::Cplx, elec_elec::WaveFunctionMultiElec, grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec}, iter_arr_4, num_diff, num_diff::H, wf_ops, wf_ops::{DerivCalc, Spin}};
+use crate::dirac::PsiSpinor;
 
 pub enum ComputationDevice {
     Cpu,
@@ -113,6 +106,24 @@ pub struct DerivativesSingle {
     pub d2y: Cplx,
     pub d2z: Cplx,
     pub d2_sum: Cplx,
+}
+
+impl Add<&Self> for DerivativesSingle {
+    type Output = Self;
+
+    fn add(self, rhs: &Self) -> Self::Output {
+        let mut result = self;
+
+        result.dx = result.dx + rhs.dx;
+        result.dy = result.dy + rhs.dy;
+        result.dz = result.dz + rhs.dz;
+        result.d2x = result.d2x + rhs.d2x;
+        result.d2y = result.d2y + rhs.d2y;
+        result.d2z = result.d2z + rhs.d2z;
+        result.d2_sum = result.d2_sum + rhs.d2_sum;
+
+        result
+    }
 }
 
 /// Used for storing various derivatives, on grids, used in our eigenfunctions. Most are used only

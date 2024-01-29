@@ -525,7 +525,9 @@ pub fn calc_E_from_bases(
         let psi_this = weight * basis.value(posit_corner);
         psi += psi_this;
 
-        psi_pp += calc_derivs_cpu(psi_this, basis, posit_corner, deriv_calc);
+        // psi_pp += calc_derivs_cpu(psi_this, basis, posit_corner, deriv_calc);
+        // todo: Re-instate a calc_psi_pp etc: This does more computation than you need.
+        psi_pp += calc_derivs_cpu(psi_this, &[basis.clone()], posit_corner, deriv_calc).d2_sum;
     }
 
     // todo: WIth the psi_pp_div_psi shortcut, you appear to be getting normalization issues.
@@ -587,7 +589,7 @@ pub(crate) fn calc_vals_derivs_cpu(
     }
 }
 
-/// Helper function to help manage numerical vs analytic derivatives.
+/// Helper function to help manage numerical vs analytic derivatives. Operates at a single location.
 pub fn calc_derivs_cpu(psi: Cplx, basis: &[Basis], posit: Vec3, deriv_calc: DerivCalc) -> DerivativesSingle {
     if deriv_calc == DerivCalc::Numeric {
         return DerivativesSingle::from_bases(posit, basis, psi);
