@@ -5,12 +5,11 @@ use graphics::{EngineUpdates, Scene};
 
 use crate::{
     basis_finder,
-    grid_setup::{new_data, Arr3d, Arr3dReal},
+    grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, potential, render,
     types::SurfacesPerElec,
     util, wf_ops, ActiveElec, State,
 };
-use crate::grid_setup::Arr3dVec;
 
 pub fn update_E_or_V(
     sfcs: &mut SurfacesPerElec,
@@ -18,7 +17,7 @@ pub fn update_E_or_V(
     grid_n_render: usize,
     E: f64,
     // for p eigen
-    grid_posits: &Arr3dVec
+    grid_posits: &Arr3dVec,
 ) {
     wf_ops::update_eigen_vals(
         &mut sfcs.V_elec_eigen,

@@ -2,8 +2,7 @@
 
 use lin_alg2::f64::Vec3;
 
-use crate::{complex_nums::Cplx, iter_arr, util};
-use crate::types::DerivativesSingle;
+use crate::{complex_nums::Cplx, iter_arr, types::DerivativesSingle, util};
 
 // type Arr3d = Vec<Vec<Vec<f64>>>;
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
@@ -139,6 +138,20 @@ pub fn new_data_real(n: usize) -> Arr3dReal {
 pub fn new_data_vec(n: usize) -> Arr3dVec {
     let mut z = Vec::new();
     z.resize(n, Vec3::new_zero());
+
+    let mut y = Vec::new();
+    y.resize(n, z);
+
+    let mut x = Vec::new();
+    x.resize(n, y);
+
+    x
+}
+
+/// Make a new 3D grid of position vectors, as a nested Vec
+pub fn new_data_deriv(n: usize) -> Arr3dDeriv {
+    let mut z = Vec::new();
+    z.resize(n, DerivativesSingle::default());
 
     let mut y = Vec::new();
     y.resize(n, z);

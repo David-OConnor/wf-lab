@@ -473,8 +473,10 @@ fn main() {
         SurfaceDesc::new("Elec V from ψ ", false),
         SurfaceDesc::new("Total V from ψ", true),
         SurfaceDesc::new("V'_elec", false),
-        SurfaceDesc::new("ψ (L)", false),
-        SurfaceDesc::new("ψ_z (L)", false),
+        SurfaceDesc::new("L^2", false),
+        SurfaceDesc::new("L^2 im", false),
+        SurfaceDesc::new("L_z", false),
+        SurfaceDesc::new("L_z im", false),
         // todo: These likely temp to verify.
         SurfaceDesc::new("dx", false),
         SurfaceDesc::new("dy", false),

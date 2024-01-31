@@ -9,13 +9,14 @@ use crate::{
     complex_nums::Cplx,
     dirac::PsiSpinor,
     elec_elec::WaveFunctionMultiElec,
-    grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{
+        self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dDeriv, Arr3dReal, Arr3dVec,
+    },
     iter_arr_4, num_diff,
     num_diff::H,
     wf_ops,
     wf_ops::{DerivCalc, Spin},
 };
-use crate::grid_setup::Arr3dDeriv;
 
 #[derive(Debug)]
 pub enum ComputationDevice {
@@ -138,6 +139,9 @@ impl Add<&Self> for DerivativesSingle {
 
 /// Used for storing various derivatives, on grids, used in our eigenfunctions. Most are used only
 /// by the momentum eigen functions.
+///
+/// It would be easier in some cases to store an Arr3D of DerivativesSingle, but it makes other parts we have intractable,
+/// or very complicated
 #[derive(Clone)]
 pub struct Derivatives {
     pub dx: Arr3d,

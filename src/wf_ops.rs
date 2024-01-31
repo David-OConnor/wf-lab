@@ -29,7 +29,16 @@ use lin_alg2::f64::Vec3;
 
 #[cfg(feature = "cuda")]
 use crate::gpu;
-use crate::{angular_p, basis_wfs::{Basis, Sto}, complex_nums::Cplx, eigen_fns::{self, KE_COEFF}, grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec}, iter_arr, num_diff, types::{ComputationDevice, Derivatives, DerivativesSingle, SurfacesPerElec, SurfacesShared}, util::{self, unflatten_arr, EPS_DIV0, MAX_PSI_FOR_NORM}};
+use crate::{
+    angular_p,
+    basis_wfs::{Basis, Sto},
+    complex_nums::Cplx,
+    eigen_fns::{self, KE_COEFF},
+    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
+    iter_arr, num_diff,
+    types::{ComputationDevice, Derivatives, DerivativesSingle, SurfacesPerElec, SurfacesShared},
+    util::{self, unflatten_arr, EPS_DIV0, MAX_PSI_FOR_NORM},
+};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -217,7 +226,7 @@ pub fn wf_from_bases(
                         //     deriv_calc,
                         // );
 
-                         let d = calc_derivs_cpu(
+                        let d = calc_derivs_cpu(
                             psi_per_basis[basis_i][i][j][k],
                             &b,
                             posit_sample,
@@ -253,7 +262,16 @@ pub fn wf_from_bases(
         // This normalization makes balancing the bases more intuitive, but isn't strictly required
         // in the way normalizing the composite (squared) wave function is prior to generating charge.
         util::normalize_arr(&mut psi_per_basis[basis_i], norm);
+
         if derivs_per_basis.is_some() {
+            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dx, norm);
+            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dy, norm);
+            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dz, norm);
+
+            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].d2x, norm);
+            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dy, norm);
+            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].d2z, norm);
+
             util::normalize_arr(
                 &mut derivs_per_basis.as_mut().unwrap()[basis_i].d2_sum,
                 norm,
@@ -318,7 +336,8 @@ pub fn mix_bases(
                 d.d2x[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].d2x[i][j][k] * scaler;
                 d.d2y[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].d2y[i][j][k] * scaler;
                 d.d2z[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].d2z[i][j][k] * scaler;
-                d.d2_sum[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].d2_sum[i][j][k] * scaler;
+                d.d2_sum[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].d2_sum[i][j][k] * scaler;
             }
             // if let Some(ppd) = psi_pp_div_psi.as_mut() {
             //     ppd[i][j][k] +=
@@ -336,6 +355,14 @@ pub fn mix_bases(
 
     util::normalize_arr(psi, norm);
     if derivs.is_some() {
+        util::normalize_arr(&mut derivs.as_mut().unwrap().dx, norm);
+        util::normalize_arr(&mut derivs.as_mut().unwrap().dy, norm);
+        util::normalize_arr(&mut derivs.as_mut().unwrap().dz, norm);
+
+        util::normalize_arr(&mut derivs.as_mut().unwrap().d2x, norm);
+        util::normalize_arr(&mut derivs.as_mut().unwrap().d2y, norm);
+        util::normalize_arr(&mut derivs.as_mut().unwrap().d2z, norm);
+
         util::normalize_arr(&mut derivs.as_mut().unwrap().d2_sum, norm);
     }
 
@@ -617,7 +644,7 @@ pub(crate) fn calc_vals_derivs_cpu(
         derivs.dy[i][j][k] = d.dy;
         derivs.dz[i][j][k] = d.dz;
         derivs.d2x[i][j][k] = d.d2x;
-        derivs.d2y[i][j][k] = d.d2z;
+        derivs.d2y[i][j][k] = d.d2y;
         derivs.d2z[i][j][k] = d.d2z;
         derivs.d2_sum[i][j][k] = d.d2_sum;
     }

@@ -35,7 +35,7 @@ const COLOR_PSI_PP_MEAS_1D: Color = (0., 0.5, 0.5);
 
 const CHARGE_SPHERE_SIZE: f32 = 0.05;
 
-const SURFACE_COLORS: [Color; 17] = [
+const SURFACE_COLORS: [Color; 18] = [
     (0., 0., 1.),
     (0., 0.5, 0.2),
     (1., 0., 0.),
@@ -53,13 +53,14 @@ const SURFACE_COLORS: [Color; 17] = [
     (0.8, 0.5, 0.8),
     (0.8, 0.2, 0.8),
     (0.1, 0.5, 0.9),
+    (0.2, 0.2, 0.9),
 ];
 
 const SURFACE_SHINYNESS: f32 = 10.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
 // To make the WF and other surfaces more visually significant.
-const PSI_SCALER: f32 = 120.;
+const PSI_SCALER: f32 = 180.;
 const CHARGE_DENSITY_SCALER: f32 = 5_000.;
 const PSI_PP_SCALER: f32 = 20.;
 
@@ -391,33 +392,107 @@ pub fn update_meshes(
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits,  &surfaces.psi_fm_L2, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.psi_fm_L2,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
             true,
         ));
 
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits,  &surfaces.psi_fm_Lz, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.psi_fm_L2,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                true,
+                grid_n,
+            ),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.psi_fm_Lz,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.psi_fm_Lz,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                true,
+                grid_n,
+            ),
             true,
         ));
 
         // todo: Likely temp.
         meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits,  &surfaces.derivs.dx, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits,  &surfaces.derivs.dy, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits,  &surfaces.derivs.dz, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(grid_posits,  &surfaces.derivs.d2x, z_i, PSI_PP_SCALER, mag_phase, false, grid_n),
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.derivs.dx,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
             true,
         ));
 
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.derivs.dy,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.derivs.dz,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.derivs.d2x,
+                z_i,
+                PSI_PP_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
 
         // meshes.push(Mesh::new_surface(
         //     &prepare_2d_mesh_real(
