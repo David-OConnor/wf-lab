@@ -38,6 +38,7 @@
 
 use core::ops::{Add, Mul, Sub};
 
+use lin_alg::f64::Vec3;
 use na::{Matrix2, Matrix4};
 use nalgebra as na;
 
@@ -53,6 +54,9 @@ use crate::{
 
 const C0: Cplx = Cplx::new_zero();
 const C1: Cplx = Cplx { real: 1., im: 0. };
+
+pub type SpinordVec = Vec<Vec<Vec<Vec<SpinorType2>>>>;
+pub type SpinordVec3 = Vec<Vec<Vec<SpinorType2>>>;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Component {
@@ -89,12 +93,44 @@ pub struct Spinor3D {
     pub c3: Arr3d,
 }
 
+/// Reversed index, component order.
+#[derive(Clone, Default)]
+pub struct SpinorType2 {
+    pub c0: Cplx,
+    pub c1: Cplx,
+    pub c2: Cplx,
+    pub c3: Cplx,
+}
+
 #[derive(Clone, Default)]
 pub struct SpinorDiffs {
     pub dt: Spinor,
     pub dx: Spinor,
     pub dy: Spinor,
     pub dz: Spinor,
+}
+
+#[derive(Clone, Default)]
+pub struct SpinorDiffsType2 {
+    pub dt: SpinorType2,
+    pub dx: SpinorType2,
+    pub dy: SpinorType2,
+    pub dz: SpinorType2,
+}
+
+#[derive(Clone, Default)]
+pub struct SpinorDiffsType3 {
+    pub dt: SpinordVec,
+    pub dx: SpinordVec,
+    pub dy: SpinordVec,
+    pub dz: SpinordVec,
+}
+
+#[derive(Clone, Default)]
+pub struct SpinorDiffsType33 {
+    pub dx: SpinordVec3,
+    pub dy: SpinordVec3,
+    pub dz: SpinordVec3,
 }
 
 impl Spinor3D {
@@ -388,21 +424,37 @@ fn a() {
 
 /// Calculate what psi should be, based on its derivatives, E, and V
 /// todo: Other forms, ie this rearranged too
-pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffs, E: [f64; 4], V: [f64; 4]) {
+// pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffs, E: [f64; 4], V: [f64; 4]) {
+// pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffsType2, E: [f64; 4], V: [f64; 4]) {
+pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffsType33, E: [f64; 4], V: [f64; 4]) {
     let n = result.c0.len();
 
     // todo: 3D A/R if using E.
     for (i, j, k, l) in iter_arr_4!(n) {
         // Code simplifiers
+
+        // todo: Your diffs struct is backwards. Needs to be d_mu, index, component
+        // todo: is ucrrent d_mu, component, index.
+        // todo maybe. (edit: Fixed with Type3[3].
         let dt = &diffs.dt[i][j][k][l];
         let dx = &diffs.dx[i][j][k][l];
         let dy = &diffs.dy[i][j][k][l];
         let dz = &diffs.dz[i][j][k][l];
 
-        result.c0[i][j][k][l] = dt.c0 - dx.c3 + IM * dy.c3 - dz.c2;
-        result.c1[i][j][k][l] = dt.c1 - dx.c2 - IM * dy.c2 + dz.c3;
-        result.c2[i][j][k][l] = -dt.c2 + dx.c1 - IM * dy.c1 + dz.c0;
-        result.c3[i][j][k][l] = -dt.c3 + dx.c0 + IM * dy.c0 - dz.c1;
+        // let dt0 = dt.c0;
+        // let dt1 = dt.c1;
+        // let dt2 = dt.c2;
+        // let dt3 = dt.c3;
+
+        let dt0 = -IM * (E[0] - V[0]);
+        let dt1 = -IM * (E[1] - V[1]);
+        let dt2 = -IM * (E[2] - V[2]);
+        let dt3 = -IM * (E[3] - V[3]);
+
+        result.c0[i][j][k][l] = dt0 - dx.c3 + IM * dy.c3 - dz.c2;
+        result.c1[i][j][k][l] = dt1 - dx.c2 - IM * dy.c2 + dz.c3;
+        result.c2[i][j][k][l] = -dt2 + dx.c1 - IM * dy.c1 + dz.c0;
+        result.c3[i][j][k][l] = -dt3 + dx.c0 + IM * dy.c0 - dz.c1;
     }
 }
 
