@@ -1,7 +1,7 @@
 //! Calculations of intra-molecular and inter-molecular forces. Initial use case:
 //! estimating force on two hydrogen atoms in a molecule.
 
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 
 use crate::{
     grid_setup::{Arr3dReal, Arr3dVec},

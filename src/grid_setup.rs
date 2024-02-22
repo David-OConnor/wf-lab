@@ -1,6 +1,6 @@
 //! This module contains code for setting up grids and sample points.
 
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 
 use crate::{complex_nums::Cplx, iter_arr, types::DerivativesSingle, util};
 

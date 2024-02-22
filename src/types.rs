@@ -2,12 +2,12 @@ use std::{ops::Add, sync::Arc};
 
 #[cfg(feature = "cuda")]
 use cudarc::driver::CudaDevice;
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    dirac::PsiSpinor,
+    dirac::{PsiSpinor, PsiSpinor3D},
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{
         self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dDeriv, Arr3dReal, Arr3dVec,
@@ -219,6 +219,13 @@ pub struct SurfacesPerElec {
     // experiments with angular momentum
     pub psi_fm_L2: Arr3d,
     pub psi_fm_Lz: Arr3d,
+    /// Experimenting with Dirac
+    // pub psi_0,
+    // pub psi_1,
+    // pub psi_2,
+    // pub psi_3,
+    // pub psi_dirac: PsiSpinor,
+    pub psi_dirac: PsiSpinor3D,
 }
 
 impl SurfacesPerElec {
@@ -260,6 +267,7 @@ impl SurfacesPerElec {
             aux3: data_real,
             psi_fm_L2: data.clone(),
             psi_fm_Lz: data,
+            psi_dirac: PsiSpinor3D::new(grid_n),
         }
     }
 }

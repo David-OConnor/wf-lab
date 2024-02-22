@@ -7,7 +7,7 @@
 use std::{sync::Arc, time::Instant};
 
 use cudarc::driver::{CudaDevice, CudaSlice, LaunchAsync, LaunchConfig};
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 
 use crate::basis_wfs::Sto;
 

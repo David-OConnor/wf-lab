@@ -2,7 +2,7 @@ use std::f64::consts::TAU;
 
 use egui::{self, Button, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 
 use crate::{
     basis_finder,
@@ -490,42 +490,47 @@ fn bottom_items(
         }
     });
 
-    if ui.add(Button::new("Find STO bases")).clicked() {
-        let charges_other_elecs =
-            wf_ops::combine_electron_charges(ae, &state.charges_from_electron, state.grid_n_charge);
+    ui.horizontal(|ui| {
+        if ui.add(Button::new("Find STO bases")).clicked() {
+            let charges_other_elecs = wf_ops::combine_electron_charges(
+                ae,
+                &state.charges_from_electron,
+                state.grid_n_charge,
+            );
 
-        let sample_pts = basis_finder::generate_sample_pts();
-        // let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
+            let sample_pts = basis_finder::generate_sample_pts();
+            // let xis: Vec<f64> = state.bases[ae].iter().map(|b| b.xi()).collect();
 
-        let (bases, E) = basis_finder::run(
-            &state.dev_charge,
-            &state.charges_fixed,
-            &charges_other_elecs,
-            &state.surfaces_shared.grid_posits_charge,
-            state.grid_n_charge,
-            &sample_pts,
-            &state.bases[ae],
-            state.deriv_calc,
-        );
+            let (bases, E) = basis_finder::run(
+                &state.dev_charge,
+                &state.charges_fixed,
+                &charges_other_elecs,
+                &state.surfaces_shared.grid_posits_charge,
+                state.grid_n_charge,
+                &sample_pts,
+                &state.bases[ae],
+                state.deriv_calc,
+            );
 
-        state.surfaces_shared.E = E;
+            state.surfaces_shared.E = E;
 
-        state.bases[ae] = bases;
-        // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.
-        *updated_evaluated_wfs = true;
+            state.bases[ae] = bases;
+            // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.
+            *updated_evaluated_wfs = true;
 
-        *updated_E_or_V = true;
-        *updated_basis_weights = true;
-    }
+            *updated_E_or_V = true;
+            *updated_basis_weights = true;
+        }
 
-    if ui.add(Button::new("He solver")).clicked() {
-        procedures::he_solver(state);
+        if ui.add(Button::new("He solver")).clicked() {
+            procedures::he_solver(state);
 
-        // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.
-        *updated_evaluated_wfs = true;
-        *updated_E_or_V = true;
-        *updated_basis_weights = true;
-    }
+            // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.
+            *updated_evaluated_wfs = true;
+            *updated_E_or_V = true;
+            *updated_basis_weights = true;
+        }
+    });
 }
 
 /// This function draws the (immediate-mode) GUI.
@@ -889,12 +894,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 ui.add_space(ITEM_SPACING);
 
-                ui.heading("Basis functions and weights:");
-
-                basis_fn_mixer(state, &mut updated_basis_weights, ui, ae);
-
-                ui.add_space(ITEM_SPACING);
-
                 bottom_items(
                     ui,
                     state,
@@ -905,6 +904,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &mut updated_E_or_V,
                     &mut updated_evaluated_wfs,
                 );
+
+                ui.add_space(ITEM_SPACING);
+
+                ui.heading("Basis functions and weights:");
+
+                basis_fn_mixer(state, &mut updated_basis_weights, ui, ae);
 
                 // Code below handles various updates that were flagged above.
 

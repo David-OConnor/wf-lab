@@ -25,7 +25,7 @@ pub mod wf_ops;
 
 use basis_wfs::{Basis, HOrbital, SphericalHarmonic};
 use grid_setup::Arr3d;
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 use types::SurfacesPerElec;
 
 use crate::{grid_setup::new_data, wf_ops::Spin};

@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 graphics = { path = "../graphics_wgpu" }
-lin-alg2 = { path = "../lin_alg" }
+lin-alg = { package = "lin-alg2", path = "../lin_alg" }
 egui = "^0.19"
 
 # We use Scilib for computing H basis fns, eg with Laguerre and Legendre polynomials.

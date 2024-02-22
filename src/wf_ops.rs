@@ -25,7 +25,7 @@
 
 #[cfg(feature = "cuda")]
 use cudarc::driver::CudaDevice;
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 
 #[cfg(feature = "cuda")]
 use crate::gpu;
@@ -111,10 +111,10 @@ pub fn initialize_bases(
             // (1.6, 0.),
             (2., 0.),
             (3., 0.),
-            // (4., 0.),
-            // (5., 0.),
-            // (6., 0.),
-            // (7., 0.),
+            (4., 0.),
+            (5., 0.),
+            (6., 0.),
+            (7., 0.),
             // (8., 0.),
             // (9., 0.),
         ] {
@@ -269,7 +269,7 @@ pub fn wf_from_bases(
             util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dz, norm);
 
             util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].d2x, norm);
-            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dy, norm);
+            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].d2y, norm);
             util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].d2z, norm);
 
             util::normalize_arr(

@@ -2,7 +2,7 @@
 //! Ψ'', which is a component of the Schrodinger equation. We use analytic second derivatives
 //! when available, and numerical ones when not.
 
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 
 use crate::{
     basis_wfs::Basis,

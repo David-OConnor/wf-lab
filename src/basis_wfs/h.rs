@@ -1,6 +1,6 @@
 //! Code related to Hydrogen-like orbitals
 
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 
 use super::{SphericalHarmonic, A_0, Z_H};
 use crate::{

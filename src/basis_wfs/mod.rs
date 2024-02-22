@@ -18,7 +18,7 @@ use std::f64::consts::PI;
 
 // todo: There's also a WIP scilib Quantum lib that can do these H orbital calculations
 // todo directly.
-use lin_alg2::f64::{Quaternion, Vec3};
+use lin_alg::f64::{Quaternion, Vec3};
 use scilib;
 
 use crate::complex_nums::{Cplx, IM};

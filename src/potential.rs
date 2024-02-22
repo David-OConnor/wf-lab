@@ -1,6 +1,6 @@
 //! Contains code related to creating and combining potentials.
 
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 
 #[cfg(feature = "cuda")]
 use crate::gpu;

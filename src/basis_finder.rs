@@ -2,7 +2,7 @@
 
 #[cfg(feature = "cuda")]
 use cudarc::driver::sys::cuTexObjectGetResourceViewDesc;
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 use ndarray::prelude::*;
 use ndarray_linalg::SVD;
 

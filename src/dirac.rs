@@ -43,8 +43,9 @@ use nalgebra as na;
 
 use crate::{
     complex_nums::{Cplx, IM},
+    grid_setup,
     grid_setup::{Arr3d, Arr4d},
-    iter_arr, iter_arr_4,
+    iter_arr, iter_arr_4, util,
     wf_ops::M_ELEC,
 };
 
@@ -65,10 +66,40 @@ enum Component {
 /// A 4-component spinor wave function.
 #[derive(Clone, Default)]
 pub struct PsiSpinor {
+    /// Matter, spin α
     pub c0: Arr4d,
+    /// Matter, spin β
     pub c1: Arr4d,
+    /// Antimatter, spin α
     pub c2: Arr4d,
+    /// Antimatter, spin β
     pub c3: Arr4d,
+}
+
+/// Ignores T; using E. viable? Will try.
+#[derive(Clone, Default)]
+pub struct PsiSpinor3D {
+    /// Matter, spin α
+    pub c0: Arr3d,
+    /// Matter, spin β
+    pub c1: Arr3d,
+    /// Antimatter, spin α
+    pub c2: Arr3d,
+    /// Antimatter, spin β
+    pub c3: Arr3d,
+}
+
+impl PsiSpinor3D {
+    pub fn new(n: usize) -> Self {
+        let data = grid_setup::new_data(n);
+
+        Self {
+            c0: data.clone(),
+            c1: data.clone(),
+            c2: data.clone(),
+            c3: data,
+        }
+    }
 }
 
 impl PsiSpinor {
@@ -241,10 +272,8 @@ impl Sub<&Self> for PsiSpinor {
     }
 }
 
-// todo: Cplx?
 #[rustfmt::skip]
 /// Return a gamma matrix. [Gamma matrices](https://en.wikipedia.org/wiki/Gamma_matrices)
-// fn gamma(mu: u8) -> Matrix4<f64> {
 fn gamma(mu: u8) -> Matrix4<Cplx> {
     match mu {
         0 => Matrix4::new(

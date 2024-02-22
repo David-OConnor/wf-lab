@@ -27,7 +27,7 @@
 
 #[cfg(feature = "cuda")]
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 
 mod angular_p;
 mod basis_finder;
@@ -68,6 +68,10 @@ const GRID_N_CHARGE_DEFAULT: usize = 61;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
+
+// 2/17/2024. A thought: Consider the atom as the base stable unit. Molecules are composed  of atoms.
+// With this in mind, perhaps you are not seeking to model using arbitrary potentials: You are seeking
+// to model using atoms as the baseline, and molecules composed of discrete atoms.
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum ActiveElec {
@@ -401,7 +405,7 @@ fn main() {
 
     let ui_active_elec = 0;
     let max_basis_n = 1;
-    let num_elecs = 1;
+    let num_elecs = 2;
 
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let posit_charge_2 = Vec3::new(0.4, 0., 0.);
@@ -478,10 +482,16 @@ fn main() {
         SurfaceDesc::new("L_z", false),
         SurfaceDesc::new("L_z im", false),
         // todo: These likely temp to verify.
-        SurfaceDesc::new("dx", false),
-        SurfaceDesc::new("dy", false),
-        SurfaceDesc::new("dz", false),
-        SurfaceDesc::new("d2x", false),
+        // SurfaceDesc::new("dx", false),
+        // SurfaceDesc::new("dy", false),
+        // SurfaceDesc::new("dz", false),
+        // SurfaceDesc::new("d2x", false),
+        // SurfaceDesc::new("d2y", false),
+        // SurfaceDesc::new("d2z", false),
+        SurfaceDesc::new("ψ0", false),
+        SurfaceDesc::new("ψ1", false),
+        SurfaceDesc::new("ψ2", false),
+        SurfaceDesc::new("ψ3", false),
     ];
 
     let surface_descs_combined = vec![

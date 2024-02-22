@@ -21,7 +21,7 @@
 //!
 //! L^2 = d_psi_d_x^2 + d_psi_d_y^2 + d_psi_d_z^2
 
-use lin_alg2::f64::Vec3;
+use lin_alg::f64::Vec3;
 
 use crate::{
     complex_nums::Cplx,

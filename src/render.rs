@@ -6,7 +6,7 @@ use graphics::{
     self, Camera, ControlScheme, DeviceEvent, EngineUpdates, Entity, InputSettings, LightType,
     Lighting, Mesh, PointLight, Scene, UiLayout, UiSettings,
 };
-use lin_alg2::{
+use lin_alg::{
     f32::{Quaternion, Vec3},
     f64::Vec3 as Vec3F64,
 };
@@ -61,7 +61,7 @@ const CHARGE_SHINYNESS: f32 = 3.;
 
 // To make the WF and other surfaces more visually significant.
 const PSI_SCALER: f32 = 180.;
-const CHARGE_DENSITY_SCALER: f32 = 5_000.;
+const CHARGE_DENSITY_SCALER: f32 = 10_000.;
 const PSI_PP_SCALER: f32 = 20.;
 
 const V_SCALER: f32 = 1.;
@@ -493,6 +493,30 @@ pub fn update_meshes(
             ),
             true,
         ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.derivs.d2y,
+                z_i,
+                PSI_PP_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.derivs.d2z,
+                z_i,
+                PSI_PP_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
 
         // meshes.push(Mesh::new_surface(
         //     &prepare_2d_mesh_real(
@@ -531,7 +555,7 @@ pub fn update_entities(
             Vec3::new_zero(),
             Quaternion::new_identity(),
             1.,
-            SURFACE_COLORS[i],
+            SURFACE_COLORS[i % SURFACE_COLORS.len()],
             SURFACE_SHINYNESS,
         ));
     }
