@@ -38,7 +38,6 @@
 
 use core::ops::{Add, Mul, Sub};
 
-use lin_alg::f64::Vec3;
 use na::{Matrix2, Matrix4};
 use nalgebra as na;
 
@@ -46,8 +45,7 @@ use crate::{
     complex_nums::{Cplx, IM},
     grid_setup,
     grid_setup::{Arr3d, Arr4d},
-    iter_arr, iter_arr_4, util,
-    wf_ops::M_ELEC,
+    iter_arr, iter_arr_4,
 };
 
 // Matrix operators: alpha, beta, gamma. Gamma is 2x2. alpha and beta are (at least?) 4x4
@@ -426,20 +424,25 @@ fn a() {
 /// todo: Other forms, ie this rearranged too
 // pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffs, E: [f64; 4], V: [f64; 4]) {
 // pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffsType2, E: [f64; 4], V: [f64; 4]) {
-pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffsType33, E: [f64; 4], V: [f64; 4]) {
+pub fn calc_psi(result: &mut Spinor3D, diffs: &SpinorDiffsType33, E: [f64; 4], V: [f64; 4]) {
     let n = result.c0.len();
 
     // todo: 3D A/R if using E.
-    for (i, j, k, l) in iter_arr_4!(n) {
+    // for (i, j, k, l) in iter_arr_4!(n) {
+    for (i, j, k) in iter_arr!(n) {
         // Code simplifiers
 
         // todo: Your diffs struct is backwards. Needs to be d_mu, index, component
         // todo: is ucrrent d_mu, component, index.
         // todo maybe. (edit: Fixed with Type3[3].
-        let dt = &diffs.dt[i][j][k][l];
-        let dx = &diffs.dx[i][j][k][l];
-        let dy = &diffs.dy[i][j][k][l];
-        let dz = &diffs.dz[i][j][k][l];
+        // let dt = &diffs.dt[i][j][k][l];
+        // let dx = &diffs.dx[i][j][k][l];
+        // let dy = &diffs.dy[i][j][k][l];
+        // let dz = &diffs.dz[i][j][k][l];
+
+        let dx = &diffs.dx[i][j][k];
+        let dy = &diffs.dy[i][j][k];
+        let dz = &diffs.dz[i][j][k];
 
         // let dt0 = dt.c0;
         // let dt1 = dt.c1;
@@ -450,11 +453,16 @@ pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffsType33, E: [f64; 4], V: 
         let dt1 = -IM * (E[1] - V[1]);
         let dt2 = -IM * (E[2] - V[2]);
         let dt3 = -IM * (E[3] - V[3]);
+        //
+        // result.c0[i][j][k][l] = dt0 - dx.c3 + IM * dy.c3 - dz.c2;
+        // result.c1[i][j][k][l] = dt1 - dx.c2 - IM * dy.c2 + dz.c3;
+        // result.c2[i][j][k][l] = -dt2 + dx.c1 - IM * dy.c1 + dz.c0;
+        // result.c3[i][j][k][l] = -dt3 + dx.c0 + IM * dy.c0 - dz.c1;
 
-        result.c0[i][j][k][l] = dt0 - dx.c3 + IM * dy.c3 - dz.c2;
-        result.c1[i][j][k][l] = dt1 - dx.c2 - IM * dy.c2 + dz.c3;
-        result.c2[i][j][k][l] = -dt2 + dx.c1 - IM * dy.c1 + dz.c0;
-        result.c3[i][j][k][l] = -dt3 + dx.c0 + IM * dy.c0 - dz.c1;
+        result.c0[i][j][k] = dt0 - dx.c3 + IM * dy.c3 - dz.c2;
+        result.c1[i][j][k] = dt1 - dx.c2 - IM * dy.c2 + dz.c3;
+        result.c2[i][j][k] = -dt2 + dx.c1 - IM * dy.c1 + dz.c0;
+        result.c3[i][j][k] = -dt3 + dx.c0 + IM * dy.c0 - dz.c1;
     }
 }
 

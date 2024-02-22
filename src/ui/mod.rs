@@ -7,9 +7,9 @@ use lin_alg::f64::Vec3;
 use crate::{
     basis_finder,
     basis_wfs::Basis,
-    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
-    potential, render,
-    types::{ComputationDevice, Derivatives},
+    grid_setup::new_data,
+    render,
+    types::Derivatives,
     wf_ops,
     wf_ops::{DerivCalc, Spin},
     ActiveElec, State,

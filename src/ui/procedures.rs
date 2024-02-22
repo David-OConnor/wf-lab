@@ -6,9 +6,9 @@ use graphics::{EngineUpdates, Scene};
 use crate::{
     basis_finder,
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
-    iter_arr, potential, render,
+    potential, render,
     types::SurfacesPerElec,
-    util, wf_ops, ActiveElec, State,
+    wf_ops, ActiveElec, State,
 };
 
 pub fn update_E_or_V(
@@ -148,7 +148,6 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
         &mut state.surfaces_shared.V_from_nuclei,
         &state.charges_fixed,
         &state.surfaces_shared.grid_posits,
-        state.grid_n_render,
     );
 
     // Reinintialize bases due to the added charges, since we initialize bases centered

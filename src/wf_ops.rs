@@ -23,8 +23,6 @@
 // todo: Something that would really help: A recipe for which basis wfs to add for a given
 // todo potential.
 
-#[cfg(feature = "cuda")]
-use cudarc::driver::CudaDevice;
 use lin_alg::f64::Vec3;
 
 #[cfg(feature = "cuda")]
@@ -33,11 +31,11 @@ use crate::{
     angular_p,
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
-    eigen_fns::{self, KE_COEFF},
+    eigen_fns::{self},
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, num_diff,
     types::{ComputationDevice, Derivatives, DerivativesSingle, SurfacesPerElec, SurfacesShared},
-    util::{self, unflatten_arr, EPS_DIV0, MAX_PSI_FOR_NORM},
+    util::{self, EPS_DIV0, MAX_PSI_FOR_NORM},
 };
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.

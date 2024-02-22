@@ -8,7 +8,6 @@ use crate::{
     grid_setup::{Arr3dReal, Arr3dVec},
     iter_arr,
     types::ComputationDevice,
-    wf_ops,
     wf_ops::K_C,
 };
 
@@ -41,9 +40,9 @@ pub fn update_V_from_nuclei(
     V_from_nuclei: &mut Arr3dReal,
     charges_nuc: &[(Vec3, f64)],
     grid_posits: &Arr3dVec,
-    grid_n: usize,
     // Wave functions from other electrons, for calculating the Hartree potential.
 ) {
+    let grid_n = grid_posits.len();
     // todo: CUDA
     for (i, j, k) in iter_arr!(grid_n) {
         let posit_sample = grid_posits[i][j][k];

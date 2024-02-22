@@ -27,7 +27,6 @@ use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{Arr3d, Arr3dVec},
-    util::EPS_DIV0,
     wf_ops::{self, ħ, K_C, Q_ELEC, Q_PROT},
 };
 

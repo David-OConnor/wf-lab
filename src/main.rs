@@ -247,7 +247,6 @@ pub fn init_from_grid(
         &mut surfaces_shared.V_from_nuclei,
         charges_fixed,
         &surfaces_shared.grid_posits,
-        grid_n_sample,
     );
 
     // These must be initialized from wave functions later.

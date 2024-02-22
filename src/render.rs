@@ -12,10 +12,9 @@ use lin_alg::{
 };
 
 use crate::{
-    complex_nums::Cplx,
-    grid_setup::{new_data_real, Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{Arr3d, Arr3dReal, Arr3dVec},
     types::{SurfacesPerElec, SurfacesShared},
-    util, State, SurfaceDesc, NUM_SURFACES_PER_ELEC,
+    State, SurfaceDesc,
 };
 
 type Color = (f32, f32, f32);
