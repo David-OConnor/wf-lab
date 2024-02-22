@@ -477,10 +477,10 @@ fn main() {
         SurfaceDesc::new("Elec V from ψ ", false),
         SurfaceDesc::new("Total V from ψ", true),
         SurfaceDesc::new("V'_elec", false),
-        SurfaceDesc::new("L^2", false),
-        SurfaceDesc::new("L^2 im", false),
-        SurfaceDesc::new("L_z", false),
-        SurfaceDesc::new("L_z im", false),
+        // SurfaceDesc::new("L^2", false),
+        // SurfaceDesc::new("L^2 im", false),
+        // SurfaceDesc::new("L_z", false),
+        // SurfaceDesc::new("L_z im", false),
         // todo: These likely temp to verify.
         // SurfaceDesc::new("dx", false),
         // SurfaceDesc::new("dy", false),
@@ -492,6 +492,11 @@ fn main() {
         SurfaceDesc::new("ψ1", false),
         SurfaceDesc::new("ψ2", false),
         SurfaceDesc::new("ψ3", false),
+        // Calculated, to compare to the trial.
+        SurfaceDesc::new("ψ0_c", false),
+        SurfaceDesc::new("ψ1_c", false),
+        SurfaceDesc::new("ψ2_c", false),
+        SurfaceDesc::new("ψ3_c", false),
     ];
 
     let surface_descs_combined = vec![

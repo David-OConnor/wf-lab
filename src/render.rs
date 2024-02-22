@@ -390,133 +390,135 @@ pub fn update_meshes(
             &prepare_2d_mesh_real(grid_posits, &surfaces.aux3, z_i, V_SCALER, grid_n),
             true,
         ));
+        //
 
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.psi_fm_L2,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.psi_fm_L2,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                true,
-                grid_n,
-            ),
-            true,
-        ));
-
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.psi_fm_Lz,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.psi_fm_Lz,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                true,
-                grid_n,
-            ),
-            true,
-        ));
-
-        // todo: Likely temp.
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.derivs.dx,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.derivs.dy,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.derivs.dz,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.derivs.d2x,
-                z_i,
-                PSI_PP_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.derivs.d2y,
-                z_i,
-                PSI_PP_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.derivs.d2z,
-                z_i,
-                PSI_PP_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
+        // todo: These angular-momentum-related wave functions are still useful, but temp removed.
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces.psi_fm_L2,
+        //         z_i,
+        //         PSI_SCALER,
+        //         mag_phase,
+        //         false,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
+        //
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces.psi_fm_L2,
+        //         z_i,
+        //         PSI_SCALER,
+        //         mag_phase,
+        //         true,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
+        //
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces.psi_fm_Lz,
+        //         z_i,
+        //         PSI_SCALER,
+        //         mag_phase,
+        //         false,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
+        //
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces.psi_fm_Lz,
+        //         z_i,
+        //         PSI_SCALER,
+        //         mag_phase,
+        //         true,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
+        //
+        // // todo: Likely temp.
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces.derivs.dx,
+        //         z_i,
+        //         PSI_SCALER,
+        //         mag_phase,
+        //         false,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
+        //
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces.derivs.dy,
+        //         z_i,
+        //         PSI_SCALER,
+        //         mag_phase,
+        //         false,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces.derivs.dz,
+        //         z_i,
+        //         PSI_SCALER,
+        //         mag_phase,
+        //         false,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces.derivs.d2x,
+        //         z_i,
+        //         PSI_PP_SCALER,
+        //         mag_phase,
+        //         false,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces.derivs.d2y,
+        //         z_i,
+        //         PSI_PP_SCALER,
+        //         mag_phase,
+        //         false,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces.derivs.d2z,
+        //         z_i,
+        //         PSI_PP_SCALER,
+        //         mag_phase,
+        //         false,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
 
         // meshes.push(Mesh::new_surface(
         //     &prepare_2d_mesh_real(

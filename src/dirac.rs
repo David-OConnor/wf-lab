@@ -65,7 +65,7 @@ enum Component {
 /// Todo: Figure out how to use this...
 /// A 4-component spinor wave function.
 #[derive(Clone, Default)]
-pub struct PsiSpinor {
+pub struct Spinor {
     /// Matter, spin α
     pub c0: Arr4d,
     /// Matter, spin β
@@ -78,7 +78,7 @@ pub struct PsiSpinor {
 
 /// Ignores T; using E. viable? Will try.
 #[derive(Clone, Default)]
-pub struct PsiSpinor3D {
+pub struct Spinor3D {
     /// Matter, spin α
     pub c0: Arr3d,
     /// Matter, spin β
@@ -89,7 +89,15 @@ pub struct PsiSpinor3D {
     pub c3: Arr3d,
 }
 
-impl PsiSpinor3D {
+#[derive(Clone, Default)]
+pub struct SpinorDiffs {
+    pub dt: Spinor,
+    pub dx: Spinor,
+    pub dy: Spinor,
+    pub dz: Spinor,
+}
+
+impl Spinor3D {
     pub fn new(n: usize) -> Self {
         let data = grid_setup::new_data(n);
 
@@ -102,7 +110,7 @@ impl PsiSpinor3D {
     }
 }
 
-impl PsiSpinor {
+impl Spinor {
     pub fn differentiate(&self, component: Component, grid_spacing: f64) -> Self {
         let n = self.c0.len();
         let mut result = Self::default();
@@ -159,7 +167,7 @@ impl PsiSpinor {
     }
 }
 
-impl Mul<Matrix4<Cplx>> for PsiSpinor {
+impl Mul<Matrix4<Cplx>> for Spinor {
     type Output = Self;
 
     /// Multiply with γ on the left: γψ
@@ -200,8 +208,8 @@ impl Mul<Matrix4<Cplx>> for PsiSpinor {
     }
 }
 
-impl Mul<Cplx> for &PsiSpinor {
-    type Output = PsiSpinor;
+impl Mul<Cplx> for &Spinor {
+    type Output = Spinor;
 
     fn mul(self, rhs: Cplx) -> Self::Output {
         let n = self.c0.len();
@@ -218,7 +226,7 @@ impl Mul<Cplx> for &PsiSpinor {
     }
 }
 
-impl Mul<Cplx> for PsiSpinor {
+impl Mul<Cplx> for Spinor {
     type Output = Self;
 
     fn mul(self, rhs: Cplx) -> Self::Output {
@@ -236,7 +244,7 @@ impl Mul<Cplx> for PsiSpinor {
     }
 }
 
-impl Add<&Self> for PsiSpinor {
+impl Add<&Self> for Spinor {
     type Output = Self;
 
     fn add(self, rhs: &Self) -> Self::Output {
@@ -254,7 +262,7 @@ impl Add<&Self> for PsiSpinor {
     }
 }
 
-impl Sub<&Self> for PsiSpinor {
+impl Sub<&Self> for Spinor {
     type Output = Self;
 
     fn sub(self, rhs: &Self) -> Self::Output {
@@ -376,6 +384,26 @@ fn a() {
         0., 0., -1., 0.,
         0., 0., 0., -1.
     );
+}
+
+/// Calculate what psi should be, based on its derivatives, E, and V
+/// todo: Other forms, ie this rearranged too
+pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffs, E: [f64; 4], V: [f64; 4]) {
+    let n = result.c0.len();
+
+    // todo: 3D A/R if using E.
+    for (i, j, k, l) in iter_arr_4!(n) {
+        // Code simplifiers
+        let dt = &diffs.dt[i][j][k][l];
+        let dx = &diffs.dx[i][j][k][l];
+        let dy = &diffs.dy[i][j][k][l];
+        let dz = &diffs.dz[i][j][k][l];
+
+        result.c0[i][j][k][l] = dt.c0 - dx.c3 + IM * dy.c3 - dz.c2;
+        result.c1[i][j][k][l] = dt.c1 - dx.c2 - IM * dy.c2 + dz.c3;
+        result.c2[i][j][k][l] = -dt.c2 + dx.c1 - IM * dy.c1 + dz.c0;
+        result.c3[i][j][k][l] = -dt.c3 + dx.c0 + IM * dy.c0 - dz.c1;
+    }
 }
 
 // todo: Put back.

@@ -7,7 +7,7 @@ use lin_alg::f64::Vec3;
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    dirac::{PsiSpinor, PsiSpinor3D},
+    dirac::{Spinor, Spinor3D},
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{
         self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dDeriv, Arr3dReal, Arr3dVec,
@@ -225,7 +225,8 @@ pub struct SurfacesPerElec {
     // pub psi_2,
     // pub psi_3,
     // pub psi_dirac: PsiSpinor,
-    pub psi_dirac: PsiSpinor3D,
+    pub psi_dirac: Spinor3D,
+    pub E_dirac: (f64, f64, f64, f64),
 }
 
 impl SurfacesPerElec {
@@ -267,7 +268,8 @@ impl SurfacesPerElec {
             aux3: data_real,
             psi_fm_L2: data.clone(),
             psi_fm_Lz: data,
-            psi_dirac: PsiSpinor3D::new(grid_n),
+            psi_dirac: Spinor3D::new(grid_n),
+            E_dirac: (0., 0., 0., 0.),
         }
     }
 }
