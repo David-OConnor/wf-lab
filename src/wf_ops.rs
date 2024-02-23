@@ -37,6 +37,7 @@ use crate::{
     types::{ComputationDevice, Derivatives, DerivativesSingle, SurfacesPerElec, SurfacesShared},
     util::{self, EPS_DIV0, MAX_PSI_FOR_NORM},
 };
+use crate::dirac::{Spinor3, SpinorDiffs3, Component};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -153,6 +154,8 @@ pub fn wf_from_bases(
     grid_posits: &Arr3dVec,
     grid_n: usize,
     deriv_calc: DerivCalc,
+    spinor_derivs: &mut SpinorDiffs3, // todo: Ordering type A/R
+    spinor: &Spinor3,
 ) {
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
     #[cfg(feature = "cuda")]
@@ -277,6 +280,11 @@ pub fn wf_from_bases(
         }
         // We do not normalize psi''/psi: The (identical) normalization terms cancel out during division..
     }
+
+    // todo: Dirac/spinor on GPU A/R, once working.
+    spinor.differentiate(&mut spinor_derivs.dx, Component::X, grid_spacing);
+    spinor.differentiate(&mut spinor_derivs.dy, Component::Y, grid_spacing);
+    spinor.differentiate(&mut spinor_derivs.dz, Component::Z, grid_spacing);
 }
 
 /// Mix previously-evaluated basis into a single wave function, with optional psi''. We generally
@@ -649,7 +657,7 @@ pub(crate) fn calc_vals_derivs_cpu(
 }
 
 /// Helper function to help manage numerical vs analytic derivatives. Operates at a single location.
-pub fn calc_derivs_cpu(
+pub(crate) fn calc_derivs_cpu(
     psi: Cplx,
     basis: &[Basis],
     posit: Vec3,
@@ -674,7 +682,7 @@ pub fn calc_derivs_cpu(
 
 /// Helper fn to help manage numerical vs analytic second derivs. Use this for when we only require
 /// the summed second derivative, vice all derivatives.
-pub fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: DerivCalc) -> Cplx {
+pub(crate) fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: DerivCalc) -> Cplx {
     // todo temp, until we get analytic second derivs with harmonics.
     if deriv_calc == DerivCalc::Numeric {
         return num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);

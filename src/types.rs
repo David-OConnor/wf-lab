@@ -17,6 +17,7 @@ use crate::{
     wf_ops,
     wf_ops::{DerivCalc, Spin},
 };
+use crate::dirac::{SpinorDiffs, SpinorDiffs3, SpinorDiffsTypeB, SpinorDiffsTypeC, SpinorDiffsTypeC3, SpinorTypeB, SpinorVec, SpinorVec3};
 
 #[derive(Debug)]
 pub enum ComputationDevice {
@@ -219,13 +220,18 @@ pub struct SurfacesPerElec {
     // experiments with angular momentum
     pub psi_fm_L2: Arr3d,
     pub psi_fm_Lz: Arr3d,
-    /// Experimenting with Dirac
-    // pub psi_0,
-    // pub psi_1,
-    // pub psi_2,
-    // pub psi_3,
-    // pub psi_dirac: PsiSpinor,
-    pub psi_dirac: Spinor3,
+    // todo: Update these types A/R based on which ordering variant you use.
+    /// Trial wave function spinor
+    pub spinor: Spinor3,
+    /// Spinor, as calcualted using the trial wave function, and the dirac equation, using
+    /// its derivatives.
+    pub spinor_calc: Spinor3,
+    pub spinor_derivs: SpinorDiffs3,
+    // pub spinor_deriv: SpinorDiffsTypeB,
+    // pub spinor_deriv: SpinorDiffsTypeC,
+    // pub spinor_deriv: SpinorDiffsTypeC3,
+    // pub psi_dirac: SpinorVec,
+    // pub psi_dirac: SpinorVec3,
     pub E_dirac: (f64, f64, f64, f64),
 }
 
@@ -268,7 +274,7 @@ impl SurfacesPerElec {
             aux3: data_real,
             psi_fm_L2: data.clone(),
             psi_fm_Lz: data,
-            psi_dirac: Spinor3::new(grid_n),
+            spinor: Spinor3::new(grid_n),
             E_dirac: (0., 0., 0., 0.),
         }
     }

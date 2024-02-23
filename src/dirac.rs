@@ -57,7 +57,7 @@ pub type SpinorVec = Vec<Vec<Vec<Vec<SpinorTypeB>>>>;
 pub type SpinorVec3 = Vec<Vec<Vec<SpinorTypeB>>>;
 
 #[derive(Clone, Copy, PartialEq)]
-enum Component {
+pub(crate) enum Component {
     T,
     X,
     Y,
@@ -123,14 +123,14 @@ pub struct SpinorDiffs {
 }
 
 impl SpinorDiffs {
-    pub fn new(spinor: &Spinor, grid_spacing: f64) -> Self {
-        Self {
-            dt: Spinor::differentiate(spinor, Component::T, grid_spacing),
-            dx: Spinor::differentiate(spinor, Component::X, grid_spacing),
-            dy: Spinor::differentiate(spinor, Component::Y, grid_spacing),
-            dz: Spinor::differentiate(spinor, Component::Z, grid_spacing),
-        }
-    }
+    // pub fn new(spinor: &Spinor, grid_spacing: f64) -> Self {
+    //     Self {
+    //         dt: spinor.differentiate(spinor, Component::T, grid_spacing),
+    //         dx: spinor.differentiate(spinor, Component::X, grid_spacing),
+    //         dy: spinor.differentiate(spinor, Component::Y, grid_spacing),
+    //         dz: spinor.differentiate(spinor, Component::Z, grid_spacing),
+    //     }
+    // }
 }
 
 /// Ordering, outside in: μ, psi component, index
@@ -142,13 +142,13 @@ pub struct SpinorDiffs3 {
 }
 
 impl SpinorDiffs3 {
-    pub fn new(spinor: &Spinor3, grid_spacing: f64) -> Self {
-        Self {
-            dx: Spinor3::differentiate(spinor, Component::X, grid_spacing),
-            dy: Spinor3::differentiate(spinor, Component::Y, grid_spacing),
-            dz: Spinor3::differentiate(spinor, Component::Z, grid_spacing),
-        }
-    }
+    // pub fn new(spinor: &Spinor3, grid_spacing: f64) -> Self {
+    //     Self {
+    //         dx: spinor.differentiate(spinor, Component::X, grid_spacing),
+    //         dy: spinor.differentiate(spinor, Component::Y, grid_spacing),
+    //         dz: spinor.differentiate(spinor, Component::Z, grid_spacing),
+    //     }
+    // }
 }
 
 /// Ordering, outside in: index, μ, psi component,
@@ -191,68 +191,60 @@ impl SpinorDiffsTypeC3 {
 }
 
 impl Spinor {
-    pub fn differentiate(&self, component: Component, grid_spacing: f64) -> Self {
-        let n = self.c0.len();
-        let mut result = Self::default();
-
+    pub fn differentiate(&self, deriv: &mut Self, component: Component, grid_spacing: f64){
         // For use with our midpoint formula.
         let diff = grid_spacing / 2.;
 
         for (i, j, k, l) in iter_arr_4!(n) {
             match component {
                 Component::T => {
-                    result.c0[i][j][k][l] =
+                    deriv.c0[i][j][k][l] =
                         (self.c0[i + 1][j][k][l] - self.c0[i - 1][j][k][l]) / diff;
-                    result.c1[i][j][k][l] =
+                    deriv.c1[i][j][k][l] =
                         (self.c1[i + 1][j][k][l] - self.c1[i - 1][j][k][l]) / diff;
-                    result.c2[i][j][k][l] =
+                    deriv.c2[i][j][k][l] =
                         (self.c2[i + 1][j][k][l] - self.c2[i - 1][j][k][l]) / diff;
-                    result.c3[i][j][k][l] =
+                    deriv.c3[i][j][k][l] =
                         (self.c3[i + 1][j][k][l] - self.c3[i - 1][j][k][l]) / diff;
                 }
                 Component::X => {
-                    result.c0[i][j][k][l] =
+                    deriv.c0[i][j][k][l] =
                         (self.c0[i][j + 1][k][l] - self.c0[i][j - 1][k][l]) / diff;
-                    result.c1[i][j][k][l] =
+                    deriv.c1[i][j][k][l] =
                         (self.c1[i][j + 1][k][l] - self.c1[i][j - 1][k][l]) / diff;
-                    result.c2[i][j][k][l] =
+                    deriv.c2[i][j][k][l] =
                         (self.c2[i][j + 1][k][l] - self.c2[i][j - 1][k][l]) / diff;
-                    result.c3[i][j][k][l] =
+                    deriv.c3[i][j][k][l] =
                         (self.c3[i][j + 1][k][l] - self.c3[i][j - 1][k][l]) / diff;
                 }
                 Component::Y => {
-                    result.c0[i][j][k][l] =
+                    deriv.c0[i][j][k][l] =
                         (self.c0[i][j][k + 1][l] - self.c0[i][j][k - 1][l]) / diff;
-                    result.c1[i][j][k][l] =
+                    deriv.c1[i][j][k][l] =
                         (self.c1[i][j][k + 1][l] - self.c1[i][j][k - 1][l]) / diff;
-                    result.c2[i][j][k][l] =
+                    deriv.c2[i][j][k][l] =
                         (self.c2[i][j][k + 1][l] - self.c2[i][j][k - 1][l]) / diff;
-                    result.c3[i][j][k][l] =
+                    deriv.c3[i][j][k][l] =
                         (self.c3[i][j][k + 1][l] - self.c3[i][j][k - 1][l]) / diff;
                 }
                 Component::Z => {
-                    result.c0[i][j][k][l] =
+                    deriv.c0[i][j][k][l] =
                         (self.c0[i][j][k][l + 1] - self.c0[i][j][k][l - 1]) / diff;
-                    result.c1[i][j][k][l] =
+                    deriv.c1[i][j][k][l] =
                         (self.c1[i][j][k][l + 1] - self.c1[i][j][k][l - 1]) / diff;
-                    result.c2[i][j][k][l] =
+                    deriv.c2[i][j][k][l] =
                         (self.c2[i][j][k][l + 1] - self.c2[i][j][k][l - 1]) / diff;
-                    result.c3[i][j][k][l] =
+                    deriv.c3[i][j][k][l] =
                         (self.c3[i][j][k][l + 1] - self.c3[i][j][k][l - 1]) / diff;
                 }
             }
         }
-
-        result
     }
 }
 
 // todo: DRY with above
 impl Spinor3 {
-    pub fn differentiate(&self, component: Component, grid_spacing: f64) -> Self {
-        let n = self.c0.len();
-        let mut result = Self::default();
-
+    pub fn differentiate(&self, deriv: &mut Self, component: Component, grid_spacing: f64) {
         // For use with our midpoint formula.
         let diff = grid_spacing / 2.;
 
@@ -260,27 +252,25 @@ impl Spinor3 {
             match component {
                 Component::T => panic!("T is not avail on a 3D Spinor"),
                 Component::X => {
-                    result.c0[i][j][k] = (self.c0[i + 1][j][k] - self.c0[i - 1][j][k]) / diff;
-                    result.c1[i][j][k] = (self.c1[i + 1][j][k] - self.c1[i - 1][j][k]) / diff;
-                    result.c2[i][j][k] = (self.c2[i + 1][j][k] - self.c2[i - 1][j][k]) / diff;
-                    result.c3[i][j][k] = (self.c3[i + 1][j][k] - self.c3[i - 1][j][k]) / diff;
+                    deriv.c0[i][j][k] = (self.c0[i + 1][j][k] - self.c0[i - 1][j][k]) / diff;
+                    deriv.c1[i][j][k] = (self.c1[i + 1][j][k] - self.c1[i - 1][j][k]) / diff;
+                    deriv.c2[i][j][k] = (self.c2[i + 1][j][k] - self.c2[i - 1][j][k]) / diff;
+                    deriv.c3[i][j][k] = (self.c3[i + 1][j][k] - self.c3[i - 1][j][k]) / diff;
                 }
                 Component::Y => {
-                    result.c0[i][j][k] = (self.c0[i][j + 1][k] - self.c0[i][j - 1][k]) / diff;
-                    result.c1[i][j][k] = (self.c1[i][j + 1][k] - self.c1[i][j - 1][k]) / diff;
-                    result.c2[i][j][k] = (self.c2[i][j + 1][k] - self.c2[i][j - 1][k]) / diff;
-                    result.c3[i][j][k] = (self.c3[i][j + 1][k] - self.c3[i][j - 1][k]) / diff;
+                    deriv.c0[i][j][k] = (self.c0[i][j + 1][k] - self.c0[i][j - 1][k]) / diff;
+                    deriv.c1[i][j][k] = (self.c1[i][j + 1][k] - self.c1[i][j - 1][k]) / diff;
+                    deriv.c2[i][j][k] = (self.c2[i][j + 1][k] - self.c2[i][j - 1][k]) / diff;
+                    deriv.c3[i][j][k] = (self.c3[i][j + 1][k] - self.c3[i][j - 1][k]) / diff;
                 }
                 Component::Z => {
-                    result.c0[i][j][k] = (self.c0[i][j][k + 1] - self.c0[i][j][k - 1]) / diff;
-                    result.c1[i][j][k] = (self.c1[i][j][k + 1] - self.c1[i][j][k - 1]) / diff;
-                    result.c2[i][j][k] = (self.c2[i][j][k + 1] - self.c2[i][j][k - 1]) / diff;
-                    result.c3[i][j][k] = (self.c3[i][j][k + 1] - self.c3[i][j][k - 1]) / diff;
+                    deriv.c0[i][j][k] = (self.c0[i][j][k + 1] - self.c0[i][j][k - 1]) / diff;
+                    deriv.c1[i][j][k] = (self.c1[i][j][k + 1] - self.c1[i][j][k - 1]) / diff;
+                    deriv.c2[i][j][k] = (self.c2[i][j][k + 1] - self.c2[i][j][k - 1]) / diff;
+                    deriv.c3[i][j][k] = (self.c3[i][j][k + 1] - self.c3[i][j][k - 1]) / diff;
                 }
             }
         }
-
-        result
     }
 }
 
