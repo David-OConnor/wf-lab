@@ -191,8 +191,9 @@ impl SpinorDiffsTypeC3 {
 }
 
 impl Spinor {
-    pub fn differentiate(&self, deriv: &mut Self, component: Component, grid_spacing: f64){
+    pub fn differentiate(&self, deriv: &mut Self, component: Component, grid_spacing: f64) {
         // For use with our midpoint formula.
+        let n = self.c0.len();
         let diff = grid_spacing / 2.;
 
         for (i, j, k, l) in iter_arr_4!(n) {
@@ -247,6 +248,7 @@ impl Spinor3 {
     pub fn differentiate(&self, deriv: &mut Self, component: Component, grid_spacing: f64) {
         // For use with our midpoint formula.
         let diff = grid_spacing / 2.;
+        let n = self.c0.len();
 
         for (i, j, k) in iter_arr!(n) {
             match component {

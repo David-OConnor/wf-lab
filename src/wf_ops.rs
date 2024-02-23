@@ -31,13 +31,13 @@ use crate::{
     angular_p,
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
+    dirac::{Component, Spinor3, SpinorDiffs3, SpinorDiffsTypeC3},
     eigen_fns::{self},
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, num_diff,
     types::{ComputationDevice, Derivatives, DerivativesSingle, SurfacesPerElec, SurfacesShared},
     util::{self, EPS_DIV0, MAX_PSI_FOR_NORM},
 };
-use crate::dirac::{Spinor3, SpinorDiffs3, Component};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -141,8 +141,8 @@ fn add_to_norm(n: &mut f64, v: Cplx) {
     }
 }
 
-/// Create psi, and optionally psi'', using basis functions. Creates one psi per basis. Does not mix bases; creates these
-/// values per-basis.
+/// Create psi, and optionally derivatives using basis functions. Creates one psi per basis. Does not mix bases;
+/// creates these values per-basis.
 /// todo: This currently keeps the bases unmixed. Do we want 2 variants: One mixed, one unmixed?
 pub fn wf_from_bases(
     dev: &ComputationDevice,
@@ -152,11 +152,11 @@ pub fn wf_from_bases(
     // mut psi_pp_div_psi_per_basis: Option<&mut [Arr3dReal]>, // None for charge calcs. todo: Experimenting.
     bases: &[Basis],
     grid_posits: &Arr3dVec,
-    grid_n: usize,
     deriv_calc: DerivCalc,
-    spinor_derivs: &mut SpinorDiffs3, // todo: Ordering type A/R
-    spinor: &Spinor3,
+    spinor_derivs: Option<&mut SpinorDiffs3>, // todo: Ordering type A/R
+    spinor: Option<&Spinor3>,
 ) {
+    let grid_n = grid_posits.len();
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
     #[cfg(feature = "cuda")]
     let posits_flat = match dev {
@@ -281,10 +281,18 @@ pub fn wf_from_bases(
         // We do not normalize psi''/psi: The (identical) normalization terms cancel out during division..
     }
 
-    // todo: Dirac/spinor on GPU A/R, once working.
-    spinor.differentiate(&mut spinor_derivs.dx, Component::X, grid_spacing);
-    spinor.differentiate(&mut spinor_derivs.dy, Component::Y, grid_spacing);
-    spinor.differentiate(&mut spinor_derivs.dz, Component::Z, grid_spacing);
+    if let Some(spinor_derivs) = spinor_derivs {
+        // todo: Dirac/spinor on GPU A/R, once working.
+        spinor
+            .unwrap()
+            .differentiate(&mut spinor_derivs.dx, Component::X, grid_spacing);
+        spinor
+            .unwrap()
+            .differentiate(&mut spinor_derivs.dy, Component::Y, grid_spacing);
+        spinor
+            .unwrap()
+            .differentiate(&mut spinor_derivs.dz, Component::Z, grid_spacing);
+    }
 }
 
 /// Mix previously-evaluated basis into a single wave function, with optional psi''. We generally
@@ -540,6 +548,9 @@ pub fn update_eigen_vals(
     grid_posits: &Arr3dVec,
     L_sq: &mut Arr3d,
     L_z: &mut Arr3d,
+    spinor_calc: &mut Spinor3,
+    spinor: &Spinor3,
+    spinor_derivs: &SpinorDiffs3,
 ) {
     let grid_n = psi.len();
 
@@ -682,7 +693,12 @@ pub(crate) fn calc_derivs_cpu(
 
 /// Helper fn to help manage numerical vs analytic second derivs. Use this for when we only require
 /// the summed second derivative, vice all derivatives.
-pub(crate) fn second_deriv_cpu(psi: Cplx, basis: &Basis, posit: Vec3, deriv_calc: DerivCalc) -> Cplx {
+pub(crate) fn second_deriv_cpu(
+    psi: Cplx,
+    basis: &Basis,
+    posit: Vec3,
+    deriv_calc: DerivCalc,
+) -> Cplx {
     // todo temp, until we get analytic second derivs with harmonics.
     if deriv_calc == DerivCalc::Numeric {
         return num_diff::second_deriv_fm_bases(posit, &[basis.clone()], psi);

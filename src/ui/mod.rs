@@ -369,8 +369,9 @@ fn basis_fn_mixer(
                         // Some(&mut temp_psi_pp_div_psi),
                         &[basis.clone()],
                         &state.surfaces_shared.grid_posits,
-                        state.grid_n_render,
                         state.deriv_calc,
+                        Some(&mut state.surfaces_per_elec[active_elec].spinor_derivs),
+                        Some(&state.surfaces_per_elec[active_elec].spinor),
                     );
 
                     state.surfaces_per_elec[active_elec].psi_per_basis[basis_i] =

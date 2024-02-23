@@ -7,7 +7,10 @@ use lin_alg::f64::Vec3;
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    dirac::{Spinor, Spinor3},
+    dirac::{
+        Spinor, Spinor3, SpinorDiffs, SpinorDiffs3, SpinorDiffsTypeB, SpinorDiffsTypeC,
+        SpinorDiffsTypeC3, SpinorTypeB, SpinorVec, SpinorVec3,
+    },
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{
         self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dDeriv, Arr3dReal, Arr3dVec,
@@ -17,7 +20,6 @@ use crate::{
     wf_ops,
     wf_ops::{DerivCalc, Spin},
 };
-use crate::dirac::{SpinorDiffs, SpinorDiffs3, SpinorDiffsTypeB, SpinorDiffsTypeC, SpinorDiffsTypeC3, SpinorTypeB, SpinorVec, SpinorVec3};
 
 #[derive(Debug)]
 pub enum ComputationDevice {
@@ -275,6 +277,8 @@ impl SurfacesPerElec {
             psi_fm_L2: data.clone(),
             psi_fm_Lz: data,
             spinor: Spinor3::new(grid_n),
+            spinor_calc: Spinor3::new(grid_n),
+            spinor_derivs: SpinorDiffs3::default(),
             E_dirac: (0., 0., 0., 0.),
         }
     }
@@ -368,8 +372,9 @@ impl _BasesEvaluated {
             // None,
             bases,
             grid_posits,
-            grid_n,
             deriv_calc,
+            None,
+            None,
         );
 
         Self {

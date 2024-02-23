@@ -273,8 +273,9 @@ pub fn init_from_grid(
             // Some(psi_pp_div_psi),
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits,
-            grid_n_sample,
             deriv_calc,
+            Some(&mut surfaces_per_elec[i_elec].spinor_derivs),
+            Some(&surfaces_per_elec[i_elec].spinor),
         );
 
         let psi = &mut sfcs.psi;
@@ -309,6 +310,9 @@ pub fn init_from_grid(
             &surfaces_shared.grid_posits,
             &mut sfcs.psi_fm_L2,
             &mut sfcs.psi_fm_Lz,
+            &mut sfcs.spinor_calc,
+            &sfcs.spinor,
+            &sfcs.spinor_derivs,
         );
 
         let mut psi_charge = Vec::new();
@@ -325,8 +329,9 @@ pub fn init_from_grid(
             // None,
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits_charge,
-            grid_n_charge,
             deriv_calc,
+            Some(&mut sfcs.spinor_derivs),
+            Some(&sfcs.spinor),
         );
 
         procedures::create_elec_charge(

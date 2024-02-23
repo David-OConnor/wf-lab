@@ -32,6 +32,9 @@ pub fn update_E_or_V(
         grid_posits,
         &mut sfcs.psi_fm_L2,
         &mut sfcs.psi_fm_Lz,
+        &mut sfcs.spinor_calc,
+        &sfcs.spinor,
+        &sfcs.spinor_derivs,
     );
 }
 
@@ -73,6 +76,9 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &state.surfaces_shared.grid_posits,
         &mut sfcs.psi_fm_L2,
         &mut sfcs.psi_fm_Lz,
+        &mut sfcs.spinor_calc,
+        &sfcs.spinor,
+        &sfcs.spinor_derivs,
     );
 
     // // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
@@ -127,8 +133,9 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
         // None,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits,
-        state.grid_n_render,
         state.deriv_calc,
+        Some(&mut state.surfaces_per_elec[ae].spinor_derivs),
+        Some(&state.surfaces_per_elec[ae].spinor),
     );
 
     wf_ops::wf_from_bases(
@@ -138,8 +145,9 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
         // None,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits_charge,
-        state.grid_n_charge,
         state.deriv_calc,
+        None,
+        None,
     );
 }
 
@@ -291,8 +299,9 @@ pub(crate) fn he_solver(state: &mut State) {
             // None,
             &state.bases[elec_id],
             &state.surfaces_shared.grid_posits_charge,
-            state.grid_n_charge,
             state.deriv_calc,
+            None,
+            None,
         );
 
         // We don't need to mix bases here, and that's handled at the end of the loop
