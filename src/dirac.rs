@@ -53,8 +53,8 @@ use crate::{
 const C0: Cplx = Cplx::new_zero();
 const C1: Cplx = Cplx { real: 1., im: 0. };
 
-pub type SpinordVec = Vec<Vec<Vec<Vec<SpinorType2>>>>;
-pub type SpinordVec3 = Vec<Vec<Vec<SpinorType2>>>;
+pub type SpinorVec = Vec<Vec<Vec<Vec<SpinorTypeB>>>>;
+pub type SpinorVec3 = Vec<Vec<Vec<SpinorTypeB>>>;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Component {
@@ -80,7 +80,7 @@ pub struct Spinor {
 
 /// Ignores T; using E. viable? Will try.
 #[derive(Clone, Default)]
-pub struct Spinor3D {
+pub struct Spinor3 {
     /// Matter, spin α
     pub c0: Arr3d,
     /// Matter, spin β
@@ -93,45 +93,14 @@ pub struct Spinor3D {
 
 /// Reversed index, component order.
 #[derive(Clone, Default)]
-pub struct SpinorType2 {
+pub struct SpinorTypeB {
     pub c0: Cplx,
     pub c1: Cplx,
     pub c2: Cplx,
     pub c3: Cplx,
 }
 
-#[derive(Clone, Default)]
-pub struct SpinorDiffs {
-    pub dt: Spinor,
-    pub dx: Spinor,
-    pub dy: Spinor,
-    pub dz: Spinor,
-}
-
-#[derive(Clone, Default)]
-pub struct SpinorDiffsType2 {
-    pub dt: SpinorType2,
-    pub dx: SpinorType2,
-    pub dy: SpinorType2,
-    pub dz: SpinorType2,
-}
-
-#[derive(Clone, Default)]
-pub struct SpinorDiffsType3 {
-    pub dt: SpinordVec,
-    pub dx: SpinordVec,
-    pub dy: SpinordVec,
-    pub dz: SpinordVec,
-}
-
-#[derive(Clone, Default)]
-pub struct SpinorDiffsType33 {
-    pub dx: SpinordVec3,
-    pub dy: SpinordVec3,
-    pub dz: SpinordVec3,
-}
-
-impl Spinor3D {
+impl Spinor3 {
     pub fn new(n: usize) -> Self {
         let data = grid_setup::new_data(n);
 
@@ -142,6 +111,83 @@ impl Spinor3D {
             c3: data,
         }
     }
+}
+
+/// Ordering, outside in: μ, psi component, index
+#[derive(Clone, Default)]
+pub struct SpinorDiffs {
+    pub dt: Spinor,
+    pub dx: Spinor,
+    pub dy: Spinor,
+    pub dz: Spinor,
+}
+
+impl SpinorDiffs {
+    pub fn new(spinor: &Spinor, grid_spacing: f64) -> Self {
+        Self {
+            dt: Spinor::differentiate(spinor, Component::T, grid_spacing),
+            dx: Spinor::differentiate(spinor, Component::X, grid_spacing),
+            dy: Spinor::differentiate(spinor, Component::Y, grid_spacing),
+            dz: Spinor::differentiate(spinor, Component::Z, grid_spacing),
+        }
+    }
+}
+
+/// Ordering, outside in: μ, psi component, index
+#[derive(Clone, Default)]
+pub struct SpinorDiffs3 {
+    pub dx: Spinor3,
+    pub dy: Spinor3,
+    pub dz: Spinor3,
+}
+
+impl SpinorDiffs3 {
+    pub fn new(spinor: &Spinor3, grid_spacing: f64) -> Self {
+        Self {
+            dx: Spinor3::differentiate(spinor, Component::X, grid_spacing),
+            dy: Spinor3::differentiate(spinor, Component::Y, grid_spacing),
+            dz: Spinor3::differentiate(spinor, Component::Z, grid_spacing),
+        }
+    }
+}
+
+/// Ordering, outside in: index, μ, psi component,
+#[derive(Clone, Default)]
+pub struct SpinorDiffsTypeB {
+    pub dt: SpinorTypeB,
+    pub dx: SpinorTypeB,
+    pub dy: SpinorTypeB,
+    pub dz: SpinorTypeB,
+}
+
+/// Ordering, outside in: μ, index, psi component
+#[derive(Clone)]
+pub struct SpinorDiffsTypeC {
+    pub dt: SpinorVec,
+    pub dx: SpinorVec,
+    pub dy: SpinorVec,
+    pub dz: SpinorVec,
+}
+
+/// Ordering, outside in: a, index, psi component
+#[derive(Clone)]
+pub struct SpinorDiffsTypeC3 {
+    pub dx: SpinorVec3,
+    pub dy: SpinorVec3,
+    pub dz: SpinorVec3,
+}
+
+impl SpinorDiffsTypeC3 {
+    // pub fn new(psi: &Spinor) -> Self {
+    //     let n = psi.c0.len();
+    //     let data = grid_setup::new_data(n);
+    //
+    //     let mut result = Self {
+    //         dx:
+    //     };
+    //
+    //     result
+    // }
 }
 
 impl Spinor {
@@ -193,6 +239,43 @@ impl Spinor {
                         (self.c2[i][j][k][l + 1] - self.c2[i][j][k][l - 1]) / diff;
                     result.c3[i][j][k][l] =
                         (self.c3[i][j][k][l + 1] - self.c3[i][j][k][l - 1]) / diff;
+                }
+            }
+        }
+
+        result
+    }
+}
+
+// todo: DRY with above
+impl Spinor3 {
+    pub fn differentiate(&self, component: Component, grid_spacing: f64) -> Self {
+        let n = self.c0.len();
+        let mut result = Self::default();
+
+        // For use with our midpoint formula.
+        let diff = grid_spacing / 2.;
+
+        for (i, j, k) in iter_arr!(n) {
+            match component {
+                Component::T => panic!("T is not avail on a 3D Spinor"),
+                Component::X => {
+                    result.c0[i][j][k] = (self.c0[i + 1][j][k] - self.c0[i - 1][j][k]) / diff;
+                    result.c1[i][j][k] = (self.c1[i + 1][j][k] - self.c1[i - 1][j][k]) / diff;
+                    result.c2[i][j][k] = (self.c2[i + 1][j][k] - self.c2[i - 1][j][k]) / diff;
+                    result.c3[i][j][k] = (self.c3[i + 1][j][k] - self.c3[i - 1][j][k]) / diff;
+                }
+                Component::Y => {
+                    result.c0[i][j][k] = (self.c0[i][j + 1][k] - self.c0[i][j - 1][k]) / diff;
+                    result.c1[i][j][k] = (self.c1[i][j + 1][k] - self.c1[i][j - 1][k]) / diff;
+                    result.c2[i][j][k] = (self.c2[i][j + 1][k] - self.c2[i][j - 1][k]) / diff;
+                    result.c3[i][j][k] = (self.c3[i][j + 1][k] - self.c3[i][j - 1][k]) / diff;
+                }
+                Component::Z => {
+                    result.c0[i][j][k] = (self.c0[i][j][k + 1] - self.c0[i][j][k - 1]) / diff;
+                    result.c1[i][j][k] = (self.c1[i][j][k + 1] - self.c1[i][j][k - 1]) / diff;
+                    result.c2[i][j][k] = (self.c2[i][j][k + 1] - self.c2[i][j][k - 1]) / diff;
+                    result.c3[i][j][k] = (self.c3[i][j][k + 1] - self.c3[i][j][k - 1]) / diff;
                 }
             }
         }
@@ -424,7 +507,7 @@ fn a() {
 /// todo: Other forms, ie this rearranged too
 // pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffs, E: [f64; 4], V: [f64; 4]) {
 // pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffsType2, E: [f64; 4], V: [f64; 4]) {
-pub fn calc_psi(result: &mut Spinor3D, diffs: &SpinorDiffsType33, E: [f64; 4], V: [f64; 4]) {
+pub fn calc_psi(result: &mut Spinor3, diffs: &SpinorDiffsTypeC3, E: [f64; 4], V: [f64; 4]) {
     let n = result.c0.len();
 
     // todo: 3D A/R if using E.
