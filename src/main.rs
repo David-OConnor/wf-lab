@@ -52,6 +52,7 @@ mod wf_ops;
 
 use crate::{
     basis_wfs::Basis,
+    dirac::BasisSpinor,
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal},
     types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
     ui::procedures,
@@ -201,6 +202,7 @@ pub fn init_from_grid(
     grid_n_sample: usize,
     grid_n_charge: usize,
     bases_per_elec: &[Vec<Basis>],
+    bases_per_elec_spinor: &[Vec<BasisSpinor>],
     charges_fixed: &[(Vec3, f64)],
     num_electrons: usize,
     deriv_calc: DerivCalc,
@@ -264,18 +266,25 @@ pub fn init_from_grid(
         // Assigning vars prevents multiple-borrow-mut vars.
         let psi = &mut sfcs.psi_per_basis;
         let psi_pp = &mut sfcs.derivs_per_basis;
-        // let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_per_basis;
+        let spinor = &mut sfcs.spinor_per_basis;
+        let spinor_derivs = &mut sfcs.spinor_derivs_per_basis;
 
         wf_ops::wf_from_bases(
             dev_psi,
             psi,
             Some(psi_pp),
-            // Some(psi_pp_div_psi),
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits,
             deriv_calc,
-            Some(&mut surfaces_per_elec[i_elec].spinor_derivs),
-            Some(&surfaces_per_elec[i_elec].spinor),
+        );
+
+        wf_ops::wf_from_bases_spinor(
+            dev_psi,
+            spinor,
+            Some(spinor_derivs),
+            &bases_per_elec_spinor[i_elec],
+            &surfaces_shared.grid_posits,
+            deriv_calc,
         );
 
         let psi = &mut sfcs.psi;
@@ -326,12 +335,9 @@ pub fn init_from_grid(
             dev_psi,
             &mut psi_charge,
             None,
-            // None,
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits_charge,
             deriv_calc,
-            Some(&mut sfcs.spinor_derivs),
-            Some(&sfcs.spinor),
         );
 
         procedures::create_elec_charge(

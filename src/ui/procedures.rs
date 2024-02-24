@@ -123,26 +123,32 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     // Prevents double borrow-mut error
     let psi = &mut sfcs.psi_per_basis;
     let psi_pp = &mut sfcs.derivs_per_basis;
-    // let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_per_basis;
+
+    let spinor = &mut sfcs.psi_per_basis;
+    let spinor_derivs = &mut sfcs.derivs_per_basis;
 
     wf_ops::wf_from_bases(
         &state.dev_psi,
         psi,
         Some(psi_pp),
-        // Some(psi_pp_div_psi),
-        // None,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits,
         state.deriv_calc,
-        Some(&mut state.surfaces_per_elec[ae].spinor_derivs),
-        Some(&state.surfaces_per_elec[ae].spinor),
+    );
+
+    wf_ops::wf_from_bases_spinor(
+        &state.dev_psi,
+        &state.surfaces_per_elec[ae].spinor,
+        &mut state.surfaces_per_elec[ae].spinor_derivs,
+        &state.surfaces_per_elec[ae].spinor_per_basis,
+        &state.surfaces_shared.grid_posits,
+        state.deriv_calc,
     );
 
     wf_ops::wf_from_bases(
         &state.dev_psi,
         &mut state.psi_charge[ae],
         None,
-        // None,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits_charge,
         state.deriv_calc,

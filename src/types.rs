@@ -8,8 +8,8 @@ use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
     dirac::{
-        Spinor, Spinor3, SpinorDiffs, SpinorDiffs3, SpinorDiffsTypeB, SpinorDiffsTypeC,
-        SpinorDiffsTypeC3, SpinorTypeB, SpinorVec, SpinorVec3,
+        Spinor, Spinor3, SpinorDerivsTypeD3, SpinorDiffs, SpinorDiffs3, SpinorDiffsTypeB,
+        SpinorDiffsTypeC, SpinorDiffsTypeC3, SpinorTypeB, SpinorVec, SpinorVec3,
     },
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{
@@ -112,6 +112,7 @@ impl SurfacesShared {
 
 #[derive(Clone, Default, Debug)]
 /// A set of derivatives at a single point
+/// Organization: index, da
 pub struct DerivativesSingle {
     pub dx: Cplx,
     pub dy: Cplx,
@@ -229,6 +230,9 @@ pub struct SurfacesPerElec {
     /// its derivatives.
     pub spinor_calc: Spinor3,
     pub spinor_derivs: SpinorDiffs3,
+    pub spinor_per_basis: Vec<Spinor3>,
+    // pub spinor_derivs_per_basis: Vec<SpinorDiffs3>,
+    pub spinor_derivs_per_basis: Vec<SpinorDerivsTypeD3>,
     // pub spinor_deriv: SpinorDiffsTypeB,
     // pub spinor_deriv: SpinorDiffsTypeC,
     // pub spinor_deriv: SpinorDiffsTypeC3,
@@ -249,12 +253,22 @@ impl SurfacesPerElec {
 
         let mut psi_per_basis = Vec::new();
         let mut derivs_per_basis = Vec::new();
+        let mut spinor_per_basis = Vec::new();
+        let mut spinor_derivs_per_basis = Vec::new();
 
         let mut psi_pp_div_psi_per_basis = Vec::new();
         for _ in 0..num_bases {
             psi_per_basis.push(data.clone());
             derivs_per_basis.push(derivs.clone());
             psi_pp_div_psi_per_basis.push(data_real.clone());
+
+            spinor_per_basis.push(Spinor3 {
+                c0: data.clone(),
+                c1: data.clone(),
+                c2: data.clone(),
+                c3: data.clone(),
+            });
+            spinor_derivs_per_basis.push(SpinorDiffs3::default());
         }
 
         Self {
@@ -279,6 +293,8 @@ impl SurfacesPerElec {
             spinor: Spinor3::new(grid_n),
             spinor_calc: Spinor3::new(grid_n),
             spinor_derivs: SpinorDiffs3::default(),
+            spinor_per_basis,
+            spinor_derivs_per_basis,
             E_dirac: (0., 0., 0., 0.),
         }
     }

@@ -31,7 +31,10 @@ use crate::{
     angular_p,
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
-    dirac::{Component, Spinor3, SpinorDiffs3, SpinorDiffsTypeC3},
+    dirac::{
+        BasisSpinor, Component, Spinor3, SpinorDerivsTypeD3, SpinorDiffs3, SpinorDiffsTypeB3,
+        SpinorDiffsTypeC3, SpinorDiffsTypeDInner3, SpinorDiffsTypeE3,
+    },
     eigen_fns::{self},
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, num_diff,
@@ -147,14 +150,10 @@ fn add_to_norm(n: &mut f64, v: Cplx) {
 pub fn wf_from_bases(
     dev: &ComputationDevice,
     psi_per_basis: &mut [Arr3d],
-    // mut psi_pp: Option<&mut [Arr3d]>, // None for charge calcs.
     mut derivs_per_basis: Option<&mut [Derivatives]>, // None for charge calcs.
-    // mut psi_pp_div_psi_per_basis: Option<&mut [Arr3dReal]>, // None for charge calcs. todo: Experimenting.
     bases: &[Basis],
     grid_posits: &Arr3dVec,
     deriv_calc: DerivCalc,
-    spinor_derivs: Option<&mut SpinorDiffs3>, // todo: Ordering type A/R
-    spinor: Option<&Spinor3>,
 ) {
     let grid_n = grid_posits.len();
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
@@ -216,6 +215,7 @@ pub fn wf_from_bases(
             ComputationDevice::Cpu => {
                 for (i, j, k) in iter_arr!(grid_n) {
                     let posit_sample = grid_posits[i][j][k];
+
                     psi_per_basis[basis_i][i][j][k] = basis.value(posit_sample);
                     let b = [basis.clone()];
 
@@ -246,14 +246,6 @@ pub fn wf_from_bases(
                         // todo: Impl your Derivatives construction from GPU as well, but we'll use CPU for calculating
                         // todo these for now.
                     }
-                    // if let Some(ref mut ppd) = psi_pp_div_psi_per_basis {
-                    //     psi_pp_div_psi_cpu(
-                    //         psi_per_basis[basis_i][i][j][k],
-                    //         &basis,
-                    //         posit_sample,
-                    //         deriv_calc,
-                    //     );
-                    // }
 
                     add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
                 }
@@ -264,34 +256,97 @@ pub fn wf_from_bases(
         // in the way normalizing the composite (squared) wave function is prior to generating charge.
         util::normalize_arr(&mut psi_per_basis[basis_i], norm);
 
-        if derivs_per_basis.is_some() {
-            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dx, norm);
-            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dy, norm);
-            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dz, norm);
-
-            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].d2x, norm);
-            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].d2y, norm);
-            util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].d2z, norm);
-
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].d2_sum,
-                norm,
-            );
-        }
         // We do not normalize psi''/psi: The (identical) normalization terms cancel out during division..
     }
+}
 
-    if let Some(spinor_derivs) = spinor_derivs {
-        // todo: Dirac/spinor on GPU A/R, once working.
-        spinor
-            .unwrap()
-            .differentiate(&mut spinor_derivs.dx, Component::X, grid_spacing);
-        spinor
-            .unwrap()
-            .differentiate(&mut spinor_derivs.dy, Component::Y, grid_spacing);
-        spinor
-            .unwrap()
-            .differentiate(&mut spinor_derivs.dz, Component::Z, grid_spacing);
+/// Create psi, and optionally derivatives using basis functions. Creates one psi per basis. Does not mix bases;
+/// creates these values per-basis.
+/// todo: This currently keeps the bases unmixed. Do we want 2 variants: One mixed, one unmixed?
+pub fn wf_from_bases_spinor(
+    dev: &ComputationDevice,
+    psi_per_basis: &mut [Spinor3],
+    // mut derivs_per_basis: Option<&mut [SpinorDiffs3]>, // da, psi component, index
+    // mut derivs_per_basis: Option<&mut [SpinorDiffsTypeB3]>, // index, da, psi component.
+    // mut derivs_per_basis: Option<&mut [SpinorDiffsTypeC3]>, // da, psi component, index
+    mut derivs_per_basis: Option<&mut [SpinorDerivsTypeD3]>, // psi component, da, index
+    // mut derivs_per_basis: Option<&mut [SpinorDiffsTypeE3]>, // index, psi component, da
+    bases: &[BasisSpinor],
+    grid_posits: &Arr3dVec,
+    deriv_calc: DerivCalc,
+) {
+    let grid_n = grid_posits.len();
+    // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
+    #[cfg(feature = "cuda")]
+    let posits_flat = match dev {
+        ComputationDevice::Gpu(_) => Some(util::flatten_arr(grid_posits, grid_n)),
+        ComputationDevice::Cpu => None,
+    };
+
+    for (basis_i, basis) in bases.iter().enumerate() {
+        let mut norm = [0.; 4];
+
+        match dev {
+            #[cfg(feature = "cuda")]
+            ComputationDevice::Gpu(cuda_dev) => {
+                unimplemented!()
+            }
+            ComputationDevice::Cpu => {
+                for (i, j, k) in iter_arr!(grid_n) {
+                    let posit_sample = grid_posits[i][j][k];
+
+                    psi_per_basis[basis_i].c0[i][j][k] = basis.c0.value(posit_sample);
+                    psi_per_basis[basis_i].c1[i][j][k] = basis.c1.value(posit_sample);
+                    psi_per_basis[basis_i].c2[i][j][k] = basis.c2.value(posit_sample);
+                    psi_per_basis[basis_i].c3[i][j][k] = basis.c3.value(posit_sample);
+                    let b = [basis.clone()];
+
+                    if let Some(ref mut derivs) = derivs_per_basis {
+                        // todo: We are copying some of our non-dirac awkward ordering mistakes...
+                        let diffs = SpinorDiffsTypeE3::from_bases(posit_sample, &b);
+
+                        derivs[basis_i].c0.dx[i][j][k] = diffs.c0.dx;
+                        derivs[basis_i].c0.dy[i][j][k] = diffs.c0.dy;
+                        derivs[basis_i].c0.dz[i][j][k] = diffs.c0.dz;
+
+                        derivs[basis_i].c1.dx[i][j][k] = diffs.c1.dx;
+                        derivs[basis_i].c1.dy[i][j][k] = diffs.c1.dy;
+                        derivs[basis_i].c1.dz[i][j][k] = diffs.c1.dz;
+
+                        derivs[basis_i].c2.dx[i][j][k] = diffs.c2.dx;
+                        derivs[basis_i].c2.dy[i][j][k] = diffs.c2.dy;
+                        derivs[basis_i].c2.dz[i][j][k] = diffs.c2.dz;
+
+                        derivs[basis_i].c3.dx[i][j][k] = diffs.c3.dx;
+                        derivs[basis_i].c3.dy[i][j][k] = diffs.c3.dy;
+                        derivs[basis_i].c3.dz[i][j][k] = diffs.c3.dz;
+                    }
+
+                    add_to_norm(&mut norm[0], psi_per_basis[basis_i].c0[i][j][k]);
+                    add_to_norm(&mut norm[1], psi_per_basis[basis_i].c1[i][j][k]);
+                    add_to_norm(&mut norm[2], psi_per_basis[basis_i].c2[i][j][k]);
+                    add_to_norm(&mut norm[3], psi_per_basis[basis_i].c3[i][j][k]);
+                }
+            }
+        }
+
+        // todo: Come back to this / put it back.
+        // util::normalize_arr(&mut psi_per_basis[basis_i], norm);
+        //
+        // if derivs_per_basis.is_some() {
+        //     util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dx, norm);
+        //     util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dy, norm);
+        //     util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].dz, norm);
+        //
+        //     util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].d2x, norm);
+        //     util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].d2y, norm);
+        //     util::normalize_arr(&mut derivs_per_basis.as_mut().unwrap()[basis_i].d2z, norm);
+        //
+        //     util::normalize_arr(
+        //         &mut derivs_per_basis.as_mut().unwrap()[basis_i].d2_sum,
+        //         norm,
+        //     );
+        // }
     }
 }
 

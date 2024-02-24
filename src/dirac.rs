@@ -38,14 +38,17 @@
 
 use core::ops::{Add, Mul, Sub};
 
+use lin_alg::f64::Vec3;
 use na::{Matrix2, Matrix4};
 use nalgebra as na;
 
 use crate::{
+    basis_wfs::{Basis, Sto},
     complex_nums::{Cplx, IM},
     grid_setup,
     grid_setup::{Arr3d, Arr4d},
     iter_arr, iter_arr_4,
+    num_diff::{H, H_2, H_SQ},
 };
 
 // Matrix operators: alpha, beta, gamma. Gamma is 2x2. alpha and beta are (at least?) 4x4
@@ -55,6 +58,14 @@ const C1: Cplx = Cplx { real: 1., im: 0. };
 
 pub type SpinorVec = Vec<Vec<Vec<Vec<SpinorTypeB>>>>;
 pub type SpinorVec3 = Vec<Vec<Vec<SpinorTypeB>>>;
+
+#[derive(Clone)]
+pub struct BasisSpinor {
+    pub c0: Sto,
+    pub c1: Sto,
+    pub c2: Sto,
+    pub c3: Sto,
+}
 
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum Component {
@@ -66,6 +77,7 @@ pub(crate) enum Component {
 
 /// Todo: Figure out how to use this...
 /// A 4-component spinor wave function.
+/// /// Ordering: Psi component, index
 #[derive(Clone, Default)]
 pub struct Spinor {
     /// Matter, spin α
@@ -78,7 +90,7 @@ pub struct Spinor {
     pub c3: Arr4d,
 }
 
-/// Ignores T; using E. viable? Will try.
+/// Ordering: Psi component, index
 #[derive(Clone, Default)]
 pub struct Spinor3 {
     /// Matter, spin α
@@ -91,7 +103,7 @@ pub struct Spinor3 {
     pub c3: Arr3d,
 }
 
-/// Reversed index, component order.
+/// Ordering: Index, psi component
 #[derive(Clone, Default)]
 pub struct SpinorTypeB {
     pub c0: Cplx,
@@ -133,7 +145,7 @@ impl SpinorDiffs {
     // }
 }
 
-/// Ordering, outside in: μ, psi component, index
+/// Ordering, outside in: da, psi component, index
 #[derive(Clone, Default)]
 pub struct SpinorDiffs3 {
     pub dx: Spinor3,
@@ -151,7 +163,7 @@ impl SpinorDiffs3 {
     // }
 }
 
-/// Ordering, outside in: index, μ, psi component,
+/// Ordering, outside in: index, dμ, psi component,
 #[derive(Clone, Default)]
 pub struct SpinorDiffsTypeB {
     pub dt: SpinorTypeB,
@@ -160,7 +172,131 @@ pub struct SpinorDiffsTypeB {
     pub dz: SpinorTypeB,
 }
 
-/// Ordering, outside in: μ, index, psi component
+/// Ordering, outside in: index, da, psi component,
+#[derive(Clone, Default)]
+pub struct SpinorDiffsTypeB3 {
+    pub dx: SpinorTypeB,
+    pub dy: SpinorTypeB,
+    pub dz: SpinorTypeB,
+}
+
+#[derive(Default, Clone)]
+pub struct SpinorDiffsTypeE3Inner {
+    pub dx: Cplx,
+    pub dy: Cplx,
+    pub dz: Cplx,
+}
+
+/// Ordering, outside in: index, psi component, da
+#[derive(Clone, Default)]
+pub struct SpinorDiffsTypeE3 {
+    pub c0: SpinorDiffsTypeE3Inner,
+    pub c1: SpinorDiffsTypeE3Inner,
+    pub c2: SpinorDiffsTypeE3Inner,
+    pub c3: SpinorDiffsTypeE3Inner,
+}
+
+impl SpinorDiffsTypeE3 {
+    /// C+P from `num_diff:DerivativesSingle::from_bases()`. This is nearly identical.
+    pub(crate) fn from_bases(posit_sample: Vec3, bases: &[BasisSpinor]) -> Self {
+        let mut result = Self::default();
+
+        let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
+        let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
+        let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
+        let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
+        let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
+        let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+
+        // for (psi_comp, basis) in &mut [
+        //     (&mut result.c0, &bases.c0),
+        //     (&mut result.c1, &bases.c1),
+        //     (&mut result.c2, &bases.c2),
+        //     (&mut result.c3, &bases.c3),
+        // ] {
+
+        // todo: Live with this DRY for now. Not sure how to fix it.
+        let mut psi_x_prev = Cplx::new_zero();
+        let mut psi_x_next = Cplx::new_zero();
+        let mut psi_y_prev = Cplx::new_zero();
+        let mut psi_y_next = Cplx::new_zero();
+        let mut psi_z_prev = Cplx::new_zero();
+        let mut psi_z_next = Cplx::new_zero();
+
+        for basis in bases {
+            psi_x_prev += basis.c0.value(x_prev);
+            psi_x_next += basis.c0.value(x_next);
+            psi_y_prev += basis.c0.value(y_prev);
+            psi_y_next += basis.c0.value(y_next);
+            psi_z_prev += basis.c0.value(z_prev);
+            psi_z_next += basis.c0.value(z_next);
+        }
+        result.c0.dx = (psi_x_next - psi_x_prev) / H_2;
+        result.c0.dy = (psi_y_next - psi_y_prev) / H_2;
+        result.c0.dz = (psi_z_next - psi_z_prev) / H_2;
+
+        let mut psi_x_prev = Cplx::new_zero();
+        let mut psi_x_next = Cplx::new_zero();
+        let mut psi_y_prev = Cplx::new_zero();
+        let mut psi_y_next = Cplx::new_zero();
+        let mut psi_z_prev = Cplx::new_zero();
+        let mut psi_z_next = Cplx::new_zero();
+
+        for basis in bases {
+            psi_x_prev += basis.c1.value(x_prev);
+            psi_x_next += basis.c1.value(x_next);
+            psi_y_prev += basis.c1.value(y_prev);
+            psi_y_next += basis.c1.value(y_next);
+            psi_z_prev += basis.c1.value(z_prev);
+            psi_z_next += basis.c1.value(z_next);
+        }
+        result.c1.dx = (psi_x_next - psi_x_prev) / H_2;
+        result.c1.dy = (psi_y_next - psi_y_prev) / H_2;
+        result.c1.dz = (psi_z_next - psi_z_prev) / H_2;
+
+        let mut psi_x_prev = Cplx::new_zero();
+        let mut psi_x_next = Cplx::new_zero();
+        let mut psi_y_prev = Cplx::new_zero();
+        let mut psi_y_next = Cplx::new_zero();
+        let mut psi_z_prev = Cplx::new_zero();
+        let mut psi_z_next = Cplx::new_zero();
+
+        for basis in bases {
+            psi_x_prev += basis.c2.value(x_prev);
+            psi_x_next += basis.c2.value(x_next);
+            psi_y_prev += basis.c2.value(y_prev);
+            psi_y_next += basis.c2.value(y_next);
+            psi_z_prev += basis.c2.value(z_prev);
+            psi_z_next += basis.c2.value(z_next);
+        }
+        result.c2.dx = (psi_x_next - psi_x_prev) / H_2;
+        result.c2.dy = (psi_y_next - psi_y_prev) / H_2;
+        result.c2.dz = (psi_z_next - psi_z_prev) / H_2;
+
+        let mut psi_x_prev = Cplx::new_zero();
+        let mut psi_x_next = Cplx::new_zero();
+        let mut psi_y_prev = Cplx::new_zero();
+        let mut psi_y_next = Cplx::new_zero();
+        let mut psi_z_prev = Cplx::new_zero();
+        let mut psi_z_next = Cplx::new_zero();
+
+        for basis in bases {
+            psi_x_prev += basis.c3.value(x_prev);
+            psi_x_next += basis.c3.value(x_next);
+            psi_y_prev += basis.c3.value(y_prev);
+            psi_y_next += basis.c3.value(y_next);
+            psi_z_prev += basis.c3.value(z_prev);
+            psi_z_next += basis.c3.value(z_next);
+        }
+        result.c3.dx = (psi_x_next - psi_x_prev) / H_2;
+        result.c3.dy = (psi_y_next - psi_y_prev) / H_2;
+        result.c3.dz = (psi_z_next - psi_z_prev) / H_2;
+
+        result
+    }
+}
+
+/// Ordering, outside in: dμ, index, psi component
 #[derive(Clone)]
 pub struct SpinorDiffsTypeC {
     pub dt: SpinorVec,
@@ -169,7 +305,7 @@ pub struct SpinorDiffsTypeC {
     pub dz: SpinorVec,
 }
 
-/// Ordering, outside in: a, index, psi component
+/// Ordering, outside in: da, index, psi component
 #[derive(Clone)]
 pub struct SpinorDiffsTypeC3 {
     pub dx: SpinorVec3,
@@ -177,17 +313,44 @@ pub struct SpinorDiffsTypeC3 {
     pub dz: SpinorVec3,
 }
 
-impl SpinorDiffsTypeC3 {
-    // pub fn new(psi: &Spinor) -> Self {
-    //     let n = psi.c0.len();
-    //     let data = grid_setup::new_data(n);
-    //
-    //     let mut result = Self {
-    //         dx:
-    //     };
-    //
-    //     result
-    // }
+/// Ordering, outside in: psi component, dμ, index
+#[derive(Clone, Default)]
+pub struct SpinorDiffsTypeDInner {
+    pub dt: Arr4d,
+    pub dx: Arr4d,
+    pub dy: Arr4d,
+    pub dz: Arr4d,
+}
+
+/// Ordering, outside in: psi component, da, index
+#[derive(Clone, Default)]
+pub struct SpinorDiffsTypeDInner3 {
+    pub dx: Arr3d,
+    pub dy: Arr3d,
+    pub dz: Arr3d,
+}
+
+/// Ordering, outside in: psi component, dμ, index,
+#[derive(Clone)]
+pub struct SpinorDiffsTypeD {
+    pub c0: SpinorDiffsTypeDInner,
+    pub c1: SpinorDiffsTypeDInner,
+    pub c2: SpinorDiffsTypeDInner,
+    pub c3: SpinorDiffsTypeDInner,
+}
+
+/// Ordering, outside in: psi component, da, index,
+#[derive(Clone)]
+pub struct SpinorDerivsTypeD3 {
+    pub c0: SpinorDiffsTypeDInner3,
+    pub c1: SpinorDiffsTypeDInner3,
+    pub c2: SpinorDiffsTypeDInner3,
+    pub c3: SpinorDiffsTypeDInner3,
+}
+
+impl SpinorDerivsTypeD3 {
+    /// Update self using psi values. (Replaces existing content.)
+    pub fn from_bases(&mut self, posit_sample: Vec3, bases: &[BasisSpinor]) {}
 }
 
 impl Spinor {
@@ -486,7 +649,7 @@ fn a() {
         sigma3[(1, 1)], sigma3[(1, 2)], 0., 0.,
         sigma3[(2, 1)], sigma3[(2, 2)], 0., 0.
     );
-    
+
     let beta: Matrix4<f64> = Matrix4::new(
         1., 0., 0., 0.,
         0., 1., 0., 0.,
