@@ -144,7 +144,6 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
         Some(spinor_derivs),
         &state.bases_spinor[ae],
         &state.surfaces_shared.grid_posits,
-        state.deriv_calc,
     );
 
     wf_ops::wf_from_bases(

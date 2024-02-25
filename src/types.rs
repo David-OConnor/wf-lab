@@ -7,17 +7,9 @@ use lin_alg::f64::Vec3;
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    dirac::{
-        Spinor, Spinor3, SpinorDerivs3, SpinorDerivsTypeD3, SpinorDiffs, SpinorDiffsTypeB,
-        SpinorDiffsTypeC, SpinorDiffsTypeC3, SpinorDiffsTypeDInner3, SpinorTypeB, SpinorVec,
-        SpinorVec3,
-    },
+    dirac::{Spinor3, SpinorDerivsTypeD3, SpinorDiffsTypeDInner3},
     elec_elec::WaveFunctionMultiElec,
-    grid_setup::{
-        self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dDeriv, Arr3dReal, Arr3dVec,
-    },
-    iter_arr_4, num_diff,
-    num_diff::H,
+    grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
     wf_ops,
     wf_ops::{DerivCalc, Spin},
 };
@@ -300,7 +292,8 @@ impl SurfacesPerElec {
             psi_fm_Lz: data,
             spinor: Spinor3::new(grid_n),
             spinor_calc: Spinor3::new(grid_n),
-            spinor_derivs: SpinorDerivs3::default(),
+            // todo: This is likely wrong; need to populate with grid_n.
+            spinor_derivs: SpinorDerivsTypeD3::new(grid_n),
             spinor_per_basis,
             spinor_derivs_per_basis,
             E_dirac: (0., 0., 0., 0.),

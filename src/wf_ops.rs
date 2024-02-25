@@ -435,53 +435,102 @@ pub fn mix_bases_spinor(
     // todo: Experiment with this API A/R
 ) {
     // todo: GPU option?
-    let mut norm = 0.;
+    let mut norm = [0.; 4];
     let grid_n = psi.c0.len();
 
+    // todo: Like with spinor ops in the above fn, this is repetative/DRY.
     for (i, j, k) in iter_arr!(grid_n) {
-        psi[i][j][k] = Cplx::new_zero();
+        psi.c0[i][j][k] = Cplx::new_zero();
+        psi.c1[i][j][k] = Cplx::new_zero();
+        psi.c2[i][j][k] = Cplx::new_zero();
+        psi.c3[i][j][k] = Cplx::new_zero();
+
         if let Some(d) = derivs.as_mut() {
             // todo: This is avoidable by a reversed Derivatives struct.
-            d.dx[i][j][k] = Cplx::new_zero();
-            d.dy[i][j][k] = Cplx::new_zero();
-            d.dz[i][j][k] = Cplx::new_zero();
-            d.d2x[i][j][k] = Cplx::new_zero();
-            d.d2y[i][j][k] = Cplx::new_zero();
-            d.d2z[i][j][k] = Cplx::new_zero();
-            d.d2_sum[i][j][k] = Cplx::new_zero();
-
-            // d.d2_sum[i][j][k] = Cplx::new_zero();
+            d.c0.dx[i][j][k] = Cplx::new_zero();
+            d.c0.dy[i][j][k] = Cplx::new_zero();
+            d.c0.dz[i][j][k] = Cplx::new_zero();
+            d.c1.dx[i][j][k] = Cplx::new_zero();
+            d.c1.dy[i][j][k] = Cplx::new_zero();
+            d.c1.dz[i][j][k] = Cplx::new_zero();
+            d.c2.dx[i][j][k] = Cplx::new_zero();
+            d.c2.dy[i][j][k] = Cplx::new_zero();
+            d.c2.dz[i][j][k] = Cplx::new_zero();
+            d.c3.dx[i][j][k] = Cplx::new_zero();
+            d.c3.dy[i][j][k] = Cplx::new_zero();
+            d.c3.dz[i][j][k] = Cplx::new_zero();
         }
 
         for (i_basis, weight) in weights.iter().enumerate() {
             let scaler = *weight;
 
-            psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
+            psi.c0[i][j][k] += psi_per_basis[i_basis].c0[i][j][k] * scaler;
+            psi.c1[i][j][k] += psi_per_basis[i_basis].c1[i][j][k] * scaler;
+            psi.c2[i][j][k] += psi_per_basis[i_basis].c2[i][j][k] * scaler;
+            psi.c3[i][j][k] += psi_per_basis[i_basis].c3[i][j][k] * scaler;
 
             if let Some(d) = derivs.as_mut() {
-                // d.d2_sum[i][j][k] +=
-                //     derivs_per_basis.as_ref().unwrap()[i_basis].d2_sum[i][j][k] * scaler;
-                // todo: This is avoidable by a reversed Derivatives struct.
-                d.dx[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].dx[i][j][k] * scaler;
-                d.dy[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].dy[i][j][k] * scaler;
-                d.dz[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].dz[i][j][k] * scaler;
-                d.d2x[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].d2x[i][j][k] * scaler;
-                d.d2y[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].d2y[i][j][k] * scaler;
-                d.d2z[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].d2z[i][j][k] * scaler;
-                d.d2_sum[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].d2_sum[i][j][k] * scaler;
+                d.c0.dx[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c0.dx[i][j][k] * scaler;
+                d.c0.dy[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c0.dy[i][j][k] * scaler;
+                d.c0.dz[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c0.dz[i][j][k] * scaler;
+
+                d.c1.dx[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c1.dx[i][j][k] * scaler;
+                d.c1.dy[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c1.dy[i][j][k] * scaler;
+                d.c1.dz[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c1.dz[i][j][k] * scaler;
+
+                d.c2.dx[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c2.dx[i][j][k] * scaler;
+                d.c2.dy[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c2.dy[i][j][k] * scaler;
+                d.c2.dz[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c2.dz[i][j][k] * scaler;
+
+                d.c3.dx[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c3.dx[i][j][k] * scaler;
+                d.c3.dy[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c3.dy[i][j][k] * scaler;
+                d.c3.dz[i][j][k] +=
+                    derivs_per_basis.as_ref().unwrap()[i_basis].c3.dz[i][j][k] * scaler;
             }
         }
 
-        let abs_sq = psi[i][j][k].abs_sq();
-        if abs_sq < MAX_PSI_FOR_NORM {
-            norm += abs_sq; // todo: Handle norm on GPU?
+        // todo: Four separate abs_sqs like this?
+        let abs_sq_0 = psi.c0[i][j][k].abs_sq();
+        let abs_sq_1 = psi.c1[i][j][k].abs_sq();
+        let abs_sq_2 = psi.c2[i][j][k].abs_sq();
+        let abs_sq_3 = psi.c3[i][j][k].abs_sq();
+
+        // todo: A/R
+        if abs_sq_0 < MAX_PSI_FOR_NORM {
+            norm[0] += abs_sq_0; // todo: Handle norm on GPU?
         } else {
-            println!("Exceeded norm thresh in mix: {:?}", abs_sq);
+            println!("Exceeded norm thresh in mix: {:?}", abs_sq_0);
+        }
+        if abs_sq_1 < MAX_PSI_FOR_NORM {
+            norm[1] += abs_sq_1; // todo: Handle norm on GPU?
+        } else {
+            println!("Exceeded norm thresh in mix: {:?}", abs_sq_1);
+        }
+        if abs_sq_2 < MAX_PSI_FOR_NORM {
+            norm[2] += abs_sq_2; // todo: Handle norm on GPU?
+        } else {
+            println!("Exceeded norm thresh in mix: {:?}", abs_sq_2);
+        }
+        if abs_sq_3 < MAX_PSI_FOR_NORM {
+            norm[3] += abs_sq_3; // todo: Handle norm on GPU?
+        } else {
+            println!("Exceeded norm thresh in mix: {:?}", abs_sq_3);
         }
     }
 
-    util::normalize_arr(psi, norm);
+    // todo
+    // util::normalize_arr(psi, norm);
     // if derivs.is_some() {
     //     util::normalize_arr(&mut derivs.as_mut().unwrap().dx, norm);
     //     util::normalize_arr(&mut derivs.as_mut().unwrap().dy, norm);
@@ -495,13 +544,15 @@ pub fn mix_bases_spinor(
     // }
 
     // Update charge density as well, from this electron's wave function.
-    if charge_density.is_some() {
-        charge_from_psi(
-            charge_density.as_mut().unwrap(),
-            psi,
-            grid_n, // Render; not charge grid.
-        )
-    }
+
+    // todo
+    // if charge_density.is_some() {
+    //     charge_from_psi(
+    //         charge_density.as_mut().unwrap(),
+    //         psi,
+    //         grid_n, // Render; not charge grid.
+    //     )
+    // }
 }
 
 /// Convert an array of ψ to one of electron charge, through space. This is used to calculate potential

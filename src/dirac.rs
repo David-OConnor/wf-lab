@@ -43,12 +43,12 @@ use na::{Matrix2, Matrix4};
 use nalgebra as na;
 
 use crate::{
-    basis_wfs::{Basis, Sto},
+    basis_wfs::Sto,
     complex_nums::{Cplx, IM},
     grid_setup,
     grid_setup::{Arr3d, Arr4d},
     iter_arr, iter_arr_4,
-    num_diff::{H, H_2, H_SQ},
+    num_diff::{H, H_2},
 };
 
 // Matrix operators: alpha, beta, gamma. Gamma is 2x2. alpha and beta are (at least?) 4x4
@@ -332,6 +332,18 @@ pub struct SpinorDiffsTypeDInner3 {
     pub dz: Arr3d,
 }
 
+impl SpinorDiffsTypeDInner3 {
+    pub fn new(n: usize) -> Self {
+        let data = grid_setup::new_data(n);
+
+        Self {
+            dx: data.clone(),
+            dy: data.clone(),
+            dz: data,
+        }
+    }
+}
+
 /// Ordering, outside in: psi component, dμ, index,
 /// Note that this is similar to `types::Derivatives`, but with an additional outer layer
 /// for the psi components.
@@ -346,7 +358,7 @@ pub struct SpinorDiffsTypeD {
 /// Ordering, outside in: psi component, da, index,
 /// Note that this is similar to `types::Derivatives`, but with an additional outer layer
 /// for the psi components.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SpinorDerivsTypeD3 {
     pub c0: SpinorDiffsTypeDInner3,
     pub c1: SpinorDiffsTypeDInner3,
@@ -357,6 +369,17 @@ pub struct SpinorDerivsTypeD3 {
 impl SpinorDerivsTypeD3 {
     /// Update self using psi values. (Replaces existing content.)
     pub fn from_bases(&mut self, posit_sample: Vec3, bases: &[BasisSpinor]) {}
+
+    pub fn new(n: usize) -> Self {
+        let data = SpinorDiffsTypeDInner3::new(n);
+
+        Self {
+            c0: data.clone(),
+            c1: data.clone(),
+            c2: data.clone(),
+            c3: data,
+        }
+    }
 }
 
 impl Spinor {
