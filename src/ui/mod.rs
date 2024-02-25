@@ -937,11 +937,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 if updated_E_or_V {
                     procedures::update_E_or_V(
-                        // &mut state.eval_data_per_elec[ae],
                         &mut state.surfaces_per_elec[ae],
                         &state.surfaces_shared.V_from_nuclei,
-                        // state.eval_data_shared.grid_n,
-                        state.grid_n_render,
                         state.surfaces_shared.E,
                         &state.surfaces_shared.grid_posits,
                     );

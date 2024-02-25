@@ -127,14 +127,14 @@ impl Spinor3 {
 
 /// Ordering, outside in: μ, psi component, index
 #[derive(Clone, Default)]
-pub struct SpinorDiffs {
+pub struct SpinorDerivs {
     pub dt: Spinor,
     pub dx: Spinor,
     pub dy: Spinor,
     pub dz: Spinor,
 }
 
-impl SpinorDiffs {
+impl SpinorDerivs {
     // pub fn new(spinor: &Spinor, grid_spacing: f64) -> Self {
     //     Self {
     //         dt: spinor.differentiate(spinor, Component::T, grid_spacing),
@@ -165,7 +165,7 @@ impl SpinorDerivs3 {
 
 /// Ordering, outside in: index, dμ, psi component,
 #[derive(Clone, Default)]
-pub struct SpinorDiffsTypeB {
+pub struct SpinorDerivsTypeB {
     pub dt: SpinorTypeB,
     pub dx: SpinorTypeB,
     pub dy: SpinorTypeB,
@@ -174,14 +174,14 @@ pub struct SpinorDiffsTypeB {
 
 /// Ordering, outside in: index, da, psi component,
 #[derive(Clone, Default)]
-pub struct SpinorDiffsTypeB3 {
+pub struct SpinorDerivsTypeB3 {
     pub dx: SpinorTypeB,
     pub dy: SpinorTypeB,
     pub dz: SpinorTypeB,
 }
 
 #[derive(Default, Clone)]
-pub struct SpinorDiffsTypeE3Inner {
+pub struct SpinorDerivsTypeE3Inner {
     pub dx: Cplx,
     pub dy: Cplx,
     pub dz: Cplx,
@@ -189,14 +189,14 @@ pub struct SpinorDiffsTypeE3Inner {
 
 /// Ordering, outside in: index, psi component, da
 #[derive(Clone, Default)]
-pub struct SpinorDiffsTypeE3 {
-    pub c0: SpinorDiffsTypeE3Inner,
-    pub c1: SpinorDiffsTypeE3Inner,
-    pub c2: SpinorDiffsTypeE3Inner,
-    pub c3: SpinorDiffsTypeE3Inner,
+pub struct SpinorDerivsTypeE3 {
+    pub c0: SpinorDerivsTypeE3Inner,
+    pub c1: SpinorDerivsTypeE3Inner,
+    pub c2: SpinorDerivsTypeE3Inner,
+    pub c3: SpinorDerivsTypeE3Inner,
 }
 
-impl SpinorDiffsTypeE3 {
+impl SpinorDerivsTypeE3 {
     /// C+P from `num_diff:DerivativesSingle::from_bases()`. This is nearly identical.
     pub(crate) fn from_bases(posit_sample: Vec3, bases: &[BasisSpinor]) -> Self {
         let mut result = Self::default();
@@ -298,7 +298,7 @@ impl SpinorDiffsTypeE3 {
 
 /// Ordering, outside in: dμ, index, psi component
 #[derive(Clone)]
-pub struct SpinorDiffsTypeC {
+pub struct SpinorDerivsTypeC {
     pub dt: SpinorVec,
     pub dx: SpinorVec,
     pub dy: SpinorVec,
@@ -307,7 +307,7 @@ pub struct SpinorDiffsTypeC {
 
 /// Ordering, outside in: da, index, psi component
 #[derive(Clone)]
-pub struct SpinorDiffsTypeC3 {
+pub struct SpinorDerivsTypeC3 {
     pub dx: SpinorVec3,
     pub dy: SpinorVec3,
     pub dz: SpinorVec3,
@@ -316,7 +316,7 @@ pub struct SpinorDiffsTypeC3 {
 /// Ordering, outside in: psi component, dμ, index
 /// Note that this is similar to `types::Derivatives`
 #[derive(Clone, Default)]
-pub struct SpinorDiffsTypeDInner {
+pub struct SpinorDerivsTypeDInner {
     pub dt: Arr4d,
     pub dx: Arr4d,
     pub dy: Arr4d,
@@ -326,13 +326,13 @@ pub struct SpinorDiffsTypeDInner {
 /// Ordering, outside in: psi component, da, index
 /// Note that this is similar to `types::Derivatives`
 #[derive(Clone, Default)]
-pub struct SpinorDiffsTypeDInner3 {
+pub struct SpinorDerivsTypeDInner3 {
     pub dx: Arr3d,
     pub dy: Arr3d,
     pub dz: Arr3d,
 }
 
-impl SpinorDiffsTypeDInner3 {
+impl SpinorDerivsTypeDInner3 {
     pub fn new(n: usize) -> Self {
         let data = grid_setup::new_data(n);
 
@@ -348,11 +348,11 @@ impl SpinorDiffsTypeDInner3 {
 /// Note that this is similar to `types::Derivatives`, but with an additional outer layer
 /// for the psi components.
 #[derive(Clone)]
-pub struct SpinorDiffsTypeD {
-    pub c0: SpinorDiffsTypeDInner,
-    pub c1: SpinorDiffsTypeDInner,
-    pub c2: SpinorDiffsTypeDInner,
-    pub c3: SpinorDiffsTypeDInner,
+pub struct SpinorDerivsTypeD {
+    pub c0: SpinorDerivsTypeDInner,
+    pub c1: SpinorDerivsTypeDInner,
+    pub c2: SpinorDerivsTypeDInner,
+    pub c3: SpinorDerivsTypeDInner,
 }
 
 /// Ordering, outside in: psi component, da, index,
@@ -360,10 +360,10 @@ pub struct SpinorDiffsTypeD {
 /// for the psi components.
 #[derive(Clone, Default)]
 pub struct SpinorDerivsTypeD3 {
-    pub c0: SpinorDiffsTypeDInner3,
-    pub c1: SpinorDiffsTypeDInner3,
-    pub c2: SpinorDiffsTypeDInner3,
-    pub c3: SpinorDiffsTypeDInner3,
+    pub c0: SpinorDerivsTypeDInner3,
+    pub c1: SpinorDerivsTypeDInner3,
+    pub c2: SpinorDerivsTypeDInner3,
+    pub c3: SpinorDerivsTypeDInner3,
 }
 
 impl SpinorDerivsTypeD3 {
@@ -371,7 +371,7 @@ impl SpinorDerivsTypeD3 {
     pub fn from_bases(&mut self, posit_sample: Vec3, bases: &[BasisSpinor]) {}
 
     pub fn new(n: usize) -> Self {
-        let data = SpinorDiffsTypeDInner3::new(n);
+        let data = SpinorDerivsTypeDInner3::new(n);
 
         Self {
             c0: data.clone(),
@@ -689,47 +689,43 @@ fn a() {
 
 /// Calculate what psi should be, based on its derivatives, E, and V
 /// todo: Other forms, ie this rearranged too
-// pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffs, E: [f64; 4], V: [f64; 4]) {
-// pub fn calc_psi(result: &mut Spinor, diffs: &SpinorDiffsType2, E: [f64; 4], V: [f64; 4]) {
-pub fn calc_psi(result: &mut Spinor3, diffs: &SpinorDiffsTypeC3, E: [f64; 4], V: [f64; 4]) {
-    let n = result.c0.len();
+/// This is similar to the functions found in the `eigen_fns` module.
+pub fn calc_psi(psi_calc: &mut Spinor3, derivs: &SpinorDerivsTypeD3, E: [f64; 4], V: [f64; 4]) {
+    let n = psi_calc.c0.len();
 
-    // todo: 3D A/R if using E.
+    let dt0 = -IM * (E[0] - V[0]);
+    let dt1 = -IM * (E[1] - V[1]);
+    let dt2 = -IM * (E[2] - V[2]);
+    let dt3 = -IM * (E[3] - V[3]);
+
     // for (i, j, k, l) in iter_arr_4!(n) {
     for (i, j, k) in iter_arr!(n) {
         // Code simplifiers
+        let c0 = &derivs.c0;
+        let c1 = &derivs.c1;
+        let c2 = &derivs.c2;
+        let c3 = &derivs.c3;
 
-        // todo: Your diffs struct is backwards. Needs to be d_mu, index, component
-        // todo: is ucrrent d_mu, component, index.
-        // todo maybe. (edit: Fixed with Type3[3].
-        // let dt = &diffs.dt[i][j][k][l];
-        // let dx = &diffs.dx[i][j][k][l];
-        // let dy = &diffs.dy[i][j][k][l];
-        // let dz = &diffs.dz[i][j][k][l];
+        let c0_dx = c0.dx[i][j][k];
+        let c0_dy = c0.dy[i][j][k];
+        let c0_dz = c0.dz[i][j][k];
 
-        let dx = &diffs.dx[i][j][k];
-        let dy = &diffs.dy[i][j][k];
-        let dz = &diffs.dz[i][j][k];
+        let c1_dx = c1.dx[i][j][k];
+        let c1_dy = c1.dy[i][j][k];
+        let c1_dz = c1.dz[i][j][k];
 
-        // let dt0 = dt.c0;
-        // let dt1 = dt.c1;
-        // let dt2 = dt.c2;
-        // let dt3 = dt.c3;
+        let c2_dx = c2.dx[i][j][k];
+        let c2_dy = c2.dy[i][j][k];
+        let c2_dz = c2.dz[i][j][k];
 
-        let dt0 = -IM * (E[0] - V[0]);
-        let dt1 = -IM * (E[1] - V[1]);
-        let dt2 = -IM * (E[2] - V[2]);
-        let dt3 = -IM * (E[3] - V[3]);
-        //
-        // result.c0[i][j][k][l] = dt0 - dx.c3 + IM * dy.c3 - dz.c2;
-        // result.c1[i][j][k][l] = dt1 - dx.c2 - IM * dy.c2 + dz.c3;
-        // result.c2[i][j][k][l] = -dt2 + dx.c1 - IM * dy.c1 + dz.c0;
-        // result.c3[i][j][k][l] = -dt3 + dx.c0 + IM * dy.c0 - dz.c1;
+        let c3_dx = c3.dx[i][j][k];
+        let c3_dy = c3.dy[i][j][k];
+        let c3_dz = c3.dz[i][j][k];
 
-        result.c0[i][j][k] = dt0 - dx.c3 + IM * dy.c3 - dz.c2;
-        result.c1[i][j][k] = dt1 - dx.c2 - IM * dy.c2 + dz.c3;
-        result.c2[i][j][k] = -dt2 + dx.c1 - IM * dy.c1 + dz.c0;
-        result.c3[i][j][k] = -dt3 + dx.c0 + IM * dy.c0 - dz.c1;
+        psi_calc.c0[i][j][k] = dt0 - c3_dx + IM * c3_dy - c2_dz;
+        psi_calc.c1[i][j][k] = dt1 - c2_dx - IM * c2_dy + c3_dz;
+        psi_calc.c2[i][j][k] = -dt2 + c1_dx - IM * c1_dy + c0_dz;
+        psi_calc.c3[i][j][k] = -dt3 + c0_dx + IM * c0_dy - c1_dz;
     }
 }
 

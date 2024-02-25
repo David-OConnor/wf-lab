@@ -5,6 +5,7 @@ use graphics::{EngineUpdates, Scene};
 
 use crate::{
     basis_finder,
+    dirac::{Spinor3, SpinorDerivsTypeD3},
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     potential, render,
     types::SurfacesPerElec,
@@ -14,9 +15,7 @@ use crate::{
 pub fn update_E_or_V(
     sfcs: &mut SurfacesPerElec,
     V_from_nuclei: &Arr3dReal,
-    grid_n_render: usize,
     E: f64,
-    // for p eigen
     grid_posits: &Arr3dVec,
 ) {
     wf_ops::update_eigen_vals(
@@ -25,16 +24,19 @@ pub fn update_E_or_V(
         &mut sfcs.psi_pp_calculated,
         &sfcs.psi,
         &sfcs.derivs,
-        // &sfcs.psi_pp_div_psi_evaluated,
         &sfcs.V_acting_on_this,
         E,
         V_from_nuclei,
         grid_posits,
         &mut sfcs.psi_fm_L2,
         &mut sfcs.psi_fm_Lz,
+    );
+
+    wf_ops::update_eigen_vals_spinor(
         &mut sfcs.spinor_calc,
-        &sfcs.spinor,
         &sfcs.spinor_derivs,
+        [E; 4],  // todo temp
+        [0.; 4], // todo temp
     );
 }
 
@@ -75,16 +77,19 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &mut sfcs.psi_pp_calculated,
         &sfcs.psi,
         &sfcs.derivs,
-        // &sfcs.psi_pp_div_psi_evaluated,
         &sfcs.V_acting_on_this,
         state.surfaces_shared.E,
         &state.surfaces_shared.V_from_nuclei,
         &state.surfaces_shared.grid_posits,
         &mut sfcs.psi_fm_L2,
         &mut sfcs.psi_fm_Lz,
+    );
+
+    wf_ops::update_eigen_vals_spinor(
         &mut sfcs.spinor_calc,
-        &sfcs.spinor,
-        &sfcs.spinor_derivs,
+        spinor_derivs,
+        [-0.5; 4], // todo temp
+        [0.; 4],   // todo temp
     );
 
     // // For now, we are setting the V elec that must be acting on this WF if it were to be valid.

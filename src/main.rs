@@ -299,7 +299,6 @@ pub fn init_from_grid(
             psi,
             Some(charge_density),
             Some(psi_pp),
-            // Some(psi_pp_div_psi),
             &sfcs.psi_per_basis,
             Some(&sfcs.derivs_per_basis),
             &weights,
@@ -327,9 +326,13 @@ pub fn init_from_grid(
             &surfaces_shared.grid_posits,
             &mut sfcs.psi_fm_L2,
             &mut sfcs.psi_fm_Lz,
+        );
+
+        wf_ops::update_eigen_vals_spinor(
             &mut sfcs.spinor_calc,
-            &sfcs.spinor,
-            &sfcs.spinor_derivs,
+            spinor_derivs,
+            [-0.5; 4], // todo temp
+            [0.; 4],   // todo temp
         );
 
         let mut psi_charge = Vec::new();
@@ -443,6 +446,11 @@ fn main() {
     }
 
     wf_ops::initialize_bases(&mut bases_per_elec[ui_active_elec], &nuclei, max_basis_n);
+    wf_ops::initialize_bases_spinor(
+        &mut bases_per_elec_spinor[ui_active_elec],
+        &nuclei,
+        max_basis_n,
+    );
 
     // todo: This is getting weird re multiple electrons; perhaps you should switch
     // todo an approach where bases don't have weights, but you use a separate

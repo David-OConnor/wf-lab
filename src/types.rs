@@ -7,7 +7,7 @@ use lin_alg::f64::Vec3;
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    dirac::{Spinor3, SpinorDerivsTypeD3, SpinorDiffsTypeDInner3},
+    dirac::{Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeDInner3},
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
     wf_ops,
@@ -235,7 +235,7 @@ impl SurfacesPerElec {
         let data_real = new_data_real(grid_n);
         let derivs = Derivatives::new(grid_n);
 
-        let spinor_d_inner = SpinorDiffsTypeDInner3 {
+        let spinor_d_inner = SpinorDerivsTypeDInner3 {
             dx: data.clone(),
             dy: data.clone(),
             dz: data.clone(),

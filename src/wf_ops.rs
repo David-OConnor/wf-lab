@@ -31,9 +31,10 @@ use crate::{
     angular_p,
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
+    dirac,
     dirac::{
-        BasisSpinor, Component, Spinor3, SpinorDerivs3, SpinorDerivsTypeD3, SpinorDiffsTypeB3,
-        SpinorDiffsTypeC3, SpinorDiffsTypeDInner3, SpinorDiffsTypeE3,
+        BasisSpinor, Component, Spinor3, SpinorDerivs3, SpinorDerivsTypeB3, SpinorDerivsTypeC3,
+        SpinorDerivsTypeD3, SpinorDerivsTypeDInner3, SpinorDerivsTypeE3,
     },
     eigen_fns::{self},
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
@@ -90,11 +91,6 @@ pub fn initialize_bases(
     charges_fixed: &[(Vec3, f64)],
     max_n: u16, // quantum number n
 ) {
-    // let mut prev_weights = Vec::new();
-    // for basis in bases.iter() {
-    //     prev_weights.push(basis.weight());
-    // }
-
     *bases = Vec::new();
 
     // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
@@ -129,6 +125,53 @@ pub fn initialize_bases(
                     charge_id,
                     harmonic: Default::default(),
                 }));
+            }
+        }
+    }
+}
+
+pub fn initialize_bases_spinor(
+    bases: &mut Vec<BasisSpinor>,
+    charges_fixed: &[(Vec3, f64)],
+    max_n: u16, // quantum number n
+) {
+    *bases = Vec::new();
+
+    // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
+    // todo for now as a kludge to preserve weights, we copy the prev weights.
+    for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
+        // See Sebens, for weights under equation 24; this is for Helium.
+
+        for (xi, weight) in [
+            (1., 0.7),
+            (2., 0.),
+            (3., 0.),
+            (4., 0.),
+            (5., 0.),
+            (6., 0.),
+            (7., 0.),
+        ] {
+            for n in 1..max_n + 1 {
+                let sto = Sto {
+                    posit: *nuc_posit,
+                    n,
+                    xi,
+                    weight,
+                    charge_id,
+                    harmonic: Default::default(),
+                };
+
+                let mut sto_zero = sto.clone();
+                sto_zero.weight = 0.;
+                let mut sto_neg = sto.clone();
+                sto_neg.weight = -sto.weight;
+
+                bases.push(BasisSpinor {
+                    c0: sto,
+                    c1: sto_zero.clone(),
+                    c2: sto_zero,
+                    c3: sto_neg,
+                });
             }
         }
     }
@@ -298,7 +341,7 @@ pub fn wf_from_bases_spinor(
 
                     if let Some(ref mut derivs) = derivs_per_basis {
                         // todo: We are copying some of our non-dirac awkward ordering mistakes...
-                        let diffs = SpinorDiffsTypeE3::from_bases(posit_sample, &b);
+                        let diffs = SpinorDerivsTypeE3::from_bases(posit_sample, &b);
 
                         derivs[basis_i].c0.dx[i][j][k] = diffs.c0.dx;
                         derivs[basis_i].c0.dy[i][j][k] = diffs.c0.dy;
@@ -677,7 +720,6 @@ pub fn _calculate_v_elec(
 
     for (i, j, k) in iter_arr!(grid_n) {
         // todo: experimenting
-        // V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], psi_pp[i][j][k], E);
         V_total[i][j][k] = eigen_fns::calc_V_on_psi2(psi_pp_div_psi[i][j][k], E);
         V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
     }
@@ -692,9 +734,7 @@ pub fn update_eigen_vals(
     V_total: &mut Arr3dReal,
     psi_pp_calculated: &mut Arr3d,
     psi: &Arr3d,
-    // psi_pp: &Arr3d,
     derivs: &Derivatives,
-    // psi_pp_div_psi: &Arr3dReal, // todo: Experimenting
     V_acting_on_this: &Arr3dReal,
     E: f64,
     V_nuc: &Arr3dReal,
@@ -702,9 +742,6 @@ pub fn update_eigen_vals(
     grid_posits: &Arr3dVec,
     L_sq: &mut Arr3d,
     L_z: &mut Arr3d,
-    spinor_calc: &mut Spinor3,
-    spinor: &Spinor3,
-    spinor_derivs: &SpinorDerivsTypeD3,
 ) {
     let grid_n = psi.len();
 
@@ -729,6 +766,18 @@ pub fn update_eigen_vals(
         psi_pp_calculated[i][j][k] =
             eigen_fns::find_ψ_pp_calc(psi[i][j][k], V_acting_on_this[i][j][k], E)
     }
+}
+
+/// For now, a thin wrapper.
+/// todo: When do we use this, vice `calcualte_v_elec`?
+pub fn update_eigen_vals_spinor(
+    psi_calc: &mut Spinor3,
+    derivs: &SpinorDerivsTypeD3,
+    E: [f64; 4],
+    V: [f64; 4],
+) {
+    // todo: For now, a thin wrapper.
+    dirac::calc_psi(psi_calc, derivs, E, V);
 }
 
 /// Calculate E using the bases save functions. We assume V goes to 0 at +/- ∞, so
