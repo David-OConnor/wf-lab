@@ -147,13 +147,13 @@ impl SpinorDiffs {
 
 /// Ordering, outside in: da, psi component, index
 #[derive(Clone, Default)]
-pub struct SpinorDiffs3 {
+pub struct SpinorDerivs3 {
     pub dx: Spinor3,
     pub dy: Spinor3,
     pub dz: Spinor3,
 }
 
-impl SpinorDiffs3 {
+impl SpinorDerivs3 {
     // pub fn new(spinor: &Spinor3, grid_spacing: f64) -> Self {
     //     Self {
     //         dx: spinor.differentiate(spinor, Component::X, grid_spacing),

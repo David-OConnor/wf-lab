@@ -153,6 +153,7 @@ pub struct State {
     /// Wave functions, with weights. Per-electron. (Outer Vec iterates over electrons; inner over
     /// bases per-electron)
     pub bases: Vec<Vec<Basis>>,
+    pub bases_spinor: Vec<Vec<BasisSpinor>>,
     /// Similar to `bases_evaluated`, but on the charge grid. We don't need diffs for this.
     /// Outer is per-electron. Inner is per-basis
     pub psi_charge: Vec<Vec<Arr3d>>,
@@ -427,9 +428,11 @@ fn main() {
 
     // Outer of these is per-elec.
     let mut bases_per_elec = Vec::new();
+    let mut bases_per_elec_spinor = Vec::new();
 
     for _ in 0..num_elecs {
         bases_per_elec.push(Vec::new());
+        bases_per_elec_spinor.push(Vec::new());
     }
 
     wf_ops::initialize_bases(&mut bases_per_elec[ui_active_elec], &nuclei, max_basis_n);
@@ -470,6 +473,7 @@ fn main() {
             grid_n,
             grid_n_charge,
             &bases_per_elec,
+            &bases_per_elec_spinor,
             &nuclei,
             num_elecs,
             psi_pp_calc,
@@ -529,6 +533,7 @@ fn main() {
         charges_from_electron: charges_electron,
         V_from_elecs,
         bases: bases_per_elec,
+        bases_spinor: bases_per_elec_spinor,
         psi_charge,
         surfaces_shared,
         surfaces_per_elec,

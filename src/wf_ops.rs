@@ -32,7 +32,7 @@ use crate::{
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
     dirac::{
-        BasisSpinor, Component, Spinor3, SpinorDerivsTypeD3, SpinorDiffs3, SpinorDiffsTypeB3,
+        BasisSpinor, Component, Spinor3, SpinorDerivs3, SpinorDerivsTypeD3, SpinorDiffsTypeB3,
         SpinorDiffsTypeC3, SpinorDiffsTypeDInner3, SpinorDiffsTypeE3,
     },
     eigen_fns::{self},
@@ -605,7 +605,7 @@ pub fn update_eigen_vals(
     L_z: &mut Arr3d,
     spinor_calc: &mut Spinor3,
     spinor: &Spinor3,
-    spinor_derivs: &SpinorDiffs3,
+    spinor_derivs: &SpinorDerivs3,
 ) {
     let grid_n = psi.len();
 

@@ -357,22 +357,28 @@ fn basis_fn_mixer(
                 if recalc_this_basis {
                     // Note: Extra memory use from this re-allocoating and cloning.
                     let mut temp_psi = vec![new_data(state.grid_n_render)];
-                    let mut temp_psi_pp = vec![new_data(state.grid_n_render)];
-
                     let mut temp_psi_pp = vec![Derivatives::new(state.grid_n_render)];
-                    // let mut temp_psi_pp_div_psi = vec![new_data_real(state.grid_n_render)];
+                    // let mut temp_spinor = vec![Derivatives::new(state.grid_n_render)];
+                    // let mut temp_spinor_derivs = vec![Derivatives::new(state.grid_n_render)];
 
                     wf_ops::wf_from_bases(
                         &state.dev_psi,
                         &mut temp_psi,
                         Some(&mut temp_psi_pp),
-                        // Some(&mut temp_psi_pp_div_psi),
                         &[basis.clone()],
                         &state.surfaces_shared.grid_posits,
                         state.deriv_calc,
-                        Some(&mut state.surfaces_per_elec[active_elec].spinor_derivs),
-                        Some(&state.surfaces_per_elec[active_elec].spinor),
                     );
+
+                    // todo
+                    // wf_ops::wf_from_bases_spinor(
+                    //     &state.dev_psi,
+                    //     &mut temp_psi,
+                    //     Some(&mut temp_psi_pp),
+                    //     &[basis.clone()],
+                    //     &state.surfaces_shared.grid_posits,
+                    //     state.deriv_calc,
+                    // );
 
                     state.surfaces_per_elec[active_elec].psi_per_basis[basis_i] =
                         temp_psi.remove(0);
@@ -583,6 +589,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.grid_n_render,
                     state.grid_n_charge,
                     &state.bases,
+                    &state.bases_spinor,
                     &state.charges_fixed,
                     state.num_elecs,
                     state.deriv_calc,

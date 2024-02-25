@@ -124,8 +124,8 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     let psi = &mut sfcs.psi_per_basis;
     let psi_pp = &mut sfcs.derivs_per_basis;
 
-    let spinor = &mut sfcs.psi_per_basis;
-    let spinor_derivs = &mut sfcs.derivs_per_basis;
+    let spinor = &mut sfcs.spinor_per_basis;
+    let spinor_derivs = &mut sfcs.spinor_derivs_per_basis;
 
     wf_ops::wf_from_bases(
         &state.dev_psi,
@@ -138,9 +138,9 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
 
     wf_ops::wf_from_bases_spinor(
         &state.dev_psi,
-        &state.surfaces_per_elec[ae].spinor,
-        &mut state.surfaces_per_elec[ae].spinor_derivs,
-        &state.surfaces_per_elec[ae].spinor_per_basis,
+        spinor,
+        Some(spinor_derivs),
+        &state.bases_spinor[ae],
         &state.surfaces_shared.grid_posits,
         state.deriv_calc,
     );
@@ -152,8 +152,6 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
         &state.bases[ae],
         &state.surfaces_shared.grid_posits_charge,
         state.deriv_calc,
-        None,
-        None,
     );
 }
 
@@ -302,12 +300,9 @@ pub(crate) fn he_solver(state: &mut State) {
             &state.dev_psi,
             &mut state.psi_charge[elec_id],
             None,
-            // None,
             &state.bases[elec_id],
             &state.surfaces_shared.grid_posits_charge,
             state.deriv_calc,
-            None,
-            None,
         );
 
         // We don't need to mix bases here, and that's handled at the end of the loop

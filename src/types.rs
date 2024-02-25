@@ -8,8 +8,9 @@ use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
     dirac::{
-        Spinor, Spinor3, SpinorDerivsTypeD3, SpinorDiffs, SpinorDiffs3, SpinorDiffsTypeB,
-        SpinorDiffsTypeC, SpinorDiffsTypeC3, SpinorTypeB, SpinorVec, SpinorVec3,
+        Spinor, Spinor3, SpinorDerivs3, SpinorDerivsTypeD3, SpinorDiffs, SpinorDiffsTypeB,
+        SpinorDiffsTypeC, SpinorDiffsTypeC3, SpinorDiffsTypeDInner3, SpinorTypeB, SpinorVec,
+        SpinorVec3,
     },
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{
@@ -229,7 +230,7 @@ pub struct SurfacesPerElec {
     /// Spinor, as calcualted using the trial wave function, and the dirac equation, using
     /// its derivatives.
     pub spinor_calc: Spinor3,
-    pub spinor_derivs: SpinorDiffs3,
+    pub spinor_derivs: SpinorDerivs3,
     pub spinor_per_basis: Vec<Spinor3>,
     // pub spinor_derivs_per_basis: Vec<SpinorDiffs3>,
     pub spinor_derivs_per_basis: Vec<SpinorDerivsTypeD3>,
@@ -247,6 +248,19 @@ impl SurfacesPerElec {
         let data = new_data(grid_n);
         let data_real = new_data_real(grid_n);
         let derivs = Derivatives::new(grid_n);
+
+        let spinor_d_inner = SpinorDiffsTypeDInner3 {
+            dx: data.clone(),
+            dy: data.clone(),
+            dz: data.clone(),
+        };
+
+        let derivs_spinor = SpinorDerivsTypeD3 {
+            c0: spinor_d_inner.clone(),
+            c1: spinor_d_inner.clone(),
+            c2: spinor_d_inner.clone(),
+            c3: spinor_d_inner,
+        };
 
         // Set up a regular grid using this; this will allow us to convert to an irregular grid
         // later, once we've verified this works.
@@ -268,7 +282,7 @@ impl SurfacesPerElec {
                 c2: data.clone(),
                 c3: data.clone(),
             });
-            spinor_derivs_per_basis.push(SpinorDiffs3::default());
+            spinor_derivs_per_basis.push(derivs_spinor.clone());
         }
 
         Self {
@@ -292,7 +306,7 @@ impl SurfacesPerElec {
             psi_fm_Lz: data,
             spinor: Spinor3::new(grid_n),
             spinor_calc: Spinor3::new(grid_n),
-            spinor_derivs: SpinorDiffs3::default(),
+            spinor_derivs: SpinorDerivs3::default(),
             spinor_per_basis,
             spinor_derivs_per_basis,
             E_dirac: (0., 0., 0., 0.),
@@ -385,13 +399,19 @@ impl _BasesEvaluated {
             dev,
             &mut on_pt,
             Some(&mut derivs),
-            // None,
             bases,
             grid_posits,
             deriv_calc,
-            None,
-            None,
         );
+        //
+        // wf_ops::wf_from_bases_spinor(
+        //     dev,
+        //     &mut on_pt,
+        //     Some(&mut derivs),
+        //     bases,
+        //     grid_posits,
+        //     deriv_calc,
+        // );
 
         Self {
             on_pt,
