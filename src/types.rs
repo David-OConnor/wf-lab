@@ -230,15 +230,9 @@ pub struct SurfacesPerElec {
     /// Spinor, as calcualted using the trial wave function, and the dirac equation, using
     /// its derivatives.
     pub spinor_calc: Spinor3,
-    pub spinor_derivs: SpinorDerivs3,
+    pub spinor_derivs: SpinorDerivsTypeD3,
     pub spinor_per_basis: Vec<Spinor3>,
-    // pub spinor_derivs_per_basis: Vec<SpinorDiffs3>,
     pub spinor_derivs_per_basis: Vec<SpinorDerivsTypeD3>,
-    // pub spinor_deriv: SpinorDiffsTypeB,
-    // pub spinor_deriv: SpinorDiffsTypeC,
-    // pub spinor_deriv: SpinorDiffsTypeC3,
-    // pub psi_dirac: SpinorVec,
-    // pub psi_dirac: SpinorVec3,
     pub E_dirac: (f64, f64, f64, f64),
 }
 

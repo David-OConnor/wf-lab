@@ -194,6 +194,7 @@ impl SurfaceDesc {
 }
 
 /// Run this whenever n changes. Ie, at init, or when n changes in the GUI.
+/// // todo: Refactor/rethink this fn. It's kind of a param mess.
 pub fn init_from_grid(
     dev_psi: &ComputationDevice,
     dev_charge: &ComputationDevice,
@@ -285,13 +286,13 @@ pub fn init_from_grid(
             Some(spinor_derivs),
             &bases_per_elec_spinor[i_elec],
             &surfaces_shared.grid_posits,
-            deriv_calc,
         );
 
         let psi = &mut sfcs.psi;
         let charge_density = &mut sfcs.charge_density;
         let psi_pp = &mut sfcs.derivs;
-        // let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_evaluated;
+        let spinor = &mut sfcs.spinor;
+        let spinor_derivs = &mut sfcs.spinor_derivs;
 
         let weights: Vec<f64> = bases_per_elec[i_elec].iter().map(|b| b.weight()).collect();
         wf_ops::mix_bases(
@@ -301,10 +302,16 @@ pub fn init_from_grid(
             // Some(psi_pp_div_psi),
             &sfcs.psi_per_basis,
             Some(&sfcs.derivs_per_basis),
-            // Some(&sfcs.psi_pp_div_psi_per_basis),
-            grid_n_sample,
             &weights,
-            // Some(&mut surfaces_shared),
+        );
+
+        wf_ops::mix_bases_spinor(
+            spinor,
+            None, // todo
+            Some(spinor_derivs),
+            &sfcs.spinor_per_basis,
+            Some(&sfcs.spinor_derivs_per_basis),
+            &weights,
         );
 
         wf_ops::update_eigen_vals(

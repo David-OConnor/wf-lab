@@ -389,9 +389,110 @@ pub fn update_meshes(
             &prepare_2d_mesh_real(grid_posits, &surfaces.aux3, z_i, V_SCALER, grid_n),
             true,
         ));
-        //
 
-        // todo: These angular-momentum-related wave functions are still useful, but temp removed.
+        // Spinors (Trival wavefunction)
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.spinor.c0,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.spinor.c1,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.spinor.c2,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.spinor.c3,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+
+        // Calculated spinors, from the Dirac equation and trial (spinor) wavefunction.
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.spinor_calc.c0,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.spinor_calc.c1,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.spinor_calc.c2,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+        meshes.push(Mesh::new_surface(
+            &prepare_2d_mesh(
+                grid_posits,
+                &surfaces.spinor_calc.c3,
+                z_i,
+                PSI_SCALER,
+                mag_phase,
+                false,
+                grid_n,
+            ),
+            true,
+        ));
+
+        // todo: These angular-momentum-related wave functions are still useful, but temp removed, to make room
+        // todo for spinors.
+
         // meshes.push(Mesh::new_surface(
         //     &prepare_2d_mesh(
         //         grid_posits,

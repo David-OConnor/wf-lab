@@ -314,6 +314,7 @@ pub struct SpinorDiffsTypeC3 {
 }
 
 /// Ordering, outside in: psi component, dμ, index
+/// Note that this is similar to `types::Derivatives`
 #[derive(Clone, Default)]
 pub struct SpinorDiffsTypeDInner {
     pub dt: Arr4d,
@@ -323,6 +324,7 @@ pub struct SpinorDiffsTypeDInner {
 }
 
 /// Ordering, outside in: psi component, da, index
+/// Note that this is similar to `types::Derivatives`
 #[derive(Clone, Default)]
 pub struct SpinorDiffsTypeDInner3 {
     pub dx: Arr3d,
@@ -331,6 +333,8 @@ pub struct SpinorDiffsTypeDInner3 {
 }
 
 /// Ordering, outside in: psi component, dμ, index,
+/// Note that this is similar to `types::Derivatives`, but with an additional outer layer
+/// for the psi components.
 #[derive(Clone)]
 pub struct SpinorDiffsTypeD {
     pub c0: SpinorDiffsTypeDInner,
@@ -340,6 +344,8 @@ pub struct SpinorDiffsTypeD {
 }
 
 /// Ordering, outside in: psi component, da, index,
+/// Note that this is similar to `types::Derivatives`, but with an additional outer layer
+/// for the psi components.
 #[derive(Clone)]
 pub struct SpinorDerivsTypeD3 {
     pub c0: SpinorDiffsTypeDInner3,

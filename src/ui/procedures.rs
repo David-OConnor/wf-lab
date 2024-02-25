@@ -48,19 +48,25 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     let psi = &mut sfcs.psi;
     let charge_density = &mut sfcs.charge_density;
     let psi_pp = &mut sfcs.derivs;
-    // let psi_pp_div_psi = &mut sfcs.psi_pp_div_psi_evaluated;
+    let spinor = &mut sfcs.spinor;
+    let spinor_derivs = &mut sfcs.spinor_derivs;
 
     wf_ops::mix_bases(
         psi,
         Some(charge_density),
         Some(psi_pp),
-        // Some(psi_pp_div_psi),
         &sfcs.psi_per_basis,
         Some(&sfcs.derivs_per_basis),
-        // Some(&sfcs.psi_pp_div_psi_per_basis),
-        state.grid_n_render,
         &weights,
-        // Some(&mut state.surfaces_shared),
+    );
+
+    wf_ops::mix_bases_spinor(
+        spinor,
+        None, // todo
+        Some(spinor_derivs),
+        &sfcs.spinor_per_basis,
+        Some(&sfcs.spinor_derivs_per_basis),
+        &weights,
     );
 
     wf_ops::update_eigen_vals(
@@ -99,13 +105,9 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
             &mut psi_charge_grid,
             None,
             None,
-            // None,
             &state.psi_charge[ae],
             None,
-            // None,
-            state.grid_n_charge,
             &weights,
-            // None,
         );
 
         wf_ops::charge_from_psi(
@@ -198,13 +200,9 @@ pub fn create_elec_charge(
         &mut psi_charge_grid,
         None,
         None,
-        // None,
         psi_charge_per_basis,
         None,
-        // None,
-        grid_n_charge,
         weights,
-        // None,
     );
 
     wf_ops::charge_from_psi(charge_electron, &psi_charge_grid, grid_n_charge);
