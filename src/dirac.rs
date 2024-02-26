@@ -68,7 +68,7 @@ pub struct BasisSpinor {
 }
 
 impl BasisSpinor {
-    pub fn get_comp(&self, comp: ComponentPsi) -> &Sto {
+    pub(crate) fn get(&self, comp: ComponentPsi) -> &Sto {
         match comp {
             ComponentPsi::C0 => &self.c0,
             ComponentPsi::C1 => &self.c1,
@@ -120,6 +120,26 @@ pub struct Spinor3 {
     pub c2: Arr3d,
     /// Antimatter, spin β
     pub c3: Arr3d,
+}
+
+impl Spinor3 {
+    pub(crate) fn get(&self, comp: ComponentPsi) -> &Arr3d {
+        match comp {
+            ComponentPsi::C0 => &self.c0,
+            ComponentPsi::C1 => &self.c1,
+            ComponentPsi::C2 => &self.c2,
+            ComponentPsi::C3 => &self.c3,
+        }
+    }
+
+    pub(crate) fn get_mut(&mut self, comp: ComponentPsi) -> &mut Arr3d {
+        match comp {
+            ComponentPsi::C0 => &mut self.c0,
+            ComponentPsi::C1 => &mut self.c1,
+            ComponentPsi::C2 => &mut self.c2,
+            ComponentPsi::C3 => &mut self.c3,
+        }
+    }
 }
 
 /// Ordering: Index, psi component
@@ -242,12 +262,12 @@ impl SpinorDerivsTypeE3 {
             let mut psi_z_next = Cplx::new_zero();
 
             for basis in bases {
-                psi_x_prev += basis.get_comp(comp).value(x_prev);
-                psi_x_next += basis.get_comp(comp).value(x_next);
-                psi_y_prev += basis.get_comp(comp).value(y_prev);
-                psi_y_next += basis.get_comp(comp).value(y_next);
-                psi_z_prev += basis.get_comp(comp).value(z_prev);
-                psi_z_next += basis.get_comp(comp).value(z_next);
+                psi_x_prev += basis.get(comp).value(x_prev);
+                psi_x_next += basis.get(comp).value(x_next);
+                psi_y_prev += basis.get(comp).value(y_prev);
+                psi_y_next += basis.get(comp).value(y_next);
+                psi_z_prev += basis.get(comp).value(z_prev);
+                psi_z_next += basis.get(comp).value(z_next);
             }
             psi_comp.dx = (psi_x_next - psi_x_prev) / H_2;
             psi_comp.dy = (psi_y_next - psi_y_prev) / H_2;
@@ -340,6 +360,24 @@ impl SpinorDerivsTypeD3 {
             c1: data.clone(),
             c2: data.clone(),
             c3: data,
+        }
+    }
+
+    pub(crate) fn get(&self, comp: ComponentPsi) -> &SpinorDerivsTypeDInner3 {
+        match comp {
+            ComponentPsi::C0 => &self.c0,
+            ComponentPsi::C1 => &self.c1,
+            ComponentPsi::C2 => &self.c2,
+            ComponentPsi::C3 => &self.c3,
+        }
+    }
+
+    pub(crate) fn get_mut(&mut self, comp: ComponentPsi) -> &mut SpinorDerivsTypeDInner3 {
+        match comp {
+            ComponentPsi::C0 => &mut self.c0,
+            ComponentPsi::C1 => &mut self.c1,
+            ComponentPsi::C2 => &mut self.c2,
+            ComponentPsi::C3 => &mut self.c3,
         }
     }
 }

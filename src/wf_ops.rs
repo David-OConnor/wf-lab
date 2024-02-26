@@ -32,7 +32,7 @@ use crate::{
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
     dirac,
-    dirac::{BasisSpinor, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3},
+    dirac::{BasisSpinor, ComponentPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3},
     eigen_fns::{self},
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, num_diff,
@@ -507,57 +507,44 @@ pub fn mix_bases_spinor(
         psi.c3[i][j][k] = Cplx::new_zero();
 
         if let Some(d) = derivs.as_mut() {
-            // todo: This is avoidable by a reversed Derivatives struct.
-            d.c0.dx[i][j][k] = Cplx::new_zero();
-            d.c0.dy[i][j][k] = Cplx::new_zero();
-            d.c0.dz[i][j][k] = Cplx::new_zero();
-            d.c1.dx[i][j][k] = Cplx::new_zero();
-            d.c1.dy[i][j][k] = Cplx::new_zero();
-            d.c1.dz[i][j][k] = Cplx::new_zero();
-            d.c2.dx[i][j][k] = Cplx::new_zero();
-            d.c2.dy[i][j][k] = Cplx::new_zero();
-            d.c2.dz[i][j][k] = Cplx::new_zero();
-            d.c3.dx[i][j][k] = Cplx::new_zero();
-            d.c3.dy[i][j][k] = Cplx::new_zero();
-            d.c3.dz[i][j][k] = Cplx::new_zero();
+            for comp in [
+                ComponentPsi::C0,
+                ComponentPsi::C1,
+                ComponentPsi::C2,
+                ComponentPsi::C3,
+            ] {
+                d.get_mut(comp).dx[i][j][k] = Cplx::new_zero();
+                d.get_mut(comp).dy[i][j][k] = Cplx::new_zero();
+                d.get_mut(comp).dz[i][j][k] = Cplx::new_zero();
+            }
         }
 
         for (i_basis, weight) in weights.iter().enumerate() {
             let scaler = *weight;
 
-            psi.c0[i][j][k] += psi_per_basis[i_basis].c0[i][j][k] * scaler;
-            psi.c1[i][j][k] += psi_per_basis[i_basis].c1[i][j][k] * scaler;
-            psi.c2[i][j][k] += psi_per_basis[i_basis].c2[i][j][k] * scaler;
-            psi.c3[i][j][k] += psi_per_basis[i_basis].c3[i][j][k] * scaler;
+            for comp in [
+                ComponentPsi::C0,
+                ComponentPsi::C1,
+                ComponentPsi::C2,
+                ComponentPsi::C3,
+            ] {
+                psi.get_mut(comp)[i][j][k] += psi_per_basis[i_basis].get(comp)[i][j][k] * scaler;
+            }
 
             if let Some(d) = derivs.as_mut() {
-                d.c0.dx[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c0.dx[i][j][k] * scaler;
-                d.c0.dy[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c0.dy[i][j][k] * scaler;
-                d.c0.dz[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c0.dz[i][j][k] * scaler;
+                let per_basis = derivs_per_basis.as_ref().unwrap();
 
-                d.c1.dx[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c1.dx[i][j][k] * scaler;
-                d.c1.dy[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c1.dy[i][j][k] * scaler;
-                d.c1.dz[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c1.dz[i][j][k] * scaler;
-
-                d.c2.dx[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c2.dx[i][j][k] * scaler;
-                d.c2.dy[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c2.dy[i][j][k] * scaler;
-                d.c2.dz[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c2.dz[i][j][k] * scaler;
-
-                d.c3.dx[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c3.dx[i][j][k] * scaler;
-                d.c3.dy[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c3.dy[i][j][k] * scaler;
-                d.c3.dz[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].c3.dz[i][j][k] * scaler;
+                for comp in [
+                    ComponentPsi::C0,
+                    ComponentPsi::C1,
+                    ComponentPsi::C2,
+                    ComponentPsi::C3,
+                ] {
+                    d.get_mut(comp).dx[i][j][k] +=
+                        per_basis[i_basis].get(comp).dx[i][j][k] * scaler;
+                    d.c0.dy[i][j][k] += per_basis[i_basis].get(comp).dy[i][j][k] * scaler;
+                    d.c0.dz[i][j][k] += per_basis[i_basis].get(comp).dz[i][j][k] * scaler;
+                }
             }
         }
 
@@ -578,11 +565,12 @@ pub fn mix_bases_spinor(
         }
     }
 
-    util::normalize_arr(&mut psi.c0, norm[0]);
-    // todo: Temp removed
-    // util::normalize_arr(&mut psi.c1, norm[1]);
-    // util::normalize_arr(&mut psi.c2, norm[2]);
-    util::normalize_arr(&mut psi.c3, norm[3]);
+    for (i, comp) in [&mut psi.c0, &mut psi.c1, &mut psi.c2, &mut psi.c3]
+        .into_iter()
+        .enumerate()
+    {
+        util::normalize_arr(comp, norm[i]);
+    }
 
     if let Some(derivs_mut) = derivs.as_mut() {
         util::normalize_arr(&mut derivs_mut.c0.dx, norm[0]);
