@@ -216,7 +216,7 @@ pub struct SpinorDerivsTypeE3 {
 }
 
 impl SpinorDerivsTypeE3 {
-    /// C+P from `num_diff:DerivativesSingle::from_bases()`. This is nearly identical.
+    /// Modified version of `num_diff:DerivativesSingle::from_bases()`.
     pub(crate) fn from_bases(posit_sample: Vec3, bases: &[BasisSpinor]) -> Self {
         let mut result = Self::default();
 
@@ -253,7 +253,6 @@ impl SpinorDerivsTypeE3 {
             psi_comp.dy = (psi_y_next - psi_y_prev) / H_2;
             psi_comp.dz = (psi_z_next - psi_z_prev) / H_2;
         }
-        // }
 
         result
     }

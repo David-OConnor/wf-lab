@@ -436,8 +436,6 @@ pub fn mix_bases(
             d.d2y[i][j][k] = Cplx::new_zero();
             d.d2z[i][j][k] = Cplx::new_zero();
             d.d2_sum[i][j][k] = Cplx::new_zero();
-
-            // d.d2_sum[i][j][k] = Cplx::new_zero();
         }
         for (i_basis, weight) in weights.iter().enumerate() {
             let scaler = *weight;
@@ -445,8 +443,6 @@ pub fn mix_bases(
             psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
 
             if let Some(d) = derivs.as_mut() {
-                // d.d2_sum[i][j][k] +=
-                //     derivs_per_basis.as_ref().unwrap()[i_basis].d2_sum[i][j][k] * scaler;
                 // todo: This is avoidable by a reversed Derivatives struct.
                 d.dx[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].dx[i][j][k] * scaler;
                 d.dy[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].dy[i][j][k] * scaler;
@@ -468,16 +464,16 @@ pub fn mix_bases(
     }
 
     util::normalize_arr(psi, norm);
-    if derivs.is_some() {
-        util::normalize_arr(&mut derivs.as_mut().unwrap().dx, norm);
-        util::normalize_arr(&mut derivs.as_mut().unwrap().dy, norm);
-        util::normalize_arr(&mut derivs.as_mut().unwrap().dz, norm);
+    if let Some(derivs_mut) = derivs.as_mut() {
+        util::normalize_arr(&mut derivs_mut.dx, norm);
+        util::normalize_arr(&mut derivs_mut.dy, norm);
+        util::normalize_arr(&mut derivs_mut.dz, norm);
 
-        util::normalize_arr(&mut derivs.as_mut().unwrap().d2x, norm);
-        util::normalize_arr(&mut derivs.as_mut().unwrap().d2y, norm);
-        util::normalize_arr(&mut derivs.as_mut().unwrap().d2z, norm);
+        util::normalize_arr(&mut derivs_mut.d2x, norm);
+        util::normalize_arr(&mut derivs_mut.d2y, norm);
+        util::normalize_arr(&mut derivs_mut.d2z, norm);
 
-        util::normalize_arr(&mut derivs.as_mut().unwrap().d2_sum, norm);
+        util::normalize_arr(&mut derivs_mut.d2_sum, norm);
     }
 
     // Update charge density as well, from this electron's wave function.
@@ -566,47 +562,45 @@ pub fn mix_bases_spinor(
         }
 
         // todo: Four separate abs_sqs like this?
-        let abs_sq_0 = psi.c0[i][j][k].abs_sq();
-        let abs_sq_1 = psi.c1[i][j][k].abs_sq();
-        let abs_sq_2 = psi.c2[i][j][k].abs_sq();
-        let abs_sq_3 = psi.c3[i][j][k].abs_sq();
+        let abs_sq = [
+            psi.c0[i][j][k].abs_sq(),
+            psi.c1[i][j][k].abs_sq(),
+            psi.c2[i][j][k].abs_sq(),
+            psi.c3[i][j][k].abs_sq(),
+        ];
 
-        // todo: A/R
-        if abs_sq_0 < MAX_PSI_FOR_NORM {
-            norm[0] += abs_sq_0; // todo: Handle norm on GPU?
-        } else {
-            println!("Exceeded norm thresh in mix: {:?}", abs_sq_0);
-        }
-        if abs_sq_1 < MAX_PSI_FOR_NORM {
-            norm[1] += abs_sq_1; // todo: Handle norm on GPU?
-        } else {
-            println!("Exceeded norm thresh in mix: {:?}", abs_sq_1);
-        }
-        if abs_sq_2 < MAX_PSI_FOR_NORM {
-            norm[2] += abs_sq_2; // todo: Handle norm on GPU?
-        } else {
-            println!("Exceeded norm thresh in mix: {:?}", abs_sq_2);
-        }
-        if abs_sq_3 < MAX_PSI_FOR_NORM {
-            norm[3] += abs_sq_3; // todo: Handle norm on GPU?
-        } else {
-            println!("Exceeded norm thresh in mix: {:?}", abs_sq_3);
+        for (i, val) in abs_sq.iter().enumerate() {
+            if val < &MAX_PSI_FOR_NORM {
+                norm[i] += val; // todo: Handle norm on GPU?
+            } else {
+                println!("Exceeded norm thresh in mix: {:?}", val);
+            }
         }
     }
 
-    // todo
-    // util::normalize_arr(psi, norm);
-    // if derivs.is_some() {
-    //     util::normalize_arr(&mut derivs.as_mut().unwrap().dx, norm);
-    //     util::normalize_arr(&mut derivs.as_mut().unwrap().dy, norm);
-    //     util::normalize_arr(&mut derivs.as_mut().unwrap().dz, norm);
-    //
-    //     util::normalize_arr(&mut derivs.as_mut().unwrap().d2x, norm);
-    //     util::normalize_arr(&mut derivs.as_mut().unwrap().d2y, norm);
-    //     util::normalize_arr(&mut derivs.as_mut().unwrap().d2z, norm);
-    //
-    //     util::normalize_arr(&mut derivs.as_mut().unwrap().d2_sum, norm);
-    // }
+    util::normalize_arr(&mut psi.c0, norm[0]);
+    // todo: Temp removed
+    // util::normalize_arr(&mut psi.c1, norm[1]);
+    // util::normalize_arr(&mut psi.c2, norm[2]);
+    util::normalize_arr(&mut psi.c3, norm[3]);
+
+    if let Some(derivs_mut) = derivs.as_mut() {
+        util::normalize_arr(&mut derivs_mut.c0.dx, norm[0]);
+        util::normalize_arr(&mut derivs_mut.c0.dy, norm[0]);
+        util::normalize_arr(&mut derivs_mut.c0.dz, norm[0]);
+
+        util::normalize_arr(&mut derivs_mut.c1.dx, norm[1]);
+        util::normalize_arr(&mut derivs_mut.c1.dy, norm[1]);
+        util::normalize_arr(&mut derivs_mut.c1.dz, norm[1]);
+
+        util::normalize_arr(&mut derivs_mut.c2.dx, norm[2]);
+        util::normalize_arr(&mut derivs_mut.c2.dy, norm[2]);
+        util::normalize_arr(&mut derivs_mut.c2.dz, norm[2]);
+
+        util::normalize_arr(&mut derivs_mut.c3.dx, norm[3]);
+        util::normalize_arr(&mut derivs_mut.c3.dy, norm[3]);
+        util::normalize_arr(&mut derivs_mut.c3.dz, norm[3]);
+    }
 
     // Update charge density as well, from this electron's wave function.
 
