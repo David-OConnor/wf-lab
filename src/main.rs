@@ -495,7 +495,7 @@ fn main() {
         );
 
     let surface_descs_per_elec = vec![
-        SurfaceDesc::new("V", true),
+        SurfaceDesc::new("V", false),
         SurfaceDesc::new("ψ", false),
         SurfaceDesc::new("ψ im", false),
         SurfaceDesc::new("ρ", false),
@@ -504,7 +504,7 @@ fn main() {
         SurfaceDesc::new("ψ'' meas", false),
         SurfaceDesc::new("ψ'' meas im", false),
         SurfaceDesc::new("Elec V from ψ ", false),
-        SurfaceDesc::new("Total V from ψ", true),
+        SurfaceDesc::new("Total V from ψ", false),
         SurfaceDesc::new("V'_elec", false),
         // SurfaceDesc::new("L^2", false),
         // SurfaceDesc::new("L^2 im", false),
@@ -517,12 +517,12 @@ fn main() {
         // SurfaceDesc::new("d2x", false),
         // SurfaceDesc::new("d2y", false),
         // SurfaceDesc::new("d2z", false),
-        SurfaceDesc::new("ψ0", false),
+        SurfaceDesc::new("ψ0", true),
         SurfaceDesc::new("ψ1", false),
         SurfaceDesc::new("ψ2", false),
-        SurfaceDesc::new("ψ3", false),
+        SurfaceDesc::new("ψ3", true),
         // Calculated, to compare to the trial.
-        SurfaceDesc::new("ψ0_c", false),
+        SurfaceDesc::new("ψ0_c", true),
         SurfaceDesc::new("ψ1_c", false),
         SurfaceDesc::new("ψ2_c", false),
         SurfaceDesc::new("ψ3_c", false),

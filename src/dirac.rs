@@ -67,12 +67,31 @@ pub struct BasisSpinor {
     pub c3: Sto,
 }
 
+impl BasisSpinor {
+    pub fn get_comp(&self, comp: ComponentPsi) -> &Sto {
+        match comp {
+            ComponentPsi::C0 => &self.c0,
+            ComponentPsi::C1 => &self.c1,
+            ComponentPsi::C2 => &self.c2,
+            ComponentPsi::C3 => &self.c3,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum Component {
     T,
     X,
     Y,
     Z,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum ComponentPsi {
+    C0,
+    C1,
+    C2,
+    C3,
 }
 
 /// Todo: Figure out how to use this...
@@ -208,89 +227,33 @@ impl SpinorDerivsTypeE3 {
         let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
         let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
 
-        // for (psi_comp, basis) in &mut [
-        //     (&mut result.c0, &bases.c0),
-        //     (&mut result.c1, &bases.c1),
-        //     (&mut result.c2, &bases.c2),
-        //     (&mut result.c3, &bases.c3),
-        // ] {
+        // for basis in bases {
+        for (psi_comp, comp) in [
+            (&mut result.c0, ComponentPsi::C0),
+            (&mut result.c1, ComponentPsi::C1),
+            (&mut result.c2, ComponentPsi::C2),
+            (&mut result.c3, ComponentPsi::C3),
+        ] {
+            let mut psi_x_prev = Cplx::new_zero();
+            let mut psi_x_next = Cplx::new_zero();
+            let mut psi_y_prev = Cplx::new_zero();
+            let mut psi_y_next = Cplx::new_zero();
+            let mut psi_z_prev = Cplx::new_zero();
+            let mut psi_z_next = Cplx::new_zero();
 
-        // todo: Live with this DRY for now. Not sure how to fix it.
-        let mut psi_x_prev = Cplx::new_zero();
-        let mut psi_x_next = Cplx::new_zero();
-        let mut psi_y_prev = Cplx::new_zero();
-        let mut psi_y_next = Cplx::new_zero();
-        let mut psi_z_prev = Cplx::new_zero();
-        let mut psi_z_next = Cplx::new_zero();
-
-        for basis in bases {
-            psi_x_prev += basis.c0.value(x_prev);
-            psi_x_next += basis.c0.value(x_next);
-            psi_y_prev += basis.c0.value(y_prev);
-            psi_y_next += basis.c0.value(y_next);
-            psi_z_prev += basis.c0.value(z_prev);
-            psi_z_next += basis.c0.value(z_next);
+            for basis in bases {
+                psi_x_prev += basis.get_comp(comp).value(x_prev);
+                psi_x_next += basis.get_comp(comp).value(x_next);
+                psi_y_prev += basis.get_comp(comp).value(y_prev);
+                psi_y_next += basis.get_comp(comp).value(y_next);
+                psi_z_prev += basis.get_comp(comp).value(z_prev);
+                psi_z_next += basis.get_comp(comp).value(z_next);
+            }
+            psi_comp.dx = (psi_x_next - psi_x_prev) / H_2;
+            psi_comp.dy = (psi_y_next - psi_y_prev) / H_2;
+            psi_comp.dz = (psi_z_next - psi_z_prev) / H_2;
         }
-        result.c0.dx = (psi_x_next - psi_x_prev) / H_2;
-        result.c0.dy = (psi_y_next - psi_y_prev) / H_2;
-        result.c0.dz = (psi_z_next - psi_z_prev) / H_2;
-
-        let mut psi_x_prev = Cplx::new_zero();
-        let mut psi_x_next = Cplx::new_zero();
-        let mut psi_y_prev = Cplx::new_zero();
-        let mut psi_y_next = Cplx::new_zero();
-        let mut psi_z_prev = Cplx::new_zero();
-        let mut psi_z_next = Cplx::new_zero();
-
-        for basis in bases {
-            psi_x_prev += basis.c1.value(x_prev);
-            psi_x_next += basis.c1.value(x_next);
-            psi_y_prev += basis.c1.value(y_prev);
-            psi_y_next += basis.c1.value(y_next);
-            psi_z_prev += basis.c1.value(z_prev);
-            psi_z_next += basis.c1.value(z_next);
-        }
-        result.c1.dx = (psi_x_next - psi_x_prev) / H_2;
-        result.c1.dy = (psi_y_next - psi_y_prev) / H_2;
-        result.c1.dz = (psi_z_next - psi_z_prev) / H_2;
-
-        let mut psi_x_prev = Cplx::new_zero();
-        let mut psi_x_next = Cplx::new_zero();
-        let mut psi_y_prev = Cplx::new_zero();
-        let mut psi_y_next = Cplx::new_zero();
-        let mut psi_z_prev = Cplx::new_zero();
-        let mut psi_z_next = Cplx::new_zero();
-
-        for basis in bases {
-            psi_x_prev += basis.c2.value(x_prev);
-            psi_x_next += basis.c2.value(x_next);
-            psi_y_prev += basis.c2.value(y_prev);
-            psi_y_next += basis.c2.value(y_next);
-            psi_z_prev += basis.c2.value(z_prev);
-            psi_z_next += basis.c2.value(z_next);
-        }
-        result.c2.dx = (psi_x_next - psi_x_prev) / H_2;
-        result.c2.dy = (psi_y_next - psi_y_prev) / H_2;
-        result.c2.dz = (psi_z_next - psi_z_prev) / H_2;
-
-        let mut psi_x_prev = Cplx::new_zero();
-        let mut psi_x_next = Cplx::new_zero();
-        let mut psi_y_prev = Cplx::new_zero();
-        let mut psi_y_next = Cplx::new_zero();
-        let mut psi_z_prev = Cplx::new_zero();
-        let mut psi_z_next = Cplx::new_zero();
-
-        for basis in bases {
-            psi_x_prev += basis.c3.value(x_prev);
-            psi_x_next += basis.c3.value(x_next);
-            psi_y_prev += basis.c3.value(y_prev);
-            psi_y_next += basis.c3.value(y_next);
-            psi_z_prev += basis.c3.value(z_prev);
-            psi_z_next += basis.c3.value(z_next);
-        }
-        result.c3.dx = (psi_x_next - psi_x_prev) / H_2;
-        result.c3.dy = (psi_y_next - psi_y_prev) / H_2;
-        result.c3.dz = (psi_z_next - psi_z_prev) / H_2;
+        // }
 
         result
     }
