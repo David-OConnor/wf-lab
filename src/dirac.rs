@@ -68,12 +68,12 @@ pub struct BasisSpinor {
 }
 
 impl BasisSpinor {
-    pub(crate) fn get(&self, comp: ComponentPsi) -> &Sto {
+    pub(crate) fn get(&self, comp: CompPsi) -> &Sto {
         match comp {
-            ComponentPsi::C0 => &self.c0,
-            ComponentPsi::C1 => &self.c1,
-            ComponentPsi::C2 => &self.c2,
-            ComponentPsi::C3 => &self.c3,
+            CompPsi::C0 => &self.c0,
+            CompPsi::C1 => &self.c1,
+            CompPsi::C2 => &self.c2,
+            CompPsi::C3 => &self.c3,
         }
     }
 }
@@ -87,7 +87,7 @@ pub(crate) enum Component {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-pub(crate) enum ComponentPsi {
+pub(crate) enum CompPsi {
     C0,
     C1,
     C2,
@@ -123,21 +123,21 @@ pub struct Spinor3 {
 }
 
 impl Spinor3 {
-    pub(crate) fn get(&self, comp: ComponentPsi) -> &Arr3d {
+    pub(crate) fn get(&self, comp: CompPsi) -> &Arr3d {
         match comp {
-            ComponentPsi::C0 => &self.c0,
-            ComponentPsi::C1 => &self.c1,
-            ComponentPsi::C2 => &self.c2,
-            ComponentPsi::C3 => &self.c3,
+            CompPsi::C0 => &self.c0,
+            CompPsi::C1 => &self.c1,
+            CompPsi::C2 => &self.c2,
+            CompPsi::C3 => &self.c3,
         }
     }
 
-    pub(crate) fn get_mut(&mut self, comp: ComponentPsi) -> &mut Arr3d {
+    pub(crate) fn get_mut(&mut self, comp: CompPsi) -> &mut Arr3d {
         match comp {
-            ComponentPsi::C0 => &mut self.c0,
-            ComponentPsi::C1 => &mut self.c1,
-            ComponentPsi::C2 => &mut self.c2,
-            ComponentPsi::C3 => &mut self.c3,
+            CompPsi::C0 => &mut self.c0,
+            CompPsi::C1 => &mut self.c1,
+            CompPsi::C2 => &mut self.c2,
+            CompPsi::C3 => &mut self.c3,
         }
     }
 }
@@ -249,10 +249,10 @@ impl SpinorDerivsTypeE3 {
 
         // for basis in bases {
         for (psi_comp, comp) in [
-            (&mut result.c0, ComponentPsi::C0),
-            (&mut result.c1, ComponentPsi::C1),
-            (&mut result.c2, ComponentPsi::C2),
-            (&mut result.c3, ComponentPsi::C3),
+            (&mut result.c0, CompPsi::C0),
+            (&mut result.c1, CompPsi::C1),
+            (&mut result.c2, CompPsi::C2),
+            (&mut result.c3, CompPsi::C3),
         ] {
             let mut psi_x_prev = Cplx::new_zero();
             let mut psi_x_next = Cplx::new_zero();
@@ -275,6 +275,24 @@ impl SpinorDerivsTypeE3 {
         }
 
         result
+    }
+
+    pub(crate) fn get(&self, comp: CompPsi) -> &SpinorDerivsTypeE3Inner {
+        match comp {
+            CompPsi::C0 => &self.c0,
+            CompPsi::C1 => &self.c1,
+            CompPsi::C2 => &self.c2,
+            CompPsi::C3 => &self.c3,
+        }
+    }
+
+    pub(crate) fn get_mut(&mut self, comp: CompPsi) -> &mut SpinorDerivsTypeE3Inner {
+        match comp {
+            CompPsi::C0 => &mut self.c0,
+            CompPsi::C1 => &mut self.c1,
+            CompPsi::C2 => &mut self.c2,
+            CompPsi::C3 => &mut self.c3,
+        }
     }
 }
 
@@ -363,72 +381,68 @@ impl SpinorDerivsTypeD3 {
         }
     }
 
-    pub(crate) fn get(&self, comp: ComponentPsi) -> &SpinorDerivsTypeDInner3 {
+    pub(crate) fn get(&self, comp: CompPsi) -> &SpinorDerivsTypeDInner3 {
         match comp {
-            ComponentPsi::C0 => &self.c0,
-            ComponentPsi::C1 => &self.c1,
-            ComponentPsi::C2 => &self.c2,
-            ComponentPsi::C3 => &self.c3,
+            CompPsi::C0 => &self.c0,
+            CompPsi::C1 => &self.c1,
+            CompPsi::C2 => &self.c2,
+            CompPsi::C3 => &self.c3,
         }
     }
 
-    pub(crate) fn get_mut(&mut self, comp: ComponentPsi) -> &mut SpinorDerivsTypeDInner3 {
+    pub(crate) fn get_mut(&mut self, comp: CompPsi) -> &mut SpinorDerivsTypeDInner3 {
         match comp {
-            ComponentPsi::C0 => &mut self.c0,
-            ComponentPsi::C1 => &mut self.c1,
-            ComponentPsi::C2 => &mut self.c2,
-            ComponentPsi::C3 => &mut self.c3,
+            CompPsi::C0 => &mut self.c0,
+            CompPsi::C1 => &mut self.c1,
+            CompPsi::C2 => &mut self.c2,
+            CompPsi::C3 => &mut self.c3,
         }
     }
 }
 
 impl Spinor {
+    pub(crate) fn get(&self, comp: CompPsi) -> &Arr4d {
+        match comp {
+            CompPsi::C0 => &self.c0,
+            CompPsi::C1 => &self.c1,
+            CompPsi::C2 => &self.c2,
+            CompPsi::C3 => &self.c3,
+        }
+    }
+
+    pub(crate) fn get_mut(&mut self, comp: CompPsi) -> &mut Arr4d {
+        match comp {
+            CompPsi::C0 => &mut self.c0,
+            CompPsi::C1 => &mut self.c1,
+            CompPsi::C2 => &mut self.c2,
+            CompPsi::C3 => &mut self.c3,
+        }
+    }
+
     pub fn differentiate(&self, deriv: &mut Self, component: Component, grid_spacing: f64) {
         // For use with our midpoint formula.
         let n = self.c0.len();
         let diff = grid_spacing / 2.;
 
         for (i, j, k, l) in iter_arr_4!(n) {
-            match component {
-                Component::T => {
-                    deriv.c0[i][j][k][l] =
-                        (self.c0[i + 1][j][k][l] - self.c0[i - 1][j][k][l]) / diff;
-                    deriv.c1[i][j][k][l] =
-                        (self.c1[i + 1][j][k][l] - self.c1[i - 1][j][k][l]) / diff;
-                    deriv.c2[i][j][k][l] =
-                        (self.c2[i + 1][j][k][l] - self.c2[i - 1][j][k][l]) / diff;
-                    deriv.c3[i][j][k][l] =
-                        (self.c3[i + 1][j][k][l] - self.c3[i - 1][j][k][l]) / diff;
-                }
-                Component::X => {
-                    deriv.c0[i][j][k][l] =
-                        (self.c0[i][j + 1][k][l] - self.c0[i][j - 1][k][l]) / diff;
-                    deriv.c1[i][j][k][l] =
-                        (self.c1[i][j + 1][k][l] - self.c1[i][j - 1][k][l]) / diff;
-                    deriv.c2[i][j][k][l] =
-                        (self.c2[i][j + 1][k][l] - self.c2[i][j - 1][k][l]) / diff;
-                    deriv.c3[i][j][k][l] =
-                        (self.c3[i][j + 1][k][l] - self.c3[i][j - 1][k][l]) / diff;
-                }
-                Component::Y => {
-                    deriv.c0[i][j][k][l] =
-                        (self.c0[i][j][k + 1][l] - self.c0[i][j][k - 1][l]) / diff;
-                    deriv.c1[i][j][k][l] =
-                        (self.c1[i][j][k + 1][l] - self.c1[i][j][k - 1][l]) / diff;
-                    deriv.c2[i][j][k][l] =
-                        (self.c2[i][j][k + 1][l] - self.c2[i][j][k - 1][l]) / diff;
-                    deriv.c3[i][j][k][l] =
-                        (self.c3[i][j][k + 1][l] - self.c3[i][j][k - 1][l]) / diff;
-                }
-                Component::Z => {
-                    deriv.c0[i][j][k][l] =
-                        (self.c0[i][j][k][l + 1] - self.c0[i][j][k][l - 1]) / diff;
-                    deriv.c1[i][j][k][l] =
-                        (self.c1[i][j][k][l + 1] - self.c1[i][j][k][l - 1]) / diff;
-                    deriv.c2[i][j][k][l] =
-                        (self.c2[i][j][k][l + 1] - self.c2[i][j][k][l - 1]) / diff;
-                    deriv.c3[i][j][k][l] =
-                        (self.c3[i][j][k][l + 1] - self.c3[i][j][k][l - 1]) / diff;
+            for comp in [CompPsi::C0, CompPsi::C1, CompPsi::C2, CompPsi::C3] {
+                match component {
+                    Component::T => {
+                        deriv.get_mut(comp)[i][j][k][l] =
+                            (self.get(comp)[i + 1][j][k][l] - self.c0[i - 1][j][k][l]) / diff;
+                    }
+                    Component::X => {
+                        deriv.get_mut(comp)[i][j][k][l] =
+                            (self.c0[i][j + 1][k][l] - self.c0[i][j - 1][k][l]) / diff;
+                    }
+                    Component::Y => {
+                        deriv.get_mut(comp)[i][j][k][l] =
+                            (self.get(comp)[i][j][k + 1][l] - self.c0[i][j][k - 1][l]) / diff;
+                    }
+                    Component::Z => {
+                        deriv.get_mut(comp)[i][j][k][l] =
+                            (self.get(comp)[i][j][k][l + 1] - self.c0[i][j][k][l - 1]) / diff;
+                    }
                 }
             }
         }
@@ -443,25 +457,21 @@ impl Spinor3 {
         let n = self.c0.len();
 
         for (i, j, k) in iter_arr!(n) {
-            match component {
-                Component::T => panic!("T is not avail on a 3D Spinor"),
-                Component::X => {
-                    deriv.c0[i][j][k] = (self.c0[i + 1][j][k] - self.c0[i - 1][j][k]) / diff;
-                    deriv.c1[i][j][k] = (self.c1[i + 1][j][k] - self.c1[i - 1][j][k]) / diff;
-                    deriv.c2[i][j][k] = (self.c2[i + 1][j][k] - self.c2[i - 1][j][k]) / diff;
-                    deriv.c3[i][j][k] = (self.c3[i + 1][j][k] - self.c3[i - 1][j][k]) / diff;
-                }
-                Component::Y => {
-                    deriv.c0[i][j][k] = (self.c0[i][j + 1][k] - self.c0[i][j - 1][k]) / diff;
-                    deriv.c1[i][j][k] = (self.c1[i][j + 1][k] - self.c1[i][j - 1][k]) / diff;
-                    deriv.c2[i][j][k] = (self.c2[i][j + 1][k] - self.c2[i][j - 1][k]) / diff;
-                    deriv.c3[i][j][k] = (self.c3[i][j + 1][k] - self.c3[i][j - 1][k]) / diff;
-                }
-                Component::Z => {
-                    deriv.c0[i][j][k] = (self.c0[i][j][k + 1] - self.c0[i][j][k - 1]) / diff;
-                    deriv.c1[i][j][k] = (self.c1[i][j][k + 1] - self.c1[i][j][k - 1]) / diff;
-                    deriv.c2[i][j][k] = (self.c2[i][j][k + 1] - self.c2[i][j][k - 1]) / diff;
-                    deriv.c3[i][j][k] = (self.c3[i][j][k + 1] - self.c3[i][j][k - 1]) / diff;
+            for comp in [CompPsi::C0, CompPsi::C1, CompPsi::C2, CompPsi::C3] {
+                match component {
+                    Component::T => panic!("T is not avail on a 3D Spinor"),
+                    Component::X => {
+                        deriv.get_mut(comp)[i][j][k] =
+                            (self.get(comp)[i + 1][j][k] - self.c0[i - 1][j][k]) / diff;
+                    }
+                    Component::Y => {
+                        deriv.get_mut(comp)[i][j][k] =
+                            (self.c0[i][j + 1][k] - self.c0[i][j - 1][k]) / diff;
+                    }
+                    Component::Z => {
+                        deriv.get_mut(comp)[i][j][k] =
+                            (self.get(comp)[i][j][k + 1] - self.c0[i][j][k - 1]) / diff;
+                    }
                 }
             }
         }

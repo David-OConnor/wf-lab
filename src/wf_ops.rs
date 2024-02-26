@@ -32,7 +32,7 @@ use crate::{
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
     dirac,
-    dirac::{BasisSpinor, ComponentPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3},
+    dirac::{BasisSpinor, CompPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3},
     eigen_fns::{self},
     grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, num_diff,
@@ -308,10 +308,10 @@ pub fn wf_from_bases_spinor(
                 for (i, j, k) in iter_arr!(grid_n) {
                     let posit_sample = grid_posits[i][j][k];
 
-                    psi_per_basis[basis_i].c0[i][j][k] = basis.c0.value(posit_sample);
-                    psi_per_basis[basis_i].c1[i][j][k] = basis.c1.value(posit_sample);
-                    psi_per_basis[basis_i].c2[i][j][k] = basis.c2.value(posit_sample);
-                    psi_per_basis[basis_i].c3[i][j][k] = basis.c3.value(posit_sample);
+                    for comp in [CompPsi::C0, CompPsi::C1, CompPsi::C2, CompPsi::C3] {
+                        psi_per_basis[basis_i].get_mut(comp)[i][j][k] =
+                            basis.get(comp).value(posit_sample);
+                    }
 
                     // todo: A hack to zero out the middle wave functions while preserving normalization.
                     psi_per_basis[basis_i].c1[i][j][k] = Cplx::new_zero();
@@ -323,21 +323,11 @@ pub fn wf_from_bases_spinor(
                         // todo: We are copying some of our non-dirac awkward ordering mistakes...
                         let diffs = SpinorDerivsTypeE3::from_bases(posit_sample, &b);
 
-                        derivs[basis_i].c0.dx[i][j][k] = diffs.c0.dx;
-                        derivs[basis_i].c0.dy[i][j][k] = diffs.c0.dy;
-                        derivs[basis_i].c0.dz[i][j][k] = diffs.c0.dz;
-
-                        derivs[basis_i].c1.dx[i][j][k] = diffs.c1.dx;
-                        derivs[basis_i].c1.dy[i][j][k] = diffs.c1.dy;
-                        derivs[basis_i].c1.dz[i][j][k] = diffs.c1.dz;
-
-                        derivs[basis_i].c2.dx[i][j][k] = diffs.c2.dx;
-                        derivs[basis_i].c2.dy[i][j][k] = diffs.c2.dy;
-                        derivs[basis_i].c2.dz[i][j][k] = diffs.c2.dz;
-
-                        derivs[basis_i].c3.dx[i][j][k] = diffs.c3.dx;
-                        derivs[basis_i].c3.dy[i][j][k] = diffs.c3.dy;
-                        derivs[basis_i].c3.dz[i][j][k] = diffs.c3.dz;
+                        for comp in [CompPsi::C0, CompPsi::C1, CompPsi::C2, CompPsi::C3] {
+                            derivs[basis_i].get_mut(comp).dx[i][j][k] = diffs.get(comp).dx;
+                            derivs[basis_i].get_mut(comp).dy[i][j][k] = diffs.get(comp).dy;
+                            derivs[basis_i].get_mut(comp).dz[i][j][k] = diffs.get(comp).dz;
+                        }
                     }
 
                     add_to_norm(&mut norm[0], psi_per_basis[basis_i].c0[i][j][k]);
@@ -354,58 +344,15 @@ pub fn wf_from_bases_spinor(
         // util::normalize_arr(&mut psi_per_basis[basis_i].c2, norm[2]);
         util::normalize_arr(&mut psi_per_basis[basis_i].c3, norm[3]);
 
-        if derivs_per_basis.is_some() {
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c0.dx,
-                norm[0],
-            );
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c0.dy,
-                norm[0],
-            );
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c0.dz,
-                norm[0],
-            );
-
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c1.dx,
-                norm[1],
-            );
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c1.dy,
-                norm[1],
-            );
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c1.dz,
-                norm[1],
-            );
-
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c2.dx,
-                norm[2],
-            );
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c2.dy,
-                norm[2],
-            );
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c2.dz,
-                norm[2],
-            );
-
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c3.dx,
-                norm[3],
-            );
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c3.dy,
-                norm[3],
-            );
-            util::normalize_arr(
-                &mut derivs_per_basis.as_mut().unwrap()[basis_i].c3.dz,
-                norm[3],
-            );
+        if let Some(derivs_mut) = derivs_per_basis.as_mut() {
+            for (i, comp) in [CompPsi::C0, CompPsi::C1, CompPsi::C2, CompPsi::C3]
+                .into_iter()
+                .enumerate()
+            {
+                util::normalize_arr(&mut derivs_mut[basis_i].get_mut(comp).dx, norm[i]);
+                util::normalize_arr(&mut derivs_mut[basis_i].get_mut(comp).dy, norm[i]);
+                util::normalize_arr(&mut derivs_mut[basis_i].get_mut(comp).dz, norm[i]);
+            }
         }
     }
 }
@@ -507,12 +454,7 @@ pub fn mix_bases_spinor(
         psi.c3[i][j][k] = Cplx::new_zero();
 
         if let Some(d) = derivs.as_mut() {
-            for comp in [
-                ComponentPsi::C0,
-                ComponentPsi::C1,
-                ComponentPsi::C2,
-                ComponentPsi::C3,
-            ] {
+            for comp in [CompPsi::C0, CompPsi::C1, CompPsi::C2, CompPsi::C3] {
                 d.get_mut(comp).dx[i][j][k] = Cplx::new_zero();
                 d.get_mut(comp).dy[i][j][k] = Cplx::new_zero();
                 d.get_mut(comp).dz[i][j][k] = Cplx::new_zero();
@@ -522,28 +464,20 @@ pub fn mix_bases_spinor(
         for (i_basis, weight) in weights.iter().enumerate() {
             let scaler = *weight;
 
-            for comp in [
-                ComponentPsi::C0,
-                ComponentPsi::C1,
-                ComponentPsi::C2,
-                ComponentPsi::C3,
-            ] {
+            for comp in [CompPsi::C0, CompPsi::C1, CompPsi::C2, CompPsi::C3] {
                 psi.get_mut(comp)[i][j][k] += psi_per_basis[i_basis].get(comp)[i][j][k] * scaler;
             }
 
             if let Some(d) = derivs.as_mut() {
                 let per_basis = derivs_per_basis.as_ref().unwrap();
 
-                for comp in [
-                    ComponentPsi::C0,
-                    ComponentPsi::C1,
-                    ComponentPsi::C2,
-                    ComponentPsi::C3,
-                ] {
+                for comp in [CompPsi::C0, CompPsi::C1, CompPsi::C2, CompPsi::C3] {
                     d.get_mut(comp).dx[i][j][k] +=
                         per_basis[i_basis].get(comp).dx[i][j][k] * scaler;
-                    d.c0.dy[i][j][k] += per_basis[i_basis].get(comp).dy[i][j][k] * scaler;
-                    d.c0.dz[i][j][k] += per_basis[i_basis].get(comp).dz[i][j][k] * scaler;
+                    d.get_mut(comp).dy[i][j][k] +=
+                        per_basis[i_basis].get(comp).dy[i][j][k] * scaler;
+                    d.get_mut(comp).dz[i][j][k] +=
+                        per_basis[i_basis].get(comp).dz[i][j][k] * scaler;
                 }
             }
         }
@@ -573,21 +507,14 @@ pub fn mix_bases_spinor(
     }
 
     if let Some(derivs_mut) = derivs.as_mut() {
-        util::normalize_arr(&mut derivs_mut.c0.dx, norm[0]);
-        util::normalize_arr(&mut derivs_mut.c0.dy, norm[0]);
-        util::normalize_arr(&mut derivs_mut.c0.dz, norm[0]);
-
-        util::normalize_arr(&mut derivs_mut.c1.dx, norm[1]);
-        util::normalize_arr(&mut derivs_mut.c1.dy, norm[1]);
-        util::normalize_arr(&mut derivs_mut.c1.dz, norm[1]);
-
-        util::normalize_arr(&mut derivs_mut.c2.dx, norm[2]);
-        util::normalize_arr(&mut derivs_mut.c2.dy, norm[2]);
-        util::normalize_arr(&mut derivs_mut.c2.dz, norm[2]);
-
-        util::normalize_arr(&mut derivs_mut.c3.dx, norm[3]);
-        util::normalize_arr(&mut derivs_mut.c3.dy, norm[3]);
-        util::normalize_arr(&mut derivs_mut.c3.dz, norm[3]);
+        for (i, comp) in [CompPsi::C0, CompPsi::C1, CompPsi::C2, CompPsi::C3]
+            .into_iter()
+            .enumerate()
+        {
+            util::normalize_arr(&mut derivs_mut.get_mut(comp).dx, norm[i]);
+            util::normalize_arr(&mut derivs_mut.get_mut(comp).dy, norm[i]);
+            util::normalize_arr(&mut derivs_mut.get_mut(comp).dz, norm[i]);
+        }
     }
 
     // Update charge density as well, from this electron's wave function.
