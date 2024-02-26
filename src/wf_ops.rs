@@ -330,10 +330,12 @@ pub fn wf_from_bases_spinor(
                         }
                     }
 
-                    add_to_norm(&mut norm[0], psi_per_basis[basis_i].c0[i][j][k]);
-                    add_to_norm(&mut norm[1], psi_per_basis[basis_i].c1[i][j][k]);
-                    add_to_norm(&mut norm[2], psi_per_basis[basis_i].c2[i][j][k]);
-                    add_to_norm(&mut norm[3], psi_per_basis[basis_i].c3[i][j][k]);
+                    for (i, comp) in [CompPsi::C0, CompPsi::C1, CompPsi::C2, CompPsi::C3]
+                        .into_iter()
+                        .enumerate()
+                    {
+                        add_to_norm(&mut norm[i], psi_per_basis[basis_i].get(comp)[i][j][k]);
+                    }
                 }
             }
         }
@@ -596,7 +598,8 @@ pub fn update_eigen_vals_spinor(
     psi_calc: &mut Spinor3,
     derivs: &SpinorDerivsTypeD3,
     E: [f64; 4],
-    V: [f64; 4],
+    // V: [f64; 4],
+    V: &Arr3dReal,
 ) {
     // todo: For now, a thin wrapper.
     dirac::calc_psi(psi_calc, derivs, E, V);

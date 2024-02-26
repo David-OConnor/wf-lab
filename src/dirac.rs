@@ -50,6 +50,7 @@ use crate::{
     iter_arr, iter_arr_4,
     num_diff::{H, H_2},
 };
+use crate::grid_setup::Arr3dReal;
 
 // Matrix operators: alpha, beta, gamma. Gamma is 2x2. alpha and beta are (at least?) 4x4
 
@@ -700,16 +701,17 @@ fn a() {
 /// Calculate what psi should be, based on its derivatives, E, and V
 /// todo: Other forms, ie this rearranged too
 /// This is similar to the functions found in the `eigen_fns` module.
-pub fn calc_psi(psi_calc: &mut Spinor3, derivs: &SpinorDerivsTypeD3, E: [f64; 4], V: [f64; 4]) {
+// pub fn calc_psi(psi_calc: &mut Spinor3, derivs: &SpinorDerivsTypeD3, E: [f64; 4], V: [f64; 4]) {
+pub fn calc_psi(psi_calc: &mut Spinor3, derivs: &SpinorDerivsTypeD3, E: [f64; 4], V: &Arr3dReal) {
     let n = psi_calc.c0.len();
-
-    let dt0 = -IM * (E[0] - V[0]);
-    let dt1 = -IM * (E[1] - V[1]);
-    let dt2 = -IM * (E[2] - V[2]);
-    let dt3 = -IM * (E[3] - V[3]);
 
     // for (i, j, k, l) in iter_arr_4!(n) {
     for (i, j, k) in iter_arr!(n) {
+        let dt0 = -IM * (E[0] - V[i][j][k]);
+        let dt1 = -IM * (E[1] - V[i][j][k]);
+        let dt2 = -IM * (E[2] - V[i][j][k]);
+        let dt3 = -IM * (E[3] - V[i][j][k]);
+
         // Code simplifiers
         let c0 = &derivs.c0;
         let c1 = &derivs.c1;

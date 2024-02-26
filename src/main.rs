@@ -332,7 +332,7 @@ pub fn init_from_grid(
             &mut sfcs.spinor_calc,
             spinor_derivs,
             [-0.5; 4], // todo temp
-            [0.; 4],   // todo temp
+            &sfcs.V_acting_on_this,
         );
 
         let mut psi_charge = Vec::new();

@@ -36,7 +36,7 @@ pub fn update_E_or_V(
         &mut sfcs.spinor_calc,
         &sfcs.spinor_derivs,
         [E; 4],  // todo temp
-        [0.; 4], // todo temp
+        V_from_nuclei,
     );
 }
 
@@ -89,7 +89,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &mut sfcs.spinor_calc,
         spinor_derivs,
         [-0.5; 4], // todo temp
-        [0.; 4],   // todo temp
+        &sfcs.V_acting_on_this,
     );
 
     // // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
