@@ -374,7 +374,6 @@ pub fn update_meshes(
             ));
         }
 
-        // Experimenting with V_elec from a given psi.
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh_real(grid_posits, &surfaces.V_elec_eigen, z_i, V_SCALER, grid_n),
             true,

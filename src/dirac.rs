@@ -46,11 +46,10 @@ use crate::{
     basis_wfs::Sto,
     complex_nums::{Cplx, IM},
     grid_setup,
-    grid_setup::{Arr3d, Arr4d},
+    grid_setup::{Arr3d, Arr3dReal, Arr4d},
     iter_arr, iter_arr_4,
     num_diff::{H, H_2},
 };
-use crate::grid_setup::Arr3dReal;
 
 // Matrix operators: alpha, beta, gamma. Gamma is 2x2. alpha and beta are (at least?) 4x4
 
@@ -263,12 +262,19 @@ impl SpinorDerivsTypeE3 {
             let mut psi_z_next = Cplx::new_zero();
 
             for basis in bases {
-                psi_x_prev += basis.get(comp).value(x_prev);
-                psi_x_next += basis.get(comp).value(x_next);
-                psi_y_prev += basis.get(comp).value(y_prev);
-                psi_y_next += basis.get(comp).value(y_next);
-                psi_z_prev += basis.get(comp).value(z_prev);
-                psi_z_next += basis.get(comp).value(z_next);
+                // psi_x_prev += basis.get(comp).value(x_prev);
+                // psi_x_next += basis.get(comp).value(x_next);
+                // psi_y_prev += basis.get(comp).value(y_prev);
+                // psi_y_next += basis.get(comp).value(y_next);
+                // psi_z_prev += basis.get(comp).value(z_prev);
+                // psi_z_next += basis.get(comp).value(z_next);
+
+                psi_x_prev += basis.get(comp).value(x_prev) * basis.get(comp).weight;
+                psi_x_next += basis.get(comp).value(x_next) * basis.get(comp).weight;
+                psi_y_prev += basis.get(comp).value(y_prev) * basis.get(comp).weight;
+                psi_y_next += basis.get(comp).value(y_next) * basis.get(comp).weight;
+                psi_z_prev += basis.get(comp).value(z_prev) * basis.get(comp).weight;
+                psi_z_next += basis.get(comp).value(z_next) * basis.get(comp).weight;
             }
             psi_comp.dx = (psi_x_next - psi_x_prev) / H_2;
             psi_comp.dy = (psi_y_next - psi_y_prev) / H_2;

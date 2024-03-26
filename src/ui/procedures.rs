@@ -35,7 +35,7 @@ pub fn update_E_or_V(
     wf_ops::update_eigen_vals_spinor(
         &mut sfcs.spinor_calc,
         &sfcs.spinor_derivs,
-        [E; 4],  // todo temp
+        [E; 4], // todo temp
         V_from_nuclei,
     );
 }
