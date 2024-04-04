@@ -1,5 +1,6 @@
 //! Used to find weights and Xis for STOs.
 
+use std::f64::MAX;
 use lin_alg::f64::Vec3;
 use ndarray::prelude::*;
 use ndarray_linalg::SVD;
@@ -21,13 +22,8 @@ pub fn generate_sample_pts() -> Vec<Vec3> {
 
     // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
     let sample_dists = [
-        // 10., 5., 3., 2., 1.5, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1
-        // 10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.4, 0.3,
-        // 10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8, 0.7, 0.6, 0.4,
         10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1.,
     ];
-
-    // println!("\nSample dists: {:?}", sample_dists);
 
     let mut result = Vec::new();
     for dist in sample_dists {
@@ -71,8 +67,8 @@ fn find_base_xi_E_common(
     deriv_calc: DerivCalc, // base_xi_specified: f64,
 ) -> (f64, f64) {
     let mut best_xi_i = 0;
-    let mut smallest_diff = 99999.;
-    // This isn't perhaps an ideal apperoach, but try it to find the baseline xi.
+    let mut smallest_diff = f64::MAX;
+    // This isn't perhaps an ideal approach, but try it to find the baseline xi.
     let trial_base_xis = util::linspace((1., 3.), 200);
 
     let mut Es = vec![0.; trial_base_xis.len()];
@@ -102,6 +98,7 @@ fn find_base_xi_E_common(
         let V_from_psi = calc_V_on_psi(psi, psi_pp, E_);
 
         let diff = (V_from_psi - V_sample).abs();
+
         if diff < smallest_diff {
             best_xi_i = i;
             smallest_diff = diff;
@@ -144,8 +141,9 @@ fn find_base_xi_E(
 
     for (i, j, k) in iter_arr!(charge_elec.len()) {
         let charge = charge_elec[i][j][k];
-        V_sample += V_coulomb(grid_charge[i][j][k], posit_sample, charge);
-        V_corner += V_coulomb(grid_charge[i][j][k], posit_corner, charge);
+        // todo: This seems to be the problem with your updated code.
+        // V_sample += V_coulomb(grid_charge[i][j][k], posit_sample, charge);
+        // V_corner += V_coulomb(grid_charge[i][j][k], posit_corner, charge);
     }
 
     find_base_xi_E_common(
@@ -322,15 +320,12 @@ fn find_bases_system_of_eqs(
         });
 
         // todo: Cplx
-        // todo: Experimenting with non-square matrix
         // Sample positions are the columns.
-        // for posit_sample in &sample_pts[i_range.clone()] {
         for posit_sample in sample_pts {
             // todo: Real-only for now while building the algorithm, but in general, these are complex.
             let psi = sto.value(*posit_sample);
             psi_mat_.push(psi.real);
             psi_pp_mat_.push(wf_ops::second_deriv_cpu(psi, &sto, *posit_sample, deriv_calc).real);
-            // psi_pp_div_psi_mat_.push(sto.psi_pp_div_psi(*posit_sample));
         }
     }
 
@@ -338,8 +333,6 @@ fn find_bases_system_of_eqs(
     let psi_mat = psi_mat.t();
     let psi_pp_mat = Array::from_shape_vec((bases.len(), sample_pts.len()), psi_pp_mat_).unwrap();
     let psi_pp_mat = psi_pp_mat.t();
-    // let psi_pp_div_psi_mat = Array::from_shape_vec((xis.len(), sample_pts.len()), psi_pp_div_psi_mat_).unwrap();
-    // let psi_pp_div_psi_mat = psi_pp_div_psi_mat.t();
 
     let rhs: Vec<f64> = V_to_match.iter().map(|V| KE_COEFF_INV * (V + E)).collect();
 
@@ -438,10 +431,8 @@ pub fn run(
     // todo convergence algos and trial WFs.
     sample_pts: &[Vec3],
     bases: &Vec<Basis>,
-    // xis: &[f64],
     deriv_calc: DerivCalc,
 ) -> (Vec<Basis>, f64) {
-    // let mut xis = Vec::from(xis);
     let mut bases = bases.clone();
 
     let mut V_to_match = potential::create_V_1d_from_elecs(
@@ -452,7 +443,7 @@ pub fn run(
         grid_n_charge,
     );
 
-    // Add the charge from nucleii.
+    // Add the V from nucleii charges.
     for (i, sample_pt) in sample_pts.iter().enumerate() {
         for (posit_nuc, charge_nuc) in charges_fixed {
             V_to_match[i] += V_coulomb(*posit_nuc, *sample_pt, *charge_nuc);
@@ -471,6 +462,7 @@ pub fn run(
     // );
     //
     // xis[0] = base_xi;
+
     *bases[0].xi_mut() = base_xi;
 
     // Code regarding trial wave functions. We are currently not using it, assuming we can converge

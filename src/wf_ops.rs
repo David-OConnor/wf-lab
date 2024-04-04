@@ -92,8 +92,10 @@ pub fn initialize_bases(
         for (xi, weight) in [
             // (1., 0.7),
             (1., 1.),
-            (2., 0.),
+            // (2., 0.),
+            (2.5, 0.),
             (3., 0.),
+            (3.5, 0.),
             (4., 0.),
             (5., 0.),
             (6., 0.),
@@ -120,6 +122,8 @@ pub fn initialize_bases_spinor(
     charges_fixed: &[(Vec3, f64)],
     max_n: u16, // quantum number n
 ) {
+    // todo: For performance reasons while not using it.
+    return;
     *bases = Vec::new();
 
     // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
@@ -307,6 +311,8 @@ pub fn wf_from_bases_spinor(
     bases: &[BasisSpinor],
     grid_posits: &Arr3dVec,
 ) {
+    // todo: For performance reasons while not using it.
+    return;
     let grid_n = grid_posits.len();
 
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
@@ -472,6 +478,9 @@ pub fn mix_bases_spinor(
     weights: &[f64],
     // todo: Experiment with this API A/R
 ) {
+    // todo: For performance reasons while not using it.
+    return;
+
     // println!("WEIGHTS: {:?}", weights);
     // todo: GPU option?
     let mut norm = [0.; 4];
@@ -631,6 +640,8 @@ pub fn update_eigen_vals_spinor(
     // V: [f64; 4],
     V: &Arr3dReal,
 ) {
+    // todo: For performance reasons while not using it.
+    return;
     // todo: For now, a thin wrapper.
     dirac::calc_psi(psi_calc, derivs, E, V);
 }

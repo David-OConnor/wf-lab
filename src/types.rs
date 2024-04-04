@@ -226,6 +226,8 @@ pub struct SurfacesPerElec {
     pub spinor_per_basis: Vec<Spinor3>,
     pub spinor_derivs_per_basis: Vec<SpinorDerivsTypeD3>,
     pub E_dirac: (f64, f64, f64, f64),
+    // todo: Temp experimenting with making orbitals from modded H ones.
+    pub orb_sub: Arr3d
 }
 
 impl SurfacesPerElec {
@@ -289,7 +291,7 @@ impl SurfacesPerElec {
             V_total_eigen: data_real.clone(),
             aux3: data_real,
             psi_fm_L2: data.clone(),
-            psi_fm_Lz: data,
+            psi_fm_Lz: data.clone(),
             spinor: Spinor3::new(grid_n),
             spinor_calc: Spinor3::new(grid_n),
             // todo: This is likely wrong; need to populate with grid_n.
@@ -297,6 +299,7 @@ impl SurfacesPerElec {
             spinor_per_basis,
             spinor_derivs_per_basis,
             E_dirac: (0., 0., 0., 0.),
+            orb_sub: data.clone(),
         }
     }
 }

@@ -389,11 +389,11 @@ pub fn update_meshes(
             true,
         ));
 
-        // Spinors (Trival wavefunction)
+        // todo: we have hijacked spinor psi0 to be our H-orbital subtraction view (Apr 2024)
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh(
                 grid_posits,
-                &surfaces.spinor.c0,
+                &surfaces.orb_sub,
                 z_i,
                 PSI_SCALER,
                 mag_phase,
@@ -402,6 +402,21 @@ pub fn update_meshes(
             ),
             true,
         ));
+
+        // Spinors (Trival wavefunction)
+
+        // meshes.push(Mesh::new_surface(
+        //     &prepare_2d_mesh(
+        //         grid_posits,
+        //         &surfaces.spinor.c0,
+        //         z_i,
+        //         PSI_SCALER,
+        //         mag_phase,
+        //         false,
+        //         grid_n,
+        //     ),
+        //     true,
+        // ));
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh(
                 grid_posits,
