@@ -4,16 +4,7 @@ use egui::{self, Button, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg::f64::Vec3;
 
-use crate::{
-    basis_finder,
-    basis_wfs::Basis,
-    grid_setup::new_data,
-    render,
-    types::Derivatives,
-    wf_ops,
-    wf_ops::{DerivCalc, Spin},
-    ActiveElec, State,
-};
+use crate::{basis_finder, basis_wfs::Basis, grid_setup::new_data, render, types::Derivatives, wf_ops, wf_ops::{DerivCalc, Spin}, ActiveElec, State, eigen_fns};
 
 pub(crate) mod procedures;
 
@@ -155,7 +146,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                                state.charges_fixed.iter().enumerate()
+                            state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -399,7 +390,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                    .text("Wt"),
+                        .text("Wt"),
                 );
 
                 // Re-compute this basis WF. Eg, after changing n, l, m, xi, or the associated electron.
@@ -495,6 +486,25 @@ fn bottom_items(
             *updated_E_or_V = true;
             *updated_meshes = true;
         }
+
+        if ui.add(Button::new("Print V score")).clicked() {
+            let sample_pts = basis_finder::generate_sample_pts();
+
+            // todo: Sloppy!
+            println!("\nV score:");
+            for i in [10, 19, 22, 25, 28, 30, 39] {
+                // for pt in sample_pts {
+                let V_actual = state.surfaces_per_elec[ae].V_acting_on_this[i][i][i];
+
+                let pt = state.surfaces_shared.grid_posits[i][i][i];
+                let psi = state.surfaces_per_elec[ae].psi[i][i][i];
+                let psi_pp = state.surfaces_per_elec[ae].derivs.d2_sum[i][i][i];
+                let V_calc = eigen_fns::calc_V_on_psi(psi, psi_pp, state.surfaces_shared.E);
+
+                println!("Pt: {:?} Actual: {:.4} Calc: {:.4}, Diff: {:.4}", pt.x, V_actual, V_calc, V_actual - V_calc);
+
+            }
+        } {}
     });
 
     ui.horizontal(|ui| {
@@ -804,7 +814,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.ui.z_displayed
                 },
             )
-            .text("Z slice"),
+                .text("Z slice"),
         );
 
         ui.add(
@@ -816,7 +826,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui.visual_rotation
             })
-            .text("Visual rotation"),
+                .text("Visual rotation"),
         );
 
         ui.add(
@@ -834,7 +844,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_range_render.1
             })
-            .text("Grid range"),
+                .text("Grid range"),
         );
 
         match state.ui.active_elec {
@@ -855,7 +865,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_shared.E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 let prev_spin = state.surfaces_per_elec[ae].spin;
