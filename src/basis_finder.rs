@@ -158,13 +158,7 @@ fn find_base_xi_E(
         V_corner += V_coulomb(grid_charge[i][j][k], posit_corner, charge);
     }
 
-    find_base_xi_E_common(
-        V_corner,
-        posit_corner,
-        V_sample,
-        posit_sample,
-        deriv_calc,
-    )
+    find_base_xi_E_common(V_corner, posit_corner, V_sample, posit_sample, deriv_calc)
 }
 
 /// An attempt by evaluating the closest fit using different base xis.
@@ -341,7 +335,7 @@ fn find_bases_system_of_eqs(
 
     let shape = (bases.len(), sample_pts.len());
 
-    let psi_mat = Array::from_shape_vec(shape , psi_mat_).unwrap();
+    let psi_mat = Array::from_shape_vec(shape, psi_mat_).unwrap();
     let psi_mat = psi_mat.t();
     let psi_pp_mat = Array::from_shape_vec(shape, psi_pp_mat_).unwrap();
     let psi_pp_mat = psi_pp_mat.t();
@@ -370,6 +364,11 @@ fn find_bases_system_of_eqs(
             charge_id: basis.charge_id(),
             harmonic: Default::default(), // todo
         }));
+    }
+
+    println!("\nBasis result:");
+    for r in &result {
+        println!("Xi: {:.2} Weight: {:.2}", r.xi(), r.weight());
     }
 
     result
@@ -429,12 +428,8 @@ pub fn run(
     println!("Bases: {:?}", bases);
 
     let V_to_match = {
-        let mut V = potential::create_V_1d_from_elecs(
-            dev_charge,
-            sample_pts,
-            charge_elec,
-            grid_charge,
-        );
+        let mut V =
+            potential::create_V_1d_from_elecs(dev_charge, sample_pts, charge_elec, grid_charge);
 
         println!("V from elecs: {:?}", V);
 

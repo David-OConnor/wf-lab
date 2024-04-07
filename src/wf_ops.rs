@@ -89,6 +89,7 @@ pub fn initialize_bases(
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
         // See Sebens, for weights under equation 24; this is for Helium.
 
+        // todo: Put back higher terms.
         for (xi, weight) in [
             // (1., 0.7),
             (1., 1.),
@@ -100,10 +101,10 @@ pub fn initialize_bases(
             (4.5, 0.),
             (5., 0.),
             (5.5, 0.),
-            (6., 0.),
-            (7., 0.),
-            (8., 0.),
-            (9., 0.),
+            // (6., 0.),
+            // (7., 0.),
+            // (8., 0.),
+            // (9., 0.),
         ] {
             for n in 1..max_n + 1 {
                 bases.push(Basis::Sto(Sto {

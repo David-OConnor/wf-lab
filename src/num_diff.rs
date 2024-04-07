@@ -19,6 +19,28 @@ pub const H: f64 = 0.01;
 pub const H_SQ: f64 = H * H;
 pub const H_2: f64 = 2. * H;
 
+struct Neighbors {
+    pub x_prev: Vec3,
+    pub x_next: Vec3,
+    pub y_prev: Vec3,
+    pub y_next: Vec3,
+    pub z_prev: Vec3,
+    pub z_next: Vec3,
+}
+
+impl Neighbors {
+    pub fn new(posit_sample: Vec3) -> Self {
+        Self {
+            x_prev: Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z),
+            x_next: Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z),
+            y_prev: Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z),
+            y_next: Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z),
+            z_prev: Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H),
+            z_next: Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H),
+        }
+    }
+}
+
 /// Calcualte ψ'', numerically from ψ, using the finite diff method, for a single value.
 /// Calculate ψ'' based on a numerical derivative of psi in 3D.
 ///
@@ -29,12 +51,7 @@ pub(crate) fn second_deriv_fm_bases(
     // We pass this as an argument since it's likely already been calculated.
     ψ_sample_loc: Cplx,
 ) -> Cplx {
-    let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
-    let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
-    let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
-    let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
-    let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
-    let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+    let neighbors = Neighbors::new(posit_sample);
 
     let mut psi_x_prev = Cplx::new_zero();
     let mut psi_x_next = Cplx::new_zero();
@@ -44,12 +61,12 @@ pub(crate) fn second_deriv_fm_bases(
     let mut psi_z_next = Cplx::new_zero();
 
     for basis in bases {
-        psi_x_prev += basis.value(x_prev);
-        psi_x_next += basis.value(x_next);
-        psi_y_prev += basis.value(y_prev);
-        psi_y_next += basis.value(y_next);
-        psi_z_prev += basis.value(z_prev);
-        psi_z_next += basis.value(z_next);
+        psi_x_prev += basis.value(neighbors.x_prev);
+        psi_x_next += basis.value(neighbors.x_next);
+        psi_y_prev += basis.value(neighbors.y_prev);
+        psi_y_next += basis.value(neighbors.y_next);
+        psi_z_prev += basis.value(neighbors.z_prev);
+        psi_z_next += basis.value(neighbors.z_next);
     }
 
     // Note: We currently handle norm downstream.
@@ -102,13 +119,7 @@ impl DerivativesSingle {
     pub(crate) fn from_bases(posit_sample: Vec3, bases: &[Basis], ψ_sample_loc: Cplx) -> Self {
         let mut result = Self::default();
 
-        // todo: DRY with the above variant.
-        let x_prev = Vec3::new(posit_sample.x - H, posit_sample.y, posit_sample.z);
-        let x_next = Vec3::new(posit_sample.x + H, posit_sample.y, posit_sample.z);
-        let y_prev = Vec3::new(posit_sample.x, posit_sample.y - H, posit_sample.z);
-        let y_next = Vec3::new(posit_sample.x, posit_sample.y + H, posit_sample.z);
-        let z_prev = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z - H);
-        let z_next = Vec3::new(posit_sample.x, posit_sample.y, posit_sample.z + H);
+        let neighbors = Neighbors::new(posit_sample);
 
         let mut psi_x_prev = Cplx::new_zero();
         let mut psi_x_next = Cplx::new_zero();
@@ -118,12 +129,12 @@ impl DerivativesSingle {
         let mut psi_z_next = Cplx::new_zero();
 
         for basis in bases {
-            psi_x_prev += basis.value(x_prev);
-            psi_x_next += basis.value(x_next);
-            psi_y_prev += basis.value(y_prev);
-            psi_y_next += basis.value(y_next);
-            psi_z_prev += basis.value(z_prev);
-            psi_z_next += basis.value(z_next);
+            psi_x_prev += basis.value(neighbors.x_prev);
+            psi_x_next += basis.value(neighbors.x_next);
+            psi_y_prev += basis.value(neighbors.y_prev);
+            psi_y_next += basis.value(neighbors.y_next);
+            psi_z_prev += basis.value(neighbors.z_prev);
+            psi_z_next += basis.value(neighbors.z_next);
         }
 
         result.dx = (psi_x_next - psi_x_prev) / H_2;

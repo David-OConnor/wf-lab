@@ -16,10 +16,7 @@ use crate::{
 const SOFTENING_FACTOR: f64 = 0.000000000000001;
 
 /// Utility function used to flatten charge data prior to sending to the GPU.
-fn flatten_charge(
-    posits_charge: &Arr3dVec,
-    values_charge: &Arr3dReal,
-) -> (Vec<Vec3>, Vec<f64>) {
+fn flatten_charge(posits_charge: &Arr3dVec, values_charge: &Arr3dReal) -> (Vec<Vec3>, Vec<f64>) {
     let mut posits = Vec::new();
     let mut charges = Vec::new();
 
@@ -104,8 +101,7 @@ pub(crate) fn create_V_1d_from_elecs(
     match dev {
         #[cfg(feature = "cuda")]
         ComputationDevice::Gpu(cuda_dev) => {
-            let (posits_charge_flat, charges_flat) =
-                flatten_charge(posits_charge, charges_elec);
+            let (posits_charge_flat, charges_flat) = flatten_charge(posits_charge, charges_elec);
 
             // Calculate the charge from electrons using the GPU
             gpu::run_coulomb(cuda_dev, &posits_charge_flat, posits_sample, &charges_flat)
@@ -136,8 +132,7 @@ pub(crate) fn create_V_from_elecs(
     match dev {
         #[cfg(feature = "cuda")]
         ComputationDevice::Gpu(cuda_dev) => {
-            let (posits_charge_flat, charges_flat) =
-                flatten_charge(posits_charge, charges_elec);
+            let (posits_charge_flat, charges_flat) = flatten_charge(posits_charge, charges_elec);
 
             let mut posits_sample_flat = Vec::new();
 
