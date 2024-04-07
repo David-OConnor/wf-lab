@@ -92,16 +92,18 @@ pub fn initialize_bases(
         for (xi, weight) in [
             // (1., 0.7),
             (1., 1.),
-            // (2., 0.),
+            (2., 0.),
             (2.5, 0.),
             (3., 0.),
             (3.5, 0.),
             (4., 0.),
+            (4.5, 0.),
             (5., 0.),
+            (5.5, 0.),
             (6., 0.),
             (7., 0.),
-            // (8., 0.),
-            // (9., 0.),
+            (8., 0.),
+            (9., 0.),
         ] {
             for n in 1..max_n + 1 {
                 bases.push(Basis::Sto(Sto {
@@ -164,16 +166,6 @@ pub fn initialize_bases_spinor(
                 });
             }
         }
-    }
-}
-
-/// Helper fn for `wf_from_bases`.
-fn add_to_norm(n: &mut f64, v: Cplx) {
-    let abs_sq = v.abs_sq();
-    if abs_sq < MAX_PSI_FOR_NORM {
-        *n += abs_sq; // todo: Handle norm on GPU?
-    } else {
-        println!("Exceeded norm thresh in create: {:?}", abs_sq);
     }
 }
 
@@ -241,7 +233,7 @@ pub fn wf_from_bases(
                             Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
                     }
 
-                    add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
+                    util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
                 }
             }
             ComputationDevice::Cpu => {
@@ -280,7 +272,7 @@ pub fn wf_from_bases(
                         // todo these for now.
                     }
 
-                    add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
+                    util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
                 }
             }
         }
@@ -366,7 +358,7 @@ pub fn wf_from_bases_spinor(
                         .into_iter()
                         .enumerate()
                     {
-                        add_to_norm(&mut norm[i], psi_per_basis[basis_i].get(comp)[i][j][k]);
+                        util::add_to_norm(&mut norm[i], psi_per_basis[basis_i].get(comp)[i][j][k]);
                     }
                 }
             }
@@ -700,7 +692,7 @@ pub(crate) fn combine_electron_charges(
             result[i][j][k] += charge_from_elec[i][j][k];
             sum += charge_from_elec[i][j][k];
         }
-        println!("Charge sum (should be -1): {:?}", sum);
+        println!("Charge sum (should be -1): {:.5}", sum);
     }
 
     result

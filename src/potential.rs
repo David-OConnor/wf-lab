@@ -19,11 +19,11 @@ const SOFTENING_FACTOR: f64 = 0.000000000000001;
 fn flatten_charge(
     posits_charge: &Arr3dVec,
     values_charge: &Arr3dReal,
-    grid_n: usize,
 ) -> (Vec<Vec3>, Vec<f64>) {
     let mut posits = Vec::new();
     let mut charges = Vec::new();
 
+    let grid_n = values_charge.len();
     for (i, j, k) in iter_arr!(grid_n) {
         posits.push(posits_charge[i][j][k]);
         charges.push(values_charge[i][j][k]);
@@ -100,19 +100,18 @@ pub(crate) fn create_V_1d_from_elecs(
     posits_sample: &[Vec3],
     charges_elec: &Arr3dReal,
     posits_charge: &Arr3dVec,
-    grid_n_charge: usize,
 ) -> Vec<f64> {
     match dev {
         #[cfg(feature = "cuda")]
         ComputationDevice::Gpu(cuda_dev) => {
             let (posits_charge_flat, charges_flat) =
-                flatten_charge(posits_charge, charges_elec, grid_n_charge);
+                flatten_charge(posits_charge, charges_elec);
 
             // Calculate the charge from electrons using the GPU
-            gpu::run_coulomb(cuda_dev, &posits_charge_flat, &posits_sample, &charges_flat)
+            gpu::run_coulomb(cuda_dev, &posits_charge_flat, posits_sample, &charges_flat)
         }
         ComputationDevice::Cpu => {
-            create_V_from_elec_1d_cpu(posits_sample, charges_elec, posits_charge, grid_n_charge)
+            create_V_from_elec_1d_cpu(posits_sample, charges_elec, posits_charge)
         }
     }
 }
@@ -138,7 +137,7 @@ pub(crate) fn create_V_from_elecs(
         #[cfg(feature = "cuda")]
         ComputationDevice::Gpu(cuda_dev) => {
             let (posits_charge_flat, charges_flat) =
-                flatten_charge(posits_charge, charges_elec, grid_n_charge);
+                flatten_charge(posits_charge, charges_elec);
 
             let mut posits_sample_flat = Vec::new();
 
@@ -285,9 +284,9 @@ pub(crate) fn create_V_from_elec_1d_cpu(
     posits_sample: &[Vec3],
     charges_elec: &Arr3dReal,
     posits_charge: &Arr3dVec,
-    grid_n_charge: usize,
 ) -> Vec<f64> {
     let mut result = Vec::new();
+    let grid_n_charge = posits_charge.len();
 
     for sample_pt in posits_sample {
         let mut V_sample = 0.;

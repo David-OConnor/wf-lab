@@ -1,6 +1,5 @@
 //! Used to find weights and Xis for STOs.
 
-use std::f64::MAX;
 use lin_alg::f64::Vec3;
 use ndarray::prelude::*;
 use ndarray_linalg::SVD;
@@ -17,13 +16,33 @@ use crate::{
     wf_ops::{DerivCalc, Q_ELEC},
 };
 
+/// Normalize a set of weights, to keep the values reasonable and consistent when viewing.
+fn normalize_weights(weights: &[f64]) -> Vec<f64> {
+    // This approach prevents clipping our UI sliders.
+    // todo: Rust's `max` doesn't work with floats. Manually implmementing.
+    let mut norm = 0.;
+    for weight in weights {
+        if weight.abs() > norm {
+            norm = weight.abs();
+        }
+    }
+    // This normalization is to keep values reasonable relative to each other; it's subjective.
+    let normalize_to = 0.7;
+
+    let mut result = Vec::new();
+    for weight in weights {
+        // The multiplication factor here keeps values from scaling too heavily.
+        result.push(*weight * normalize_to / norm);
+    }
+
+    result
+}
+
 pub fn generate_sample_pts() -> Vec<Vec3> {
     // It's important that these sample points span points both close and far from the nuclei.
 
     // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
-    let sample_dists = [
-        10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1.,
-    ];
+    let sample_dists = [10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8];
 
     let mut result = Vec::new();
     for dist in sample_dists {
@@ -68,6 +87,7 @@ fn find_base_xi_E_common(
 ) -> (f64, f64) {
     let mut best_xi_i = 0;
     let mut smallest_diff = f64::MAX;
+
     // This isn't perhaps an ideal approach, but try it to find the baseline xi.
     let trial_base_xis = util::linspace((1., 3.), 200);
 
@@ -86,16 +106,14 @@ fn find_base_xi_E_common(
         let psi_corner = sto.value(posit_corner);
         let psi_pp_corner = wf_ops::second_deriv_cpu(psi_corner, &sto, posit_corner, deriv_calc);
 
-        let E_ = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
-        Es[i] = E_;
+        Es[i] = calc_E_on_psi(psi_corner, psi_pp_corner, V_corner);
 
         // We know the corner matches from how we set E. Let's try a different point, and
         // see how close it is.
-
         let psi = sto.value(posit_sample);
         let psi_pp = wf_ops::second_deriv_cpu(psi, &sto, posit_sample, deriv_calc);
 
-        let V_from_psi = calc_V_on_psi(psi, psi_pp, E_);
+        let V_from_psi = calc_V_on_psi(psi, psi_pp, Es[i]);
 
         let diff = (V_from_psi - V_sample).abs();
 
@@ -111,21 +129,14 @@ fn find_base_xi_E_common(
         base_xi, Es[best_xi_i]
     );
 
-    // todo temp?
-    // let base_xi = base_xi_specified;
-    // let base_xi = 1.50; // todo t!
-
-    // Note: We calculate this above in `Es`, but not if we override it as here.
-    let E = find_E_from_base_xi(base_xi, V_corner, posit_corner, deriv_calc);
-
-    (base_xi, E)
+    (base_xi, Es[best_xi_i])
 }
 
 fn find_base_xi_E(
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
-    deriv_calc: DerivCalc, // base_xi_specified: f64,
+    deriv_calc: DerivCalc,
 ) -> (f64, f64) {
     const SAMPLE_DIST: f64 = 15.;
     let posit_corner = Vec3::new(SAMPLE_DIST, SAMPLE_DIST, SAMPLE_DIST);
@@ -141,9 +152,10 @@ fn find_base_xi_E(
 
     for (i, j, k) in iter_arr!(charge_elec.len()) {
         let charge = charge_elec[i][j][k];
-        // todo: This seems to be the problem with your updated code.
-        // V_sample += V_coulomb(grid_charge[i][j][k], posit_sample, charge);
-        // V_corner += V_coulomb(grid_charge[i][j][k], posit_corner, charge);
+        // todo: This seems to be the problem with your updated code. This must go back, once
+        // todo the system works again from nuc alone.
+        V_sample += V_coulomb(grid_charge[i][j][k], posit_sample, charge);
+        V_corner += V_coulomb(grid_charge[i][j][k], posit_corner, charge);
     }
 
     find_base_xi_E_common(
@@ -152,7 +164,6 @@ fn find_base_xi_E(
         V_sample,
         posit_sample,
         deriv_calc,
-        // base_xi_specified,
     )
 }
 
@@ -307,7 +318,6 @@ fn find_bases_system_of_eqs(
     // todo for each value.
     let mut psi_mat_ = Vec::new();
     let mut psi_pp_mat_ = Vec::new();
-    // let mut psi_pp_div_psi_mat_ = Vec::new();
 
     for basis in bases {
         let sto = Basis::Sto(Sto {
@@ -319,19 +329,21 @@ fn find_bases_system_of_eqs(
             harmonic: Default::default(), // todo
         });
 
-        // todo: Cplx
         // Sample positions are the columns.
         for posit_sample in sample_pts {
             // todo: Real-only for now while building the algorithm, but in general, these are complex.
             let psi = sto.value(*posit_sample);
+            let psi_pp = wf_ops::second_deriv_cpu(psi, &sto, *posit_sample, deriv_calc);
             psi_mat_.push(psi.real);
-            psi_pp_mat_.push(wf_ops::second_deriv_cpu(psi, &sto, *posit_sample, deriv_calc).real);
+            psi_pp_mat_.push(psi_pp.real);
         }
     }
 
-    let psi_mat = Array::from_shape_vec((bases.len(), sample_pts.len()), psi_mat_).unwrap();
+    let shape = (bases.len(), sample_pts.len());
+
+    let psi_mat = Array::from_shape_vec(shape , psi_mat_).unwrap();
     let psi_mat = psi_mat.t();
-    let psi_pp_mat = Array::from_shape_vec((bases.len(), sample_pts.len()), psi_pp_mat_).unwrap();
+    let psi_pp_mat = Array::from_shape_vec(shape, psi_pp_mat_).unwrap();
     let psi_pp_mat = psi_pp_mat.t();
 
     let rhs: Vec<f64> = V_to_match.iter().map(|V| KE_COEFF_INV * (V + E)).collect();
@@ -345,24 +357,7 @@ fn find_bases_system_of_eqs(
     let svd = mat_to_solve.svd(false, true).unwrap();
     let weights = svd.2.unwrap().slice(s![-1, ..]).to_vec();
 
-    // This approach prevents clipping our UI sliders.
-    // todo: Rust's `max` doesn't work with floats. Manually implmementing.
-    let mut highest_weight = 0.;
-    for weight in &weights {
-        if weight.abs() > highest_weight {
-            highest_weight = weight.abs();
-        }
-    }
-    let base_weight = highest_weight;
-
-    // This normalization is to keep values reasonable relative to each other; it's subjective.
-    let normalize_to = 1.2;
-
-    let mut weights_normalized = Vec::new();
-    for weight in &weights {
-        // The multiplication factor here keeps values from scaling too heavily.
-        weights_normalized.push(*weight * normalize_to / base_weight);
-    }
+    let weights_normalized = normalize_weights(&weights);
 
     let mut result = Vec::new();
 
@@ -425,30 +420,35 @@ pub fn run(
     charges_fixed: &[(Vec3, f64)],
     charge_elec: &Arr3dReal,
     grid_charge: &Arr3dVec,
-    grid_n_charge: usize,
-    // todo: We are experimenting with using the input xis and output for helium
-    // Note that this is an intermediate step while we manually experiment with
-    // todo convergence algos and trial WFs.
     sample_pts: &[Vec3],
     bases: &Vec<Basis>,
     deriv_calc: DerivCalc,
 ) -> (Vec<Basis>, f64) {
     let mut bases = bases.clone();
 
-    let mut V_to_match = potential::create_V_1d_from_elecs(
-        dev_charge,
-        sample_pts,
-        charge_elec,
-        grid_charge,
-        grid_n_charge,
-    );
+    println!("Bases: {:?}", bases);
 
-    // Add the V from nucleii charges.
-    for (i, sample_pt) in sample_pts.iter().enumerate() {
-        for (posit_nuc, charge_nuc) in charges_fixed {
-            V_to_match[i] += V_coulomb(*posit_nuc, *sample_pt, *charge_nuc);
+    let V_to_match = {
+        let mut V = potential::create_V_1d_from_elecs(
+            dev_charge,
+            sample_pts,
+            charge_elec,
+            grid_charge,
+        );
+
+        println!("V from elecs: {:?}", V);
+
+        // let mut V_to_match = vec![0.; sample_pts.len()]; // todo temp to TS our solver
+
+        // Add the V from nucleii charges.
+        for (i, sample_pt) in sample_pts.iter().enumerate() {
+            for (posit_nuc, charge_nuc) in charges_fixed {
+                V[i] += V_coulomb(*posit_nuc, *sample_pt, *charge_nuc);
+            }
         }
-    }
+        println!("V from both: {:?}", V);
+        V
+    };
 
     let (base_xi, E) = find_base_xi_E(charges_fixed, charge_elec, grid_charge, deriv_calc);
     // xis[0]);
@@ -487,7 +487,6 @@ pub fn run(
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
 
-    // let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);
     // let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);
     let bases = find_bases_system_of_eqs(&V_to_match, &bases, &sample_pts, E, deriv_calc);
 

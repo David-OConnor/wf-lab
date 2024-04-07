@@ -26,7 +26,7 @@ const E_MIN: f64 = -4.5;
 const E_MAX: f64 = 0.1;
 
 // Wave fn weights
-pub const WEIGHT_MIN: f64 = -1.7;
+pub const WEIGHT_MIN: f64 = -1.2;
 pub const WEIGHT_MAX: f64 = 1.3;
 
 const _L_MIN: f64 = -3.;
@@ -513,7 +513,6 @@ fn bottom_items(
                 &state.charges_fixed,
                 &charges_other_elecs,
                 &state.surfaces_shared.grid_posits_charge,
-                state.grid_n_charge,
                 &sample_pts,
                 &state.bases[ae],
                 state.deriv_calc,

@@ -2,14 +2,16 @@
 //! Components here may be called in one or more places.
 
 use graphics::{EngineUpdates, Scene};
+use lin_alg::f64::Vec3;
 
 use crate::{
     basis_finder,
+    basis_wfs::{Basis, Sto},
     dirac::{Spinor3, SpinorDerivsTypeD3},
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
-    potential, render,
+    iter_arr, potential, render,
     types::SurfacesPerElec,
-    wf_ops, ActiveElec, State,
+    util, wf_ops, ActiveElec, State,
 };
 
 pub fn update_E_or_V(
@@ -120,6 +122,34 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
             &psi_charge_grid,
             state.grid_n_charge,
         );
+    }
+
+    {
+        // todo: Is this an appropriate place to test this visualization?
+        let mut s_orbital = new_data(state.grid_n_render);
+        let n = state.grid_n_render;
+        let s_basis = Basis::Sto(Sto {
+            posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
+            n: 1,
+            xi: 1.,
+            weight: 1.,
+            charge_id: 0,
+            harmonic: Default::default(),
+        });
+
+        let mut norm = 0.;
+        for (i, j, k) in iter_arr!(n) {
+            let posit = state.surfaces_shared.grid_posits[i][j][k];
+            s_orbital[i][j][k] = s_basis.value(posit);
+            util::add_to_norm(&mut norm, s_orbital[i][j][k]);
+        }
+
+        util::normalize_arr(&mut s_orbital, norm);
+
+        for (i, j, k) in iter_arr!(n) {
+            // println!("S: {}", s_orbital[i][j][k]);
+            sfcs.orb_sub[i][j][k] = sfcs.psi[i][j][k] - s_orbital[i][j][k];
+        }
     }
 }
 
@@ -287,9 +317,7 @@ pub(crate) fn he_solver(state: &mut State) {
             &state.charges_fixed,
             &charges_other_elecs,
             &state.surfaces_shared.grid_posits_charge,
-            state.grid_n_charge,
             &sample_pts,
-            // &xis,
             &state.bases[elec_id],
             state.deriv_calc,
         );

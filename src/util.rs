@@ -301,3 +301,13 @@ pub(crate) fn unflatten_arr(result: &mut Arr3d, vals_flat: &[f64], grid_n: usize
 //         }
 //     }
 // }
+
+/// Helper fn for `wf_from_bases` and others. Adds to the normal, ussing the value's square.
+pub fn add_to_norm(n: &mut f64, v: Cplx) {
+    let abs_sq = v.abs_sq();
+    if abs_sq < MAX_PSI_FOR_NORM {
+        *n += abs_sq; // todo: Handle norm on GPU?
+    } else {
+        println!("Exceeded norm thresh in create: {:?}", abs_sq);
+    }
+}
