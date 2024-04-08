@@ -44,7 +44,7 @@ pub fn generate_sample_pts() -> Vec<Vec3> {
     // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
     // let sample_dists = [10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8];
     // todo: Put back the longer version; shorter just to debug.
-    let sample_dists = [7., 4., 2.5, 2., 0.8];
+    let sample_dists = [7., 4., 3., 2.8, 2.6, 2.5, 2., 1.8, 1.6, 1.4, 1.2, 1.];
 
     let mut result = Vec::new();
     for dist in sample_dists {
@@ -65,14 +65,8 @@ fn find_E_from_base_xi(
 ) -> f64 {
     // Now that we've identified the base Xi, use it to calculate the energy of the system.
     // (The energy appears to be determined primarily by it.)
-    let base_sto = Basis::Sto(Sto {
-        posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
-        n: 1,
-        xi: base_xi,
-        weight: 1.,
-        charge_id: 0,
-        harmonic: Default::default(),
-    });
+    // todo: posit Hard-coded for a single nuc at 0.
+    let base_sto = Basis::new_sto(Vec3::new_zero(), 1, base_xi, 1., 0);
 
     let psi_corner = base_sto.value(posit_corner);
     let psi_pp_corner = wf_ops::second_deriv_cpu(psi_corner, &base_sto, posit_corner, deriv_calc);
@@ -96,14 +90,8 @@ fn find_base_xi_E_common(
     let mut Es = vec![0.; trial_base_xis.len()];
 
     for (i, xi_trial) in trial_base_xis.iter().enumerate() {
-        let sto = Basis::Sto(Sto {
-            posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
-            n: 1,                    // todo: Maybe don't hard-set.,
-            xi: *xi_trial,
-            weight: 1.,
-            charge_id: 0,
-            harmonic: Default::default(),
-        });
+        // todo: Hard coded for a single nuc at 0.
+        let sto = Basis::new_sto(Vec3::new_zero(), 1, *xi_trial, 1., 0);
 
         let psi_corner = sto.value(posit_corner);
         let psi_pp_corner = wf_ops::second_deriv_cpu(psi_corner, &sto, posit_corner, deriv_calc);
@@ -258,14 +246,8 @@ fn find_charge_trial_wf(
     let mut result = new_data_real(grid_n_charge);
     let mut trial_other_elecs_wf = Vec::new();
     for (xi, weight) in stos {
-        trial_other_elecs_wf.push(Basis::Sto(Sto {
-            posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
-            n: 1,
-            xi: *xi,
-            weight: *weight,
-            charge_id: 0,
-            harmonic: Default::default(),
-        }));
+        // todo: Posit temp hard-coded to 0.
+        trial_other_elecs_wf.push(Basis::new_sto(Vec3::new_zero(), 1, *xi, *weight, 0))
     }
 
     let mut psi_trial_charge_grid = new_data(grid_n_charge);
@@ -315,40 +297,39 @@ fn find_bases_system_of_eqs(
     let mut psi_pp_mat_ = Vec::new();
 
     for basis in bases {
-        let sto = Basis::Sto(Sto {
-            posit: basis.posit(),
-            n: basis.n(),
-            xi: basis.xi(),
-            weight: 1., // Weight is 1 here.
-            charge_id: basis.charge_id(),
-            harmonic: Default::default(), // todo
-        });
+        let sto = Basis::new_sto(basis.posit(), basis.n(), basis.xi(), 1., basis.charge_id());
 
         // Sample positions are the columns.
         for posit_sample in sample_pts {
             // todo: Real-only for now while building the algorithm, but in general, these are complex.
             let psi = sto.value(*posit_sample);
             let psi_pp = wf_ops::second_deriv_cpu(psi, &sto, *posit_sample, deriv_calc);
+
+            println!("Pt: {:?}, Xi: {}, Psi: {:.5}, Psi'': {:.5}", posit_sample.x, sto.xi(), psi.real, psi_pp.real);
             psi_mat_.push(psi.real);
             psi_pp_mat_.push(psi_pp.real);
         }
     }
 
     let shape = (bases.len(), sample_pts.len());
+    // let shape = (sample_pts.len(), bases.len()); // todo TS!
+
+    // Note: Normalization doesn't matter here: It would cancel out during the psi''/psi division.
 
     let psi_mat = Array::from_shape_vec(shape, psi_mat_).unwrap();
     let psi_mat = psi_mat.t();
     let psi_pp_mat = Array::from_shape_vec(shape, psi_pp_mat_).unwrap();
     let psi_pp_mat = psi_pp_mat.t();
 
+    // Debugging: The rows, as printed, as xis; the columns are sample points.
+
     // RHS here is psi''/psi, in terms of V and E.
     let rhs: Vec<f64> = V_to_match.iter().map(|V| KE_COEFF_INV * (V - E)).collect();
+    let rhs_vec = Array::from_vec(rhs.clone());
 
     println!("\nPsi Mat: {:.7}", psi_mat);
     println!("\nPsi'' Mat: {:.7}", psi_pp_mat);
     println!("\nRHS: {:.7?}", rhs);
-
-    let rhs_vec = Array::from_vec(rhs.clone());
 
     let mat_to_solve = &psi_pp_mat - Array2::from_diag(&rhs_vec).dot(&psi_mat);
 
@@ -359,24 +340,18 @@ fn find_bases_system_of_eqs(
 
     println!("\nSolved weight vector: {:.5?}", weights);
 
-    let weights_normalized = normalize_weights(&weights);
+    // let weights_normalized = normalize_weights(&weights);
+    // todo TS
+    let weights_normalized = weights;
 
     let mut result = Vec::new();
-
     for (i, basis) in bases.iter().enumerate() {
-        result.push(Basis::Sto(Sto {
-            posit: basis.posit(),
-            n: basis.n(),
-            xi: basis.xi(),
-            weight: weights_normalized[i],
-            charge_id: basis.charge_id(),
-            harmonic: Default::default(), // todo
-        }));
+        result.push(Basis::new_sto(basis.posit(), basis.n(), basis.xi(), weights_normalized[i], basis.charge_id()));
     }
 
     println!("\nBasis result:");
     for r in &result {
-        println!("Xi: {:.2} Weight: {:.3}", r.xi(), r.weight());
+        println!("Xi: {:.2} Weight: {:.5}", r.xi(), r.weight());
     }
 
     result

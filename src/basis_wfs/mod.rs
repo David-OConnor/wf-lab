@@ -45,7 +45,20 @@ pub enum Basis {
     Sto(Sto),
 }
 
+
 impl Basis {
+    /// Constructor we use frequently
+    pub fn new_sto(posit: Vec3, n: u16, xi: f64, weight: f64, charge_id: usize) -> Self {
+        Self::Sto(Sto {
+            posit,
+            n,
+            xi,
+            weight,
+            charge_id,
+            harmonic: Default::default(), // todo
+        })
+    }
+
     /// These getters and setters allow access to common values (all but slater weight) without unpacking.
     pub fn posit(&self) -> Vec3 {
         match self {

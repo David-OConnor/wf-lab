@@ -107,14 +107,7 @@ pub fn initialize_bases(
             // (9., 0.),
         ] {
             for n in 1..max_n + 1 {
-                bases.push(Basis::Sto(Sto {
-                    posit: *nuc_posit,
-                    n,
-                    xi,
-                    weight,
-                    charge_id,
-                    harmonic: Default::default(),
-                }));
+                bases.push(Basis::new_sto(*nuc_posit, n, xi, weight, charge_id));
             }
         }
     }
@@ -282,6 +275,7 @@ pub fn wf_from_bases(
         // in the way normalizing the composite (squared) wave function is prior to generating charge.
 
         // todo: Temp removed. They may be interfering with basis solving.
+
         // util::normalize_arr(&mut psi_per_basis[basis_i], norm);
         //
         // if let Some(ref mut derivs) = derivs_per_basis {
