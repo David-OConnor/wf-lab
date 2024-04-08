@@ -94,13 +94,13 @@ pub fn initialize_bases(
             // (1., 0.7),
             (1., 1.),
             (2., 0.),
-            (2.5, 0.),
+            // (2.5, 0.),
             (3., 0.),
-            (3.5, 0.),
+            // (3.5, 0.),
             (4., 0.),
-            (4.5, 0.),
+            // (4.5, 0.),
             (5., 0.),
-            (5.5, 0.),
+            // (5.5, 0.),
             // (6., 0.),
             // (7., 0.),
             // (8., 0.),
@@ -280,17 +280,19 @@ pub fn wf_from_bases(
 
         // This normalization makes balancing the bases more intuitive, but isn't strictly required
         // in the way normalizing the composite (squared) wave function is prior to generating charge.
-        util::normalize_arr(&mut psi_per_basis[basis_i], norm);
 
-        if let Some(ref mut derivs) = derivs_per_basis {
-            util::normalize_arr(&mut derivs[basis_i].dx, norm);
-            util::normalize_arr(&mut derivs[basis_i].dy, norm);
-            util::normalize_arr(&mut derivs[basis_i].dz, norm);
-            util::normalize_arr(&mut derivs[basis_i].d2x, norm);
-            util::normalize_arr(&mut derivs[basis_i].d2y, norm);
-            util::normalize_arr(&mut derivs[basis_i].d2z, norm);
-            util::normalize_arr(&mut derivs[basis_i].d2_sum, norm);
-        }
+        // todo: Temp removed. They may be interfering with basis solving.
+        // util::normalize_arr(&mut psi_per_basis[basis_i], norm);
+        //
+        // if let Some(ref mut derivs) = derivs_per_basis {
+        //     util::normalize_arr(&mut derivs[basis_i].dx, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].dy, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].dz, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].d2x, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].d2y, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].d2z, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].d2_sum, norm);
+        // }
     }
 }
 

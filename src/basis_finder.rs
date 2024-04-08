@@ -42,7 +42,9 @@ pub fn generate_sample_pts() -> Vec<Vec3> {
     // It's important that these sample points span points both close and far from the nuclei.
 
     // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
-    let sample_dists = [10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8];
+    // let sample_dists = [10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8];
+    // todo: Put back the longer version; shorter just to debug.
+    let sample_dists = [7., 4., 2.5, 2., 0.8];
 
     let mut result = Vec::new();
     for dist in sample_dists {
@@ -299,7 +301,6 @@ fn find_charge_trial_wf(
 /// W is the weight vector we are solving for, and V is V from charge, with h^2/2m and E included.
 fn find_bases_system_of_eqs(
     V_to_match: &[f64],
-    // bases: &[Sto],
     bases: &[Basis],
     sample_pts: &[Vec3],
     E: f64,
@@ -340,7 +341,12 @@ fn find_bases_system_of_eqs(
     let psi_pp_mat = Array::from_shape_vec(shape, psi_pp_mat_).unwrap();
     let psi_pp_mat = psi_pp_mat.t();
 
-    let rhs: Vec<f64> = V_to_match.iter().map(|V| KE_COEFF_INV * (V + E)).collect();
+    // RHS here is psi''/psi, in terms of V and E.
+    let rhs: Vec<f64> = V_to_match.iter().map(|V| KE_COEFF_INV * (V - E)).collect();
+
+    println!("\nPsi Mat: {:.7}", psi_mat);
+    println!("\nPsi'' Mat: {:.7}", psi_pp_mat);
+    println!("\nRHS: {:.7?}", rhs);
 
     let rhs_vec = Array::from_vec(rhs.clone());
 
@@ -350,6 +356,8 @@ fn find_bases_system_of_eqs(
     // unfeasible. also check that rust's svd sorts singular values in non-increasing order (pretty sure it does)
     let svd = mat_to_solve.svd(false, true).unwrap();
     let weights = svd.2.unwrap().slice(s![-1, ..]).to_vec();
+
+    println!("\nSolved weight vector: {:.5?}", weights);
 
     let weights_normalized = normalize_weights(&weights);
 
@@ -368,7 +376,7 @@ fn find_bases_system_of_eqs(
 
     println!("\nBasis result:");
     for r in &result {
-        println!("Xi: {:.2} Weight: {:.2}", r.xi(), r.weight());
+        println!("Xi: {:.2} Weight: {:.3}", r.xi(), r.weight());
     }
 
     result
@@ -425,25 +433,10 @@ pub fn run(
 ) -> (Vec<Basis>, f64) {
     let mut bases = bases.clone();
 
-    println!("Bases: {:?}", bases);
-
-    let V_to_match = {
-        let mut V =
-            potential::create_V_1d_from_elecs(dev_charge, sample_pts, charge_elec, grid_charge);
-
-        println!("V from elecs: {:?}", V);
-
-        // let mut V_to_match = vec![0.; sample_pts.len()]; // todo temp to TS our solver
-
-        // Add the V from nucleii charges.
-        for (i, sample_pt) in sample_pts.iter().enumerate() {
-            for (posit_nuc, charge_nuc) in charges_fixed {
-                V[i] += V_coulomb(*posit_nuc, *sample_pt, *charge_nuc);
-            }
-        }
-        println!("V from both: {:?}", V);
-        V
-    };
+    println!("Starting basis-finderalgo. Bases: ");
+    for b in &bases {
+        println!("Xi: {:.3}, Weight: {:.2}", b.xi(), b.weight());
+    }
 
     let (base_xi, E) = find_base_xi_E(charges_fixed, charge_elec, grid_charge, deriv_calc);
     // xis[0]);
@@ -481,6 +474,22 @@ pub fn run(
 
     // todo: The above re trial other elec WF or V should be in a wrapper that iterates new
     // todo charge densities based on this trial.
+
+    let V_to_match = {
+        let mut V =
+            potential::create_V_1d_from_elecs(dev_charge, sample_pts, charge_elec, grid_charge);
+
+        println!("\nV from elecs: {:?}", V);
+
+        // Add the V from nucleii charges.
+        for (i, sample_pt) in sample_pts.iter().enumerate() {
+            for (posit_nuc, charge_nuc) in charges_fixed {
+                V[i] += V_coulomb(*posit_nuc, *sample_pt, *charge_nuc);
+            }
+        }
+        println!("\nV from both: {:?}", V);
+        V
+    };
 
     // let bases = find_bases_system_of_eqs(&V_to_match, &xis, &sample_pts, E);
     let bases = find_bases_system_of_eqs(&V_to_match, &bases, &sample_pts, E, deriv_calc);
