@@ -101,10 +101,11 @@ pub fn initialize_bases(
             // (4.5, 0.),
             (5., 0.),
             // (5.5, 0.),
-            // (6., 0.),
+            (6., 0.),
             // (7., 0.),
-            // (8., 0.),
+            (8., 0.),
             // (9., 0.),
+            (10., 0.),
         ] {
             for n in 1..max_n + 1 {
                 bases.push(Basis::new_sto(*nuc_posit, n, xi, weight, charge_id));

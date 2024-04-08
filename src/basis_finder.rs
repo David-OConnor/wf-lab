@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Normalize a set of weights, to keep the values reasonable and consistent when viewing.
-fn normalize_weights(weights: &[f64]) -> Vec<f64> {
+fn _normalize_weights(weights: &[f64]) -> Vec<f64> {
     // This approach prevents clipping our UI sliders.
     // todo: Rust's `max` doesn't work with floats. Manually implmementing.
     let mut norm = 0.;
@@ -42,9 +42,10 @@ pub fn generate_sample_pts() -> Vec<Vec3> {
     // It's important that these sample points span points both close and far from the nuclei.
 
     // Go low to validate high xi, but not too low, Icarus. We currently seem to have trouble below ~0.5 dist.
-    // let sample_dists = [10., 9., 8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.5, 1., 0.8];
+    let sample_dists = [8., 7., 6., 5., 4., 3.5, 3., 2.5, 2., 1.9, 1.8, 1.5, 1., 0.8];
     // todo: Put back the longer version; shorter just to debug.
-    let sample_dists = [7., 4., 3., 2.8, 2.6, 2.5, 2., 1.8, 1.6, 1.4, 1.2, 1.];
+    // let sample_dists = [5., 4., 3., 2., 1.];
+    // let sample_dists = [10., 9., 8., 7., 6.];
 
     let mut result = Vec::new();
     for dist in sample_dists {
@@ -305,11 +306,34 @@ fn find_bases_system_of_eqs(
             let psi = sto.value(*posit_sample);
             let psi_pp = wf_ops::second_deriv_cpu(psi, &sto, *posit_sample, deriv_calc);
 
-            println!("Pt: {:?}, Xi: {}, Psi: {:.5}, Psi'': {:.5}", posit_sample.x, sto.xi(), psi.real, psi_pp.real);
+            println!(
+                "Pt: {:?}, Xi: {}, Psi: {:.5}, Psi'': {:.5}",
+                posit_sample.x,
+                sto.xi(),
+                psi.real,
+                psi_pp.real
+            );
             psi_mat_.push(psi.real);
             psi_pp_mat_.push(psi_pp.real);
         }
     }
+
+    // {
+    //     // todo: Experimenting with a forced base xi with weight = 1, to avoid pathological solutions.
+    //     let basis = &bases[0];
+    //     let sto = Basis::new_sto(basis.posit(), basis.n(), basis.xi(), 1., basis.charge_id());
+    //
+    //     // Sample positions are the columns.
+    //     for posit_sample in sample_pts {
+    //         // todo: Real-only for now while building the algorithm, but in general, these are complex.
+    //         let psi = sto.value(*posit_sample);
+    //         let psi_pp = wf_ops::second_deriv_cpu(psi, &sto, *posit_sample, deriv_calc);
+    //
+    //         println!("Pt: {:?}, Xi: {}, Psi: {:.5}, Psi'': {:.5}", posit_sample.x, sto.xi(), psi.real, psi_pp.real);
+    //         psi_mat_.push(psi.real);
+    //         psi_pp_mat_.push(psi_pp.real);
+    //     }
+    // }
 
     let shape = (bases.len(), sample_pts.len());
     // let shape = (sample_pts.len(), bases.len()); // todo TS!
@@ -327,10 +351,6 @@ fn find_bases_system_of_eqs(
     let rhs: Vec<f64> = V_to_match.iter().map(|V| KE_COEFF_INV * (V - E)).collect();
     let rhs_vec = Array::from_vec(rhs.clone());
 
-    println!("\nPsi Mat: {:.7}", psi_mat);
-    println!("\nPsi'' Mat: {:.7}", psi_pp_mat);
-    println!("\nRHS: {:.7?}", rhs);
-
     let mat_to_solve = &psi_pp_mat - Array2::from_diag(&rhs_vec).dot(&psi_mat);
 
     // you can use an iterative method, which will be more efficient for larger matrices where full svd is
@@ -338,18 +358,27 @@ fn find_bases_system_of_eqs(
     let svd = mat_to_solve.svd(false, true).unwrap();
     let weights = svd.2.unwrap().slice(s![-1, ..]).to_vec();
 
-    println!("\nSolved weight vector: {:.5?}", weights);
-
     // let weights_normalized = normalize_weights(&weights);
     // todo TS
-    let weights_normalized = weights;
+    // let weights_normalized = weights;
 
     let mut result = Vec::new();
     for (i, basis) in bases.iter().enumerate() {
-        result.push(Basis::new_sto(basis.posit(), basis.n(), basis.xi(), weights_normalized[i], basis.charge_id()));
+        result.push(Basis::new_sto(
+            basis.posit(),
+            basis.n(),
+            basis.xi(),
+            weights[i],
+            basis.charge_id(),
+        ));
     }
 
+    println!("\nPsi Mat: {:.7}", psi_mat);
+    println!("\nPsi'' Mat: {:.7}", psi_pp_mat);
+    println!("\nRHS: {:.7?}", rhs);
+    println!("\nSolved weight vector: {:.5?}", weights);
     println!("\nBasis result:");
+
     for r in &result {
         println!("Xi: {:.2} Weight: {:.5}", r.xi(), r.weight());
     }

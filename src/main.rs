@@ -4,6 +4,8 @@
 #![allow(confusable_idents)]
 #![allow(non_upper_case_globals)]
 #![allow(non_ascii_idents)]
+//  todo: Ideally temp, while we experiment. Loads of unused functions.
+#![allow(dead_code)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::too_many_arguments)]
 

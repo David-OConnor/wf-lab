@@ -45,7 +45,6 @@ pub enum Basis {
     Sto(Sto),
 }
 
-
 impl Basis {
     /// Constructor we use frequently
     pub fn new_sto(posit: Vec3, n: u16, xi: f64, weight: f64, charge_id: usize) -> Self {
