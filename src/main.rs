@@ -426,7 +426,6 @@ fn main() {
 
     let dev_psi = ComputationDevice::Cpu;
 
-    let ui_active_elec = 0;
     let max_basis_n = 1;
     let num_elecs = 3;
 
@@ -442,31 +441,19 @@ fn main() {
     let mut bases_per_elec = Vec::new();
     let mut bases_per_elec_spinor = Vec::new();
 
-    for _ in 0..num_elecs {
-        bases_per_elec.push(Vec::new());
-        bases_per_elec_spinor.push(Vec::new());
+    // Initialize bases.
+    for i_elec in 0..num_elecs {
+        let mut bases_this_elec = Vec::new();
+        let mut bases_this_elec_spinor = Vec::new();
+        // todo: Kludge for Li
+        let n = if i_elec > 1 { 2 } else { 1 };
+        wf_ops::initialize_bases(&mut bases_this_elec, &nuclei, n);
+
+        wf_ops::initialize_bases_spinor(&mut bases_this_elec_spinor, &nuclei, n);
+
+        bases_per_elec.push(bases_this_elec);
+        bases_per_elec_spinor.push(bases_this_elec_spinor);
     }
-
-    // todo: Kludge for Li
-    let n = if ui_active_elec > 1 { 2 } else { 1 };
-    wf_ops::initialize_bases(&mut bases_per_elec[ui_active_elec], &nuclei, n);
-    wf_ops::initialize_bases_spinor(
-        &mut bases_per_elec_spinor[ui_active_elec],
-        &nuclei,
-        max_basis_n,
-    );
-
-    // todo: This is getting weird re multiple electrons; perhaps you should switch
-    // todo an approach where bases don't have weights, but you use a separate
-    // weights array.
-    for i_elec in 1..num_elecs {
-        bases_per_elec[i_elec] = bases_per_elec[0].clone();
-    }
-
-    // H ion nuc dist is I believe 2 bohr radii.
-    // let charges = vec![(Vec3::new(-1., 0., 0.), Q_PROT), (Vec3::new(1., 0., 0.), Q_PROT)];
-
-    // let (grid_min, grid_max) = grid_setup::choose_grid_limits(&nuclei);
 
     // todoFigure out why you get incorrect answers if these 2 grids don't line up.
     // todo: FOr now, you can continue with matching them if you wish.
@@ -500,7 +487,7 @@ fn main() {
 
     let surface_descs_per_elec = vec![
         SurfaceDesc::new("V", true),
-        SurfaceDesc::new("ψ", true),
+        SurfaceDesc::new("ψ", false),
         SurfaceDesc::new("ψ im", false),
         SurfaceDesc::new("ρ", false),
         SurfaceDesc::new("ψ'' calc", false),
