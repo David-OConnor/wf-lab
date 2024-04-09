@@ -627,7 +627,9 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 state.surfaces_per_elec = surfaces_per_elec;
 
                 for elec_i in 0..state.surfaces_per_elec.len() {
-                    wf_ops::initialize_bases(&mut state.bases[elec_i], &state.charges_fixed, 2);
+                    // todo: Kludge for Li
+                    let n = if elec_i > 1 { 2 } else { 1 };
+                    wf_ops::initialize_bases(&mut state.bases[elec_i], &state.charges_fixed, n);
                 }
 
                 updated_evaluated_wfs = true;

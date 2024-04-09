@@ -447,7 +447,9 @@ fn main() {
         bases_per_elec_spinor.push(Vec::new());
     }
 
-    wf_ops::initialize_bases(&mut bases_per_elec[ui_active_elec], &nuclei, max_basis_n);
+    // todo: Kludge for Li
+    let n = if ui_active_elec > 1 { 2 } else { 1 };
+    wf_ops::initialize_bases(&mut bases_per_elec[ui_active_elec], &nuclei, n);
     wf_ops::initialize_bases_spinor(
         &mut bases_per_elec_spinor[ui_active_elec],
         &nuclei,

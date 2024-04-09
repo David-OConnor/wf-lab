@@ -80,7 +80,7 @@ impl Default for DerivCalc {
 pub fn initialize_bases(
     bases: &mut Vec<Basis>,
     charges_fixed: &[(Vec3, f64)],
-    max_n: u16, // quantum number n
+    n: u16, // quantum number n
 ) {
     *bases = Vec::new();
 
@@ -89,51 +89,64 @@ pub fn initialize_bases(
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
         // See Sebens, for weights under equation 24; this is for Helium.
 
-        // todo: Put back higher terms.
-        for (xi, weight) in [
-            // (1., 0.7),
-            // (1., 1.),
-            // (2., 0.),
-            // // (2.5, 0.),
-            // (3., 0.),
-            // // (3.5, 0.),
-            // (4., 0.),
-            // // (4.5, 0.),
-            // (5., 0.),
-            // // (5.5, 0.),
-            // (6., 0.),
-            // // (7., 0.),
-            // (8., 0.),
-            // // (9., 0.),
-            // (10., 0.),
+        // todo: Kludge for Li.
+        let weights = if n == 1 {
+            [
+                // (1., 0.7),
+                // (1., 1.),
+                // (2., 0.),
+                // // (2.5, 0.),
+                // (3., 0.),
+                // // (3.5, 0.),
+                // (4., 0.),
+                // // (4.5, 0.),
+                // (5., 0.),
+                // // (5.5, 0.),
+                // (6., 0.),
+                // // (7., 0.),
+                // (8., 0.),
+                // // (9., 0.),
+                // (10., 0.),
 
-            // HE:
-            // ξ: 1.0 Weight: 0.45
-            // ξ: 2.0 Weight: 0.0
-            // ξ: 3.0 Weight: -0.21
-            // ξ: 4.0 Weight: -0.01
-            // ξ: 5.0 Weight: -0.32
-            // ξ: 6.0 Weight: 0.10
-            // ξ: 8.0 Weight: -0.61
-            // ξ: 10.0 Weight: -0.05
-            (1., 0.45),
-            (2., 0.),
-            (3., -0.21),
-            (4., -0.01),
-            (5., -0.32),
-            (6., 0.10),
-            (8., -0.61),
-            (10., -0.05),
-            // todo: WIP for lithium:
-            // 0.45,
-            // -0.01
-            // -0.15
-            // -0.46
-            // -0.26 (500)
-        ] {
-            for n in 1..max_n + 1 {
-                bases.push(Basis::new_sto(*nuc_posit, n, xi, weight, charge_id));
-            }
+                // HE:
+                // ξ: 1.0 Weight: 0.45
+                // ξ: 2.0 Weight: 0.0
+                // ξ: 3.0 Weight: -0.21
+                // ξ: 4.0 Weight: -0.01
+                // ξ: 5.0 Weight: -0.32
+                // ξ: 6.0 Weight: 0.10
+                // ξ: 8.0 Weight: -0.61
+                // ξ: 10.0 Weight: -0.05
+                (1., 0.45),
+                (2., 0.),
+                (3., -0.21),
+                (4., -0.01),
+                (5., -0.32),
+                (6., 0.10),
+                (8., -0.61),
+                (10., -0.05),
+            ]
+        } else {
+            [
+                // todo: WIP for lithium:
+                // 0.45,
+                // -0.01
+                // -0.15
+                // -0.46
+                // -0.26 (500)
+                (1., 0.45),
+                (2., -0.01),
+                (3., -0.15),
+                (4., -0.46),
+                (5., -0.26),
+                (6., 0.0),
+                (8., -0.0),
+                (10., -0.0),
+            ]
+        };
+
+        for (xi, weight) in weights {
+            bases.push(Basis::new_sto(*nuc_posit, n, xi, weight, charge_id));
         }
     }
 }
