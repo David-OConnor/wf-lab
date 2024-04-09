@@ -64,9 +64,9 @@ use crate::{
 const NUM_SURFACES_PER_ELEC: usize = 11;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 5.;
+const GRID_MAX_RENDER: f64 = 10.;
 const GRID_MAX_CHARGE: f64 = 12.;
-const GRID_N_RENDER_DEFAULT: usize = 40;
+const GRID_N_RENDER_DEFAULT: usize = 60;
 const GRID_N_CHARGE_DEFAULT: usize = 61;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
@@ -323,7 +323,7 @@ pub fn init_from_grid(
             &sfcs.derivs,
             // &sfcs.psi_pp_div_psi_evaluated,
             &sfcs.V_acting_on_this,
-            surfaces_shared.E,
+            sfcs.E,
             &surfaces_shared.V_from_nuclei,
             &surfaces_shared.grid_posits,
             &mut sfcs.psi_fm_L2,
@@ -428,7 +428,7 @@ fn main() {
 
     let ui_active_elec = 0;
     let max_basis_n = 1;
-    let num_elecs = 2;
+    let num_elecs = 3;
 
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let posit_charge_2 = Vec3::new(0.4, 0., 0.);

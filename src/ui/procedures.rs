@@ -80,7 +80,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &sfcs.psi,
         &sfcs.derivs,
         &sfcs.V_acting_on_this,
-        state.surfaces_shared.E,
+        sfcs.E,
         &state.surfaces_shared.V_from_nuclei,
         &state.surfaces_shared.grid_posits,
         &mut sfcs.psi_fm_L2,
@@ -322,7 +322,7 @@ pub(crate) fn he_solver(state: &mut State) {
             state.deriv_calc,
         );
 
-        state.surfaces_shared.E = E;
+        state.surfaces_per_elec[elec_id].E = E;
         state.bases[elec_id] = bases;
         state.ui.active_elec = ActiveElec::PerElec(elec_id);
 

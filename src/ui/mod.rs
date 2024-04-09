@@ -433,7 +433,7 @@ fn basis_fn_mixer(
                         let E = if state.ui.adjust_E_with_weights {
                             None
                         } else {
-                            Some(state.surfaces_shared.E)
+                            Some(state.surfaces_per_elec[ae].E)
                         };
 
                         let weights: Vec<f64> =
@@ -486,7 +486,7 @@ fn bottom_items(
         }
 
         if ui.add(Button::new("Find E")).clicked() {
-            state.surfaces_shared.E = wf_ops::calc_E_from_bases(
+            state.surfaces_per_elec[ae].E = wf_ops::calc_E_from_bases(
                 &state.bases[ae],
                 state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
                 state.surfaces_shared.grid_posits[0][0][0],
@@ -509,7 +509,7 @@ fn bottom_items(
                 let pt = state.surfaces_shared.grid_posits[i][i][i];
                 let psi = state.surfaces_per_elec[ae].psi[i][i][i];
                 let psi_pp = state.surfaces_per_elec[ae].derivs.d2_sum[i][i][i];
-                let V_calc = eigen_fns::calc_V_on_psi(psi, psi_pp, state.surfaces_shared.E);
+                let V_calc = eigen_fns::calc_V_on_psi(psi, psi_pp, state.surfaces_per_elec[ae].E);
 
                 println!(
                     "Pt: {:?} Actual: {:.4} Calc: {:.4}, Diff: {:.4}",
@@ -544,7 +544,7 @@ fn bottom_items(
                 state.deriv_calc,
             );
 
-            state.surfaces_shared.E = E;
+            state.surfaces_per_elec[ae].E = E;
 
             state.bases[ae] = bases;
             // todo: Only reculate ones that are new; this recalculates all, when it's unlikely we need to do that.
@@ -873,13 +873,13 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 ui.add(
                     egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
                         if let Some(v_) = v {
-                            state.surfaces_shared.E = v_;
+                            state.surfaces_per_elec[ae].E = v_;
 
                             updated_meshes = true;
                             updated_E_or_V = true;
                         }
 
-                        state.surfaces_shared.E
+                        state.surfaces_per_elec[ae].E
                     })
                     .text("E"),
                 );
@@ -961,10 +961,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 }
 
                 if updated_E_or_V {
+                    let E = state.surfaces_per_elec[ae].E;
                     procedures::update_E_or_V(
                         &mut state.surfaces_per_elec[ae],
                         &state.surfaces_shared.V_from_nuclei,
-                        state.surfaces_shared.E,
+                        E,
                         &state.surfaces_shared.grid_posits,
                     );
                 }

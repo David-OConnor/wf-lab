@@ -39,7 +39,7 @@ pub struct SurfacesShared {
     // todo: This may not be a good model: the wave function isn't a function of position
     // mapped to a value for multi-elecs. It's a function of a position for each elec.
     pub psi: WaveFunctionMultiElec,
-    pub E: f64,
+    // pub E: f64,
     // /// 2023-08-17: Another attempt at a 3d-grid-based save function
     // pub psi_numeric: Arr3d,
     /// In case we want to explore something like DFT
@@ -90,7 +90,7 @@ impl SurfacesShared {
             V_total: data_real.clone(),
             V_from_nuclei: data_real.clone(),
             psi: WaveFunctionMultiElec::new(num_elecs, n_grid),
-            E: -0.50,
+            // E: -0.50,
             // psi_numeric: data,
             // charge_density_dft: data_real.clone(),
             psi_alpha: data.clone(),
@@ -228,6 +228,7 @@ pub struct SurfacesPerElec {
     pub E_dirac: (f64, f64, f64, f64),
     // todo: Temp experimenting with making orbitals from modded H ones.
     pub orb_sub: Arr3d,
+    pub E: f64,
 }
 
 impl SurfacesPerElec {
@@ -300,6 +301,7 @@ impl SurfacesPerElec {
             spinor_derivs_per_basis,
             E_dirac: (0., 0., 0., 0.),
             orb_sub: data.clone(),
+            E: -0.5,
         }
     }
 }
