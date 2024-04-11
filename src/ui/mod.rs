@@ -40,6 +40,8 @@ const GRID_SIZE_MAX: f64 = 40.;
 const ITEM_SPACING: f32 = 18.;
 const FLOAT_EDIT_WIDTH: f32 = 40.;
 
+const SFC_CHECK_ROWS: usize = 5;
+
 fn text_edit_float(val: &mut f64, _default: f64, ui: &mut Ui) {
     let mut entry = val.to_string();
 
@@ -734,91 +736,47 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             // todo: Move this A/R. Function?
             match state.ui.active_elec {
                 ActiveElec::PerElec(_) => {
-                    ui.vertical(|ui| {
-                        for (i, data) in state.surface_descs_per_elec.iter_mut().enumerate() {
-                            if i > 5 {
-                                continue;
-                            }
-                            if ui
-                                .checkbox(&mut data.visible, &data.surface.name())
-                                .clicked()
-                            {
-                                engine_updates.entities = true;
-                            }
-                        }
-                    });
-                    // todo DRY
-                    ui.vertical(|ui| {
-                        for (i, data) in state.surface_descs_per_elec.iter_mut().enumerate() {
-                            if i <= 5 || i > 10 {
-                                continue;
-                            }
-                            if ui
-                                .checkbox(&mut data.visible, &data.surface.name())
-                                .clicked()
-                            {
-                                engine_updates.entities = true;
-                            }
-                        }
-                    });
+                    let num_cols = state.surface_descs_per_elec.len() / SFC_CHECK_ROWS + 1;
+                    for col_i in 0..num_cols {
+                        let start_i = col_i * SFC_CHECK_ROWS;
+                        let end_i = start_i + SFC_CHECK_ROWS;
 
-                    ui.vertical(|ui| {
-                        for (i, data) in state.surface_descs_per_elec.iter_mut().enumerate() {
-                            if i <= 10 {
-                                continue;
+                        ui.vertical(|ui| {
+                            for (i, data) in state.surface_descs_per_elec.iter_mut().enumerate() {
+                                if i < start_i || i >= end_i {
+                                    continue;
+                                }
+                                if ui
+                                    .checkbox(&mut data.visible, &data.surface.name())
+                                    .clicked()
+                                {
+                                    engine_updates.entities = true;
+                                }
                             }
-                            if ui
-                                .checkbox(&mut data.visible, &data.surface.name())
-                                .clicked()
-                            {
-                                engine_updates.entities = true;
-                            }
-                        }
-                    });
+                        });
+                    }
                 }
-                // todo: This whole section is DRY!
+                // todo: DRY
                 ActiveElec::Combined => {
-                    ui.vertical(|ui| {
-                        for (i, data) in state.surface_descs_combined.iter_mut().enumerate() {
-                            if i > 3 {
-                                continue;
-                            }
-                            if ui
-                                .checkbox(&mut data.visible, &data.surface.name())
-                                .clicked()
-                            {
-                                engine_updates.entities = true;
-                            }
-                        }
-                    });
+                    let num_cols = state.surface_descs_combined.len() / SFC_CHECK_ROWS + 1;
                     // todo DRY
-                    ui.vertical(|ui| {
-                        for (i, data) in state.surface_descs_combined.iter_mut().enumerate() {
-                            if i <= 3 || i > 6 {
-                                continue;
+                    for col_i in 0..num_cols {
+                        let start_i = col_i * SFC_CHECK_ROWS;
+                        let end_i = start_i + SFC_CHECK_ROWS;
+                        ui.vertical(|ui| {
+                            for (i, data) in state.surface_descs_combined.iter_mut().enumerate() {
+                                if i < start_i || i >= end_i {
+                                    continue;
+                                }
+                                if ui
+                                    .checkbox(&mut data.visible, &data.surface.name())
+                                    .clicked()
+                                {
+                                    engine_updates.entities = true;
+                                }
                             }
-                            if ui
-                                .checkbox(&mut data.visible, &data.surface.name())
-                                .clicked()
-                            {
-                                engine_updates.entities = true;
-                            }
-                        }
-                    });
-
-                    ui.vertical(|ui| {
-                        for (i, data) in state.surface_descs_combined.iter_mut().enumerate() {
-                            if i <= 6 {
-                                continue;
-                            }
-                            if ui
-                                .checkbox(&mut data.visible, &data.surface.name())
-                                .clicked()
-                            {
-                                engine_updates.entities = true;
-                            }
-                        }
-                    });
+                        });
+                    }
 
                     // We currently use separate surfaces for these, vice the toggles.
                     // if ui

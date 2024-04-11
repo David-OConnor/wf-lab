@@ -80,7 +80,7 @@ const GRID_N_RENDER_DEFAULT: usize = 60;
 const GRID_N_CHARGE_DEFAULT: usize = 61;
 
 const RENDER_SPINOR: bool = false;
-const RENDER_L: bool = false;
+const RENDER_L: bool = true;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -187,8 +187,8 @@ pub struct State {
     /// This only (currently) applies to the main grid, with a uniform grid set for
     /// charge density.
     pub sample_factor_render: f64,
-    /// When finding and initializing basis, this is the maximum n quantum number.
-    pub max_basis_n: u16,
+    // /// When finding and initializing basis, this is the maximum n quantum number.
+    // pub max_basis_n: u16,
     pub num_elecs: usize,
     pub ui: StateUi,
 }
@@ -500,8 +500,8 @@ fn main() {
 
     let dev_psi = ComputationDevice::Cpu;
 
-    let max_basis_n = 1;
-    let num_elecs = 3;
+    // let max_basis_n = 1;
+    let num_elecs = 1;
 
     let posit_charge_1 = Vec3::new(0., 0., 0.);
     let posit_charge_2 = Vec3::new(0.4, 0., 0.);
@@ -635,7 +635,7 @@ fn main() {
         grid_range_render: (grid_min_render, grid_max_render),
         grid_range_charge: (grid_min_charge, grid_max_charge),
         sample_factor_render: spacing_factor,
-        max_basis_n,
+        // max_basis_n,
         num_elecs,
         ui: Default::default(),
     };
