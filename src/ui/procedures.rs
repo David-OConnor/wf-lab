@@ -289,6 +289,8 @@ pub fn update_meshes(state: &mut State, scene: &mut Scene, engine_updates: &mut 
         &state.charges_from_electron[active_elec],
         state.grid_n_render,
         render_multi_elec,
+        &state.surface_descs_per_elec,
+        &state.surface_descs_combined,
     );
 }
 

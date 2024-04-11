@@ -226,7 +226,8 @@ pub struct SurfacesPerElec {
     pub spinor_per_basis: Vec<Spinor3>,
     pub spinor_derivs_per_basis: Vec<SpinorDerivsTypeD3>,
     pub E_dirac: (f64, f64, f64, f64),
-    // todo: Temp experimenting with making orbitals from modded H ones.
+    // todo: Temp experimenting with making orbitals from modded H ones. This may be used  to evaluate
+    // todo how to modify an H orbital to arrive at the ones we've solved for.
     pub orb_sub: Arr3d,
     pub E: f64,
 }

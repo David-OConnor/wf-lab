@@ -739,7 +739,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             if i > 5 {
                                 continue;
                             }
-                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                            if ui
+                                .checkbox(&mut data.visible, &data.surface.name())
+                                .clicked()
+                            {
                                 engine_updates.entities = true;
                             }
                         }
@@ -750,7 +753,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             if i <= 5 || i > 10 {
                                 continue;
                             }
-                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                            if ui
+                                .checkbox(&mut data.visible, &data.surface.name())
+                                .clicked()
+                            {
                                 engine_updates.entities = true;
                             }
                         }
@@ -761,7 +767,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             if i <= 10 {
                                 continue;
                             }
-                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                            if ui
+                                .checkbox(&mut data.visible, &data.surface.name())
+                                .clicked()
+                            {
                                 engine_updates.entities = true;
                             }
                         }
@@ -774,7 +783,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             if i > 3 {
                                 continue;
                             }
-                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                            if ui
+                                .checkbox(&mut data.visible, &data.surface.name())
+                                .clicked()
+                            {
                                 engine_updates.entities = true;
                             }
                         }
@@ -785,7 +797,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             if i <= 3 || i > 6 {
                                 continue;
                             }
-                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                            if ui
+                                .checkbox(&mut data.visible, &data.surface.name())
+                                .clicked()
+                            {
                                 engine_updates.entities = true;
                             }
                         }
@@ -796,7 +811,10 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             if i <= 6 {
                                 continue;
                             }
-                            if ui.checkbox(&mut data.visible, &data.name).clicked() {
+                            if ui
+                                .checkbox(&mut data.visible, &data.surface.name())
+                                .clicked()
+                            {
                                 engine_updates.entities = true;
                             }
                         }

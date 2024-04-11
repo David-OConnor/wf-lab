@@ -27,6 +27,16 @@
 
 // Note on STOs: It appears that, for n=1: E = -(xi^2)/2.
 
+// April 2024 shower thought: On what defines the quantum numbers. If you separate these, you meet
+// the Spin statistics/exclusion/exchange requirements.
+// n: Energy, as used in wave equations.
+
+// L^2ψ = hbar^2 l (l+1) ψ
+// l: phase change over angle?? (starting guess). Orbital angular momentum. Related to shape?
+// m: phase change over distance?? (starting guess)
+// spin: Related to angular momentum, and perhaps we can treat in an at-hoc manner. (?) Related to
+// orientation of spin axis related to the orbital plane?
+
 #[cfg(feature = "cuda")]
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
 use lin_alg::f64::Vec3;
@@ -68,6 +78,9 @@ const GRID_MAX_RENDER: f64 = 10.;
 const GRID_MAX_CHARGE: f64 = 12.;
 const GRID_N_RENDER_DEFAULT: usize = 60;
 const GRID_N_CHARGE_DEFAULT: usize = 61;
+
+const RENDER_SPINOR: bool = false;
+const RENDER_L: bool = false;
 
 // todo: Consider a spherical grid centered perhaps on the system center-of-mass, which
 // todo less precision further away?
@@ -181,17 +194,14 @@ pub struct State {
 }
 
 pub struct SurfaceDesc {
-    pub name: String,
+    pub surface: SurfaceToRender,
     pub visible: bool,
 }
 
 impl SurfaceDesc {
     /// This constructor simplifies syntax.
-    pub fn new(name: &str, visible: bool) -> Self {
-        Self {
-            name: name.to_owned(),
-            visible,
-        }
+    pub fn new(surface: SurfaceToRender, visible: bool) -> Self {
+        Self { surface, visible }
     }
 }
 
@@ -397,6 +407,70 @@ pub fn init_from_grid(
     )
 }
 
+//
+// todo: Move this A/R
+#[derive(Clone, Copy)]
+pub enum SurfaceToRender {
+    V,
+    /// These may be overloaded to mean mag/phase
+    Psi,
+    PsiIm,
+    ChargeDensity,
+    PsiPpCalc,
+    PsiPpCalcIm,
+    PsiPpMeas,
+    PsiPpMeasIm,
+    ElecVFromPsi,
+    TotalVFromPsi,
+    VPElec,
+    // Angular momentum
+    LSq,
+    LSqIm,
+    LZ,
+    LZIm,
+    // Spinor
+    // todo: Im of these A/R
+    PsiSpinor0,
+    PsiSpinor1,
+    PsiSpinor2,
+    PsiSpinor3,
+    PsiSpinorCalc0,
+    PsiSpinorCalc1,
+    PsiSpinorCalc2,
+    PsiSpinorCalc3,
+}
+
+impl SurfaceToRender {
+    pub fn name(&self) -> String {
+        match self {
+            Self::V => "V",
+            Self::Psi => "ψ",
+            Self::PsiIm => "ψ im",
+            Self::ChargeDensity => "ρ",
+            Self::PsiPpCalc => "ψ'' calc",
+            Self::PsiPpCalcIm => "ψ'' calc im",
+            Self::PsiPpMeas => "ψ'' meas",
+            Self::PsiPpMeasIm => "ψ'' meas im",
+            Self::ElecVFromPsi => "Elec V from ψ",
+            Self::TotalVFromPsi => "V from ψ",
+            Self::VPElec => "V' elec",
+            Self::LSq => "L^2",
+            Self::LSqIm => "L^2 im",
+            Self::LZ => "L_z",
+            Self::LZIm => "L_z im",
+            Self::PsiSpinor0 => "ψ0",
+            Self::PsiSpinor1 => "ψ1",
+            Self::PsiSpinor2 => "2",
+            Self::PsiSpinor3 => "ψ3",
+            Self::PsiSpinorCalc0 => "ψ0_c",
+            Self::PsiSpinorCalc1 => "ψ_c1",
+            Self::PsiSpinorCalc2 => "ψ2_c",
+            Self::PsiSpinorCalc3 => "ψ3_c",
+        }
+        .to_string()
+    }
+}
+
 fn main() {
     #[cfg(feature = "cuda")]
     let dev_charge = {
@@ -485,50 +559,61 @@ fn main() {
             psi_pp_calc,
         );
 
-    let surface_descs_per_elec = vec![
-        SurfaceDesc::new("V", true),
-        SurfaceDesc::new("ψ", false),
-        SurfaceDesc::new("ψ im", false),
-        SurfaceDesc::new("ρ", false),
-        SurfaceDesc::new("ψ'' calc", false),
-        SurfaceDesc::new("ψ'' calc im", false),
-        SurfaceDesc::new("ψ'' meas", false),
-        SurfaceDesc::new("ψ'' meas im", false),
-        SurfaceDesc::new("Elec V from ψ ", false),
-        SurfaceDesc::new("Total V from ψ", true),
-        SurfaceDesc::new("V'_elec", false),
-        // SurfaceDesc::new("L^2", false),
-        // SurfaceDesc::new("L^2 im", false),
-        // SurfaceDesc::new("L_z", false),
-        // SurfaceDesc::new("L_z im", false),
-        // todo: These likely temp to verify.
-        // SurfaceDesc::new("dx", false),
-        // SurfaceDesc::new("dy", false),
-        // SurfaceDesc::new("dz", false),
-        // SurfaceDesc::new("d2x", false),
-        // SurfaceDesc::new("d2y", false),
-        // SurfaceDesc::new("d2z", false),
-        SurfaceDesc::new("ψ0", false),
-        SurfaceDesc::new("ψ1", false),
-        SurfaceDesc::new("ψ2", false),
-        SurfaceDesc::new("ψ3", false),
-        // Calculated, to compare to the trial.
-        SurfaceDesc::new("ψ0_c", false),
-        SurfaceDesc::new("ψ1_c", false),
-        SurfaceDesc::new("ψ2_c", false),
-        SurfaceDesc::new("ψ3_c", false),
+    let mut surface_descs_per_elec = vec![
+        SurfaceDesc::new(SurfaceToRender::V, true),
+        SurfaceDesc::new(SurfaceToRender::Psi, false),
+        SurfaceDesc::new(SurfaceToRender::PsiIm, false),
+        SurfaceDesc::new(SurfaceToRender::ChargeDensity, false),
+        SurfaceDesc::new(SurfaceToRender::PsiPpCalc, false),
+        SurfaceDesc::new(SurfaceToRender::PsiPpCalcIm, false),
+        SurfaceDesc::new(SurfaceToRender::PsiPpMeas, false),
+        SurfaceDesc::new(SurfaceToRender::PsiPpMeasIm, false),
+        SurfaceDesc::new(SurfaceToRender::ElecVFromPsi, false),
+        SurfaceDesc::new(SurfaceToRender::TotalVFromPsi, true),
+        // SurfaceDesc::new(SurfaceToRender::VPElec, false),
     ];
 
+    if RENDER_L {
+        surface_descs_per_elec.append(&mut vec![
+            SurfaceDesc::new(SurfaceToRender::LSq, false),
+            SurfaceDesc::new(SurfaceToRender::LSqIm, false),
+            SurfaceDesc::new(SurfaceToRender::LZ, false),
+            SurfaceDesc::new(SurfaceToRender::LZIm, false),
+            // todo: These likely temp to verify.
+            // SurfaceDesc::new("dx", false),
+            // SurfaceDesc::new("dy", false),
+            // SurfaceDesc::new("dz", false),
+            // SurfaceDesc::new("d2x", false),
+            // SurfaceDesc::new("d2y", false),
+            // SurfaceDesc::new("d2z", false),
+        ])
+    }
+
+    if RENDER_SPINOR {
+        surface_descs_per_elec.append(&mut vec![
+            SurfaceDesc::new(SurfaceToRender::PsiSpinor0, false),
+            SurfaceDesc::new(SurfaceToRender::PsiSpinor1, false),
+            SurfaceDesc::new(SurfaceToRender::PsiSpinor2, false),
+            SurfaceDesc::new(SurfaceToRender::PsiSpinor3, false),
+            // Calculated, to compare to the trial.
+            SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
+            SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
+            SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
+            SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
+        ])
+    }
+
+    // todo: Come back to this, and add appropriate SurfaceToRender variants next time you use this.
     let surface_descs_combined = vec![
-        SurfaceDesc::new("V", true),
-        SurfaceDesc::new("ψ_α", false),
-        SurfaceDesc::new("ψ_β", false),
-        SurfaceDesc::new("ψ_α im", false),
-        SurfaceDesc::new("ψ_β im", false),
-        SurfaceDesc::new("ρ_α", false),
-        SurfaceDesc::new("ρ_β", false),
-        SurfaceDesc::new("ρ", true),
-        SurfaceDesc::new("ρ spin", true),
+    //     SurfaceDesc::new("V", true),
+    //     SurfaceDesc::new("ψ_α", false),
+    //     SurfaceDesc::new("ψ_β", false),
+    //     SurfaceDesc::new("ψ_α im", false),
+    //     SurfaceDesc::new("ψ_β im", false),
+    //     SurfaceDesc::new("ρ_α", false),
+    //     SurfaceDesc::new("ρ_β", false),
+    //     SurfaceDesc::new("ρ", true),
+    //     SurfaceDesc::new("ρ spin", true),
     ];
 
     let state = State {

@@ -14,7 +14,7 @@ use lin_alg::{
 use crate::{
     grid_setup::{Arr3d, Arr3dReal, Arr3dVec},
     types::{SurfacesPerElec, SurfacesShared},
-    State, SurfaceDesc,
+    State, SurfaceDesc, SurfaceToRender, RENDER_L, RENDER_SPINOR,
 };
 
 type Color = (f32, f32, f32);
@@ -186,6 +186,8 @@ pub fn update_meshes(
     grid_n: usize,
     // Render the combined wave function from all electrons.
     render_multi_elec: bool,
+    sfc_descs_per_elec: &[SurfaceDesc],
+    sfc_descs_combined: &[SurfaceDesc],
 ) {
     // Our meshes are defined in terms of a start point,
     // and a step. Adjust the step to center the grid at
@@ -209,6 +211,7 @@ pub fn update_meshes(
     let mut meshes = Vec::new();
 
     // todo: Fix the DRY between multi and single-elec renders
+    // todo: Use sfc_descs_combined to set these.
     if render_multi_elec {
         meshes.push(Mesh::new_surface(
             &prepare_2d_mesh_real(grid_posits, &surfaces_shared.V_total, z_i, V_SCALER, grid_n),
@@ -311,339 +314,441 @@ pub fn update_meshes(
             true,
         ));
     } else {
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(
-                grid_posits,
-                &surfaces.V_acting_on_this,
-                z_i,
-                V_SCALER,
-                grid_n,
-            ),
-            true,
-        ));
+        for sfc in sfc_descs_per_elec {
+            match sfc.surface {
+                SurfaceToRender::V => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh_real(
+                            grid_posits,
+                            &surfaces.V_acting_on_this,
+                            z_i,
+                            V_SCALER,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::Psi => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.psi,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::PsiIm => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.psi,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            true,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::ChargeDensity => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh_real(
+                            grid_posits,
+                            &surfaces.charge_density,
+                            z_i,
+                            CHARGE_DENSITY_SCALER,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
 
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.psi,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
+                SurfaceToRender::PsiPpCalc => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.psi_pp_calculated,
+                            z_i,
+                            PSI_PP_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
 
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.psi,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                true,
-                grid_n,
-            ),
-            true,
-        ));
+                SurfaceToRender::PsiPpCalcIm => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.psi_pp_calculated,
+                            z_i,
+                            PSI_PP_SCALER,
+                            mag_phase,
+                            true,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
 
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(
-                grid_posits,
-                &surfaces.charge_density,
-                z_i,
-                CHARGE_DENSITY_SCALER,
-                grid_n,
-            ),
-            true,
-        ));
+                SurfaceToRender::PsiPpMeas => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.derivs.d2_sum,
+                            z_i,
+                            PSI_PP_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
 
-        for (scaler, sfc) in [
-            (PSI_PP_SCALER, &surfaces.psi_pp_calculated),
-            (PSI_PP_SCALER, &surfaces.derivs.d2_sum),
-        ] {
-            meshes.push(Mesh::new_surface(
-                &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, false, grid_n),
-                true,
-            ));
+                SurfaceToRender::PsiPpMeasIm => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.derivs.d2_sum,
+                            z_i,
+                            PSI_PP_SCALER,
+                            mag_phase,
+                            true,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
 
-            meshes.push(Mesh::new_surface(
-                &prepare_2d_mesh(grid_posits, sfc, z_i, scaler, mag_phase, true, grid_n),
-                true,
-            ));
+                SurfaceToRender::ElecVFromPsi => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh_real(
+                            grid_posits,
+                            &surfaces.V_elec_eigen,
+                            z_i,
+                            V_SCALER,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+
+                SurfaceToRender::TotalVFromPsi => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh_real(
+                            grid_posits,
+                            &surfaces.V_total_eigen,
+                            z_i,
+                            V_SCALER,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+
+                // SurfaceToRender::ElecVFromPsi => {
+                //     meshes.push(Mesh::new_surface(
+                //         &prepare_2d_mesh_real(grid_posits, &surfaces.aux3, z_i, V_SCALER, grid_n),
+                //         true,
+                //     ));
+                // }
+
+                // todo: Put back and add enum var A/R
+                // SurfaceToRender::OrbBug => {
+                //     // todo: we have hijacked spinor psi0 to be our H-orbital subtraction view (Apr 2024)
+                //     meshes.push(Mesh::new_surface(
+                //         &prepare_2d_mesh(
+                //             grid_posits,
+                //             &surfaces.orb_sub,
+                //             z_i,
+                //             PSI_SCALER,
+                //             mag_phase,
+                //             false,
+                //             grid_n,
+                //         ),
+                //         true,
+                //     ));
+                // }
+                SurfaceToRender::PsiSpinor0 => {
+                    // Spinors (Trival wavefunction)
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.spinor.c0,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::PsiSpinor1 => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.spinor.c1,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::PsiSpinor2 => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.spinor.c2,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::PsiSpinor3 => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.spinor.c3,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::PsiSpinorCalc0 => {
+                    // Calculated spinors, from the Dirac equation and trial (spinor) wavefunction.
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.spinor_calc.c0,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::PsiSpinorCalc1 => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.spinor_calc.c1,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::PsiSpinorCalc2 => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.spinor_calc.c2,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::PsiSpinorCalc3 => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.spinor_calc.c3,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::LSq => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.psi_fm_L2,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::LSqIm => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.psi_fm_L2,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            true,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+
+                SurfaceToRender::LZ => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.psi_fm_Lz,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+
+                SurfaceToRender::LZIm => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.psi_fm_Lz,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            true,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::VPElec => unimplemented!(), // todo: Put these in A/R, with enum variants
+                                                             // SurfaceToRender::V => {
+                                                             //     // todo: Likely temp.
+                                                             //     meshes.push(Mesh::new_surface(
+                                                             //         &prepare_2d_mesh(
+                                                             //             grid_posits,
+                                                             //             &surfaces.derivs.dx,
+                                                             //             z_i,
+                                                             //             PSI_SCALER,
+                                                             //             mag_phase,
+                                                             //             false,
+                                                             //             grid_n,
+                                                             //         ),
+                                                             //         true,
+                                                             //     ));
+                                                             // }
+                                                             //
+                                                             // SurfaceToRender::V => {
+                                                             //     meshes.push(Mesh::new_surface(
+                                                             //         &prepare_2d_mesh(
+                                                             //             grid_posits,
+                                                             //             &surfaces.derivs.dy,
+                                                             //             z_i,
+                                                             //             PSI_SCALER,
+                                                             //             mag_phase,
+                                                             //             false,
+                                                             //             grid_n,
+                                                             //         ),
+                                                             //         true,
+                                                             //     ));
+                                                             // }
+                                                             // SurfaceToRender::V => {
+                                                             //     meshes.push(Mesh::new_surface(
+                                                             //         &prepare_2d_mesh(
+                                                             //             grid_posits,
+                                                             //             &surfaces.derivs.dz,
+                                                             //             z_i,
+                                                             //             PSI_SCALER,
+                                                             //             mag_phase,
+                                                             //             false,
+                                                             //             grid_n,
+                                                             //         ),
+                                                             //         true,
+                                                             //     ));
+                                                             // }
+                                                             // SurfaceToRender::V => {
+                                                             //     meshes.push(Mesh::new_surface(
+                                                             //         &prepare_2d_mesh(
+                                                             //             grid_posits,
+                                                             //             &surfaces.derivs.d2x,
+                                                             //             z_i,
+                                                             //             PSI_PP_SCALER,
+                                                             //             mag_phase,
+                                                             //             false,
+                                                             //             grid_n,
+                                                             //         ),
+                                                             //         true,
+                                                             //     ));
+                                                             // }
+                                                             // SurfaceToRender::V => {
+                                                             //     meshes.push(Mesh::new_surface(
+                                                             //         &prepare_2d_mesh(
+                                                             //             grid_posits,
+                                                             //             &surfaces.derivs.d2y,
+                                                             //             z_i,
+                                                             //             PSI_PP_SCALER,
+                                                             //             mag_phase,
+                                                             //             false,
+                                                             //             grid_n,
+                                                             //         ),
+                                                             //         true,
+                                                             //     ));
+                                                             // }
+                                                             // SurfaceToRender::V => {
+                                                             //     meshes.push(Mesh::new_surface(
+                                                             //         &prepare_2d_mesh(
+                                                             //             grid_posits,
+                                                             //             &surfaces.derivs.d2z,
+                                                             //             z_i,
+                                                             //             PSI_PP_SCALER,
+                                                             //             mag_phase,
+                                                             //             false,
+                                                             //             grid_n,
+                                                             //         ),
+                                                             //         true,
+                                                             //     ));
+                                                             // }
+            }
+            // meshes.push(Mesh::new_surface(
+            //     &prepare_2d_mesh_real(
+            //         grid_posits,
+            //         charges_electron,
+            //         z_i,
+            //         ELEC_CHARGE_SCALER,
+            //         grid_n,
+            //     ),
+            //     true,
+            // ));
         }
-
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces.V_elec_eigen, z_i, V_SCALER, grid_n),
-            true,
-        ));
-
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces.V_total_eigen, z_i, V_SCALER, grid_n),
-            true,
-        ));
-
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh_real(grid_posits, &surfaces.aux3, z_i, V_SCALER, grid_n),
-            true,
-        ));
-
-        // todo: we have hijacked spinor psi0 to be our H-orbital subtraction view (Apr 2024)
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.orb_sub,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-
-        // Spinors (Trival wavefunction)
-
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces.spinor.c0,
-        //         z_i,
-        //         PSI_SCALER,
-        //         mag_phase,
-        //         false,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.spinor.c1,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.spinor.c2,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.spinor.c3,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-
-        // Calculated spinors, from the Dirac equation and trial (spinor) wavefunction.
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.spinor_calc.c0,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.spinor_calc.c1,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.spinor_calc.c2,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-        meshes.push(Mesh::new_surface(
-            &prepare_2d_mesh(
-                grid_posits,
-                &surfaces.spinor_calc.c3,
-                z_i,
-                PSI_SCALER,
-                mag_phase,
-                false,
-                grid_n,
-            ),
-            true,
-        ));
-
-        // todo: These angular-momentum-related wave functions are still useful, but temp removed, to make room
-        // todo for spinors.
-
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces.psi_fm_L2,
-        //         z_i,
-        //         PSI_SCALER,
-        //         mag_phase,
-        //         false,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        //
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces.psi_fm_L2,
-        //         z_i,
-        //         PSI_SCALER,
-        //         mag_phase,
-        //         true,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        //
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces.psi_fm_Lz,
-        //         z_i,
-        //         PSI_SCALER,
-        //         mag_phase,
-        //         false,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        //
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces.psi_fm_Lz,
-        //         z_i,
-        //         PSI_SCALER,
-        //         mag_phase,
-        //         true,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        //
-        // // todo: Likely temp.
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces.derivs.dx,
-        //         z_i,
-        //         PSI_SCALER,
-        //         mag_phase,
-        //         false,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        //
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces.derivs.dy,
-        //         z_i,
-        //         PSI_SCALER,
-        //         mag_phase,
-        //         false,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces.derivs.dz,
-        //         z_i,
-        //         PSI_SCALER,
-        //         mag_phase,
-        //         false,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces.derivs.d2x,
-        //         z_i,
-        //         PSI_PP_SCALER,
-        //         mag_phase,
-        //         false,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces.derivs.d2y,
-        //         z_i,
-        //         PSI_PP_SCALER,
-        //         mag_phase,
-        //         false,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh(
-        //         grid_posits,
-        //         &surfaces.derivs.d2z,
-        //         z_i,
-        //         PSI_PP_SCALER,
-        //         mag_phase,
-        //         false,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
-
-        // meshes.push(Mesh::new_surface(
-        //     &prepare_2d_mesh_real(
-        //         grid_posits,
-        //         charges_electron,
-        //         z_i,
-        //         ELEC_CHARGE_SCALER,
-        //         grid_n,
-        //     ),
-        //     true,
-        // ));
     }
 
     meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 12, 12));
@@ -804,6 +909,8 @@ pub fn render(state: State) {
         &state.charges_from_electron[active_elec_init],
         state.grid_n_render,
         false,
+        &state.surface_descs_per_elec,
+        &state.surface_descs_combined,
     );
 
     update_entities(
