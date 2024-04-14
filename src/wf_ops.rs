@@ -135,6 +135,7 @@ pub fn wf_from_bases(
     grid_posits: &Arr3dVec,
     deriv_calc: DerivCalc,
 ) {
+    println!("Starting WF from bases...");
     let grid_n = grid_posits.len();
 
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
@@ -250,6 +251,7 @@ pub fn wf_from_bases(
         //     util::normalize_arr(&mut derivs[basis_i].d2_sum, norm);
         // }
     }
+    println!("WF from bases complete.");
 }
 
 /// Create psi, and optionally derivatives using basis functions. Creates one psi per basis. Does not mix bases;

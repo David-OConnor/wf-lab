@@ -222,6 +222,8 @@ pub struct State {
 
 impl State {
     pub fn new(num_elecs: usize, dev_psi: ComputationDevice, dev_charge: ComputationDevice) -> Self {
+        println!("Initializing state...");
+
         let posit_charge_1 = Vec3::new(0., 0., 0.);
         let posit_charge_2 = Vec3::new(0.4, 0., 0.);
 
@@ -238,10 +240,11 @@ impl State {
         for i_elec in 0..num_elecs {
             let mut bases_this_elec = Vec::new();
             let mut bases_this_elec_spinor = Vec::new();
+
             // todo: Kludge for Li
             let n = if i_elec > 1 { 2 } else { 1 };
-            basis_init::initialize_bases(&mut bases_this_elec, &nuclei, n);
 
+            basis_init::initialize_bases(&mut bases_this_elec, &nuclei, n);
             wf_ops::initialize_bases_spinor(&mut bases_this_elec_spinor, &nuclei, n);
 
             bases_per_elec.push(bases_this_elec);
@@ -262,6 +265,7 @@ impl State {
 
         let psi_pp_calc = DerivCalc::Numeric;
 
+        println!("Initializing from grid...");
         let (charges_electron, V_from_elecs, psi_charge, surfaces_shared, surfaces_per_elec) =
             init_from_grid(
                 &dev_psi,
@@ -277,6 +281,8 @@ impl State {
                 num_elecs,
                 psi_pp_calc,
             );
+
+        println!("Grid init complete.");
 
         let mut surface_descs_per_elec = vec![
             SurfaceDesc::new(SurfaceToRender::V, true),
@@ -334,6 +340,8 @@ impl State {
             //     SurfaceDesc::new("ρ", true),
             //     SurfaceDesc::new("ρ spin", true),
         ];
+
+        println!("State init complete.");
 
         Self {
             dev_charge,
@@ -450,6 +458,7 @@ pub fn init_from_grid(
         let psi_pp = &mut sfcs.derivs_per_basis;
         let spinor = &mut sfcs.spinor_per_basis;
         let spinor_derivs = &mut sfcs.spinor_derivs_per_basis;
+
 
         wf_ops::wf_from_bases(
             dev_psi,
