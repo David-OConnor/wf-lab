@@ -5,9 +5,8 @@ use graphics::{EngineUpdates, Scene};
 use lin_alg::f64::Vec3;
 
 use crate::{
-    basis_finder,
+    basis_finder, basis_init,
     basis_wfs::{Basis, Sto},
-    dirac::{Spinor3, SpinorDerivsTypeD3},
     grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, potential, render,
     types::SurfacesPerElec,
@@ -204,7 +203,7 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
     for elec_i in 0..state.surfaces_per_elec.len() {
         // todo: Kludge for Li
         let n = if elec_i > 1 { 2 } else { 1 };
-        wf_ops::initialize_bases(&mut state.bases[elec_i], &state.charges_fixed, n);
+        basis_init::initialize_bases(&mut state.bases[elec_i], &state.charges_fixed, n);
 
         potential::update_V_acting_on_elec(
             &mut state.surfaces_per_elec[elec_i].V_acting_on_this,

@@ -29,13 +29,39 @@
 
 // April 2024 shower thought: On what defines the quantum numbers. If you separate these, you meet
 // the Spin statistics/exclusion/exchange requirements.
+
+// *********
+
 // n: Energy, as used in wave equations.
 
 // L^2ψ = hbar^2 l (l+1) ψ
-// l: phase change over angle?? (starting guess). Orbital angular momentum. Related to shape?
-// m: phase change over distance?? (starting guess)
+
+// l: Orbital angular momentum. Related to shape?
+
+// m: phase change over angle?? WF is real while m=0.  (starting guess)
+//  Observations. If m=0, no phase change. m=1: Phase rotates once/tau. m=2: Phase rotates twice/tau.
+//  if m=negative, the rotation is reversed.
+
+// A related property for `m`: Perhaps phase must change continously around the circle. Not linearly perse,
+// but along a given radial, phase must be equal?
+
+// todo: Perhaps worth trying: Can you set up an equation where phase must meet the constraints you
+// todo have for m above, then solve the rest to evaluate a trial wave function?
+
 // spin: Related to angular momentum, and perhaps we can treat in an at-hoc manner. (?) Related to
 // orientation of spin axis related to the orbital plane?
+
+// *********
+
+// APril 2024
+// Consider a phase space model. This may mean, in addition to your 3d space model (grid) of x, y, z,
+// you include px, py, and pz as well. (Think through how this would work, and what benefits it provides)
+// Note that E + (px^2 + py^2 + pz^2)/2m
+
+
+// Also: Can we model space as a discrete (3D, 4D with time etc) grid with dx = h or hbar? Then consider
+// the possible states to be these discrete grid items. Sounds unfeasible: h = 1.616255×10−35 m, which is
+// *much* smaller than the hartree unit scale we tend to model atoms with.
 
 #[cfg(feature = "cuda")]
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
@@ -43,6 +69,7 @@ use lin_alg::f64::Vec3;
 
 mod angular_p;
 mod basis_finder;
+mod basis_init;
 mod basis_wfs;
 mod complex_nums;
 mod dirac;
@@ -191,6 +218,147 @@ pub struct State {
     // pub max_basis_n: u16,
     pub num_elecs: usize,
     pub ui: StateUi,
+}
+
+impl State {
+    pub fn new(num_elecs: usize, dev_psi: ComputationDevice, dev_charge: ComputationDevice) -> Self {
+        let posit_charge_1 = Vec3::new(0., 0., 0.);
+        let posit_charge_2 = Vec3::new(0.4, 0., 0.);
+
+        let nuclei = vec![
+            (posit_charge_1, Q_PROT * num_elecs as f64),
+            // (posit_charge_2, Q_PROT * num_elecs as f64),
+        ];
+
+        // Outer of these is per-elec.
+        let mut bases_per_elec = Vec::new();
+        let mut bases_per_elec_spinor = Vec::new();
+
+        // Initialize bases.
+        for i_elec in 0..num_elecs {
+            let mut bases_this_elec = Vec::new();
+            let mut bases_this_elec_spinor = Vec::new();
+            // todo: Kludge for Li
+            let n = if i_elec > 1 { 2 } else { 1 };
+            basis_init::initialize_bases(&mut bases_this_elec, &nuclei, n);
+
+            wf_ops::initialize_bases_spinor(&mut bases_this_elec_spinor, &nuclei, n);
+
+            bases_per_elec.push(bases_this_elec);
+            bases_per_elec_spinor.push(bases_this_elec_spinor);
+        }
+
+        // todoFigure out why you get incorrect answers if these 2 grids don't line up.
+        // todo: FOr now, you can continue with matching them if you wish.
+        let (grid_min_render, grid_max_render) = (-GRID_MAX_RENDER, GRID_MAX_RENDER);
+        let (grid_min_charge, grid_max_charge) = (-GRID_MAX_CHARGE, GRID_MAX_CHARGE);
+
+        // let spacing_factor = 1.6;
+        // Currently, must be one as long as used with elec-elec charge.
+        let spacing_factor = SPACING_FACTOR_DEFAULT;
+
+        let grid_n = GRID_N_RENDER_DEFAULT;
+        let grid_n_charge = GRID_N_CHARGE_DEFAULT;
+
+        let psi_pp_calc = DerivCalc::Numeric;
+
+        let (charges_electron, V_from_elecs, psi_charge, surfaces_shared, surfaces_per_elec) =
+            init_from_grid(
+                &dev_psi,
+                &dev_charge,
+                (grid_min_render, grid_max_render),
+                (grid_min_charge, grid_max_charge),
+                spacing_factor,
+                grid_n,
+                grid_n_charge,
+                &bases_per_elec,
+                &bases_per_elec_spinor,
+                &nuclei,
+                num_elecs,
+                psi_pp_calc,
+            );
+
+        let mut surface_descs_per_elec = vec![
+            SurfaceDesc::new(SurfaceToRender::V, true),
+            SurfaceDesc::new(SurfaceToRender::Psi, false),
+            SurfaceDesc::new(SurfaceToRender::PsiIm, false),
+            SurfaceDesc::new(SurfaceToRender::ChargeDensity, false),
+            SurfaceDesc::new(SurfaceToRender::PsiPpCalc, false),
+            SurfaceDesc::new(SurfaceToRender::PsiPpCalcIm, false),
+            SurfaceDesc::new(SurfaceToRender::PsiPpMeas, false),
+            SurfaceDesc::new(SurfaceToRender::PsiPpMeasIm, false),
+            SurfaceDesc::new(SurfaceToRender::ElecVFromPsi, false),
+            SurfaceDesc::new(SurfaceToRender::TotalVFromPsi, true),
+            // SurfaceDesc::new(SurfaceToRender::VPElec, false),
+        ];
+
+        if RENDER_L {
+            surface_descs_per_elec.append(&mut vec![
+                SurfaceDesc::new(SurfaceToRender::LSq, false),
+                SurfaceDesc::new(SurfaceToRender::LSqIm, false),
+                SurfaceDesc::new(SurfaceToRender::LZ, false),
+                SurfaceDesc::new(SurfaceToRender::LZIm, false),
+                // todo: These likely temp to verify.
+                // SurfaceDesc::new("dx", false),
+                // SurfaceDesc::new("dy", false),
+                // SurfaceDesc::new("dz", false),
+                // SurfaceDesc::new("d2x", false),
+                // SurfaceDesc::new("d2y", false),
+                // SurfaceDesc::new("d2z", false),
+            ])
+        }
+
+        if RENDER_SPINOR {
+            surface_descs_per_elec.append(&mut vec![
+                SurfaceDesc::new(SurfaceToRender::PsiSpinor0, false),
+                SurfaceDesc::new(SurfaceToRender::PsiSpinor1, false),
+                SurfaceDesc::new(SurfaceToRender::PsiSpinor2, false),
+                SurfaceDesc::new(SurfaceToRender::PsiSpinor3, false),
+                // Calculated, to compare to the trial.
+                SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
+                SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
+                SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
+                SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
+            ])
+        }
+
+        // todo: Come back to this, and add appropriate SurfaceToRender variants next time you use this.
+        let surface_descs_combined = vec![
+            //     SurfaceDesc::new("V", true),
+            //     SurfaceDesc::new("ψ_α", false),
+            //     SurfaceDesc::new("ψ_β", false),
+            //     SurfaceDesc::new("ψ_α im", false),
+            //     SurfaceDesc::new("ψ_β im", false),
+            //     SurfaceDesc::new("ρ_α", false),
+            //     SurfaceDesc::new("ρ_β", false),
+            //     SurfaceDesc::new("ρ", true),
+            //     SurfaceDesc::new("ρ spin", true),
+        ];
+
+        Self {
+            dev_charge,
+            dev_psi,
+            deriv_calc: psi_pp_calc,
+            charges_fixed: nuclei,
+            charges_from_electron: charges_electron,
+            V_from_elecs,
+            bases: bases_per_elec,
+            bases_spinor: bases_per_elec_spinor,
+            psi_charge,
+            surfaces_shared,
+            surfaces_per_elec,
+            surface_descs_per_elec,
+            surface_descs_combined,
+            grid_n_render: grid_n,
+            grid_n_charge,
+            grid_range_render: (grid_min_render, grid_max_render),
+            grid_range_charge: (grid_min_charge, grid_max_charge),
+            sample_factor_render: spacing_factor,
+            // max_basis_n,
+            num_elecs,
+            ui: Default::default(),
+        }
+    }
 }
 
 pub struct SurfaceDesc {
@@ -500,145 +668,7 @@ fn main() {
 
     let dev_psi = ComputationDevice::Cpu;
 
-    // let max_basis_n = 1;
     let num_elecs = 1;
 
-    let posit_charge_1 = Vec3::new(0., 0., 0.);
-    let posit_charge_2 = Vec3::new(0.4, 0., 0.);
-
-    let nuclei = vec![
-        (posit_charge_1, Q_PROT * num_elecs as f64),
-        // (posit_charge_2, Q_PROT * num_elecs as f64),
-    ];
-
-    // Outer of these is per-elec.
-    let mut bases_per_elec = Vec::new();
-    let mut bases_per_elec_spinor = Vec::new();
-
-    // Initialize bases.
-    for i_elec in 0..num_elecs {
-        let mut bases_this_elec = Vec::new();
-        let mut bases_this_elec_spinor = Vec::new();
-        // todo: Kludge for Li
-        let n = if i_elec > 1 { 2 } else { 1 };
-        wf_ops::initialize_bases(&mut bases_this_elec, &nuclei, n);
-
-        wf_ops::initialize_bases_spinor(&mut bases_this_elec_spinor, &nuclei, n);
-
-        bases_per_elec.push(bases_this_elec);
-        bases_per_elec_spinor.push(bases_this_elec_spinor);
-    }
-
-    // todoFigure out why you get incorrect answers if these 2 grids don't line up.
-    // todo: FOr now, you can continue with matching them if you wish.
-    let (grid_min_render, grid_max_render) = (-GRID_MAX_RENDER, GRID_MAX_RENDER);
-    let (grid_min_charge, grid_max_charge) = (-GRID_MAX_CHARGE, GRID_MAX_CHARGE);
-
-    // let spacing_factor = 1.6;
-    // Currently, must be one as long as used with elec-elec charge.
-    let spacing_factor = SPACING_FACTOR_DEFAULT;
-
-    let grid_n = GRID_N_RENDER_DEFAULT;
-    let grid_n_charge = GRID_N_CHARGE_DEFAULT;
-
-    let psi_pp_calc = DerivCalc::Numeric;
-
-    let (charges_electron, V_from_elecs, psi_charge, surfaces_shared, surfaces_per_elec) =
-        init_from_grid(
-            &dev_psi,
-            &dev_charge,
-            (grid_min_render, grid_max_render),
-            (grid_min_charge, grid_max_charge),
-            spacing_factor,
-            grid_n,
-            grid_n_charge,
-            &bases_per_elec,
-            &bases_per_elec_spinor,
-            &nuclei,
-            num_elecs,
-            psi_pp_calc,
-        );
-
-    let mut surface_descs_per_elec = vec![
-        SurfaceDesc::new(SurfaceToRender::V, true),
-        SurfaceDesc::new(SurfaceToRender::Psi, false),
-        SurfaceDesc::new(SurfaceToRender::PsiIm, false),
-        SurfaceDesc::new(SurfaceToRender::ChargeDensity, false),
-        SurfaceDesc::new(SurfaceToRender::PsiPpCalc, false),
-        SurfaceDesc::new(SurfaceToRender::PsiPpCalcIm, false),
-        SurfaceDesc::new(SurfaceToRender::PsiPpMeas, false),
-        SurfaceDesc::new(SurfaceToRender::PsiPpMeasIm, false),
-        SurfaceDesc::new(SurfaceToRender::ElecVFromPsi, false),
-        SurfaceDesc::new(SurfaceToRender::TotalVFromPsi, true),
-        // SurfaceDesc::new(SurfaceToRender::VPElec, false),
-    ];
-
-    if RENDER_L {
-        surface_descs_per_elec.append(&mut vec![
-            SurfaceDesc::new(SurfaceToRender::LSq, false),
-            SurfaceDesc::new(SurfaceToRender::LSqIm, false),
-            SurfaceDesc::new(SurfaceToRender::LZ, false),
-            SurfaceDesc::new(SurfaceToRender::LZIm, false),
-            // todo: These likely temp to verify.
-            // SurfaceDesc::new("dx", false),
-            // SurfaceDesc::new("dy", false),
-            // SurfaceDesc::new("dz", false),
-            // SurfaceDesc::new("d2x", false),
-            // SurfaceDesc::new("d2y", false),
-            // SurfaceDesc::new("d2z", false),
-        ])
-    }
-
-    if RENDER_SPINOR {
-        surface_descs_per_elec.append(&mut vec![
-            SurfaceDesc::new(SurfaceToRender::PsiSpinor0, false),
-            SurfaceDesc::new(SurfaceToRender::PsiSpinor1, false),
-            SurfaceDesc::new(SurfaceToRender::PsiSpinor2, false),
-            SurfaceDesc::new(SurfaceToRender::PsiSpinor3, false),
-            // Calculated, to compare to the trial.
-            SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
-            SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
-            SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
-            SurfaceDesc::new(SurfaceToRender::PsiSpinorCalc0, false),
-        ])
-    }
-
-    // todo: Come back to this, and add appropriate SurfaceToRender variants next time you use this.
-    let surface_descs_combined = vec![
-    //     SurfaceDesc::new("V", true),
-    //     SurfaceDesc::new("ψ_α", false),
-    //     SurfaceDesc::new("ψ_β", false),
-    //     SurfaceDesc::new("ψ_α im", false),
-    //     SurfaceDesc::new("ψ_β im", false),
-    //     SurfaceDesc::new("ρ_α", false),
-    //     SurfaceDesc::new("ρ_β", false),
-    //     SurfaceDesc::new("ρ", true),
-    //     SurfaceDesc::new("ρ spin", true),
-    ];
-
-    let state = State {
-        dev_charge,
-        dev_psi,
-        deriv_calc: psi_pp_calc,
-        charges_fixed: nuclei,
-        charges_from_electron: charges_electron,
-        V_from_elecs,
-        bases: bases_per_elec,
-        bases_spinor: bases_per_elec_spinor,
-        psi_charge,
-        surfaces_shared,
-        surfaces_per_elec,
-        surface_descs_per_elec,
-        surface_descs_combined,
-        grid_n_render: grid_n,
-        grid_n_charge,
-        grid_range_render: (grid_min_render, grid_max_render),
-        grid_range_charge: (grid_min_charge, grid_max_charge),
-        sample_factor_render: spacing_factor,
-        // max_basis_n,
-        num_elecs,
-        ui: Default::default(),
-    };
-
-    render::render(state);
+    render::render(State::new(num_elecs, dev_psi, dev_charge));
 }

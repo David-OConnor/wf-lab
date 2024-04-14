@@ -5,7 +5,7 @@ use graphics::{EngineUpdates, Scene};
 use lin_alg::f64::Vec3;
 
 use crate::{
-    basis_finder,
+    basis_finder, basis_init,
     basis_wfs::Basis,
     eigen_fns,
     grid_setup::new_data,
@@ -564,6 +564,15 @@ fn bottom_items(
             *updated_E_or_V = true;
             *updated_basis_weights = true;
         }
+
+        if ui.add(Button::new("Reset")).clicked() {
+            *state = State::new(state.num_elecs, state.dev_psi.clone(), state.dev_charge.clone());
+
+            *updated_evaluated_wfs = true;
+            *updated_E_or_V = true;
+            *updated_basis_weights = true;
+            *updated_meshes = true;
+        }
     });
 }
 
@@ -631,7 +640,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 for elec_i in 0..state.surfaces_per_elec.len() {
                     // todo: Kludge for Li
                     let n = if elec_i > 1 { 2 } else { 1 };
-                    wf_ops::initialize_bases(&mut state.bases[elec_i], &state.charges_fixed, n);
+                    basis_init::initialize_bases(&mut state.bases[elec_i], &state.charges_fixed, n);
                 }
 
                 updated_evaluated_wfs = true;

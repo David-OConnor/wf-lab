@@ -15,7 +15,7 @@ use crate::{
 // Used for calculating numerical ψ''.
 // Smaller is more accurate. Too small might lead to numerical issues though (?)
 // Applies to dx, dy, and dz
-pub const H: f64 = 0.01;
+pub const H: f64 = 0.03;
 pub const H_SQ: f64 = H * H;
 pub const H_2: f64 = 2. * H;
 

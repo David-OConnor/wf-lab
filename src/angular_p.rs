@@ -14,13 +14,13 @@ pub(crate) fn calc_l_z(posit: Vec3, d: &DerivativesSingle) -> Cplx {
     -IM * (d.dy * posit.x - d.dx * posit.y) // pass. Is there a problem with posit.z or dz?
 }
 
-/// Calculate L^2, given derivatives. Used in one of the two momentum eigenfunctions. See Onenote: Exploring the WF, part 9
+/// Calculate L^2, given derivatives. Used in one of the two momentum eigenfunctions. See Onenote:
+/// Exploring the WF, part 9
+/// todo: This is coming out incorrectly. Note that the `l_z` function above appears to work correctly.
 pub(crate) fn calc_l_sq(posit: Vec3, d: &DerivativesSingle) -> Cplx {
     let x = posit.x;
     let y = posit.y;
     let z = posit.z;
-
-    // todo: Maybe your issue is that it's an eigen function ofn the radial part only? Y vice psi?
 
     let part0 =
         (d.d2y + d.d2z) * -x.powi(2) - (d.d2x + d.d2z) * y.powi(2) - (d.d2x + d.d2y) * z.powi(2);

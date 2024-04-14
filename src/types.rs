@@ -14,7 +14,7 @@ use crate::{
     wf_ops::{DerivCalc, Spin},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ComputationDevice {
     Cpu,
     #[cfg(feature = "cuda")]
