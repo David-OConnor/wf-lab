@@ -579,7 +579,7 @@ pub fn update_eigen_vals(
         };
 
         let temp =
-            derivs_single.d2x[i][j][k] + derivs_single.d2y[i][j][k] + derivs_single.d2z[i][j][k];
+            derivs_single.d2x + derivs_single.d2y + derivs_single.d2z;
         // H[i][j][k] = eigen_fns::calc_H(psi[i][j][k], derivs_single.d2_sum,V_acting_on_this[i][j][k]);
         H[i][j][k] = eigen_fns::calc_H(psi[i][j][k], temp, V_acting_on_this[i][j][k]);
 
