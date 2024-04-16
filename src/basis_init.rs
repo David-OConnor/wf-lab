@@ -4,7 +4,6 @@ use lin_alg::f64::Vec3;
 
 use crate::basis_wfs::Basis;
 
-
 #[allow(dead_code)]
 /// [re]Create a set of basis functions, given fixed-charges representing nuclei.
 /// Use this in main and lib inits, and when you add or remove charges.

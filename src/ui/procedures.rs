@@ -29,6 +29,7 @@ pub fn update_E_or_V(
         E,
         V_from_nuclei,
         grid_posits,
+        &mut sfcs.psi_fm_H,
         &mut sfcs.psi_fm_L2,
         &mut sfcs.psi_fm_Lz,
     );
@@ -82,6 +83,7 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         sfcs.E,
         &state.surfaces_shared.V_from_nuclei,
         &state.surfaces_shared.grid_posits,
+        &mut sfcs.psi_fm_H,
         &mut sfcs.psi_fm_L2,
         &mut sfcs.psi_fm_Lz,
     );

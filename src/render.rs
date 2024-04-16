@@ -592,6 +592,34 @@ pub fn update_meshes(
                         true,
                     ));
                 }
+                SurfaceToRender::H => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.psi_fm_H,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            false,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
+                SurfaceToRender::HIm => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh(
+                            grid_posits,
+                            &surfaces.psi_fm_H,
+                            z_i,
+                            PSI_SCALER,
+                            mag_phase,
+                            true,
+                            grid_n,
+                        ),
+                        true,
+                    ));
+                }
                 SurfaceToRender::LSq => {
                     meshes.push(Mesh::new_surface(
                         &prepare_2d_mesh(

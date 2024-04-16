@@ -58,7 +58,6 @@
 // you include px, py, and pz as well. (Think through how this would work, and what benefits it provides)
 // Note that E + (px^2 + py^2 + pz^2)/2m
 
-
 // Also: Can we model space as a discrete (3D, 4D with time etc) grid with dx = h or hbar? Then consider
 // the possible states to be these discrete grid items. Sounds unfeasible: h = 1.616255×10−35 m, which is
 // *much* smaller than the hartree unit scale we tend to model atoms with.
@@ -221,7 +220,11 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(num_elecs: usize, dev_psi: ComputationDevice, dev_charge: ComputationDevice) -> Self {
+    pub fn new(
+        num_elecs: usize,
+        dev_psi: ComputationDevice,
+        dev_charge: ComputationDevice,
+    ) -> Self {
         println!("Initializing state...");
 
         let posit_charge_1 = Vec3::new(0., 0., 0.);
@@ -296,6 +299,8 @@ impl State {
             SurfaceDesc::new(SurfaceToRender::ElecVFromPsi, false),
             SurfaceDesc::new(SurfaceToRender::TotalVFromPsi, true),
             // SurfaceDesc::new(SurfaceToRender::VPElec, false),
+            SurfaceDesc::new(SurfaceToRender::H, false),
+            SurfaceDesc::new(SurfaceToRender::HIm, false),
         ];
 
         if RENDER_L {
@@ -459,7 +464,6 @@ pub fn init_from_grid(
         let spinor = &mut sfcs.spinor_per_basis;
         let spinor_derivs = &mut sfcs.spinor_derivs_per_basis;
 
-
         wf_ops::wf_from_bases(
             dev_psi,
             psi,
@@ -513,6 +517,7 @@ pub fn init_from_grid(
             sfcs.E,
             &surfaces_shared.V_from_nuclei,
             &surfaces_shared.grid_posits,
+            &mut sfcs.psi_fm_H,
             &mut sfcs.psi_fm_L2,
             &mut sfcs.psi_fm_Lz,
         );
@@ -584,7 +589,6 @@ pub fn init_from_grid(
     )
 }
 
-//
 // todo: Move this A/R
 #[derive(Clone, Copy)]
 pub enum SurfaceToRender {
@@ -600,7 +604,10 @@ pub enum SurfaceToRender {
     ElecVFromPsi,
     TotalVFromPsi,
     VPElec,
-    // Angular momentum
+    /// Hamiltonian
+    H,
+    HIm,
+    /// Angular momentum
     LSq,
     LSqIm,
     LZ,
@@ -631,6 +638,8 @@ impl SurfaceToRender {
             Self::ElecVFromPsi => "Elec V from ψ",
             Self::TotalVFromPsi => "V from ψ",
             Self::VPElec => "V' elec",
+            Self::H => "H",
+            Self::HIm => "H im",
             Self::LSq => "L^2",
             Self::LSqIm => "L^2 im",
             Self::LZ => "L_z",

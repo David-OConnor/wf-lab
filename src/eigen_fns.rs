@@ -27,6 +27,7 @@ use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{Arr3d, Arr3dVec},
+    types::DerivativesSingle,
     wf_ops::{self, ħ, K_C, Q_ELEC, Q_PROT},
 };
 
@@ -162,4 +163,10 @@ pub fn calc_V_on_psi2(psi_pp_div_psi: f64, E: f64) -> f64 {
 /// psipp_div_psi is always real; Hermitian.
 pub fn calc_E_on_psi2(psi_pp_div_psi: f64, V: f64) -> f64 {
     calc_V_on_psi2(psi_pp_div_psi, V)
+}
+
+// todo Experiment below
+/// Calculate H; the hamiltonian (Energy eigenfunction). H = (h^2/2m + V)ψ
+pub fn calc_H(psi: Cplx, psi_pp: Cplx, V: f64) -> Cplx {
+    psi_pp * KE_COEFF + psi * V
 }

@@ -557,6 +557,7 @@ pub fn update_eigen_vals(
     V_nuc: &Arr3dReal,
     // todo: New with angular p eigenvals
     grid_posits: &Arr3dVec,
+    H: &mut Arr3d,
     L_sq: &mut Arr3d,
     L_z: &mut Arr3d,
 ) {
@@ -576,6 +577,12 @@ pub fn update_eigen_vals(
             d2z: derivs.d2z[i][j][k],
             d2_sum: derivs.d2_sum[i][j][k],
         };
+
+        let temp =
+            derivs_single.d2x[i][j][k] + derivs_single.d2y[i][j][k] + derivs_single.d2z[i][j][k];
+        // H[i][j][k] = eigen_fns::calc_H(psi[i][j][k], derivs_single.d2_sum,V_acting_on_this[i][j][k]);
+        H[i][j][k] = eigen_fns::calc_H(psi[i][j][k], temp, V_acting_on_this[i][j][k]);
+
         L_sq[i][j][k] = angular_p::calc_l_sq(grid_posits[i][j][k], &derivs_single);
         L_z[i][j][k] = angular_p::calc_l_z(grid_posits[i][j][k], &derivs_single);
 

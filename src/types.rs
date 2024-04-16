@@ -213,6 +213,8 @@ pub struct SurfacesPerElec {
     pub V_elec_eigen: Arr3dReal,
     pub V_total_eigen: Arr3dReal,
     pub aux3: Arr3dReal,
+    /// Hamiltonian (Schrodinger equation energery eigenfunction)
+    pub psi_fm_H: Arr3d,
     // experiments with angular momentum
     pub psi_fm_L2: Arr3d,
     pub psi_fm_Lz: Arr3d,
@@ -292,6 +294,7 @@ impl SurfacesPerElec {
             V_elec_eigen: data_real.clone(),
             V_total_eigen: data_real.clone(),
             aux3: data_real,
+            psi_fm_H: data.clone(),
             psi_fm_L2: data.clone(),
             psi_fm_Lz: data.clone(),
             spinor: Spinor3::new(grid_n),

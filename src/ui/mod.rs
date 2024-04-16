@@ -566,7 +566,11 @@ fn bottom_items(
         }
 
         if ui.add(Button::new("Reset")).clicked() {
-            *state = State::new(state.num_elecs, state.dev_psi.clone(), state.dev_charge.clone());
+            *state = State::new(
+                state.num_elecs,
+                state.dev_psi.clone(),
+                state.dev_charge.clone(),
+            );
 
             *updated_evaluated_wfs = true;
             *updated_E_or_V = true;
