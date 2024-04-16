@@ -27,8 +27,10 @@ use crate::{
     complex_nums::Cplx,
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{Arr3d, Arr3dVec},
-    wf_ops::{self, ħ, K_C, Q_ELEC, Q_PROT},
+    wf_ops::{self, K_C, Q_ELEC, Q_PROT, ħ},
 };
+use crate::complex_nums::IM;
+use crate::types::DerivativesSingle;
 
 pub const KE_COEFF: f64 = -(ħ * ħ) / (2. * wf_ops::M_ELEC);
 pub const KE_COEFF_INV: f64 = 1. / KE_COEFF;
@@ -164,9 +166,17 @@ pub fn calc_E_on_psi2(psi_pp_div_psi: f64, V: f64) -> f64 {
     calc_V_on_psi2(psi_pp_div_psi, V)
 }
 
-// todo Experiment below
-/// Calculate H; the hamiltonian (Energy eigenfunction). H = (h^2/2m + V)ψ
-pub fn calc_H(psi: Cplx, psi_pp: Cplx, V: f64) -> Cplx {
-    // todo: why - V? Probably same as the "What's going on?" comment above. Maybe your V is inverted?
-    psi_pp * KE_COEFF - psi * V
+
+/// todo: An experiment.
+/// Similar to how to calculate V or psi'' from the H eigenfunction from a trial psi, calculate
+/// y using the L_z eigenfunction, and x.
+///
+/// // todo: Something is off. Why does quantum number m appear here, but n doesn't appear for Schrodinger?
+/// todo: That might be OK, with mħ filling the role of E.
+///
+/// L_z = mħ = -iħ (x d/dy - y d/dx). -y d/dx = mħ/(-iħ) - x d/dy.
+/// y = (-mħ/(-iħ) + x d/dy) / d/dx
+/// y = (-i m + x d/dy) / d/dx
+pub(crate) fn calc_y_fm_Lz(d: &DerivativesSingle, m: i16, x: f64) -> Cplx {
+    (-IM * m as f64 + d.dy * x) / d.dx
 }

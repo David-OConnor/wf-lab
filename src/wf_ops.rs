@@ -28,13 +28,13 @@ use lin_alg::f64::Vec3;
 #[cfg(feature = "cuda")]
 use crate::gpu;
 use crate::{
-    angular_p,
     basis_wfs::{Basis, Sto},
     complex_nums::Cplx,
     dirac,
     dirac::{BasisSpinor, CompPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3},
     eigen_fns::{self},
-    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
+    eigen_raw,
+    grid_setup::{Arr3d, Arr3dReal, Arr3dVec, new_data, new_data_real},
     iter_arr, num_diff,
     types::{ComputationDevice, Derivatives, DerivativesSingle, SurfacesPerElec, SurfacesShared},
     util::{self, MAX_PSI_FOR_NORM},
@@ -581,10 +581,10 @@ pub fn update_eigen_vals(
         let temp =
             derivs_single.d2x + derivs_single.d2y + derivs_single.d2z;
         // H[i][j][k] = eigen_fns::calc_H(psi[i][j][k], derivs_single.d2_sum,V_acting_on_this[i][j][k]);
-        H[i][j][k] = eigen_fns::calc_H(psi[i][j][k], temp, V_acting_on_this[i][j][k]);
+        H[i][j][k] = eigen_raw::calc_H(psi[i][j][k], temp, V_acting_on_this[i][j][k]);
 
-        L_sq[i][j][k] = angular_p::calc_l_sq(grid_posits[i][j][k], &derivs_single);
-        L_z[i][j][k] = angular_p::calc_l_z(grid_posits[i][j][k], &derivs_single);
+        L_sq[i][j][k] = eigen_raw::calc_L_sq(grid_posits[i][j][k], &derivs_single);
+        L_z[i][j][k] = eigen_raw::calc_L_z(grid_posits[i][j][k], &derivs_single);
 
         psi_pp_calculated[i][j][k] =
             eigen_fns::find_ψ_pp_calc(psi[i][j][k], V_acting_on_this[i][j][k], E)

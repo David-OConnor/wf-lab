@@ -66,7 +66,7 @@
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
 use lin_alg::f64::Vec3;
 
-mod angular_p;
+mod eigen_raw;
 mod basis_finder;
 mod basis_init;
 mod basis_wfs;
