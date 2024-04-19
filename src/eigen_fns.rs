@@ -145,6 +145,17 @@ pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
     // psi''/psi is always real, due to being an eigenvalue of a Hermitian operator.
     // todo: What's going on? Why do we need to invert E here?
     // KE_COEFF * (psi_pp / psi).real + E
+
+    // const EPS: f64 = 0.0001;
+
+    // todo: OK. Barking up the wrong tree: There is a legit asymptote.
+
+    // todo: TS issue on n>=2., at nodes.
+    // todo: Even if you do something like this, don't just use real!
+    // if psi.real.abs() < EPS && psi_pp.real.abs() < EPS {
+    //     return 0. - E;
+    // }
+
     KE_COEFF * (psi_pp / psi).real - E
 }
 
@@ -156,14 +167,14 @@ pub fn calc_E_on_psi(psi: Cplx, psi_pp: Cplx, V: f64) -> f64 {
 
 /// Alternative API, taking advantage of analytic psi''/psi
 /// psipp_div_psi is always real; Hermitian.
-pub fn calc_V_on_psi2(psi_pp_div_psi: f64, E: f64) -> f64 {
+pub fn _calc_V_on_psi2(psi_pp_div_psi: f64, E: f64) -> f64 {
     KE_COEFF * psi_pp_div_psi - E
 }
 
 /// Alternative API, taking advantage of analytic psi''/psi
 /// psipp_div_psi is always real; Hermitian.
-pub fn calc_E_on_psi2(psi_pp_div_psi: f64, V: f64) -> f64 {
-    calc_V_on_psi2(psi_pp_div_psi, V)
+pub fn _calc_E_on_psi2(psi_pp_div_psi: f64, V: f64) -> f64 {
+    _calc_V_on_psi2(psi_pp_div_psi, V)
 }
 
 

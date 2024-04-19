@@ -33,11 +33,11 @@ pub fn initialize_bases(
 
     let weights_he = vec![
         (1., 0.45),
-        (2., 0.),
-        (3., -0.21),
+        (2., -0.02),
+        (3., -0.25),
         (4., -0.01),
         (5., -0.32),
-        (6., 0.10),
+        (6., 0.17),
         (8., -0.61),
         (10., -0.05),
     ];
@@ -72,6 +72,8 @@ pub fn initialize_bases(
 
         let weights = if n == 1 {
             &weights_h
+            // &weights_he
+            // &weights_li_inner
         } else {
             &weights_li_outer
         };

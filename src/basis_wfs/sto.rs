@@ -49,7 +49,39 @@ impl Sto {
         (norm_term_num / norm_term_denom).sqrt()
     }
 
+    /// From I. Complete and orthonormal sets of exponential-type orbitals
+    /// with noninteger principal quantum numbers
+    /// https://arxiv.org/pdf/2205.02317.pdf
+    /// This is currently based off Equation 30 in that paper.
+    fn sto_generalized(&self, posit_sample: Vec3) -> f64 {
+        let r = (posit_sample - self.posit).magnitude();
+
+        let n = self.n;
+        let l = self.harmonic.l;
+        let nf = n as f64;
+        let xi = self.xi;
+
+        let eps3 = 1; // todo
+
+        let term0_num = (2. * xi).powi(3) * gamma(n - l - eps3 + 1);
+        let term0_denom = gamma(n + l + eps3 + 1);
+
+        let term0 = (term0_num / term0_denom).sqrt();
+
+        let term1 = (2. * xi * r).powi(l + eps3 - 1);
+
+        let exp_term = (-xi * r).exp();
+
+        let L = util::make_laguerre(n - l - eps3, 2 * l + 2 * eps3);
+
+        term0 * term1 * exp_term * L
+    }
+
+
     pub fn radial(&self, posit_sample: Vec3) -> f64 {
+        // todo tmep
+        return self.sto_generalized(posit_sample);
+
         // todo: This currently ignores the spherical harmonic part; add that!
         let r = (posit_sample - self.posit).magnitude();
 
@@ -66,6 +98,7 @@ impl Sto {
         let L = util::make_laguerre(n - l - 1, 2 * l + 1);
 
         let polynomial_term = (2. * r / (nf * A_0)).powi(l.into()) * L(2. * r / (nf * A_0));
+
 
         // n_L = n - l - 1
         // b = 2r / (n*A0)

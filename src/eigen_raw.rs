@@ -63,5 +63,15 @@ pub(crate) fn calc_L_sq(posit: Vec3, d: &DerivativesSingle) -> Cplx {
 /// We choose z by convention; we need one of any dimension.
 /// Uses the momentum eigenfunction p_a = -i ħ d/da. L_z = -iħ (x d/dy - y d/dx)
 pub(crate) fn calc_L_z(posit: Vec3, d: &DerivativesSingle) -> Cplx {
-    -IM * (d.dy * posit.x - d.dx * posit.y) // pass. Is there a problem with posit.z or dz?
+    -IM * (d.dy * posit.x - d.dx * posit.y)
+}
+
+/// See `calc_L_z`.
+pub(crate) fn calc_L_x(posit: Vec3, d: &DerivativesSingle) -> Cplx {
+    -IM * (d.dz * posit.y - d.dy * posit.z)
+}
+
+/// See `calc_L_z`.
+pub(crate) fn calc_L_y(posit: Vec3, d: &DerivativesSingle) -> Cplx {
+    -IM * (d.dx * posit.z - d.dz * posit.x)
 }
