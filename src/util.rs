@@ -111,33 +111,8 @@ pub(crate) fn make_laguerre(n: u16, α: u16) -> impl Fn(f64) -> f64 {
             -x.powi(3) / 6. + (α + 3.) * x.powi(2) / 2. - (α + 2.) * (α + 3.) * x / 2.
                 + (α + 1.) * (α + 2.) * (α + 3.) / 6.
         }
-        // 4 => {
-        //
-
-        // }
         _ => unimplemented!(),
     }
-
-    // move |x| match n {
-    //     0 => 1.,
-    //     1 => 1. - x,
-    //     2 => 0.5 * (x.powi(2) - 4. * x + 2.),
-    //     3 => 1. / 6. * (-x.powi(3) + 9. * x.powi(2) - 18. * x + 6.),
-    //     4 => 1. / factorial(4) as f64 * (x.powi(4) - 16. * x.powi(3) + 72. * x.powi(2) - 96. * x + 24.),
-    //     5 => {
-    //         1. / factorial(5) as f64
-    //             * (-x.powi(5) + 25. * x.powi(4) - 200. * x.powi(3) + 600. * x.powi(2) - 600. * x
-    //             + 120.)
-    //     }
-    //     6 => {
-    //         1. / factorial(6) as f64
-    //             * (x.powi(6) - 36. * x.powi(5) + 450. * x.powi(4) - 2_400. * x.powi(3)
-    //             + 5_400. * x.powi(2)
-    //             - 4_320. * x
-    //             + 720.)
-    //     }
-    //     _ => unimplemented!(),
-    // }
 }
 
 /// Generate a non-Associated Legendre polynomial for a given value. Used in the angular component of
