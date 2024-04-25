@@ -53,28 +53,46 @@ impl Sto {
     /// with noninteger principal quantum numbers
     /// https://arxiv.org/pdf/2205.02317.pdf
     /// This is currently based off Equation 30 in that paper.
+    /// See also `scripts/sto_test.py`.
     fn sto_generalized(&self, posit_sample: Vec3) -> f64 {
         let r = (posit_sample - self.posit).magnitude();
 
         let n = self.n;
         let l = self.harmonic.l;
+
+        // Instead of xi, we will substitute in eps.
+        let eps = self.xi;
+
         let nf = n as f64;
-        let xi = self.xi;
 
-        let eps3 = 1; // todo
+        let n_st = nf + eps;
+        let l_st = self.harmonic.l as f64 + eps;
 
-        let term0_num = (2. * xi).powi(3) * gamma(n - l - eps3 + 1);
-        let term0_denom = gamma(n + l + eps3 + 1);
 
-        let term0 = (term0_num / term0_denom).sqrt();
 
-        let term1 = (2. * xi * r).powi(l + eps3 - 1);
+        let eps3 = 1; // todo: A/R
 
-        let exp_term = (-xi * r).exp();
+        // let norm_num = (2. * xi).powi(3) * gamma(n - l - eps3 + 1);
+        // let norm_denom = gamma(n + l + eps3 + 1);
+        //
+        // let norm_term = (norm_num / norm_denom).sqrt();
 
-        let L = util::make_laguerre(n - l - eps3, 2 * l + 2 * eps3);
+        // Diff between this and radial: Radial includes xi in the exp. (And n vice n*)
+        let exp_term = (-r / nf).exp();
 
-        term0 * term1 * exp_term * L
+        // todo: Here and in `radial`: Cache `make_laguere. You don't need to run it each posit.
+
+        // todo: See note on 2*eps3 vs 1*eps3.
+        // let L = util::make_laguerre(n_st - l_st - eps3, 2 * l + 2 * eps3);
+        // todo: Fractional laguerre?
+        let L = util::make_laguerre(n_st - l_st - eps3, 2 * l + eps3);
+
+        let polynomial_term = (2. * r / n_st).powi(l_st.into() + eps3 - 1) * L(2. * r / n_st);
+
+
+
+        // Note: This norm term is wrong.
+        Self::norm_term(n, l) * polynomial_term * exp_term
     }
 
 
@@ -97,7 +115,8 @@ impl Sto {
 
         let L = util::make_laguerre(n - l - 1, 2 * l + 1);
 
-        let polynomial_term = (2. * r / (nf * A_0)).powi(l.into()) * L(2. * r / (nf * A_0));
+        // let polynomial_term = (2. * r / (nf * A_0)).powi(l.into()) * L(2. * r / (nf * A_0));
+        let polynomial_term = (2. * r / nf).powi(l.into()) * L(2. * r / nf);
 
 
         // n_L = n - l - 1
@@ -138,94 +157,6 @@ impl Sto {
 
         Self::norm_term(n, l) * polynomial_term * exp_term
     }
-
-    /// From [Wikipedia](https://en.wikipedia.org/wiki/Slater-type_orbital)
-    pub fn radial_type2(&self, posit_sample: Vec3) -> f64 {
-        // todo: This currently ignores the spherical harmonic part; add that!
-        let r = (posit_sample - self.posit).magnitude();
-        let n = self.n;
-
-        // todo: What is alpha?
-        // let N = factorial(n) / alpha.powi(n+1);
-
-        let N = 1.;
-        let exp_term = (-self.xi * r).exp();
-
-        N * r.powi((n - 1).into()) * exp_term
-    }
-
-    pub fn second_deriv_type2(&self, posit_sample: Vec3) -> Cplx {
-        let diff = posit_sample - self.posit;
-        let r_sq = diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2);
-
-        if r_sq < EPS_DIV0 {
-            return Cplx::new_zero();
-        }
-        let r = r_sq.sqrt();
-
-        let n = self.n;
-        let l = self.harmonic.l;
-        let nf = n as f64;
-        let xi = self.xi;
-
-        let exp_term = (-xi * r).exp();
-        let f = |q| r_sq.powf((nf - 1.) / 2. - q);
-        // let r_pow = r_sq.powf((nf - 1.0) / 2.0);
-
-        let mut result = 0.;
-
-        // Each part is the second deriv WRT to an orthogonal axis.
-        for x in [diff.x, diff.y, diff.z] {
-            let x_sq = x.powi(2);
-
-            // todo: QC all this.
-
-            let term1 = (xi.powi(2) * x_sq * exp_term) / r_sq;
-            let term2 = (xi * x_sq * exp_term) / r_sq.powf(1.5);
-            let term3 = -xi * exp_term / r;
-
-            // let term4 = -2.0 * (nf - 1.0) * xi * x_sq * r_pow * exp_term;
-            // let term5 = 2.0 * ((nf - 1.0) / 2.0 - 1.0) * (nf - 1.) * x_sq * r_pow / r_sq;
-            // let term6 = (nf - 1.0) * r_pow * exp_term;
-            //
-            // result += r_pow * (term1 + term2 + term3) + term4 + term5 + term6
-
-            // Another run gave me this: (Same terms 1-3)
-            let term4 = -2. * (nf - 1.) * xi * x_sq * f(1.5) * exp_term;
-            let term5 = (2. * ((nf - 1.) / 2. - 1.) * (nf - 1.) * x_sq * f(2.) + (nf - 1.) * f(1.))
-                * exp_term;
-
-            result += f(0.) * (term1 + term2 + term3) + term4 + term5
-        }
-
-        Cplx::from_real(result)
-    }
-
-    // pub fn psi_pp_div_psi_type2(&self, posit_sample: Vec3) -> f64 {
-    //     let diff = posit_sample - self.posit;
-    //     let r_sq = diff.x.powi(2) + diff.y.powi(2) + diff.z.powi(2);
-    //     let r = r_sq.sqrt();
-    //
-    //     let n = self.n;
-    //     let nf = n as f64;
-    //     let xi = self.xi;
-    //
-    //     // These two simplifiers are unique to this function.
-    //     let r_term = 1. / r.powi((n - 1).into());
-    //     let f = |q| r_sq.powf((nf - 1.) / 2. - q);
-    //
-    //     // todo: QC all this.
-    //
-    //     let term1 = f(0.) * (xi.powi(2) - 2. * xi / r);
-    //
-    //     let term2 = -2. * (nf - 1.) * xi * f(1.5) * r_sq;
-    //
-    //     let term3 = 2. * ((nf - 1.) / 2. - 1.) * (nf - 1.) * f(2.) * r_sq;
-    //
-    //     let term4 = 3. * (nf - 1.) * f(1.);
-    //
-    //     r_term * (term1 + term2 + term3 + term4)
-    // }
 
     /// Analytic first derivative, with respect to x.
     pub fn dx(&self, posit_sample: Vec3) -> Cplx {

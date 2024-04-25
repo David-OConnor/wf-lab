@@ -189,7 +189,6 @@ impl Basis {
             Self::H(v) => v.value(posit_sample),
             Self::Gto(v) => v.value(posit_sample),
             Self::Sto(v) => v.value(posit_sample),
-            // Self::Sto(v) => Cplx::from_real(v.radial_type2(posit_sample)),
         }
     }
 

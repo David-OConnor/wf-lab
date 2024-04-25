@@ -33,51 +33,47 @@ def gamma_(a: float, x: float = 0) -> float:
     return result
 
 
+# If eps3 = 1, this is the same as eq17. (per the paper...)
+eps3 = 1
+
 @dataclass
 class GenStoTerms:
     """
     Set up variables for a generalized STO that can be used across multiple positions.
-    These are the terms that don't depend on position (or r).
+    These are the terms that don't depend on position (or r). See equation 30.
     """
     n_st: float
     l_st: float
     zeta: float
-    term0: float
+    norm_term: float
     L: genlaguerre
 
     @classmethod
     def new(cls, eps: float, n: int) -> "GenStoTerms":
-        l = 0  # todo: A/R
+        l = 0
 
         # Star definitions: See Eq 16.
         n_st = n + eps
         l_st = l + eps
         zeta = 1.0 / n_st
 
-        # todo temp
-        zeta = 1
-#         n_st = 1 / zeta
+        norm_num = (2.0 * zeta) ** 3 * gamma(n_st - l_st - eps3 + 1)
 
-        eps3 = 1
-        # Set to 1 for use with eq 17.
+        norm_denom = gamma(n_st + l_st + eps3 + 1)
 
-        term0_num = (2.0 * zeta) ** 3 * gamma(n_st - l_st - eps3 + 1)
+        # norm_term here is eq 31.
+        norm_term = sqrt(norm_num / norm_denom)
 
-        term0_denom = 2 * n_st * gamma(n_st + l_st + 1)  # eq17
-        # term0_denom = gamma(n_st + l_st + eps3 + 1)  # eq30
+        lg_term_a = n_st - l_st - eps3
 
-        # term0 here is eq 18 or 30
-        term0 = sqrt(term0_num / term0_denom)
-
-        lg_term_a = n_st - l_st - 1  # Eq 17
-        lg_term_b = 2 * l_st + 1  # Eq 17
+        # Difference between this and normal STO: 2* factor for eps3. (1 makes it equal to sto)
+        # We are setting it to 1 for now.
+#         lg_term_b = 2 * l_st + 2 * eps3
+        lg_term_b = 2 * l_st + 1 * eps3
 
         print(
             f"n: {n_st}, l: {l_st}, zeta: {zeta} lg_a: {lg_term_a}, lg_b: {lg_term_b}"
         )
-
-        # lg_term_a = n_st - l_st - eps3,   # Eq 30
-        # lg_term_b = 2 * l_st + 2 * eps3  # eq 30
 
         if lg_term_a < 0:  # Generally happens very close to 0.
             lg_term_a = 0
@@ -85,33 +81,27 @@ class GenStoTerms:
         # Temporary hack
         lg_term_a = round(lg_term_a)  # Eg so we don't get an error when A = 0.9999
 
-        #     if lg_term_b < 0:  # Generally happens very close to 0.
-        #         print("LG B: ", lg_term_b)
-        #         lg_term_b = 0
-
+        # todo: fractional laguerre?
         L = genlaguerre(lg_term_a, lg_term_b)
 
-        return cls(n_st, l_st, zeta, term0, L)
+        norm_term = 1  # Experimenting
+
+        return cls(n_st, l_st, zeta, norm_term, L)
 
 
 def sto_generalized(t: GenStoTerms, posit_sample: array) -> float:
-    """This is currently based off Equation 17 and 30 in that paper."""
+    """This is currently based off Equation 30 in that paper."""
 
     posit = np.array([0.0, 0.0, 0.0])
     r = np.linalg.norm(posit_sample - posit)
 
-    eps3 = 1
-    # Set to 1 for use with eq 17.
-
-    term1 = (2.0 * t.zeta * r) ** (t.l_st + eps3 - 1)
-
+    # Diff between this and radial: Radial includes xi in the exp. (And n vice n*)
     exp_term = exp(-t.zeta * r)
 
-    polynomial_term = t.L(2.0 * t.zeta * r)
+    # Diff between this and radial: Addition of eps3 term, and n vice n*, l vice l*.
+    polynomial_term = (2.0 * t.zeta * r) ** (t.l_st + eps3 - 1) * t.L(2.0 * t.zeta * r)
 
-    #     print(f"0: {t.term0} 1: {term1}, e: {exp_term}, p: {polynomial_term}")
-
-    R = t.term0 * term1 * exp_term * polynomial_term
+    R = t.norm_term * exp_term * polynomial_term
 
     return R
 
@@ -134,10 +124,10 @@ def radial(xi: float, n: int, posit_sample: array) -> float:
 def main():
     # We'll say y and z = 0, for radial functions.
     x = linspace(0, 10, 1000)
-    n = 1
+    n = 2
 
     #     for xi in [1., 1.2, 1.4, 1.6, 1.8, 2., 10.]:
-    for eps in [0.0, 0.1, 0.3, 0.5, 0.7, 0.9]:
+    for eps in [0., 0.1, 0.3, 0.5, 0.7, 0.9]:
         values = np.zeros(x.size)
 
         sto_terms = GenStoTerms.new(eps, n)
@@ -155,7 +145,7 @@ def main():
         R = radial(1., n, np.array([x[i], 0.0, 0.0]))
 
         r = np.linalg.norm(x[i])
-        values_trad[i] = 4.0 * pi * r**2 * R**2
+        values_trad[i] = sto_terms.norm_term * 4.0 * pi * r**2 * R**2
 
     plt.plot(x, values_trad)
 
