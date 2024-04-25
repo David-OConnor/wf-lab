@@ -115,6 +115,21 @@ pub(crate) fn make_laguerre(n: u16, α: u16) -> impl Fn(f64) -> f64 {
     }
 }
 
+/// Variant for floating point α, as used in experimental genrealized STOs.
+pub(crate) fn make_laguerre2(n: u16, α: f64) -> impl Fn(f64) -> f64 {
+    // It appears normal functions won't work because they can't capture n; use a closure.
+    move |x| match n {
+        0 => 1.,
+        1 => α + 1. - x,
+        2 => x.powi(2) / 2. - (α + 2.) * x + (α + 1.) * (α + 2.) / 2.,
+        3 => {
+            -x.powi(3) / 6. + (α + 3.) * x.powi(2) / 2. - (α + 2.) * (α + 3.) * x / 2.
+                + (α + 1.) * (α + 2.) * (α + 3.) / 6.
+        }
+        _ => unimplemented!(),
+    }
+}
+
 /// Generate a non-Associated Legendre polynomial for a given value. Used in the angular component of
 /// Hydrogen basis functions. (The Associated version, which is a modification of htis, is part of the
 /// definition of spherical harmonics)

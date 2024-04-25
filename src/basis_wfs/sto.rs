@@ -68,9 +68,7 @@ impl Sto {
         let n_st = nf + eps;
         let l_st = self.harmonic.l as f64 + eps;
 
-
-
-        let eps3 = 1; // todo: A/R
+        let eps3 = 1; // todo: A/R. What is its range? f64
 
         // let norm_num = (2. * xi).powi(3) * gamma(n - l - eps3 + 1);
         // let norm_denom = gamma(n + l + eps3 + 1);
@@ -84,21 +82,20 @@ impl Sto {
 
         // todo: See note on 2*eps3 vs 1*eps3.
         // let L = util::make_laguerre(n_st - l_st - eps3, 2 * l + 2 * eps3);
-        // todo: Fractional laguerre?
-        let L = util::make_laguerre(n_st - l_st - eps3, 2 * l + eps3);
+        // todo: Fractional laguerre? required for eps3 non-int.
 
-        let polynomial_term = (2. * r / n_st).powi(l_st.into() + eps3 - 1) * L(2. * r / n_st);
+        // todo: Confirm your floating point math here.
+        let L = util::make_laguerre2(n - l - eps3, (2 * l) as f64 + eps3 as f64);
 
-
+        let polynomial_term = (2. * r / n_st).powf(l_st + eps3 as f64 - 1.) * L(2. * r / n_st);
 
         // Note: This norm term is wrong.
         Self::norm_term(n, l) * polynomial_term * exp_term
     }
 
-
     pub fn radial(&self, posit_sample: Vec3) -> f64 {
         // todo tmep
-        return self.sto_generalized(posit_sample);
+        // return self.sto_generalized(posit_sample);
 
         // todo: This currently ignores the spherical harmonic part; add that!
         let r = (posit_sample - self.posit).magnitude();
@@ -117,7 +114,6 @@ impl Sto {
 
         // let polynomial_term = (2. * r / (nf * A_0)).powi(l.into()) * L(2. * r / (nf * A_0));
         let polynomial_term = (2. * r / nf).powi(l.into()) * L(2. * r / nf);
-
 
         // n_L = n - l - 1
         // b = 2r / (n*A0)

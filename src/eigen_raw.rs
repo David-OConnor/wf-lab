@@ -5,16 +5,15 @@ use lin_alg::f64::Vec3;
 
 use crate::{
     complex_nums::{Cplx, IM},
+    eigen_fns::KE_COEFF,
     types::DerivativesSingle,
 };
-use crate::eigen_fns::KE_COEFF;
 
 /// Calculate H; the hamiltonian (Energy eigenfunction). H = (h^2/2m ∇^2 + V) ψ
 pub(crate) fn calc_H(psi: Cplx, psi_pp: Cplx, V: f64) -> Cplx {
     // todo: why - V? Probably same as the "What's going on?" comment above. Maybe your V is inverted?
     psi_pp * KE_COEFF - psi * V
 }
-
 
 /// Calculate L^2, given derivatives. Used in one of the two momentum eigenfunctions. See Onenote:
 /// Exploring the WF, part 9

@@ -44,25 +44,25 @@ pub fn initialize_bases(
 
     let weights_li_inner = vec![
         (1., 0.32),
-        (2., -0.47),
-        (3., 0.02),
-        (4., -0.11),
+        (2., -0.60),
+        (3., -0.17),
+        (4., 0.32),
         (5., -0.26),
         (6., 0.10),
-        (8., -0.0),
-        (10., -0.0),
+        (8., -0.02),
+        (10., 0.01),
     ];
 
     let weights_li_outer = vec![
         // WIP for lithium:
         (1., 1.),
-        (2., 0.0),
-        (3., 0.),
-        (4., 0.),
-        (5., 0.),
-        (6., 0.),
-        (8., 0.),
-        (10., 0.),
+        (2., 0.50),
+        (3., -0.16),
+        (4., -0.16),
+        (5., -1.16),
+        (6., -0.86),
+        (8., -0.27),
+        (10., -0.72),
     ];
 
     // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
@@ -71,9 +71,9 @@ pub fn initialize_bases(
         // See Sebens, for weights under equation 24; this is for Helium.
 
         let weights = if n == 1 {
-            &weights_h
+            // &weights_h
             // &weights_he
-            // &weights_li_inner
+            &weights_li_inner
         } else {
             &weights_li_outer
         };

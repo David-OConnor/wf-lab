@@ -66,13 +66,13 @@
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
 use lin_alg::f64::Vec3;
 
-mod eigen_raw;
 mod basis_finder;
 mod basis_init;
 mod basis_wfs;
 mod complex_nums;
 mod dirac;
 mod eigen_fns;
+mod eigen_raw;
 mod elec_elec;
 mod eval;
 mod forces;
@@ -686,7 +686,7 @@ fn main() {
 
     let dev_psi = ComputationDevice::Cpu;
 
-    let num_elecs = 1;
+    let num_elecs = 3;
 
     render::render(State::new(num_elecs, dev_psi, dev_charge));
 }

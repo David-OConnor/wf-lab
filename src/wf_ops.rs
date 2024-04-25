@@ -34,7 +34,7 @@ use crate::{
     dirac::{BasisSpinor, CompPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3},
     eigen_fns::{self},
     eigen_raw,
-    grid_setup::{Arr3d, Arr3dReal, Arr3dVec, new_data, new_data_real},
+    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, num_diff,
     types::{ComputationDevice, Derivatives, DerivativesSingle, SurfacesPerElec, SurfacesShared},
     util::{self, MAX_PSI_FOR_NORM},
@@ -578,8 +578,7 @@ pub fn update_eigen_vals(
             d2_sum: derivs.d2_sum[i][j][k],
         };
 
-        let temp =
-            derivs_single.d2x + derivs_single.d2y + derivs_single.d2z;
+        let temp = derivs_single.d2x + derivs_single.d2y + derivs_single.d2z;
         // H[i][j][k] = eigen_fns::calc_H(psi[i][j][k], derivs_single.d2_sum,V_acting_on_this[i][j][k]);
         H[i][j][k] = eigen_raw::calc_H(psi[i][j][k], temp, V_acting_on_this[i][j][k]);
 
