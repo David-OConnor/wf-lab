@@ -101,7 +101,7 @@ const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_RENDER: f64 = 10.;
 const GRID_MAX_CHARGE: f64 = 10.;
 
-const GRID_N_RENDER_DEFAULT: usize = 80;
+const GRID_N_RENDER_DEFAULT: usize = 90;
 const GRID_N_CHARGE_DEFAULT: usize = 61;
 
 const RENDER_SPINOR: bool = false;
@@ -232,7 +232,8 @@ impl State {
         let posit_charge_2 = Vec3::new(0.4, 0., 0.);
 
         let nuclei = vec![
-            (posit_charge_1, Q_PROT * num_elecs as f64),
+            // (posit_charge_1, Q_PROT * num_elecs as f64),
+            (posit_charge_1, Q_PROT * 2. as f64),
             // (posit_charge_2, Q_PROT * num_elecs as f64),
         ];
 
@@ -429,7 +430,7 @@ pub fn init_from_grid(
         num_electrons,
     );
 
-                // grid_setup::update_grid_posits(
+    // grid_setup::update_grid_posits(
     grid_setup::update_grid_posits_2d(
         &mut surfaces_shared.grid_posits,
         grid_range,
@@ -703,7 +704,6 @@ fn main() {
     let dev_charge = ComputationDevice::Cpu;
 
     let dev_psi = ComputationDevice::Cpu;
-
     let num_elecs = 1;
 
     render::render(State::new(num_elecs, dev_psi, dev_charge));

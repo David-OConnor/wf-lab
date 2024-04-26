@@ -132,12 +132,9 @@ pub fn initialize_bases_spinor(
 /// creates these values per-basis.
 pub fn wf_from_bases(
     dev: &ComputationDevice,
-    // psi_per_basis: &mut [Arr3d],
     psi_per_basis: &mut [Arr2d],
-    // mut derivs_per_basis: Option<&mut [Derivatives]>, // None for charge calcs.
     derivs_per_basis: &mut [Derivatives2D], // None for charge calcs.
     bases: &[Basis],
-    // grid_posits: &Arr3dVec,
     grid_posits: &Arr2dVec,
     deriv_calc: DerivCalc,
 ) {
@@ -147,7 +144,6 @@ pub fn wf_from_bases(
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
     #[cfg(feature = "cuda")]
     let posits_flat = match dev {
-        // ComputationDevice::Gpu(_) => Some(util::flatten_arr(grid_posits, grid_n)),
         ComputationDevice::Gpu(_) => Some(util::flatten_arr_2d(grid_posits, grid_n)),
         ComputationDevice::Cpu => None,
     };
@@ -175,42 +171,25 @@ pub fn wf_from_bases(
 
                 // This is similar to util::unflatten, but with norm involved.
                 for (i, j) in iter_arr_2d!(grid_n) {
-                    // let i_flat = i * grid_n_sq + j * grid_n + k;
                     let i_flat = i * grid_n_sq + j;
                     psi_per_basis[basis_i][i][j] = Cplx::from_real(psi_flat[i_flat]);
 
-                    derivs_per_basis[basis_i].d2_sum[i][j] =
-                        // Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
-                        Cplx::from_real(psi_pp_flat[i_flat]);
+                    derivs_per_basis[basis_i].d2_sum[i][j] = Cplx::from_real(psi_pp_flat[i_flat]);
 
                     // util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j]);
                 }
             }
             ComputationDevice::Cpu => {
                 for (i, j) in iter_arr_2d!(grid_n) {
-                    // let posit_sample = grid_posits[i][j][k];
                     let posit_sample = grid_posits[i][j];
 
-                    // psi_per_basis[basis_i][i][j][k] = basis.value(posit_sample);
                     psi_per_basis[basis_i][i][j] = basis.value(posit_sample);
                     let b = [basis.clone()];
 
-                    let d = calc_derivs_cpu(
-                        // psi_per_basis[basis_i][i][j][k],
-                        psi_per_basis[basis_i][i][j],
-                        &b,
-                        posit_sample,
-                        deriv_calc,
-                    );
+                    let d =
+                        calc_derivs_cpu(psi_per_basis[basis_i][i][j], &b, posit_sample, deriv_calc);
 
                     // // todo: better way to organize to prevent this? Eg Derivatives is an Arr3d of Derviative. Yea...
-                    // derivs_per_basis[basis_i].dx[i][j][k] = d.dx;
-                    // derivs_per_basis[basis_i].dy[i][j][k] = d.dy;
-                    // derivs_per_basis[basis_i].dz[i][j][k] = d.dz;
-                    // derivs_per_basis[basis_i].d2x[i][j][k] = d.d2x;
-                    // derivs_per_basis[basis_i].d2y[i][j][k] = d.d2y;
-                    // derivs_per_basis[basis_i].d2z[i][j][k] = d.d2z;
-                    // derivs_per_basis[basis_i].d2_sum[i][j][k] = d.d2_sum;
                     derivs_per_basis[basis_i].dx[i][j] = d.dx;
                     derivs_per_basis[basis_i].dy[i][j] = d.dy;
                     derivs_per_basis[basis_i].dz[i][j] = d.dz;
@@ -218,15 +197,6 @@ pub fn wf_from_bases(
                     derivs_per_basis[basis_i].d2y[i][j] = d.d2y;
                     derivs_per_basis[basis_i].d2z[i][j] = d.d2z;
                     derivs_per_basis[basis_i].d2_sum[i][j] = d.d2_sum;
-                    //
-                    //
-                    // // todo: TS d2_sum being wrong for Hydrogen, post adding of Dirac.
-                    // derivs[basis_i].d2_sum[i][j][k] = second_deriv_cpu(
-                    //     psi_per_basis[basis_i][i][j][k],
-                    //     basis,
-                    //     posit_sample,
-                    //     deriv_calc,
-                    // );
 
                     // todo: Impl your Derivatives construction from GPU as well, but we'll use CPU for calculating
                     // todo these for now.
@@ -317,18 +287,7 @@ pub fn wf_from_bases_charge(
         // in the way normalizing the composite (squared) wave function is prior to generating charge.
 
         // todo: Temp removed. They may be interfering with basis solving.
-
-        // util::normalize_arr(&mut psi_per_basis[basis_i], norm);
-        //
-        // if let Some(ref mut derivs) = derivs_per_basis {
-        //     util::normalize_arr(&mut derivs[basis_i].dx, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].dy, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].dz, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].d2x, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].d2y, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].d2z, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].d2_sum, norm);
-        // }
+        util::normalize_arr(&mut psi_per_basis[basis_i], norm);
     }
     println!("WF from bases complete.");
 }
@@ -429,7 +388,6 @@ pub fn wf_from_bases_spinor(
 /// use psi'' when evaluating sample positions, but not when evaluating psi to be fed into
 /// electron charge.
 pub fn mix_bases(
-    // psi: &mut Arr3d,
     psi: &mut Arr2d,
     derivs: &mut Derivatives2D, // Not required for charge generation.
     psi_per_basis: &[Arr2d],
@@ -440,7 +398,6 @@ pub fn mix_bases(
     let mut norm = 0.;
     let grid_n = psi.len();
 
-    // for (i, j, k) in iter_arr!(grid_n) {
     for (i, j) in iter_arr_2d!(grid_n) {
         psi[i][j] = Cplx::new_zero();
         // todo: This is avoidable by a reversed Derivatives struct.
@@ -651,29 +608,18 @@ pub(crate) fn charge_from_psi(
 /// Update V-from-psi, and psi''-calculated, based on psi, and V acting on a given electron.
 /// todo: When do we use this, vice `calcualte_v_elec`?
 pub fn update_eigen_vals(
-    // V_elec: &mut Arr3dReal,
     V_elec: &mut Arr2dReal,
-    // V_total: &mut Arr3dReal,
     V_total: &mut Arr2dReal,
-    // psi_pp_calculated: &mut Arr3d,
     psi_pp_calculated: &mut Arr2d,
-    // psi: &Arr3d,
     psi: &Arr2d,
-    // derivs: &Derivatives,
     derivs: &Derivatives2D,
-    // V_acting_on_this: &Arr3dReal,
     V_acting_on_this: &Arr2dReal,
     E: f64,
-    // V_nuc: &Arr3dReal,
     V_nuc: &Arr2dReal,
     // todo: New with angular p eigenvals
-    // grid_posits: &Arr3dVec,
     grid_posits: &Arr2dVec,
-    // H: &mut Arr3d,
     H: &mut Arr2d,
-    // L_sq: &mut Arr3d,
     L_sq: &mut Arr2d,
-    // L_z: &mut Arr3d,
     L_z: &mut Arr2d,
 ) {
     let grid_n = psi.len();
@@ -719,10 +665,7 @@ pub fn update_eigen_vals(
             d2_sum: derivs.d2_sum[i][j],
         };
 
-        let temp = derivs_single.d2x + derivs_single.d2y + derivs_single.d2z;
-        // H[i][j] = eigen_fns::calc_H(psi[i][j], derivs_single.d2_sum,V_acting_on_this[i][j]);
-        H[i][j] = eigen_raw::calc_H(psi[i][j], temp, V_acting_on_this[i][j]);
-
+        H[i][j] = eigen_raw::calc_H(psi[i][j], derivs_single.d2_sum, V_acting_on_this[i][j]);
         L_sq[i][j] = eigen_raw::calc_L_sq(grid_posits[i][j], &derivs_single);
         L_z[i][j] = eigen_raw::calc_L_z(grid_posits[i][j], &derivs_single);
 

@@ -15,10 +15,8 @@ use crate::{
 
 pub fn update_E_or_V(
     sfcs: &mut SurfacesPerElec,
-    // V_from_nuclei: &Arr3dReal,
     V_from_nuclei: &Arr2dReal,
     E: f64,
-    // grid_posits: &Arr3dVec,
     grid_posits: &Arr2dVec,
 ) {
     wf_ops::update_eigen_vals(

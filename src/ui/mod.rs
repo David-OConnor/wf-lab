@@ -714,15 +714,15 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 .clicked()
             {}
 
-            if ui
-                .checkbox(&mut state.ui.create_2d_electron_V, "2D elec V")
-                .clicked()
-            {}
-
-            if ui
-                .checkbox(&mut state.ui.create_3d_electron_V, "3D elec V")
-                .clicked()
-            {}
+            // if ui
+            //     .checkbox(&mut state.ui.create_2d_electron_V, "2D elec V")
+            //     .clicked()
+            // {}
+            //
+            // if ui
+            //     .checkbox(&mut state.ui.create_3d_electron_V, "3D elec V")
+            //     .clicked()
+            // {}
         });
 
         ui.add_space(ITEM_SPACING);

@@ -34,30 +34,16 @@ fn flatten_charge(posits_charge: &Arr3dVec, values_charge: &Arr3dReal) -> (Vec<V
 /// Does not modify per-electron charges; those are updated elsewhere, incorporating the
 /// potential here, as well as from other electrons.
 pub fn update_V_from_nuclei(
-    // V_from_nuclei: &mut Arr3dReal,
     V_from_nuclei: &mut Arr2dReal,
     charges_nuc: &[(Vec3, f64)],
-    // grid_posits: &Arr3dVec,
     grid_posits: &Arr2dVec,
     // Wave functions from other electrons, for calculating the Hartree potential.
 ) {
     let grid_n = grid_posits.len();
     // todo: CUDA
 
-    // todo: You may need both variants: One for charge, one for render. (2d/3d)
-
-    // for (i, j, k) in iter_arr!(grid_n) {
-    //     let posit_sample = grid_posits[i][j][k];
-    //
-    //     V_from_nuclei[i][j][k] = 0.;
-    //
-    //     for (posit_charge, charge_amt) in charges_nuc.iter() {
-    //         V_from_nuclei[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
-    //     }
-    // }
     for (i, j) in iter_arr_2d!(grid_n) {
         let posit_sample = grid_posits[i][j];
-
         V_from_nuclei[i][j] = 0.;
 
         for (posit_charge, charge_amt) in charges_nuc.iter() {
@@ -69,18 +55,12 @@ pub fn update_V_from_nuclei(
 /// Update the potential field acting on a given electron. Run this after changing V nuclei,
 /// or V from another electron.
 pub(crate) fn update_V_acting_on_elec(
-    // V_on_this_elec: &mut Arr3dReal,
     V_on_this_elec: &mut Arr2dReal,
-    // V_from_nuclei: &Arr3dReal,
     V_from_nuclei: &Arr2dReal,
-    // V_from_elecs: &Arr3dReal,
     V_from_elecs: &Arr2dReal,
     grid_n: usize,
 ) {
-    // for (i, j, k) in iter_arr!(grid_n) {
     for (i, j) in iter_arr_2d!(grid_n) {
-        // V_on_this_elec[i][j][k] = V_from_nuclei[i][j][k];
-        // V_on_this_elec[i][j][k] += V_from_elecs[i][j][k];
         V_on_this_elec[i][j] = V_from_nuclei[i][j];
         V_on_this_elec[i][j] += V_from_elecs[i][j];
     }
@@ -147,7 +127,6 @@ pub(crate) fn create_V_from_elecs(
     charges_elec: &Arr3dReal,
     grid_n_sample: usize,
     grid_n_charge: usize,
-    // twod_only: bool,
 ) {
     println!("Creating V from an electron on grid...");
 
@@ -162,17 +141,7 @@ pub(crate) fn create_V_from_elecs(
             // Flatten sample positions, prior to passing to the kernel.
             for i_sample in 0..grid_n_sample {
                 for j_sample in 0..grid_n_sample {
-                    // if twod_only {
-                    // This makes it grid_n times faster, but only creates one Z-slice.
-                    // let k_sample = grid_n_sample / 2 + 1;
-                    // todo:
-                    // posits_sample_flat.push(posits_sample[i_sample][j_sample][k_sample]);
                     posits_sample_flat.push(posits_sample[i_sample][j_sample]);
-                    // } else {
-                    //     for k_sample in 0..grid_n_sample {
-                    //         posits_sample_flat.push(posits_sample[i_sample][j_sample][k_sample]);
-                    //     }
-                    // }
                 }
             }
 
@@ -190,11 +159,8 @@ pub(crate) fn create_V_from_elecs(
             // for flat sample input as well.
             for i in 0..grid_n_sample {
                 for j in 0..grid_n_sample {
-                    // if twod_only {
-                    let k = grid_n_sample / 2 + 1;
                     let i_flat = i * grid_n_sample + j;
                     V_from_this_elec[i][j] = V_per_sample_flat[i_flat];
-                    // }
                 }
             }
         }
@@ -206,7 +172,6 @@ pub(crate) fn create_V_from_elecs(
                 posits_charge,
                 grid_n_sample,
                 grid_n_charge,
-                // twod_only,
             );
         }
     }
@@ -222,32 +187,6 @@ pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> 
     K_C * charge / (r + SOFTENING_FACTOR)
 }
 
-// /// Helper fn to deal with 2d vs 3d electron V. Calculates Coulomb potential at every charge point,
-// /// at a single sample point.
-// fn V_from_grid_inner_cpu(
-//     V_from_this_elec: &mut Arr3dReal,
-//     charge_this_elec: &Arr3dReal,
-//     grid_posits: &Arr3dVec,
-//     grid_charge: &Arr3dVec,
-//     grid_n_charge: usize,
-//     posit: (usize, usize, usize),
-// ) {
-//     let posit_sample = grid_posits[posit.0][posit.1][posit.2];
-//
-//     // Iterate through this electron's (already computed) charge at every position in space,
-//     // comparing it to this position.
-//
-//     V_from_this_elec[posit.0][posit.1][posit.2] = 0.;
-//
-//     for (i, j, k) in iter_arr!(grid_n_charge) {
-//         let posit_charge = grid_charge[i][j][k];
-//         let charge = charge_this_elec[i][j][k];
-//
-//         V_from_this_elec[posit.0][posit.1][posit.2] +=
-//             V_coulomb(posit_charge, posit_sample, charge);
-//     }
-// }
-
 /// Update the V associated with a single electron's charge.
 /// This must be run after the charge from this electron is created from the wave function square.
 /// We expect the loop over charge positions to be larger than the one over V positions.
@@ -257,7 +196,6 @@ pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> 
 /// Deprecated in favor of GPU.
 pub(crate) fn create_V_from_elec_grid_cpu(
     V_from_this_elec: &mut Arr2dReal,
-    // V_from_this_elec_charge: &mut Arr3dReal,
     charges_elec: &Arr3dReal,
     posits_sample: &Arr2dVec,
     posits_charge: &Arr3dVec,

@@ -10,13 +10,12 @@ use crate::{
     dirac::{Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeDInner3},
     elec_elec::WaveFunctionMultiElec,
     grid_setup::{
-        self, new_data, new_data_2d, new_data_real, new_data_vec, Arr2d, Arr2dReal, Arr2dVec,
-        Arr3d, Arr3dReal, Arr3dVec,
+        self, new_data, new_data_2d, new_data_2d_real, new_data_2d_vec, new_data_real,
+        new_data_vec, Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec,
     },
     wf_ops,
     wf_ops::{DerivCalc, Spin},
 };
-use crate::grid_setup::{new_data_2d_real, new_data_2d_vec};
 
 #[derive(Debug, Clone)]
 pub enum ComputationDevice {
@@ -235,38 +234,28 @@ pub struct SurfacesPerElec {
     /// We use this as a cache instead of generating it on the fly.
     // pub V_acting_on_this: Arr3dReal,
     pub V_acting_on_this: Arr2dReal,
-    // pub psi: Arr3d,
     pub psi: Arr2d,
     /// Electron charge * normalized psi^2
     pub charge_density: Arr3dReal,
     /// From the Schrodinger equation based on psi and the other parameters.
-    // pub psi_pp_calculated: Arr3d,
     pub psi_pp_calculated: Arr2d,
     /// From an analytic or numeric computation from basis functions.
     // pub derivs: Derivatives,
     pub derivs: Derivatives2D,
     // todo: An experiment where we analytically calculate this directly.
     // pub psi_pp_div_psi_evaluated: Arr3dReal,
-    // pub psi_per_basis: Vec<Arr3d>,
     pub psi_per_basis: Vec<Arr2d>,
-    // pub derivs_per_basis: Vec<Derivatives>,
     pub derivs_per_basis: Vec<Derivatives2D>,
     // // todo: An experiment where we analytically calculate this directly.
     // pub psi_pp_div_psi_per_basis: Vec<Arr3dReal>,
     /// Aux surfaces are for misc visualizations
-    // pub V_elec_eigen: Arr3dReal,
     pub V_elec_eigen: Arr2dReal,
-    // pub V_total_eigen: Arr3dReal,
     pub V_total_eigen: Arr2dReal,
-    // pub aux3: Arr3dReal,
     pub aux3: Arr2dReal,
     /// Hamiltonian (Schrodinger equation energery eigenfunction)
-    // pub psi_fm_H: Arr3d,
     pub psi_fm_H: Arr2d,
     // experiments with angular momentum
-    // pub psi_fm_L2: Arr3d,
     pub psi_fm_L2: Arr2d,
-    // pub psi_fm_Lz: Arr3d,
     pub psi_fm_Lz: Arr2d,
     // todo: Update these types A/R based on which ordering variant you use.
     /// Trial wave function spinor
