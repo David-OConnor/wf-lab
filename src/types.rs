@@ -9,11 +9,13 @@ use crate::{
     complex_nums::Cplx,
     dirac::{Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeDInner3},
     elec_elec::WaveFunctionMultiElec,
-    grid_setup::{self, new_data, new_data_real, new_data_vec, Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{
+        self, new_data, new_data_2d, new_data_real, new_data_vec, Arr2d, Arr2dReal, Arr2dVec,
+        Arr3d, Arr3dReal, Arr3dVec,
+    },
     wf_ops,
     wf_ops::{DerivCalc, Spin},
 };
-use crate::grid_setup::{Arr2d, Arr2dReal, Arr2dVec, new_data_2d};
 
 #[derive(Debug, Clone)]
 pub enum ComputationDevice {
@@ -37,7 +39,8 @@ pub struct SurfacesShared {
     pub V_total: Arr3dReal,
     /// Potential from nuclei only. We use this as a baseline for individual electron
     /// potentials, prior to summing over V from other electrons.
-    pub V_from_nuclei: Arr3dReal,
+    // pub V_from_nuclei: Arr3dReal,
+    pub V_from_nuclei: Arr2dReal,
     // todo: This may not be a good model: the wave function isn't a function of position
     // mapped to a value for multi-elecs. It's a function of a position for each elec.
     pub psi: WaveFunctionMultiElec,

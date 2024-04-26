@@ -7,7 +7,7 @@ use lin_alg::f64::Vec3;
 use crate::{
     basis_finder, basis_init,
     basis_wfs::{Basis, Sto},
-    grid_setup::{new_data, Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{new_data, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, potential, render,
     types::SurfacesPerElec,
     util, wf_ops, ActiveElec, State,
@@ -15,9 +15,11 @@ use crate::{
 
 pub fn update_E_or_V(
     sfcs: &mut SurfacesPerElec,
-    V_from_nuclei: &Arr3dReal,
+    // V_from_nuclei: &Arr3dReal,
+    V_from_nuclei: &Arr2dReal,
     E: f64,
-    grid_posits: &Arr3dVec,
+    // grid_posits: &Arr3dVec,
+    grid_posits: &Arr2dVec,
 ) {
     wf_ops::update_eigen_vals(
         &mut sfcs.V_elec_eigen,
@@ -34,12 +36,13 @@ pub fn update_E_or_V(
         &mut sfcs.psi_fm_Lz,
     );
 
-    wf_ops::update_eigen_vals_spinor(
-        &mut sfcs.spinor_calc,
-        &sfcs.spinor_derivs,
-        [E; 4], // todo temp
-        V_from_nuclei,
-    );
+    // todo: Put back A/R
+    // wf_ops::update_eigen_vals_spinor(
+    //     &mut sfcs.spinor_calc,
+    //     &sfcs.spinor_derivs,
+    //     [E; 4], // todo temp
+    //     V_from_nuclei,
+    // );
 }
 
 /// Set up our basis-function based trial wave function.
@@ -50,17 +53,15 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
 
     // Prevents double borrow-mut error
     let psi = &mut sfcs.psi;
-    let charge_density = &mut sfcs.charge_density;
     let psi_pp = &mut sfcs.derivs;
     let spinor = &mut sfcs.spinor;
     let spinor_derivs = &mut sfcs.spinor_derivs;
 
     wf_ops::mix_bases(
         psi,
-        Some(charge_density),
-        Some(psi_pp),
+        psi_pp,
         &sfcs.psi_per_basis,
-        Some(&sfcs.derivs_per_basis),
+        &sfcs.derivs_per_basis,
         &weights,
     );
 
@@ -88,12 +89,13 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         &mut sfcs.psi_fm_Lz,
     );
 
-    wf_ops::update_eigen_vals_spinor(
-        &mut sfcs.spinor_calc,
-        spinor_derivs,
-        [-0.5; 4], // todo temp
-        &sfcs.V_acting_on_this,
-    );
+    // todo: A/R
+    // wf_ops::update_eigen_vals_spinor(
+    //     &mut sfcs.spinor_calc,
+    //     spinor_derivs,
+    //     [-0.5; 4], // todo temp
+    //     &sfcs.V_acting_on_this,
+    // );
 
     // // For now, we are setting the V elec that must be acting on this WF if it were to be valid.
     // wf_ops::calculate_v_elec(
@@ -106,15 +108,15 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     //     &state.surfaces_shared.V_from_nuclei,
     // );
 
+    let mut charge_density = &mut sfcs.charge_density;
+
     if state.ui.auto_gen_elec_V {
         let mut psi_charge_grid = new_data(state.grid_n_charge);
 
-        wf_ops::mix_bases(
+        wf_ops::mix_bases_charge(
             &mut psi_charge_grid,
-            None,
-            None,
+            &mut charge_density,
             &state.psi_charge[ae],
-            None,
             &weights,
         );
 
@@ -168,27 +170,26 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     wf_ops::wf_from_bases(
         &state.dev_psi,
         psi,
-        Some(psi_pp),
+        psi_pp,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits,
         state.deriv_calc,
     );
 
-    wf_ops::wf_from_bases_spinor(
-        &state.dev_psi,
-        spinor,
-        Some(spinor_derivs),
-        &state.bases_spinor[ae],
-        &state.surfaces_shared.grid_posits,
-    );
+    // todo: A/R
+    // wf_ops::wf_from_bases_spinor(
+    //     &state.dev_psi,
+    //     spinor,
+    //     Some(spinor_derivs),
+    //     &state.bases_spinor[ae],
+    //     &state.surfaces_shared.grid_posits,
+    // );
 
-    wf_ops::wf_from_bases(
+    wf_ops::wf_from_bases_charge(
         &state.dev_psi,
         &mut state.psi_charge[ae],
-        None,
         &state.bases[ae],
         &state.surfaces_shared.grid_posits_charge,
-        state.deriv_calc,
     );
 }
 
@@ -229,12 +230,10 @@ pub fn create_elec_charge(
 ) {
     let mut psi_charge_grid = new_data(grid_n_charge);
 
-    wf_ops::mix_bases(
+    wf_ops::mix_bases_charge(
         &mut psi_charge_grid,
-        None,
-        None,
+        charge_electron,
         psi_charge_per_basis,
-        None,
         weights,
     );
 
@@ -327,13 +326,11 @@ pub(crate) fn he_solver(state: &mut State) {
         state.bases[elec_id] = bases;
         state.ui.active_elec = ActiveElec::PerElec(elec_id);
 
-        wf_ops::wf_from_bases(
+        wf_ops::wf_from_bases_charge(
             &state.dev_psi,
             &mut state.psi_charge[elec_id],
-            None,
             &state.bases[elec_id],
             &state.surfaces_shared.grid_posits_charge,
-            state.deriv_calc,
         );
 
         // We don't need to mix bases here, and that's handled at the end of the loop

@@ -5,8 +5,8 @@ use lin_alg::f64::Vec3;
 #[cfg(feature = "cuda")]
 use crate::gpu;
 use crate::{
-    grid_setup::{Arr3dReal, Arr3dVec},
-    iter_arr,
+    grid_setup::{Arr2dReal, Arr2dVec, Arr3dReal, Arr3dVec},
+    iter_arr, iter_arr_2d,
     types::ComputationDevice,
     wf_ops::K_C,
 };
@@ -34,20 +34,34 @@ fn flatten_charge(posits_charge: &Arr3dVec, values_charge: &Arr3dReal) -> (Vec<V
 /// Does not modify per-electron charges; those are updated elsewhere, incorporating the
 /// potential here, as well as from other electrons.
 pub fn update_V_from_nuclei(
-    V_from_nuclei: &mut Arr3dReal,
+    // V_from_nuclei: &mut Arr3dReal,
+    V_from_nuclei: &mut Arr2dReal,
     charges_nuc: &[(Vec3, f64)],
-    grid_posits: &Arr3dVec,
+    // grid_posits: &Arr3dVec,
+    grid_posits: &Arr2dVec,
     // Wave functions from other electrons, for calculating the Hartree potential.
 ) {
     let grid_n = grid_posits.len();
     // todo: CUDA
-    for (i, j, k) in iter_arr!(grid_n) {
-        let posit_sample = grid_posits[i][j][k];
 
-        V_from_nuclei[i][j][k] = 0.;
+    // todo: You may need both variants: One for charge, one for render. (2d/3d)
+
+    // for (i, j, k) in iter_arr!(grid_n) {
+    //     let posit_sample = grid_posits[i][j][k];
+    //
+    //     V_from_nuclei[i][j][k] = 0.;
+    //
+    //     for (posit_charge, charge_amt) in charges_nuc.iter() {
+    //         V_from_nuclei[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
+    //     }
+    // }
+    for (i, j) in iter_arr_2d!(grid_n) {
+        let posit_sample = grid_posits[i][j];
+
+        V_from_nuclei[i][j] = 0.;
 
         for (posit_charge, charge_amt) in charges_nuc.iter() {
-            V_from_nuclei[i][j][k] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
+            V_from_nuclei[i][j] += V_coulomb(*posit_charge, posit_sample, *charge_amt);
         }
     }
 }
@@ -55,14 +69,20 @@ pub fn update_V_from_nuclei(
 /// Update the potential field acting on a given electron. Run this after changing V nuclei,
 /// or V from another electron.
 pub(crate) fn update_V_acting_on_elec(
-    V_on_this_elec: &mut Arr3dReal,
-    V_from_nuclei: &Arr3dReal,
-    V_from_elecs: &Arr3dReal,
+    // V_on_this_elec: &mut Arr3dReal,
+    V_on_this_elec: &mut Arr2dReal,
+    // V_from_nuclei: &Arr3dReal,
+    V_from_nuclei: &Arr2dReal,
+    // V_from_elecs: &Arr3dReal,
+    V_from_elecs: &Arr2dReal,
     grid_n: usize,
 ) {
-    for (i, j, k) in iter_arr!(grid_n) {
-        V_on_this_elec[i][j][k] = V_from_nuclei[i][j][k];
-        V_on_this_elec[i][j][k] += V_from_elecs[i][j][k];
+    // for (i, j, k) in iter_arr!(grid_n) {
+    for (i, j) in iter_arr_2d!(grid_n) {
+        // V_on_this_elec[i][j][k] = V_from_nuclei[i][j][k];
+        // V_on_this_elec[i][j][k] += V_from_elecs[i][j][k];
+        V_on_this_elec[i][j] = V_from_nuclei[i][j];
+        V_on_this_elec[i][j] += V_from_elecs[i][j];
     }
 }
 

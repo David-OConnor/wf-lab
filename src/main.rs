@@ -91,7 +91,7 @@ mod wf_ops;
 use crate::{
     basis_wfs::Basis,
     dirac::BasisSpinor,
-    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal},
+    grid_setup::{new_data, new_data_2d_real, new_data_real, Arr2dReal, Arr3d, Arr3dReal},
     types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
     ui::procedures,
     wf_ops::{DerivCalc, Spin, Q_PROT},
@@ -184,6 +184,7 @@ pub struct State {
     /// when calculating the potential. (easier to work with API)
     pub charges_from_electron: Vec<Arr3dReal>,
     /// Also stored here vice part of per-elec structs due to borrow-limiting on struct fields.
+    /// We use this to calculate charge.
     pub V_from_elecs: Vec<Arr3dReal>,
     /// Surfaces that are not electron-specific.
     pub surfaces_shared: SurfacesShared,
@@ -404,11 +405,13 @@ pub fn init_from_grid(
 ) -> (
     Vec<Arr3dReal>,
     Vec<Arr3dReal>,
+    // Vec<Arr2dReal>,
     Vec<Vec<Arr3d>>,
     SurfacesShared,
     Vec<SurfacesPerElec>,
 ) {
     let arr_real = new_data_real(grid_n_sample);
+    // let arr_real_2d = new_data_2d_real(grid_n_sample);
 
     let sfcs_one_elec = SurfacesPerElec::new(bases_per_elec[0].len(), grid_n_sample, Spin::Alpha);
 
@@ -426,10 +429,13 @@ pub fn init_from_grid(
         num_electrons,
     );
 
-    grid_setup::update_grid_posits(
+    let z = 0.; // todo: Per the slider!
+                // grid_setup::update_grid_posits(
+    grid_setup::update_grid_posits_2d(
         &mut surfaces_shared.grid_posits,
         grid_range,
         spacing_factor,
+        z,
         grid_n_sample,
     );
 
@@ -467,19 +473,21 @@ pub fn init_from_grid(
         wf_ops::wf_from_bases(
             dev_psi,
             psi,
-            Some(psi_pp),
+            // Some(psi_pp),
+            psi_pp,
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits,
             deriv_calc,
         );
 
-        wf_ops::wf_from_bases_spinor(
-            dev_psi,
-            spinor,
-            Some(spinor_derivs),
-            &bases_per_elec_spinor[i_elec],
-            &surfaces_shared.grid_posits,
-        );
+        // todo: Put back A/R
+        // wf_ops::wf_from_bases_spinor(
+        //     dev_psi,
+        //     spinor,
+        //     Some(spinor_derivs),
+        //     &bases_per_elec_spinor[i_elec],
+        //     &surfaces_shared.grid_posits,
+        // );
 
         let psi = &mut sfcs.psi;
         let charge_density = &mut sfcs.charge_density;
@@ -488,14 +496,23 @@ pub fn init_from_grid(
         let spinor_derivs = &mut sfcs.spinor_derivs;
 
         let weights: Vec<f64> = bases_per_elec[i_elec].iter().map(|b| b.weight()).collect();
+
         wf_ops::mix_bases(
             psi,
-            Some(charge_density),
-            Some(psi_pp),
+            psi_pp,
             &sfcs.psi_per_basis,
-            Some(&sfcs.derivs_per_basis),
+            &sfcs.derivs_per_basis,
             &weights,
         );
+
+        // todo: 2D conversion: When do we update psi charge density?
+
+        // wf_ops::mix_bases_charge(
+        //     psi,
+        //     charge_density,
+        //     &sfcs.psi_per_basis,
+        //     &weights,
+        // );
 
         wf_ops::mix_bases_spinor(
             spinor,
@@ -522,12 +539,13 @@ pub fn init_from_grid(
             &mut sfcs.psi_fm_Lz,
         );
 
-        wf_ops::update_eigen_vals_spinor(
-            &mut sfcs.spinor_calc,
-            spinor_derivs,
-            [-0.5; 4], // todo temp
-            &sfcs.V_acting_on_this,
-        );
+        // todo: Put back A/R
+        // wf_ops::update_eigen_vals_spinor(
+        //     &mut sfcs.spinor_calc,
+        //     spinor_derivs,
+        //     [-0.5; 4], // todo temp
+        //     &sfcs.V_acting_on_this,
+        // );
 
         let mut psi_charge = Vec::new();
 
@@ -536,13 +554,12 @@ pub fn init_from_grid(
             psi_charge.push(new_data(grid_n_charge));
         }
 
-        wf_ops::wf_from_bases(
+        // wf_ops::wf_from_bases(
+        wf_ops::wf_from_bases_charge(
             dev_psi,
             &mut psi_charge,
-            None,
             &bases_per_elec[i_elec],
             &surfaces_shared.grid_posits_charge,
-            deriv_calc,
         );
 
         procedures::create_elec_charge(
@@ -572,13 +589,15 @@ pub fn init_from_grid(
                 &mut electron.V_acting_on_this,
                 &surfaces_shared.V_from_nuclei,
                 // &[], // Not ready to apply V from other elecs yet.
-                &new_data_real(grid_n_sample), // Not ready to apply V from other elecs yet.
+                // &new_data_real(grid_n_sample), // Not ready to apply V from other elecs yet.
+                &new_data_2d_real(grid_n_sample), // Not ready to apply V from other elecs yet.
                 grid_n_sample,
             );
         }
     }
 
-    wf_ops::update_combined(&mut surfaces_shared, &surfaces_per_elec, grid_n_sample);
+    // todo: Put back A/R
+    // wf_ops::update_combined(&mut surfaces_shared, &surfaces_per_elec, grid_n_sample);
 
     (
         charges_electron,

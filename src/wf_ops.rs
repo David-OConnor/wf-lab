@@ -27,9 +27,21 @@ use lin_alg::f64::Vec3;
 
 #[cfg(feature = "cuda")]
 use crate::gpu;
-use crate::{basis_wfs::{Basis, Sto}, complex_nums::Cplx, dirac, dirac::{BasisSpinor, CompPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3}, eigen_fns::{self}, eigen_raw, grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec}, iter_arr, iter_arr_2d, num_diff, types::{ComputationDevice, Derivatives, DerivativesSingle, SurfacesPerElec, SurfacesShared}, util::{self, MAX_PSI_FOR_NORM}};
-use crate::grid_setup::{Arr2d, Arr2dReal, Arr2dVec};
-use crate::types::Derivatives2D;
+use crate::{
+    basis_wfs::{Basis, Sto},
+    complex_nums::Cplx,
+    dirac,
+    dirac::{BasisSpinor, CompPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3},
+    eigen_fns::{self},
+    eigen_raw,
+    grid_setup::{new_data, new_data_real, Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec},
+    iter_arr, iter_arr_2d, num_diff,
+    types::{
+        ComputationDevice, Derivatives, Derivatives2D, DerivativesSingle, SurfacesPerElec,
+        SurfacesShared,
+    },
+    util::{self, MAX_PSI_FOR_NORM},
+};
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -123,7 +135,7 @@ pub fn wf_from_bases(
     // psi_per_basis: &mut [Arr3d],
     psi_per_basis: &mut [Arr2d],
     // mut derivs_per_basis: Option<&mut [Derivatives]>, // None for charge calcs.
-    derivs_per_basis: Option<&mut [Derivatives2D]>, // None for charge calcs.
+    derivs_per_basis: &mut [Derivatives2D], // None for charge calcs.
     bases: &[Basis],
     // grid_posits: &Arr3dVec,
     grid_posits: &Arr2dVec,
@@ -144,87 +156,82 @@ pub fn wf_from_bases(
         // todo: Temp forcing CPU only while we confirm numerical stability issues with f32
         // todo on GPU aren't causing a problem.
 
-        let mut norm = 0.;
+        // let mut norm = 0.;
 
         match dev {
             #[cfg(feature = "cuda")]
             ComputationDevice::Gpu(cuda_dev) => {
-                let (psi_flat, psi_pp_flat) = if derivs_per_basis.is_some() {
+                let (psi_flat, psi_pp_flat) =
                     // Calculate both using the same kernel.
-                    let (a, b) = gpu::sto_vals_derivs(
+                    gpu::sto_vals_derivs(
                         cuda_dev,
                         basis.xi(),
                         basis.n(),
                         &posits_flat.as_ref().unwrap(),
                         basis.posit(),
                     );
-                    (a, Some(b))
-                } else {
-                    (
-                        gpu::sto_vals_or_derivs(
-                            cuda_dev,
-                            basis.xi(),
-                            basis.n(),
-                            &posits_flat.as_ref().unwrap(),
-                            basis.posit(),
-                            false,
-                        ),
-                        None,
-                    )
-                };
 
                 let grid_n_sq = grid_n.pow(2);
 
                 // This is similar to util::unflatten, but with norm involved.
-                for (i, j, k) in iter_arr!(grid_n) {
-                    let i_flat = i * grid_n_sq + j * grid_n + k;
-                    psi_per_basis[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
+                for (i, j) in iter_arr_2d!(grid_n) {
+                    // let i_flat = i * grid_n_sq + j * grid_n + k;
+                    let i_flat = i * grid_n_sq + j;
+                    psi_per_basis[basis_i][i][j] = Cplx::from_real(psi_flat[i_flat]);
 
-                    if let Some(pp) = derivs_per_basis.as_mut() {
-                        pp[basis_i].d2_sum[i][j][k] =
-                            Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
-                    }
+                    derivs_per_basis[basis_i].d2_sum[i][j] =
+                        // Cplx::from_real(psi_pp_flat.as_ref().unwrap()[i_flat]);
+                        Cplx::from_real(psi_pp_flat[i_flat]);
 
-                    util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
+                    // util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j]);
                 }
             }
             ComputationDevice::Cpu => {
-                for (i, j, k) in iter_arr!(grid_n) {
-                    let posit_sample = grid_posits[i][j][k];
+                for (i, j) in iter_arr_2d!(grid_n) {
+                    // let posit_sample = grid_posits[i][j][k];
+                    let posit_sample = grid_posits[i][j];
 
-                    psi_per_basis[basis_i][i][j][k] = basis.value(posit_sample);
+                    // psi_per_basis[basis_i][i][j][k] = basis.value(posit_sample);
+                    psi_per_basis[basis_i][i][j] = basis.value(posit_sample);
                     let b = [basis.clone()];
 
-                    if let Some(ref mut derivs) = derivs_per_basis {
-                        let d = calc_derivs_cpu(
-                            psi_per_basis[basis_i][i][j][k],
-                            &b,
-                            posit_sample,
-                            deriv_calc,
-                        );
+                    let d = calc_derivs_cpu(
+                        // psi_per_basis[basis_i][i][j][k],
+                        psi_per_basis[basis_i][i][j],
+                        &b,
+                        posit_sample,
+                        deriv_calc,
+                    );
 
-                        // todo: better way to organize to prevent this? Eg Derivatives is an Arr3d of Derviative. Yea...
-                        derivs[basis_i].dx[i][j][k] = d.dx;
-                        derivs[basis_i].dy[i][j][k] = d.dy;
-                        derivs[basis_i].dz[i][j][k] = d.dz;
-                        derivs[basis_i].d2x[i][j][k] = d.d2x;
-                        derivs[basis_i].d2y[i][j][k] = d.d2y;
-                        derivs[basis_i].d2z[i][j][k] = d.d2z;
-                        derivs[basis_i].d2_sum[i][j][k] = d.d2_sum;
-                        //
-                        // // todo: TS d2_sum being wrong for Hydrogen, post adding of Dirac.
-                        // derivs[basis_i].d2_sum[i][j][k] = second_deriv_cpu(
-                        //     psi_per_basis[basis_i][i][j][k],
-                        //     basis,
-                        //     posit_sample,
-                        //     deriv_calc,
-                        // );
+                    // // todo: better way to organize to prevent this? Eg Derivatives is an Arr3d of Derviative. Yea...
+                    // derivs_per_basis[basis_i].dx[i][j][k] = d.dx;
+                    // derivs_per_basis[basis_i].dy[i][j][k] = d.dy;
+                    // derivs_per_basis[basis_i].dz[i][j][k] = d.dz;
+                    // derivs_per_basis[basis_i].d2x[i][j][k] = d.d2x;
+                    // derivs_per_basis[basis_i].d2y[i][j][k] = d.d2y;
+                    // derivs_per_basis[basis_i].d2z[i][j][k] = d.d2z;
+                    // derivs_per_basis[basis_i].d2_sum[i][j][k] = d.d2_sum;
+                    derivs_per_basis[basis_i].dx[i][j] = d.dx;
+                    derivs_per_basis[basis_i].dy[i][j] = d.dy;
+                    derivs_per_basis[basis_i].dz[i][j] = d.dz;
+                    derivs_per_basis[basis_i].d2x[i][j] = d.d2x;
+                    derivs_per_basis[basis_i].d2y[i][j] = d.d2y;
+                    derivs_per_basis[basis_i].d2z[i][j] = d.d2z;
+                    derivs_per_basis[basis_i].d2_sum[i][j] = d.d2_sum;
+                    //
+                    //
+                    // // todo: TS d2_sum being wrong for Hydrogen, post adding of Dirac.
+                    // derivs[basis_i].d2_sum[i][j][k] = second_deriv_cpu(
+                    //     psi_per_basis[basis_i][i][j][k],
+                    //     basis,
+                    //     posit_sample,
+                    //     deriv_calc,
+                    // );
 
-                        // todo: Impl your Derivatives construction from GPU as well, but we'll use CPU for calculating
-                        // todo these for now.
-                    }
+                    // todo: Impl your Derivatives construction from GPU as well, but we'll use CPU for calculating
+                    // todo these for now.
 
-                    util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
+                    // util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
                 }
             }
         }
@@ -255,14 +262,13 @@ pub fn wf_from_bases_charge(
     psi_per_basis: &mut [Arr3d],
     bases: &[Basis],
     grid_posits: &Arr3dVec,
-    deriv_calc: DerivCalc,
 ) {
     println!("Starting WF from bases...");
     let grid_n = grid_posits.len();
 
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
     #[cfg(feature = "cuda")]
-        let posits_flat = match dev {
+    let posits_flat = match dev {
         ComputationDevice::Gpu(_) => Some(util::flatten_arr(grid_posits, grid_n)),
         ComputationDevice::Cpu => None,
     };
@@ -276,7 +282,7 @@ pub fn wf_from_bases_charge(
         match dev {
             #[cfg(feature = "cuda")]
             ComputationDevice::Gpu(cuda_dev) => {
-                let psi_flat =                         gpu::sto_vals_or_derivs(
+                let psi_flat = gpu::sto_vals_or_derivs(
                     cuda_dev,
                     basis.xi(),
                     basis.n(),
@@ -445,20 +451,20 @@ pub fn mix_bases(
         derivs.d2y[i][j] = Cplx::new_zero();
         derivs.d2z[i][j] = Cplx::new_zero();
         derivs.d2_sum[i][j] = Cplx::new_zero();
+
         for (i_basis, weight) in weights.iter().enumerate() {
             let scaler = *weight;
 
             psi[i][j] += psi_per_basis[i_basis][i][j] * scaler;
 
             // todo: This is avoidable by a reversed Derivatives struct.
-            derivs.dx[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].dx[i][j] * scaler;
-            derivs.dy[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].dy[i][j] * scaler;
-            derivs.dz[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].dz[i][j] * scaler;
-            derivs.d2x[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].d2x[i][j] * scaler;
-            derivs.d2y[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].d2y[i][j] * scaler;
-            derivs.d2z[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].d2z[i][j] * scaler;
-            derivs.d2_sum[i][j] +=
-                derivs_per_basis.as_ref().unwrap()[i_basis].d2_sum[i][j] * scaler;
+            derivs.dx[i][j] += derivs_per_basis[i_basis].dx[i][j] * scaler;
+            derivs.dy[i][j] += derivs_per_basis[i_basis].dy[i][j] * scaler;
+            derivs.dz[i][j] += derivs_per_basis[i_basis].dz[i][j] * scaler;
+            derivs.d2x[i][j] += derivs_per_basis[i_basis].d2x[i][j] * scaler;
+            derivs.d2y[i][j] += derivs_per_basis[i_basis].d2y[i][j] * scaler;
+            derivs.d2z[i][j] += derivs_per_basis[i_basis].d2z[i][j] * scaler;
+            derivs.d2_sum[i][j] += derivs_per_basis[i_basis].d2_sum[i][j] * scaler;
         }
 
         let abs_sq = psi[i][j].abs_sq();
@@ -469,18 +475,17 @@ pub fn mix_bases(
         }
     }
 
-    util::normalize_arr(psi, norm);
-    if let Some(derivs_mut) = derivs.as_mut() {
-        util::normalize_arr(&mut derivs_mut.dx, norm);
-        util::normalize_arr(&mut derivs_mut.dy, norm);
-        util::normalize_arr(&mut derivs_mut.dz, norm);
-
-        util::normalize_arr(&mut derivs_mut.d2x, norm);
-        util::normalize_arr(&mut derivs_mut.d2y, norm);
-        util::normalize_arr(&mut derivs_mut.d2z, norm);
-
-        util::normalize_arr(&mut derivs_mut.d2_sum, norm);
-    }
+    // todo: We can't normalize using a 2D grid alone. Is this acceptable?
+    // util::normalize_arr(psi, norm);
+    // util::normalize_arr(&mut derivs.dx, norm);
+    // util::normalize_arr(&mut derivs.dy, norm);
+    // util::normalize_arr(&mut derivs.dz, norm);
+    //
+    // util::normalize_arr(&mut derivs.d2x, norm);
+    // util::normalize_arr(&mut derivs.d2y, norm);
+    // util::normalize_arr(&mut derivs.d2z, norm);
+    //
+    // util::normalize_arr(&mut derivs.d2_sum, norm);
 }
 
 // todo: DRY, while we sort out 2D vs 3D eval. Maybe it's better this way anyhow...
@@ -501,7 +506,6 @@ pub fn mix_bases_charge(
             let scaler = *weight;
 
             psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
-
         }
 
         let abs_sq = psi[i][j][k].abs_sq();
@@ -674,30 +678,55 @@ pub fn update_eigen_vals(
 ) {
     let grid_n = psi.len();
 
-    for (i, j, k) in iter_arr!(grid_n) {
-        V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], derivs.d2_sum[i][j][k], E);
-        V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
+    // for (i, j, k) in iter_arr!(grid_n) {
+    //     V_total[i][j][k] = eigen_fns::calc_V_on_psi(psi[i][j][k], derivs.d2_sum[i][j][k], E);
+    //     V_elec[i][j][k] = V_total[i][j][k] - V_nuc[i][j][k];
+    //
+    //     // todo: Another case where a reversed Derivs API would help.
+    //     let derivs_single = DerivativesSingle {
+    //         dx: derivs.dx[i][j][k],
+    //         dy: derivs.dy[i][j][k],
+    //         dz: derivs.dz[i][j][k],
+    //         d2x: derivs.d2x[i][j][k],
+    //         d2y: derivs.d2y[i][j][k],
+    //         d2z: derivs.d2z[i][j][k],
+    //         d2_sum: derivs.d2_sum[i][j][k],
+    //     };
+    //
+    //     let temp = derivs_single.d2x + derivs_single.d2y + derivs_single.d2z;
+    //     // H[i][j][k] = eigen_fns::calc_H(psi[i][j][k], derivs_single.d2_sum,V_acting_on_this[i][j][k]);
+    //     H[i][j][k] = eigen_raw::calc_H(psi[i][j][k], temp, V_acting_on_this[i][j][k]);
+    //
+    //     L_sq[i][j][k] = eigen_raw::calc_L_sq(grid_posits[i][j][k], &derivs_single);
+    //     L_z[i][j][k] = eigen_raw::calc_L_z(grid_posits[i][j][k], &derivs_single);
+    //
+    //     psi_pp_calculated[i][j][k] =
+    //         eigen_fns::find_ψ_pp_calc(psi[i][j], V_acting_on_this[i][j], E)
+    // }
+
+    for (i, j) in iter_arr_2d!(grid_n) {
+        V_total[i][j] = eigen_fns::calc_V_on_psi(psi[i][j], derivs.d2_sum[i][j], E);
+        V_elec[i][j] = V_total[i][j] - V_nuc[i][j];
 
         // todo: Another case where a reversed Derivs API would help.
         let derivs_single = DerivativesSingle {
-            dx: derivs.dx[i][j][k],
-            dy: derivs.dy[i][j][k],
-            dz: derivs.dz[i][j][k],
-            d2x: derivs.d2x[i][j][k],
-            d2y: derivs.d2y[i][j][k],
-            d2z: derivs.d2z[i][j][k],
-            d2_sum: derivs.d2_sum[i][j][k],
+            dx: derivs.dx[i][j],
+            dy: derivs.dy[i][j],
+            dz: derivs.dz[i][j],
+            d2x: derivs.d2x[i][j],
+            d2y: derivs.d2y[i][j],
+            d2z: derivs.d2z[i][j],
+            d2_sum: derivs.d2_sum[i][j],
         };
 
         let temp = derivs_single.d2x + derivs_single.d2y + derivs_single.d2z;
-        // H[i][j][k] = eigen_fns::calc_H(psi[i][j][k], derivs_single.d2_sum,V_acting_on_this[i][j][k]);
-        H[i][j][k] = eigen_raw::calc_H(psi[i][j][k], temp, V_acting_on_this[i][j][k]);
+        // H[i][j] = eigen_fns::calc_H(psi[i][j], derivs_single.d2_sum,V_acting_on_this[i][j]);
+        H[i][j] = eigen_raw::calc_H(psi[i][j], temp, V_acting_on_this[i][j]);
 
-        L_sq[i][j][k] = eigen_raw::calc_L_sq(grid_posits[i][j][k], &derivs_single);
-        L_z[i][j][k] = eigen_raw::calc_L_z(grid_posits[i][j][k], &derivs_single);
+        L_sq[i][j] = eigen_raw::calc_L_sq(grid_posits[i][j], &derivs_single);
+        L_z[i][j] = eigen_raw::calc_L_z(grid_posits[i][j], &derivs_single);
 
-        psi_pp_calculated[i][j][k] =
-            eigen_fns::find_ψ_pp_calc(psi[i][j][k], V_acting_on_this[i][j][k], E)
+        psi_pp_calculated[i][j] = eigen_fns::find_ψ_pp_calc(psi[i][j], V_acting_on_this[i][j], E)
     }
 }
 
@@ -868,46 +897,47 @@ pub(crate) fn second_deriv_cpu(
 //     }
 // }
 
-/// Update surfaces releated to multi-electron wave functions. This includes things related to
-/// spin, and charge density of all electrons. This should be run after changing any electron wave
-/// function, or nucleus charge.
-pub(crate) fn update_combined(
-    shared: &mut SurfacesShared,
-    per_elec: &[SurfacesPerElec],
-    grid_n: usize,
-) {
-    // Remove previous V from electrons.
-    shared.V_total = shared.V_from_nuclei.clone();
-    shared.psi_alpha = new_data(grid_n);
-    shared.psi_beta = new_data(grid_n);
-    shared.charge_alpha = new_data_real(grid_n);
-    shared.charge_beta = new_data_real(grid_n);
-    shared.charge_density_all = new_data_real(grid_n);
-    shared.spin_density = new_data_real(grid_n);
-    // todo: psi_all too?
-
-    for i_elec in 0..per_elec.len() {
-        for (i, j, k) in iter_arr!(grid_n) {
-            // todo: Handle this.
-            // shared.V_total[i][j][k] += V_from_elecs[i_elec][i][j][k];
-
-            // todo: Raise this if out of the triple loop?
-            match per_elec[i_elec].spin {
-                Spin::Alpha => {
-                    shared.psi_alpha[i][j][k] += per_elec[i_elec].psi[i][j][k];
-                    shared.charge_alpha[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
-
-                    shared.spin_density[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
-                }
-                Spin::Beta => {
-                    shared.psi_beta[i][j][k] += per_elec[i_elec].psi[i][j][k];
-                    shared.charge_beta[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
-
-                    shared.spin_density[i][j][k] -= per_elec[i_elec].charge_density[i][j][k];
-                }
-            }
-
-            shared.charge_density_all[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
-        }
-    }
-}
+// todo: Come back to. Broke during 2D conv, adn unused.
+// /// Update surfaces releated to multi-electron wave functions. This includes things related to
+// /// spin, and charge density of all electrons. This should be run after changing any electron wave
+// /// function, or nucleus charge.
+// pub(crate) fn update_combined(
+//     shared: &mut SurfacesShared,
+//     per_elec: &[SurfacesPerElec],
+//     grid_n: usize,
+// ) {
+//     // Remove previous V from electrons.
+//     shared.V_total = shared.V_from_nuclei.clone();
+//     shared.psi_alpha = new_data(grid_n);
+//     shared.psi_beta = new_data(grid_n);
+//     shared.charge_alpha = new_data_real(grid_n);
+//     shared.charge_beta = new_data_real(grid_n);
+//     shared.charge_density_all = new_data_real(grid_n);
+//     shared.spin_density = new_data_real(grid_n);
+//     // todo: psi_all too?
+//
+//     for i_elec in 0..per_elec.len() {
+//         for (i, j, k) in iter_arr!(grid_n) {
+//             // todo: Handle this.
+//             // shared.V_total[i][j][k] += V_from_elecs[i_elec][i][j][k];
+//
+//             // todo: Raise this if out of the triple loop?
+//             match per_elec[i_elec].spin {
+//                 Spin::Alpha => {
+//                     shared.psi_alpha[i][j][k] += per_elec[i_elec].psi[i][j][k];
+//                     shared.charge_alpha[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
+//
+//                     shared.spin_density[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
+//                 }
+//                 Spin::Beta => {
+//                     shared.psi_beta[i][j][k] += per_elec[i_elec].psi[i][j][k];
+//                     shared.charge_beta[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
+//
+//                     shared.spin_density[i][j][k] -= per_elec[i_elec].charge_density[i][j][k];
+//                 }
+//             }
+//
+//             shared.charge_density_all[i][j][k] += per_elec[i_elec].charge_density[i][j][k];
+//         }
+//     }
+// }

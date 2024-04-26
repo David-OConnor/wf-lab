@@ -8,9 +8,9 @@ use crate::{
     basis_finder, basis_init,
     basis_wfs::Basis,
     eigen_fns,
-    grid_setup::new_data,
+    grid_setup::{new_data, new_data_2d},
     render,
-    types::Derivatives,
+    types::{Derivatives, Derivatives2D},
     wf_ops,
     wf_ops::{DerivCalc, Spin},
     ActiveElec, State,
@@ -359,15 +359,19 @@ fn basis_fn_mixer(
                 // Only update this particular basis; not all.
                 if recalc_this_basis {
                     // Note: Extra memory use from this re-allocoating and cloning.
-                    let mut temp_psi = vec![new_data(state.grid_n_render)];
-                    let mut temp_psi_pp = vec![Derivatives::new(state.grid_n_render)];
+                    // let mut temp_psi = vec![new_data(state.grid_n_render)];
+                    // let mut temp_psi_pp = vec![Derivatives::new(state.grid_n_render)];
+                    let mut temp_psi = vec![new_data_2d(state.grid_n_render)];
+                    let mut temp_psi_pp = vec![Derivatives2D::new(state.grid_n_render)];
+
                     // let mut temp_spinor = vec![Derivatives::new(state.grid_n_render)];
                     // let mut temp_spinor_derivs = vec![Derivatives::new(state.grid_n_render)];
 
                     wf_ops::wf_from_bases(
                         &state.dev_psi,
                         &mut temp_psi,
-                        Some(&mut temp_psi_pp),
+                        // Some(&mut temp_psi_pp),
+                        &mut temp_psi_pp,
                         &[basis.clone()],
                         &state.surfaces_shared.grid_posits,
                         state.deriv_calc,
@@ -490,37 +494,15 @@ fn bottom_items(
         if ui.add(Button::new("Find E")).clicked() {
             state.surfaces_per_elec[ae].E = wf_ops::calc_E_from_bases(
                 &state.bases[ae],
-                state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
-                state.surfaces_shared.grid_posits[0][0][0],
+                // state.surfaces_per_elec[ae].V_acting_on_this[0][0][0],
+                // state.surfaces_shared.grid_posits[0][0][0],
+                state.surfaces_per_elec[ae].V_acting_on_this[0][0],
+                state.surfaces_shared.grid_posits[0][0],
                 state.deriv_calc,
             );
 
             *updated_E_or_V = true;
             *updated_meshes = true;
-        }
-
-        if ui.add(Button::new("Print V score")).clicked() {
-            let sample_pts = basis_finder::generate_sample_pts();
-
-            // todo: Sloppy!
-            println!("\nV score:");
-            for i in [10, 19, 22, 25, 28, 30, 39] {
-                // for pt in sample_pts {
-                let V_actual = state.surfaces_per_elec[ae].V_acting_on_this[i][i][i];
-
-                let pt = state.surfaces_shared.grid_posits[i][i][i];
-                let psi = state.surfaces_per_elec[ae].psi[i][i][i];
-                let psi_pp = state.surfaces_per_elec[ae].derivs.d2_sum[i][i][i];
-                let V_calc = eigen_fns::calc_V_on_psi(psi, psi_pp, state.surfaces_per_elec[ae].E);
-
-                println!(
-                    "Pt: {:?} Actual: {:.4} Calc: {:.4}, Diff: {:.4}",
-                    pt.x,
-                    V_actual,
-                    V_calc,
-                    V_actual - V_calc
-                );
-            }
         }
         {}
     });
@@ -894,11 +876,12 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     });
 
                 if prev_spin != state.surfaces_per_elec[ae].spin {
-                    wf_ops::update_combined(
-                        &mut state.surfaces_shared,
-                        &state.surfaces_per_elec,
-                        state.grid_n_render,
-                    );
+                    // todo: Put back A/R. Broken during 2D conversion
+                    // wf_ops::update_combined(
+                    //     &mut state.surfaces_shared,
+                    //     &state.surfaces_per_elec,
+                    //     state.grid_n_render,
+                    // );
                     updated_meshes = true;
                 }
 

@@ -8,7 +8,6 @@ pub type Arr2dReal = Vec<Vec<f64>>;
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
 pub type Arr3dDeriv = Vec<Vec<Vec<DerivativesSingle>>>;
 
-
 pub type Arr2d = Vec<Vec<Cplx>>;
 pub type Arr3d = Vec<Vec<Vec<Cplx>>>;
 pub type Arr4d = Vec<Vec<Vec<Vec<Cplx>>>>;
@@ -105,6 +104,35 @@ pub fn update_grid_posits(
             for (k, z) in grid_1d.iter().enumerate() {
                 grid_posits[i][j][k] = Vec3::new(*x, *y, *z);
             }
+        }
+    }
+}
+
+/// Update our grid positions, on a 2D grid. Z is specified as an argumnet. Run this when we change
+/// grid bounds, resolution, or spacing.
+pub fn update_grid_posits_2d(
+    grid_posits: &mut Arr2dVec,
+    grid_range: (f64, f64),
+    spacing_factor: f64,
+    z: f64, // Constant, unlike in the 3d variant of this.
+    n: usize,
+) {
+    let grid_lin = util::linspace((grid_range.0, grid_range.1), n);
+
+    // Set up a grid with values that increase in distance the farther we are from the center.
+    let mut grid_1d = vec![0.; n];
+
+    for i in 0..n {
+        let mut val = grid_lin[i].abs().powf(spacing_factor);
+        if grid_lin[i] < 0. {
+            val *= -1.; // square the magnitude only.
+        }
+        grid_1d[i] = val;
+    }
+
+    for (i, x) in grid_1d.iter().enumerate() {
+        for (j, y) in grid_1d.iter().enumerate() {
+            grid_posits[i][j] = Vec3::new(*x, *y, z);
         }
     }
 }
