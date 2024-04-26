@@ -71,9 +71,9 @@ pub fn initialize_bases(
         // See Sebens, for weights under equation 24; this is for Helium.
 
         let weights = if n == 1 {
-            // &weights_h
+            &weights_h
             // &weights_he
-            &weights_li_inner
+            // &weights_li_inner
         } else {
             &weights_li_outer
         };

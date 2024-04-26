@@ -16,6 +16,7 @@ use crate::{
     wf_ops,
     wf_ops::{DerivCalc, Spin},
 };
+use crate::grid_setup::{new_data_2d_real, new_data_2d_vec};
 
 #[derive(Debug, Clone)]
 pub enum ComputationDevice {
@@ -75,9 +76,13 @@ impl SurfacesShared {
     ) -> Self {
         let data = new_data(n_grid);
         let data_real = new_data_real(n_grid);
+        let data_real_2d = new_data_2d_real(n_grid);
 
-        let mut grid_posits = new_data_vec(n_grid);
-        grid_setup::update_grid_posits(&mut grid_posits, grid_range, spacing_factor, n_grid);
+        // let mut grid_posits = new_data_vec(n_grid);
+        let mut grid_posits = new_data_2d_vec(n_grid);
+        // grid_setup::update_grid_posits(&mut grid_posits, grid_range, spacing_factor, n_grid);
+        // todo: z_init at 0.; We will need to run this whenever we change the z slider.
+        grid_setup::update_grid_posits_2d(&mut grid_posits, grid_range, spacing_factor, 0., n_grid);
 
         let mut grid_posits_charge = new_data_vec(n_grid_charge);
 
@@ -93,7 +98,7 @@ impl SurfacesShared {
             grid_posits,
             grid_posits_charge,
             V_total: data_real.clone(),
-            V_from_nuclei: data_real.clone(),
+            V_from_nuclei: data_real_2d.clone(),
             psi: WaveFunctionMultiElec::new(num_elecs, n_grid),
             // E: -0.50,
             // psi_numeric: data,
@@ -283,8 +288,11 @@ impl SurfacesPerElec {
     /// Fills with 0.s
     pub fn new(num_bases: usize, grid_n: usize, spin: Spin) -> Self {
         let data = new_data(grid_n);
+        let data_2d = new_data_2d(grid_n);
         let data_real = new_data_real(grid_n);
-        let derivs = Derivatives::new(grid_n);
+        let data_2d_real = new_data_2d_real(grid_n);
+        // let derivs = Derivatives::new(grid_n);
+        let derivs = Derivatives2D::new(grid_n);
 
         let spinor_d_inner = SpinorDerivsTypeDInner3 {
             dx: data.clone(),
@@ -309,7 +317,7 @@ impl SurfacesPerElec {
 
         let mut psi_pp_div_psi_per_basis = Vec::new();
         for _ in 0..num_bases {
-            psi_per_basis.push(data.clone());
+            psi_per_basis.push(data_2d.clone());
             derivs_per_basis.push(derivs.clone());
             psi_pp_div_psi_per_basis.push(data_real.clone());
 
@@ -324,10 +332,10 @@ impl SurfacesPerElec {
 
         Self {
             spin,
-            V_acting_on_this: data_real.clone(),
-            psi: data.clone(),
+            V_acting_on_this: data_2d_real.clone(),
+            psi: data_2d.clone(),
             charge_density: data_real.clone(),
-            psi_pp_calculated: data.clone(),
+            psi_pp_calculated: data_2d.clone(),
             // derivs: data.clone(),
             derivs,
             // psi_pp_div_psi_evaluated: data_real.clone(),
@@ -336,12 +344,12 @@ impl SurfacesPerElec {
             derivs_per_basis,
             // psi_pp_div_psi_per_basis,
             // charge: new_data_real(n_grid_charge),
-            V_elec_eigen: data_real.clone(),
-            V_total_eigen: data_real.clone(),
-            aux3: data_real,
-            psi_fm_H: data.clone(),
-            psi_fm_L2: data.clone(),
-            psi_fm_Lz: data.clone(),
+            V_elec_eigen: data_2d_real.clone(),
+            V_total_eigen: data_2d_real.clone(),
+            aux3: data_2d_real,
+            psi_fm_H: data_2d.clone(),
+            psi_fm_L2: data_2d.clone(),
+            psi_fm_Lz: data_2d.clone(),
             spinor: Spinor3::new(grid_n),
             spinor_calc: Spinor3::new(grid_n),
             // todo: This is likely wrong; need to populate with grid_n.
@@ -380,101 +388,105 @@ impl EvalDataShared {
     }
 }
 
-/// We use this to store numerical wave functions for each basis, both at sample points, and
-/// a small amount along each axix, for calculating partial derivatives of psi''.
-/// The `Vec` index corresponds to basis index.
-#[derive(Clone)]
-pub struct _BasesEvaluated {
-    pub on_pt: Vec<Arr3d>,
-    pub psi_pp_analytic: Vec<Arr3d>,
-    pub x_prev: Vec<Arr3d>,
-    pub x_next: Vec<Arr3d>,
-    pub y_prev: Vec<Arr3d>,
-    pub y_next: Vec<Arr3d>,
-    pub z_prev: Vec<Arr3d>,
-    pub z_next: Vec<Arr3d>,
-}
+// todo: This was unused, and broke after the 2D change.
 
-impl _BasesEvaluated {
-    /// Create unweighted basis wave functions. Run this whenever we add or remove basis fns,
-    /// and when changing the grid. This evaluates the analytic basis functions at
-    /// each grid point. Each basis will be normalized in this function.
-    /// Relatively computationally intensive.
-    ///
-    /// Update Nov 2023: This initializer only updates `psi` and `psi_pp_analytic`: Compute
-    /// numerical diffs after.
-    pub fn initialize_with_psi(
-        dev: &ComputationDevice,
-        bases: &[Basis],
-        grid_posits: &Arr3dVec,
-        grid_n: usize,
-        deriv_calc: DerivCalc,
-    ) -> Self {
-        let mut on_pt = Vec::new();
-        let mut psi_pp_analytic = Vec::new();
-        let mut x_prev = Vec::new();
-        let mut x_next = Vec::new();
-        let mut y_prev = Vec::new();
-        let mut y_next = Vec::new();
-        let mut z_prev = Vec::new();
-        let mut z_next = Vec::new();
-        let mut derivs = Vec::new();
-
-        let derivs_empty = Derivatives::new(grid_n);
-
-        let empty = new_data(grid_n);
-
-        for _ in 0..bases.len() {
-            on_pt.push(empty.clone());
-            psi_pp_analytic.push(empty.clone());
-            derivs.push(derivs_empty.clone());
-            x_prev.push(empty.clone());
-            x_next.push(empty.clone());
-            y_prev.push(empty.clone());
-            y_next.push(empty.clone());
-            z_prev.push(empty.clone());
-            z_next.push(empty.clone());
-        }
-
-        wf_ops::wf_from_bases(
-            dev,
-            &mut on_pt,
-            Some(&mut derivs),
-            bases,
-            grid_posits,
-            deriv_calc,
-        );
-        //
-        // wf_ops::wf_from_bases_spinor(
-        //     dev,
-        //     &mut on_pt,
-        //     Some(&mut derivs),
-        //     bases,
-        //     grid_posits,
-        //     deriv_calc,
-        // );
-
-        Self {
-            on_pt,
-            x_prev,
-            x_next,
-            y_prev,
-            y_next,
-            z_prev,
-            z_next,
-            psi_pp_analytic,
-        }
-    }
-
-    pub fn update_psi_pp_numerics(
-        &mut self,
-        bases: &[Basis],
-        grid_posits: &Arr3dVec,
-        grid_n: usize,
-    ) {
-        // num_diff::update_psi_pp(self, bases, grid_posits, grid_n);
-    }
-}
+// /// We use this to store numerical wave functions for each basis, both at sample points, and
+// /// a small amount along each axix, for calculating partial derivatives of psi''.
+// /// The `Vec` index corresponds to basis index.
+// #[derive(Clone)]
+// pub struct _BasesEvaluated {
+//     pub on_pt: Vec<Arr3d>,
+//     pub psi_pp_analytic: Vec<Arr3d>,
+//     pub x_prev: Vec<Arr3d>,
+//     pub x_next: Vec<Arr3d>,
+//     pub y_prev: Vec<Arr3d>,
+//     pub y_next: Vec<Arr3d>,
+//     pub z_prev: Vec<Arr3d>,
+//     pub z_next: Vec<Arr3d>,
+// }
+//
+// impl _BasesEvaluated {
+//     /// Create unweighted basis wave functions. Run this whenever we add or remove basis fns,
+//     /// and when changing the grid. This evaluates the analytic basis functions at
+//     /// each grid point. Each basis will be normalized in this function.
+//     /// Relatively computationally intensive.
+//     ///
+//     /// Update Nov 2023: This initializer only updates `psi` and `psi_pp_analytic`: Compute
+//     /// numerical diffs after.
+//     pub fn initialize_with_psi(
+//         dev: &ComputationDevice,
+//         bases: &[Basis],
+//         grid_posits: &Arr3dVec,
+//         grid_n: usize,
+//         deriv_calc: DerivCalc,
+//     ) -> Self {
+//         let mut on_pt = Vec::new();
+//
+//         let mut psi_pp_analytic = Vec::new();
+//         let mut x_prev = Vec::new();
+//         let mut x_next = Vec::new();
+//         let mut y_prev = Vec::new();
+//         let mut y_next = Vec::new();
+//         let mut z_prev = Vec::new();
+//         let mut z_next = Vec::new();
+//         let mut derivs = Vec::new();
+//
+//         let derivs_empty = Derivatives::new(grid_n);
+//
+//         // let empty = new_data(grid_n);
+//         let empty = new_data_2d(grid_n);
+//
+//         for _ in 0..bases.len() {
+//             on_pt.push(empty.clone());
+//             psi_pp_analytic.push(empty.clone());
+//             derivs.push(derivs_empty.clone());
+//             x_prev.push(empty.clone());
+//             x_next.push(empty.clone());
+//             y_prev.push(empty.clone());
+//             y_next.push(empty.clone());
+//             z_prev.push(empty.clone());
+//             z_next.push(empty.clone());
+//         }
+//
+//         wf_ops::wf_from_bases(
+//             dev,
+//             &mut on_pt,
+//             &mut derivs,
+//             bases,
+//             grid_posits,
+//             deriv_calc,
+//         );
+//         //
+//         // wf_ops::wf_from_bases_spinor(
+//         //     dev,
+//         //     &mut on_pt,
+//         //     Some(&mut derivs),
+//         //     bases,
+//         //     grid_posits,
+//         //     deriv_calc,
+//         // );
+//
+//         Self {
+//             on_pt,
+//             x_prev,
+//             x_next,
+//             y_prev,
+//             y_next,
+//             z_prev,
+//             z_next,
+//             psi_pp_analytic,
+//         }
+//     }
+//
+//     pub fn update_psi_pp_numerics(
+//         &mut self,
+//         bases: &[Basis],
+//         grid_posits: &Arr3dVec,
+//         grid_n: usize,
+//     ) {
+//         // num_diff::update_psi_pp(self, bases, grid_posits, grid_n);
+//     }
+// }
 
 /// Group that includes psi at a point, and at points surrounding it, an infinetesimal difference
 /// in both directions along each spacial axis.

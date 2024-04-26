@@ -97,12 +97,11 @@ use crate::{
     wf_ops::{DerivCalc, Spin, Q_PROT},
 };
 
-const NUM_SURFACES_PER_ELEC: usize = 11;
-
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 3.;
+const GRID_MAX_RENDER: f64 = 10.;
 const GRID_MAX_CHARGE: f64 = 10.;
-const GRID_N_RENDER_DEFAULT: usize = 50;
+
+const GRID_N_RENDER_DEFAULT: usize = 80;
 const GRID_N_CHARGE_DEFAULT: usize = 61;
 
 const RENDER_SPINOR: bool = false;
@@ -185,7 +184,8 @@ pub struct State {
     pub charges_from_electron: Vec<Arr3dReal>,
     /// Also stored here vice part of per-elec structs due to borrow-limiting on struct fields.
     /// We use this to calculate charge.
-    pub V_from_elecs: Vec<Arr3dReal>,
+    // pub V_from_elecs: Vec<Arr3dReal>,
+    pub V_from_elecs: Vec<Arr2dReal>,
     /// Surfaces that are not electron-specific.
     pub surfaces_shared: SurfacesShared,
     /// Computed surfaces, per electron. These span 3D space, are are quite large in memory. Contains various
@@ -404,14 +404,14 @@ pub fn init_from_grid(
     deriv_calc: DerivCalc,
 ) -> (
     Vec<Arr3dReal>,
-    Vec<Arr3dReal>,
-    // Vec<Arr2dReal>,
+    // Vec<Arr3dReal>,
+    Vec<Arr2dReal>,
     Vec<Vec<Arr3d>>,
     SurfacesShared,
     Vec<SurfacesPerElec>,
 ) {
-    let arr_real = new_data_real(grid_n_sample);
-    // let arr_real_2d = new_data_2d_real(grid_n_sample);
+    // let arr_real = new_data_real(grid_n_sample);
+    let arr_real_2d = new_data_2d_real(grid_n_sample);
 
     let sfcs_one_elec = SurfacesPerElec::new(bases_per_elec[0].len(), grid_n_sample, Spin::Alpha);
 
@@ -429,13 +429,12 @@ pub fn init_from_grid(
         num_electrons,
     );
 
-    let z = 0.; // todo: Per the slider!
                 // grid_setup::update_grid_posits(
     grid_setup::update_grid_posits_2d(
         &mut surfaces_shared.grid_posits,
         grid_range,
         spacing_factor,
-        z,
+        0., // z_displayed: Initialize.
         grid_n_sample,
     );
 
@@ -459,7 +458,7 @@ pub fn init_from_grid(
 
     for i_elec in 0..num_electrons {
         charges_electron.push(new_data_real(grid_n_charge));
-        V_from_elecs.push(arr_real.clone());
+        V_from_elecs.push(arr_real_2d.clone());
 
         // todo: Call procedures::update_bases_weights etc here.
         let sfcs = &mut surfaces_per_elec[i_elec];
@@ -705,7 +704,7 @@ fn main() {
 
     let dev_psi = ComputationDevice::Cpu;
 
-    let num_elecs = 3;
+    let num_elecs = 1;
 
     render::render(State::new(num_elecs, dev_psi, dev_charge));
 }

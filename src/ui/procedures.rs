@@ -127,33 +127,34 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
         );
     }
 
-    {
-        // todo: Is this an appropriate place to test this visualization?
-        let mut s_orbital = new_data(state.grid_n_render);
-        let n = state.grid_n_render;
-        let s_basis = Basis::Sto(Sto {
-            posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
-            n: 1,
-            xi: 1.,
-            weight: 1.,
-            charge_id: 0,
-            harmonic: Default::default(),
-        });
-
-        let mut norm = 0.;
-        for (i, j, k) in iter_arr!(n) {
-            let posit = state.surfaces_shared.grid_posits[i][j][k];
-            s_orbital[i][j][k] = s_basis.value(posit);
-            util::add_to_norm(&mut norm, s_orbital[i][j][k]);
-        }
-
-        util::normalize_arr(&mut s_orbital, norm);
-
-        for (i, j, k) in iter_arr!(n) {
-            // println!("S: {}", s_orbital[i][j][k]);
-            sfcs.orb_sub[i][j][k] = sfcs.psi[i][j][k] - s_orbital[i][j][k];
-        }
-    }
+    // todo: Come back to: Broke after 2D refactor.
+    // {
+    //     // todo: Is this an appropriate place to test this visualization?
+    //     let mut s_orbital = new_data(state.grid_n_render);
+    //     let n = state.grid_n_render;
+    //     let s_basis = Basis::Sto(Sto {
+    //         posit: Vec3::new_zero(), // todo: Hard-coded for a single nuc at 0.
+    //         n: 1,
+    //         xi: 1.,
+    //         weight: 1.,
+    //         charge_id: 0,
+    //         harmonic: Default::default(),
+    //     });
+    //
+    //     let mut norm = 0.;
+    //     for (i, j, k) in iter_arr!(n) {
+    //         let posit = state.surfaces_shared.grid_posits[i][j][k];
+    //         s_orbital[i][j][k] = s_basis.value(posit);
+    //         util::add_to_norm(&mut norm, s_orbital[i][j][k]);
+    //     }
+    //
+    //     util::normalize_arr(&mut s_orbital, norm);
+    //
+    //     for (i, j, k) in iter_arr!(n) {
+    //         // println!("S: {}", s_orbital[i][j][k]);
+    //         sfcs.orb_sub[i][j][k] = sfcs.psi[i][j][k] - s_orbital[i][j][k];
+    //     }
+    // }
 }
 
 /// Run this when we add bases, change basis parameters other than weight etc.
@@ -254,7 +255,8 @@ pub(crate) fn update_V_acting_on_elec(state: &mut State, ae: usize) {
             &charges_other_elecs,
             state.grid_n_render,
             state.grid_n_charge,
-            state.ui.create_2d_electron_V,
+            // state.ui.create_2d_electron_V,
+            // state.ui.z_displayed,
         );
 
         potential::update_V_acting_on_elec(

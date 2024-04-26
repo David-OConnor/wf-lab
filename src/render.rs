@@ -207,13 +207,14 @@ pub fn update_meshes(
     // let z_i = map_linear(z_displayed, (grid_min, grid_max), (0., N as f64)) as usize;
     // todo: Using your new system, you can't use a linear map here!
 
-    let mut z_i = 0;
-    for i in 0..grid_posits.len() {
-        if grid_posits[0][0][i].z > z_displayed {
-            z_i = i;
-            break;
-        }
-    }
+    // let mut z_i = 0;
+    // for i in 0..grid_posits.len() {
+    //     // if grid_posits[0][0][i].z > z_displayed {
+    //     if grid_posits[0][i].z > z_displayed {
+    //         z_i = i;
+    //         break;
+    //     }
+    // }
 
     let mut meshes = Vec::new();
 

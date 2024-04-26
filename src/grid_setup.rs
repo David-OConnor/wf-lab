@@ -180,12 +180,19 @@ pub fn new_data_real(n: usize) -> Arr3dReal {
 }
 
 /// Make a new 3D grid of position vectors, as a nested Vec
-pub fn new_data_vec(n: usize) -> Arr3dVec {
+pub fn new_data_2d_vec(n: usize) -> Arr2dVec {
     let mut z = Vec::new();
     z.resize(n, Vec3::new_zero());
 
     let mut y = Vec::new();
     y.resize(n, z);
+
+    y
+}
+
+/// Make a new 3D grid of position vectors, as a nested Vec
+pub fn new_data_vec(n: usize) -> Arr3dVec {
+    let y = new_data_2d_vec(n);
 
     let mut x = Vec::new();
     x.resize(n, y);
