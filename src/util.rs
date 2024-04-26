@@ -4,11 +4,20 @@ use crate::{
     complex_nums::Cplx,
     grid_setup::{Arr3d, Arr3dReal, Arr3dVec},
 };
+use crate::grid_setup::Arr2dVec;
 
 pub(crate) const EPS_DIV0: f64 = 0.0000000000001;
 // We use this to prevent adding psi values near the singularity when computing the norm.
 // todo: Experiment with this.
 pub(crate) const MAX_PSI_FOR_NORM: f64 = 100.;
+
+// This is an abstraction over a double-nested loop. We use it to iterate over 2d arrays.
+#[macro_export]
+macro_rules! iter_arr_2d {
+    ($n:expr) => {
+        (0..$n).flat_map(move |i| (0..$n).map(move |j| (i, j)))
+    };
+}
 
 // This is an abstraction over a triple-nested loop. We use it to iterate over 3d arrays.
 #[macro_export]
@@ -230,6 +239,17 @@ pub(crate) fn balance_arr(arr: &mut Arr3dReal, balance: f64) {
     for (i, j, k) in iter_arr!(grid_n) {
         arr[i][j][k] = arr[i][j][k] / balance;
     }
+}
+
+/// Flatten 2D data, prior passing to a GPU kernel.
+pub(crate) fn flatten_arr_2d(vals_2d: &Arr2dVec, grid_n: usize) -> Vec<Vec3> {
+    let mut result = Vec::new();
+
+    for (i, j) in iter_arr_2d!(grid_n) {
+        result.push(vals_2d[i][j]);
+    }
+
+    result
 }
 
 /// Flatten 3D data, prior passing to a GPU kernel.

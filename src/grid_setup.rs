@@ -4,14 +4,17 @@ use lin_alg::f64::Vec3;
 
 use crate::{complex_nums::Cplx, iter_arr, types::DerivativesSingle, util};
 
-// type Arr3d = Vec<Vec<Vec<f64>>>;
+pub type Arr2dReal = Vec<Vec<f64>>;
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
 pub type Arr3dDeriv = Vec<Vec<Vec<DerivativesSingle>>>;
 
+
+pub type Arr2d = Vec<Vec<Cplx>>;
 pub type Arr3d = Vec<Vec<Vec<Cplx>>>;
 pub type Arr4d = Vec<Vec<Vec<Vec<Cplx>>>>;
 // pub type Arr3dBasis = Vec<Vec<Vec<SinExpBasisPt>>>;
 
+pub type Arr2dVec = Vec<Vec<Vec3>>;
 pub type Arr3dVec = Vec<Vec<Vec<Vec3>>>;
 
 /// Find sample points for evaluating wave functions, based on nuclei positions.
@@ -106,13 +109,20 @@ pub fn update_grid_posits(
     }
 }
 
-/// Make a new 3D grid, as a nested Vec
-pub fn new_data(n: usize) -> Arr3d {
+/// Make a new 2D grid, as a nested Vec
+pub fn new_data_2d(n: usize) -> Arr2d {
     let mut z = Vec::new();
     z.resize(n, Cplx::new_zero());
 
     let mut y = Vec::new();
     y.resize(n, z);
+
+    y
+}
+
+/// Make a new 2D grid, as a nested Vec
+pub fn new_data(n: usize) -> Arr3d {
+    let y = new_data_2d(n);
 
     let mut x = Vec::new();
     x.resize(n, y);
@@ -120,13 +130,20 @@ pub fn new_data(n: usize) -> Arr3d {
     x
 }
 
-/// Make a new 3D grid, as a nested Vec
-pub fn new_data_real(n: usize) -> Arr3dReal {
+/// Make a new 2D grid, as a nested Vec
+pub fn new_data_2d_real(n: usize) -> Arr2dReal {
     let mut z = Vec::new();
     z.resize(n, 0.);
 
     let mut y = Vec::new();
     y.resize(n, z);
+
+    y
+}
+
+/// Make a new 3D grid, as a nested Vec
+pub fn new_data_real(n: usize) -> Arr3dReal {
+    let y = new_data_2d_real(n);
 
     let mut x = Vec::new();
     x.resize(n, y);

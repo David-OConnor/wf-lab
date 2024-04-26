@@ -56,13 +56,13 @@ pub fn initialize_bases(
     let weights_li_outer = vec![
         // WIP for lithium:
         (1., 1.),
-        (2., 0.50),
+        (2., 0.51),
         (3., -0.16),
-        (4., -0.16),
-        (5., -1.16),
-        (6., -0.86),
-        (8., -0.27),
-        (10., -0.72),
+        (4., -0.17),
+        (5., -1.26),
+        (6., -0.83),
+        (8., -0.25),
+        (10., -0.75),
     ];
 
     // todo: We currently call this in some cases where it maybe isn't strictly necessarly;

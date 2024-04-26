@@ -101,8 +101,8 @@ const NUM_SURFACES_PER_ELEC: usize = 11;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_RENDER: f64 = 3.;
-const GRID_MAX_CHARGE: f64 = 12.;
-const GRID_N_RENDER_DEFAULT: usize = 60;
+const GRID_MAX_CHARGE: f64 = 10.;
+const GRID_N_RENDER_DEFAULT: usize = 50;
 const GRID_N_CHARGE_DEFAULT: usize = 61;
 
 const RENDER_SPINOR: bool = false;

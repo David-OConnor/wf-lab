@@ -27,18 +27,9 @@ use lin_alg::f64::Vec3;
 
 #[cfg(feature = "cuda")]
 use crate::gpu;
-use crate::{
-    basis_wfs::{Basis, Sto},
-    complex_nums::Cplx,
-    dirac,
-    dirac::{BasisSpinor, CompPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3},
-    eigen_fns::{self},
-    eigen_raw,
-    grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec},
-    iter_arr, num_diff,
-    types::{ComputationDevice, Derivatives, DerivativesSingle, SurfacesPerElec, SurfacesShared},
-    util::{self, MAX_PSI_FOR_NORM},
-};
+use crate::{basis_wfs::{Basis, Sto}, complex_nums::Cplx, dirac, dirac::{BasisSpinor, CompPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3}, eigen_fns::{self}, eigen_raw, grid_setup::{new_data, new_data_real, Arr3d, Arr3dReal, Arr3dVec}, iter_arr, iter_arr_2d, num_diff, types::{ComputationDevice, Derivatives, DerivativesSingle, SurfacesPerElec, SurfacesShared}, util::{self, MAX_PSI_FOR_NORM}};
+use crate::grid_setup::{Arr2d, Arr2dReal, Arr2dVec};
+use crate::types::Derivatives2D;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -129,10 +120,13 @@ pub fn initialize_bases_spinor(
 /// creates these values per-basis.
 pub fn wf_from_bases(
     dev: &ComputationDevice,
-    psi_per_basis: &mut [Arr3d],
-    mut derivs_per_basis: Option<&mut [Derivatives]>, // None for charge calcs.
+    // psi_per_basis: &mut [Arr3d],
+    psi_per_basis: &mut [Arr2d],
+    // mut derivs_per_basis: Option<&mut [Derivatives]>, // None for charge calcs.
+    derivs_per_basis: Option<&mut [Derivatives2D]>, // None for charge calcs.
     bases: &[Basis],
-    grid_posits: &Arr3dVec,
+    // grid_posits: &Arr3dVec,
+    grid_posits: &Arr2dVec,
     deriv_calc: DerivCalc,
 ) {
     println!("Starting WF from bases...");
@@ -141,7 +135,8 @@ pub fn wf_from_bases(
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
     #[cfg(feature = "cuda")]
     let posits_flat = match dev {
-        ComputationDevice::Gpu(_) => Some(util::flatten_arr(grid_posits, grid_n)),
+        // ComputationDevice::Gpu(_) => Some(util::flatten_arr(grid_posits, grid_n)),
+        ComputationDevice::Gpu(_) => Some(util::flatten_arr_2d(grid_posits, grid_n)),
         ComputationDevice::Cpu => None,
     };
 
@@ -228,6 +223,84 @@ pub fn wf_from_bases(
                         // todo: Impl your Derivatives construction from GPU as well, but we'll use CPU for calculating
                         // todo these for now.
                     }
+
+                    util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
+                }
+            }
+        }
+
+        // This normalization makes balancing the bases more intuitive, but isn't strictly required
+        // in the way normalizing the composite (squared) wave function is prior to generating charge.
+
+        // todo: Temp removed. They may be interfering with basis solving.
+
+        // util::normalize_arr(&mut psi_per_basis[basis_i], norm);
+        //
+        // if let Some(ref mut derivs) = derivs_per_basis {
+        //     util::normalize_arr(&mut derivs[basis_i].dx, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].dy, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].dz, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].d2x, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].d2y, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].d2z, norm);
+        //     util::normalize_arr(&mut derivs[basis_i].d2_sum, norm);
+        // }
+    }
+    println!("WF from bases complete.");
+}
+
+/// todo: DRY
+pub fn wf_from_bases_charge(
+    dev: &ComputationDevice,
+    psi_per_basis: &mut [Arr3d],
+    bases: &[Basis],
+    grid_posits: &Arr3dVec,
+    deriv_calc: DerivCalc,
+) {
+    println!("Starting WF from bases...");
+    let grid_n = grid_posits.len();
+
+    // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
+    #[cfg(feature = "cuda")]
+        let posits_flat = match dev {
+        ComputationDevice::Gpu(_) => Some(util::flatten_arr(grid_posits, grid_n)),
+        ComputationDevice::Cpu => None,
+    };
+
+    for (basis_i, basis) in bases.iter().enumerate() {
+        // todo: Temp forcing CPU only while we confirm numerical stability issues with f32
+        // todo on GPU aren't causing a problem.
+
+        let mut norm = 0.;
+
+        match dev {
+            #[cfg(feature = "cuda")]
+            ComputationDevice::Gpu(cuda_dev) => {
+                let psi_flat =                         gpu::sto_vals_or_derivs(
+                    cuda_dev,
+                    basis.xi(),
+                    basis.n(),
+                    &posits_flat.as_ref().unwrap(),
+                    basis.posit(),
+                    false,
+                );
+
+                let grid_n_sq = grid_n.pow(2);
+
+                // This is similar to util::unflatten, but with norm involved.
+                for (i, j, k) in iter_arr!(grid_n) {
+                    let i_flat = i * grid_n_sq + j * grid_n + k;
+                    psi_per_basis[basis_i][i][j][k] = Cplx::from_real(psi_flat[i_flat]);
+
+                    util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
+                }
+            }
+            ComputationDevice::Cpu => {
+                for (i, j, k) in iter_arr!(grid_n) {
+                    let posit_sample = grid_posits[i][j][k];
+
+                    psi_per_basis[basis_i][i][j][k] = basis.value(posit_sample);
+                    let b = [basis.clone()];
 
                     util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
                 }
@@ -350,48 +423,45 @@ pub fn wf_from_bases_spinor(
 /// use psi'' when evaluating sample positions, but not when evaluating psi to be fed into
 /// electron charge.
 pub fn mix_bases(
-    psi: &mut Arr3d,
-    mut charge_density: Option<&mut Arr3dReal>,
-    mut derivs: Option<&mut Derivatives>, // Not required for charge generation.
-    psi_per_basis: &[Arr3d],
-    derivs_per_basis: Option<&[Derivatives]>, // Not required for charge generation.
+    // psi: &mut Arr3d,
+    psi: &mut Arr2d,
+    derivs: &mut Derivatives2D, // Not required for charge generation.
+    psi_per_basis: &[Arr2d],
+    derivs_per_basis: &[Derivatives2D], // Not required for charge generation.
     weights: &[f64],
 ) {
     // todo: GPU option?
     let mut norm = 0.;
     let grid_n = psi.len();
 
-    for (i, j, k) in iter_arr!(grid_n) {
-        psi[i][j][k] = Cplx::new_zero();
-        if let Some(d) = derivs.as_mut() {
-            // todo: This is avoidable by a reversed Derivatives struct.
-            d.dx[i][j][k] = Cplx::new_zero();
-            d.dy[i][j][k] = Cplx::new_zero();
-            d.dz[i][j][k] = Cplx::new_zero();
-            d.d2x[i][j][k] = Cplx::new_zero();
-            d.d2y[i][j][k] = Cplx::new_zero();
-            d.d2z[i][j][k] = Cplx::new_zero();
-            d.d2_sum[i][j][k] = Cplx::new_zero();
-        }
+    // for (i, j, k) in iter_arr!(grid_n) {
+    for (i, j) in iter_arr_2d!(grid_n) {
+        psi[i][j] = Cplx::new_zero();
+        // todo: This is avoidable by a reversed Derivatives struct.
+        derivs.dx[i][j] = Cplx::new_zero();
+        derivs.dy[i][j] = Cplx::new_zero();
+        derivs.dz[i][j] = Cplx::new_zero();
+        derivs.d2x[i][j] = Cplx::new_zero();
+        derivs.d2y[i][j] = Cplx::new_zero();
+        derivs.d2z[i][j] = Cplx::new_zero();
+        derivs.d2_sum[i][j] = Cplx::new_zero();
         for (i_basis, weight) in weights.iter().enumerate() {
             let scaler = *weight;
 
-            psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
+            psi[i][j] += psi_per_basis[i_basis][i][j] * scaler;
 
-            if let Some(d) = derivs.as_mut() {
-                // todo: This is avoidable by a reversed Derivatives struct.
-                d.dx[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].dx[i][j][k] * scaler;
-                d.dy[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].dy[i][j][k] * scaler;
-                d.dz[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].dz[i][j][k] * scaler;
-                d.d2x[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].d2x[i][j][k] * scaler;
-                d.d2y[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].d2y[i][j][k] * scaler;
-                d.d2z[i][j][k] += derivs_per_basis.as_ref().unwrap()[i_basis].d2z[i][j][k] * scaler;
-                d.d2_sum[i][j][k] +=
-                    derivs_per_basis.as_ref().unwrap()[i_basis].d2_sum[i][j][k] * scaler;
-            }
+            // todo: This is avoidable by a reversed Derivatives struct.
+            derivs.dx[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].dx[i][j] * scaler;
+            derivs.dy[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].dy[i][j] * scaler;
+            derivs.dz[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].dz[i][j] * scaler;
+            derivs.d2x[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].d2x[i][j] * scaler;
+            derivs.d2y[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].d2y[i][j] * scaler;
+            derivs.d2z[i][j] += derivs_per_basis.as_ref().unwrap()[i_basis].d2z[i][j] * scaler;
+            derivs.d2_sum[i][j] +=
+                derivs_per_basis.as_ref().unwrap()[i_basis].d2_sum[i][j] * scaler;
         }
 
-        let abs_sq = psi[i][j][k].abs_sq();
+        let abs_sq = psi[i][j].abs_sq();
         if abs_sq < MAX_PSI_FOR_NORM {
             norm += abs_sq; // todo: Handle norm on GPU?
         } else {
@@ -411,15 +481,45 @@ pub fn mix_bases(
 
         util::normalize_arr(&mut derivs_mut.d2_sum, norm);
     }
+}
+
+// todo: DRY, while we sort out 2D vs 3D eval. Maybe it's better this way anyhow...
+// todo: Sort out DRY between this and above.
+pub fn mix_bases_charge(
+    psi: &mut Arr3d,
+    charge_density: &mut Arr3dReal,
+    psi_per_basis: &[Arr3d],
+    weights: &[f64],
+) {
+    // todo: GPU option?
+    let mut norm = 0.;
+    let grid_n = psi.len();
+
+    for (i, j, k) in iter_arr!(grid_n) {
+        psi[i][j][k] = Cplx::new_zero();
+        for (i_basis, weight) in weights.iter().enumerate() {
+            let scaler = *weight;
+
+            psi[i][j][k] += psi_per_basis[i_basis][i][j][k] * scaler;
+
+        }
+
+        let abs_sq = psi[i][j][k].abs_sq();
+        if abs_sq < MAX_PSI_FOR_NORM {
+            norm += abs_sq; // todo: Handle norm on GPU?
+        } else {
+            println!("Exceeded norm thresh in mix: {:?}", abs_sq);
+        }
+    }
+
+    util::normalize_arr(psi, norm);
 
     // Update charge density as well, from this electron's wave function.
-    if charge_density.is_some() {
-        charge_from_psi(
-            charge_density.as_mut().unwrap(),
-            psi,
-            grid_n, // Render; not charge grid.
-        )
-    }
+    charge_from_psi(
+        charge_density,
+        psi,
+        grid_n, // Render; not charge grid.
+    )
 }
 
 pub fn mix_bases_spinor(
@@ -547,19 +647,30 @@ pub(crate) fn charge_from_psi(
 /// Update V-from-psi, and psi''-calculated, based on psi, and V acting on a given electron.
 /// todo: When do we use this, vice `calcualte_v_elec`?
 pub fn update_eigen_vals(
-    V_elec: &mut Arr3dReal,
-    V_total: &mut Arr3dReal,
-    psi_pp_calculated: &mut Arr3d,
-    psi: &Arr3d,
-    derivs: &Derivatives,
-    V_acting_on_this: &Arr3dReal,
+    // V_elec: &mut Arr3dReal,
+    V_elec: &mut Arr2dReal,
+    // V_total: &mut Arr3dReal,
+    V_total: &mut Arr2dReal,
+    // psi_pp_calculated: &mut Arr3d,
+    psi_pp_calculated: &mut Arr2d,
+    // psi: &Arr3d,
+    psi: &Arr2d,
+    // derivs: &Derivatives,
+    derivs: &Derivatives2D,
+    // V_acting_on_this: &Arr3dReal,
+    V_acting_on_this: &Arr2dReal,
     E: f64,
-    V_nuc: &Arr3dReal,
+    // V_nuc: &Arr3dReal,
+    V_nuc: &Arr2dReal,
     // todo: New with angular p eigenvals
-    grid_posits: &Arr3dVec,
-    H: &mut Arr3d,
-    L_sq: &mut Arr3d,
-    L_z: &mut Arr3d,
+    // grid_posits: &Arr3dVec,
+    grid_posits: &Arr2dVec,
+    // H: &mut Arr3d,
+    H: &mut Arr2d,
+    // L_sq: &mut Arr3d,
+    L_sq: &mut Arr2d,
+    // L_z: &mut Arr3d,
+    L_z: &mut Arr2d,
 ) {
     let grid_n = psi.len();
 

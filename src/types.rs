@@ -13,6 +13,7 @@ use crate::{
     wf_ops,
     wf_ops::{DerivCalc, Spin},
 };
+use crate::grid_setup::{Arr2d, Arr2dReal, Arr2dVec, new_data_2d};
 
 #[derive(Debug, Clone)]
 pub enum ComputationDevice {
@@ -29,7 +30,8 @@ impl Default for ComputationDevice {
 
 pub struct SurfacesShared {
     /// Represents points on a grid, for our non-uniform grid.
-    pub grid_posits: Arr3dVec,
+    // pub grid_posits: Arr3dVec,
+    pub grid_posits: Arr2dVec,
     pub grid_posits_charge: Arr3dVec,
     /// Potential from nuclei, and all electrons
     pub V_total: Arr3dReal,
@@ -167,6 +169,34 @@ impl Derivatives {
     }
 }
 
+#[derive(Clone)]
+pub struct Derivatives2D {
+    pub dx: Arr2d,
+    pub dy: Arr2d,
+    pub dz: Arr2d,
+    pub d2x: Arr2d,
+    pub d2y: Arr2d,
+    pub d2z: Arr2d,
+    /// Used in the energy eigenfunction, ie Schrodinger equation.
+    pub d2_sum: Arr2d,
+}
+
+impl Derivatives2D {
+    pub fn new(grid_n: usize) -> Self {
+        let data = new_data_2d(grid_n);
+
+        Self {
+            dx: data.clone(),
+            dy: data.clone(),
+            dz: data.clone(),
+            d2x: data.clone(),
+            d2y: data.clone(),
+            d2z: data.clone(),
+            d2_sum: data,
+        }
+    }
+}
+
 // // todo: Switch to this A/R. Likely cleaner code.
 // /// Used for storing various derivatives, on grids, used in our eigenfunctions. Most are used only
 // /// by the momentum eigen functions.
@@ -195,29 +225,41 @@ pub struct SurfacesPerElec {
     pub spin: Spin,
     /// V from the nucleii, and all other electrons. Does not include this electron's charge.
     /// We use this as a cache instead of generating it on the fly.
-    pub V_acting_on_this: Arr3dReal,
-    pub psi: Arr3d,
+    // pub V_acting_on_this: Arr3dReal,
+    pub V_acting_on_this: Arr2dReal,
+    // pub psi: Arr3d,
+    pub psi: Arr2d,
     /// Electron charge * normalized psi^2
     pub charge_density: Arr3dReal,
     /// From the Schrodinger equation based on psi and the other parameters.
-    pub psi_pp_calculated: Arr3d,
+    // pub psi_pp_calculated: Arr3d,
+    pub psi_pp_calculated: Arr2d,
     /// From an analytic or numeric computation from basis functions.
-    pub derivs: Derivatives,
+    // pub derivs: Derivatives,
+    pub derivs: Derivatives2D,
     // todo: An experiment where we analytically calculate this directly.
     // pub psi_pp_div_psi_evaluated: Arr3dReal,
-    pub psi_per_basis: Vec<Arr3d>,
-    pub derivs_per_basis: Vec<Derivatives>,
+    // pub psi_per_basis: Vec<Arr3d>,
+    pub psi_per_basis: Vec<Arr2d>,
+    // pub derivs_per_basis: Vec<Derivatives>,
+    pub derivs_per_basis: Vec<Derivatives2D>,
     // // todo: An experiment where we analytically calculate this directly.
     // pub psi_pp_div_psi_per_basis: Vec<Arr3dReal>,
     /// Aux surfaces are for misc visualizations
-    pub V_elec_eigen: Arr3dReal,
-    pub V_total_eigen: Arr3dReal,
-    pub aux3: Arr3dReal,
+    // pub V_elec_eigen: Arr3dReal,
+    pub V_elec_eigen: Arr2dReal,
+    // pub V_total_eigen: Arr3dReal,
+    pub V_total_eigen: Arr2dReal,
+    // pub aux3: Arr3dReal,
+    pub aux3: Arr2dReal,
     /// Hamiltonian (Schrodinger equation energery eigenfunction)
-    pub psi_fm_H: Arr3d,
+    // pub psi_fm_H: Arr3d,
+    pub psi_fm_H: Arr2d,
     // experiments with angular momentum
-    pub psi_fm_L2: Arr3d,
-    pub psi_fm_Lz: Arr3d,
+    // pub psi_fm_L2: Arr3d,
+    pub psi_fm_L2: Arr2d,
+    // pub psi_fm_Lz: Arr3d,
+    pub psi_fm_Lz: Arr2d,
     // todo: Update these types A/R based on which ordering variant you use.
     /// Trial wave function spinor
     pub spinor: Spinor3,
