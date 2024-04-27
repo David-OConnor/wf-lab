@@ -21,7 +21,6 @@ pub struct Sto {
 impl Sto {
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         Cplx::from_real(self.radial(posit_sample)) * self.angular(posit_sample)
-        // Cplx::from_real(self.radial(posit_sample))
     }
 
     /// Calculate the angular portion of a basis function's value at a given point.
@@ -43,27 +42,29 @@ impl Sto {
     }
 
     fn norm_term_lut(n: u16, l: u16, xi: f64) -> f64 {
+        return 2.;
+
         // todo: temp
         if n == 1 {
             return 2.
         }
         if n == 2 {
-            return 2.
+            return 1.
         }
 
-        2.
-
+        1.
     }
 
     /// todo: Should this be a function of xi too? Very likely.
     /// todo: This seems to work for n=1, but fails at n=2.
     fn norm_term(n: u16, l: u16) -> f64 {
-        return Self::norm_term_lut(n, l, 1.); // todo temp
+        // return Self::norm_term_lut(n, l, 1.); // todo temp
         let nf = n as f64;
 
         let norm_term_num = (2. / nf).powi(3) * factorial(n - l - 1) as f64;
         let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
 
+        // println!("NT {:?}", (norm_term_num / norm_term_denom).sqrt());
         (norm_term_num / norm_term_denom).sqrt()
     }
 

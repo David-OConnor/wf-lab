@@ -205,6 +205,22 @@ pub(crate) fn norm_sq(dest: &mut Arr3dReal, source: &Arr3d, grid_n: usize) {
     }
 }
 
+pub(crate) fn normalize_arr_2d(arr: &mut Arr2d, norm: f64) {
+    if norm.abs() < EPS_DIV0 {
+        return;
+    }
+
+    // We normalize <ψ|ψ>, and are therefor passing the absolute square sum as our norm term.
+    // So, we divide by its square root here.
+    let norm_sqrt = norm.sqrt();
+
+    let grid_n = arr.len();
+
+    for (i, j) in iter_arr_2d!(grid_n) {
+        arr[i][j] = arr[i][j] / norm_sqrt;
+    }
+}
+
 /// Normalize a wave function so that <ψ|ψ> = 1.
 /// Returns the norm value for use in normalizing basis fns in psi''_measured calculation.
 ///

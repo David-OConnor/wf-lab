@@ -185,7 +185,6 @@ pub fn wf_from_bases(
                     let d =
                         calc_derivs_cpu(psi_per_basis[basis_i][i][j], &b, posit_sample, deriv_calc);
 
-                    // // todo: better way to organize to prevent this? Eg Derivatives is an Arr3d of Derviative. Yea...
                     derivs_per_basis[basis_i].dx[i][j] = d.dx;
                     derivs_per_basis[basis_i].dy[i][j] = d.dy;
                     derivs_per_basis[basis_i].dz[i][j] = d.dz;
@@ -390,8 +389,8 @@ pub fn mix_bases(
         derivs.d2_sum[i][j] = Cplx::new_zero();
 
         for (i_basis, weight) in weights.iter().enumerate() {
-            // let scaler = *weight;
-            let scaler = *weight / weight_total;
+            let scaler = *weight;
+            // let scaler = *weight / weight_total;
 
             psi[i][j] += psi_per_basis[i_basis][i][j] * scaler;
 
@@ -407,25 +406,31 @@ pub fn mix_bases(
 
 
         // The nuclear option: You can use a LUT. Probably a function of n, l, and xi.
-        let abs_sq = psi[i][j].abs_sq();
-        if abs_sq < MAX_PSI_FOR_NORM {
-            norm += abs_sq; // todo: Handle norm on GPU?
-        } else {
-            println!("Exceeded norm thresh in mix: {:?}", abs_sq);
-        }
+        // let abs_sq = psi[i][j].abs_sq();
+        // if abs_sq < MAX_PSI_FOR_NORM {
+        //     norm += abs_sq; // todo: Handle norm on GPU?
+        // } else {
+        //     println!("Exceeded norm thresh in mix: {:?}", abs_sq);
+        // }
     }
 
-    // todo: We can't normalize using a 2D grid alone. Is this acceptable?
-    // util::normalize_arr(psi, norm);
-    // util::normalize_arr(&mut derivs.dx, norm);
-    // util::normalize_arr(&mut derivs.dy, norm);
-    // util::normalize_arr(&mut derivs.dz, norm);
-    //
-    // util::normalize_arr(&mut derivs.d2x, norm);
-    // util::normalize_arr(&mut derivs.d2y, norm);
-    // util::normalize_arr(&mut derivs.d2z, norm);
-    //
-    // util::normalize_arr(&mut derivs.d2_sum, norm);
+    {
+        for weight in weights {
+            norm += weight;
+        }
+
+        // todo: We can't normalize using a 2D grid alone. Experimenting.
+        // util::normalize_arr_2d(psi, norm);
+        // util::normalize_arr_2d(&mut derivs.dx, norm);
+        // util::normalize_arr_2d(&mut derivs.dy, norm);
+        // util::normalize_arr_2d(&mut derivs.dz, norm);
+        //
+        // util::normalize_arr_2d(&mut derivs.d2x, norm);
+        // util::normalize_arr_2d(&mut derivs.d2y, norm);
+        // util::normalize_arr_2d(&mut derivs.d2z, norm);
+        //
+        // util::normalize_arr_2d(&mut derivs.d2_sum, norm);
+    }
 }
 
 // todo: DRY, while we sort out 2D vs 3D eval. Maybe it's better this way anyhow...
