@@ -152,8 +152,6 @@ pub fn wf_from_bases(
         // todo: Temp forcing CPU only while we confirm numerical stability issues with f32
         // todo on GPU aren't causing a problem.
 
-        // let mut norm = 0.;
-
         match dev {
             #[cfg(feature = "cuda")]
             ComputationDevice::Gpu(cuda_dev) => {
@@ -175,8 +173,6 @@ pub fn wf_from_bases(
                     psi_per_basis[basis_i][i][j] = Cplx::from_real(psi_flat[i_flat]);
 
                     derivs_per_basis[basis_i].d2_sum[i][j] = Cplx::from_real(psi_pp_flat[i_flat]);
-
-                    // util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j]);
                 }
             }
             ComputationDevice::Cpu => {
@@ -201,27 +197,9 @@ pub fn wf_from_bases(
                     // todo: Impl your Derivatives construction from GPU as well, but we'll use CPU for calculating
                     // todo these for now.
 
-                    // util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
                 }
             }
         }
-
-        // This normalization makes balancing the bases more intuitive, but isn't strictly required
-        // in the way normalizing the composite (squared) wave function is prior to generating charge.
-
-        // todo: Temp removed. They may be interfering with basis solving.
-
-        // util::normalize_arr(&mut psi_per_basis[basis_i], norm);
-        //
-        // if let Some(ref mut derivs) = derivs_per_basis {
-        //     util::normalize_arr(&mut derivs[basis_i].dx, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].dy, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].dz, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].d2x, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].d2y, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].d2z, norm);
-        //     util::normalize_arr(&mut derivs[basis_i].d2_sum, norm);
-        // }
     }
     println!("WF from bases complete.");
 }
@@ -276,8 +254,6 @@ pub fn wf_from_bases_charge(
                     let posit_sample = grid_posits[i][j][k];
 
                     psi_per_basis[basis_i][i][j][k] = basis.value(posit_sample);
-                    let b = [basis.clone()];
-
                     util::add_to_norm(&mut norm, psi_per_basis[basis_i][i][j][k]);
                 }
             }
@@ -285,8 +261,6 @@ pub fn wf_from_bases_charge(
 
         // This normalization makes balancing the bases more intuitive, but isn't strictly required
         // in the way normalizing the composite (squared) wave function is prior to generating charge.
-
-        // todo: Temp removed. They may be interfering with basis solving.
         util::normalize_arr(&mut psi_per_basis[basis_i], norm);
     }
     println!("WF from bases complete.");
@@ -398,6 +372,12 @@ pub fn mix_bases(
     let mut norm = 0.;
     let grid_n = psi.len();
 
+    // todo: Experimenting with a norm approach for 2D arrays, assuming each basis is normalized.
+    let mut weight_total = 0.;
+    for w in weights {
+        weight_total += w;
+    }
+
     for (i, j) in iter_arr_2d!(grid_n) {
         psi[i][j] = Cplx::new_zero();
         // todo: This is avoidable by a reversed Derivatives struct.
@@ -410,7 +390,8 @@ pub fn mix_bases(
         derivs.d2_sum[i][j] = Cplx::new_zero();
 
         for (i_basis, weight) in weights.iter().enumerate() {
-            let scaler = *weight;
+            // let scaler = *weight;
+            let scaler = *weight / weight_total;
 
             psi[i][j] += psi_per_basis[i_basis][i][j] * scaler;
 
@@ -424,6 +405,8 @@ pub fn mix_bases(
             derivs.d2_sum[i][j] += derivs_per_basis[i_basis].d2_sum[i][j] * scaler;
         }
 
+
+        // The nuclear option: You can use a LUT. Probably a function of n, l, and xi.
         let abs_sq = psi[i][j].abs_sq();
         if abs_sq < MAX_PSI_FOR_NORM {
             norm += abs_sq; // todo: Handle norm on GPU?
@@ -453,7 +436,6 @@ pub fn mix_bases_charge(
     psi_per_basis: &[Arr3d],
     weights: &[f64],
 ) {
-    // todo: GPU option?
     let mut norm = 0.;
     let grid_n = psi.len();
 
@@ -472,6 +454,8 @@ pub fn mix_bases_charge(
             println!("Exceeded norm thresh in mix: {:?}", abs_sq);
         }
     }
+
+    println!("3D norm: {:?}.", norm);
 
     util::normalize_arr(psi, norm);
 

@@ -98,7 +98,7 @@ use crate::{
 };
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 10.;
+const GRID_MAX_RENDER: f64 = 6.;
 const GRID_MAX_CHARGE: f64 = 10.;
 
 const GRID_N_RENDER_DEFAULT: usize = 90;
@@ -232,8 +232,8 @@ impl State {
         let posit_charge_2 = Vec3::new(0.4, 0., 0.);
 
         let nuclei = vec![
-            // (posit_charge_1, Q_PROT * num_elecs as f64),
-            (posit_charge_1, Q_PROT * 2. as f64),
+            (posit_charge_1, Q_PROT * num_elecs as f64),
+            // (posit_charge_1, Q_PROT * 2. as f64),
             // (posit_charge_2, Q_PROT * num_elecs as f64),
         ];
 
@@ -704,7 +704,7 @@ fn main() {
     let dev_charge = ComputationDevice::Cpu;
 
     let dev_psi = ComputationDevice::Cpu;
-    let num_elecs = 1;
+    let num_elecs = 2;
 
     render::render(State::new(num_elecs, dev_psi, dev_charge));
 }

@@ -42,10 +42,28 @@ impl Sto {
         self.harmonic.value(θ, ϕ)
     }
 
+    fn norm_term_lut(n: u16, l: u16, xi: f64) -> f64 {
+        // todo: temp
+        if n == 1 {
+            return 2.
+        }
+        if n == 2 {
+            return 2.
+        }
+
+        2.
+
+    }
+
+    /// todo: Should this be a function of xi too? Very likely.
+    /// todo: This seems to work for n=1, but fails at n=2.
     fn norm_term(n: u16, l: u16) -> f64 {
-        // todo: These normalization terms may be inappropriate when not paired with a spherical harmonic.
-        let norm_term_num = (2. / (n as f64 * A_0)).powi(3) * factorial(n - l - 1) as f64;
+        return Self::norm_term_lut(n, l, 1.); // todo temp
+        let nf = n as f64;
+
+        let norm_term_num = (2. / nf).powi(3) * factorial(n - l - 1) as f64;
         let norm_term_denom = (2 * n as u64 * factorial(n + l).pow(3)) as f64;
+
         (norm_term_num / norm_term_denom).sqrt()
     }
 
