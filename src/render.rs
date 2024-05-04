@@ -59,7 +59,7 @@ const SURFACE_SHINYNESS: f32 = 10.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
 // To make the WF and other surfaces more visually significant.
-const PSI_SCALER: f32 = 180.;
+const PSI_SCALER: f32 = 100.;
 const CHARGE_DENSITY_SCALER: f32 = 10_000.;
 const PSI_PP_SCALER: f32 = 20.;
 

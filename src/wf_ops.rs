@@ -195,7 +195,6 @@ pub fn wf_from_bases(
 
                     // todo: Impl your Derivatives construction from GPU as well, but we'll use CPU for calculating
                     // todo these for now.
-
                 }
             }
         }
@@ -404,7 +403,6 @@ pub fn mix_bases(
             derivs.d2_sum[i][j] += derivs_per_basis[i_basis].d2_sum[i][j] * scaler;
         }
 
-
         // The nuclear option: You can use a LUT. Probably a function of n, l, and xi.
         // let abs_sq = psi[i][j].abs_sq();
         // if abs_sq < MAX_PSI_FOR_NORM {
@@ -415,21 +413,22 @@ pub fn mix_bases(
     }
 
     {
+        // todo: Probalby won't work, as you need to normalize the wf squared.?
         for weight in weights {
-            norm += weight;
+            norm += weight.abs();
         }
 
         // todo: We can't normalize using a 2D grid alone. Experimenting.
-        // util::normalize_arr_2d(psi, norm);
-        // util::normalize_arr_2d(&mut derivs.dx, norm);
-        // util::normalize_arr_2d(&mut derivs.dy, norm);
-        // util::normalize_arr_2d(&mut derivs.dz, norm);
-        //
-        // util::normalize_arr_2d(&mut derivs.d2x, norm);
-        // util::normalize_arr_2d(&mut derivs.d2y, norm);
-        // util::normalize_arr_2d(&mut derivs.d2z, norm);
-        //
-        // util::normalize_arr_2d(&mut derivs.d2_sum, norm);
+        util::normalize_arr_2d(psi, norm);
+        util::normalize_arr_2d(&mut derivs.dx, norm);
+        util::normalize_arr_2d(&mut derivs.dy, norm);
+        util::normalize_arr_2d(&mut derivs.dz, norm);
+
+        util::normalize_arr_2d(&mut derivs.d2x, norm);
+        util::normalize_arr_2d(&mut derivs.d2y, norm);
+        util::normalize_arr_2d(&mut derivs.d2z, norm);
+
+        util::normalize_arr_2d(&mut derivs.d2_sum, norm);
     }
 }
 

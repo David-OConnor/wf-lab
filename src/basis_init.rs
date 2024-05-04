@@ -47,6 +47,8 @@ pub fn initialize_bases(
     // todo your 2D mesh to assess compatibility... Eign fn cals (eg V and psi'') are invariant
     // todo to normalization (other than for electron charge), but your basis mixing
     // todo needs to take normalization into account...
+
+    // Note: These commented-out ones are from when we numerically normalized the 3d WFs.
     let weights_he_no_norm = vec![
         (1., 0.45),
         (2., -0.02),
@@ -81,6 +83,41 @@ pub fn initialize_bases(
         (10., -0.75),
     ];
 
+    // todo: Update these
+    let weights_he_no_norm = vec![
+        (1., 0.77),
+        (2., -0.01),
+        (3., 0.05),
+        (4., -0.062),
+        (5., 0.20),
+        (6., -0.12),
+        (8., -0.03),
+        (10., -0.53),
+    ];
+
+    let weights_li_inner_no_norm = vec![
+        (1., 0.32),
+        (2., -0.60),
+        (3., -0.17),
+        (4., 0.32),
+        (5., -0.26),
+        (6., 0.10),
+        (8., -0.02),
+        (10., 0.01),
+    ];
+
+    let weights_li_outer_no_norm = vec![
+        // WIP for lithium:
+        (1., 1.),
+        (2., 0.51),
+        (3., -0.16),
+        (4., -0.17),
+        (5., -1.26),
+        (6., -0.83),
+        (8., -0.25),
+        (10., -0.75),
+    ];
+
     // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
     // todo for now as a kludge to preserve weights, we copy the prev weights.
     for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
@@ -88,10 +125,10 @@ pub fn initialize_bases(
 
         let weights = if n == 1 {
             // &weights_h
-            &weights_he
-            // &weights_li_inner
+            &weights_he_no_norm
+            // &weights_li_inner_no_norm
         } else {
-            &weights_li_outer
+            &weights_li_outer_no_norm
         };
 
         for (xi, weight) in weights {
