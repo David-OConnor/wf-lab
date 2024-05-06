@@ -7,13 +7,13 @@ use lin_alg::f64::Vec3;
 use crate::{
     basis_finder, basis_init,
     basis_wfs::Basis,
-    eigen_fns,
+    eigen_fns, grid_setup,
     grid_setup::{new_data, new_data_2d},
     render,
     types::{Derivatives, Derivatives2D},
     wf_ops,
     wf_ops::{DerivCalc, Spin},
-    ActiveElec, State,
+    ActiveElec, State, GRID_MAX_RENDER, SPACING_FACTOR_DEFAULT,
 };
 
 pub(crate) mod procedures;
@@ -797,6 +797,20 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 |v| {
                     if let Some(v_) = v {
                         state.ui.z_displayed = v_;
+
+                        grid_setup::update_grid_posits_2d(
+                            &mut state.surfaces_shared.grid_posits,
+                            (-GRID_MAX_RENDER, GRID_MAX_RENDER),
+                            SPACING_FACTOR_DEFAULT,
+                            state.ui.z_displayed,
+                            state.grid_n_render,
+                        );
+                        // Now that the positions are updated, update the per-basis
+                        // wave functions, using the positions.
+                        // updated_basis_weights = true;
+                        // ideally: Only update eval once you drop teh slider, or click a btn.
+                        updated_evaluated_wfs = true;
+                        updated_basis_weights = true; // Required to re-mix using the new evaled WFs.
                         updated_meshes = true;
                     }
 

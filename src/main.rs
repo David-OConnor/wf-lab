@@ -430,11 +430,11 @@ pub fn init_from_grid(
         num_electrons,
     );
 
-    // grid_setup::update_grid_posits(
     grid_setup::update_grid_posits_2d(
         &mut surfaces_shared.grid_posits,
         grid_range,
         spacing_factor,
+        // todo: Don't reset to 0.
         0., // z_displayed: Initialize.
         grid_n_sample,
     );
