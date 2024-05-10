@@ -560,6 +560,23 @@ fn bottom_items(
             *updated_meshes = true;
         }
     });
+
+    ui.horizontal(|ui| {
+        for preset in &state.presets {
+            // todo: Function to stop this DRY.
+            if ui
+                .button(RichText::new(&preset.name).color(Color32::LIGHT_BLUE))
+                .clicked()
+            {
+                // state.bases = preset.bases.clone();
+
+                *updated_evaluated_wfs = true;
+                *updated_E_or_V = true;
+                *updated_basis_weights = true;
+                *updated_meshes = true;
+            }
+        }
+    });
 }
 
 /// This function draws the (immediate-mode) GUI.

@@ -236,6 +236,8 @@ pub struct SurfacesPerElec {
     pub V_acting_on_this: Arr2dReal,
     pub psi: Arr2d,
     /// Electron charge * normalized psi^2
+    pub charge_density_2d: Arr2dReal,
+    /// Electron charge * normalized psi^2
     pub charge_density: Arr3dReal,
     /// From the Schrodinger equation based on psi and the other parameters.
     pub psi_pp_calculated: Arr2d,
@@ -323,6 +325,7 @@ impl SurfacesPerElec {
             spin,
             V_acting_on_this: data_2d_real.clone(),
             psi: data_2d.clone(),
+            charge_density_2d: data_2d_real.clone(),
             charge_density: data_real.clone(),
             psi_pp_calculated: data_2d.clone(),
             // derivs: data.clone(),

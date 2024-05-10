@@ -503,7 +503,7 @@ pub fn init_from_grid(
         // );
 
         let psi = &mut sfcs.psi;
-        let charge_density = &mut sfcs.charge_density;
+        let charge_density_2d = &mut sfcs.charge_density_2d;
         let psi_pp = &mut sfcs.derivs;
         let spinor = &mut sfcs.spinor;
         let spinor_derivs = &mut sfcs.spinor_derivs;
@@ -512,6 +512,7 @@ pub fn init_from_grid(
 
         wf_ops::mix_bases(
             psi,
+            charge_density_2d,
             psi_pp,
             &sfcs.psi_per_basis,
             &sfcs.derivs_per_basis,

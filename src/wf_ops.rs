@@ -308,6 +308,7 @@ pub fn wf_from_bases_spinor(
 /// electron charge.
 pub fn mix_bases(
     psi: &mut Arr2d,
+    charge_density: &mut Arr2dReal,
     derivs: &mut Derivatives2D, // Not required for charge generation.
     psi_per_basis: &[Arr2d],
     derivs_per_basis: &[Derivatives2D], // Not required for charge generation.
@@ -376,6 +377,12 @@ pub fn mix_bases(
         util::normalize_arr_2d(&mut derivs.d2z, norm);
 
         util::normalize_arr_2d(&mut derivs.d2_sum, norm);
+    }
+
+    // todo: Is this the appropriate place for this?
+    // Set up charge density (psi^2 * -1), for the purposes of rendering.
+    for (i, j) in iter_arr_2d!(grid_n) {
+        charge_density[i][j] = psi[i][j].abs_sq() * Q_ELEC;
     }
 }
 

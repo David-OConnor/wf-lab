@@ -61,7 +61,7 @@ const CHARGE_SHINYNESS: f32 = 3.;
 // To make the WF and other surfaces more visually significant.
 // const PSI_SCALER: f32 = 100.;
 const PSI_SCALER: f32 = 1.;
-const CHARGE_DENSITY_SCALER: f32 = 10_000.;
+const CHARGE_DENSITY_SCALER: f32 = 10.;
 const PSI_PP_SCALER: f32 = 20.;
 
 // const V_SCALER: f32 = 1.;
@@ -361,8 +361,7 @@ pub fn update_meshes(
                     meshes.push(Mesh::new_surface(
                         &prepare_2d_mesh_real(
                             grid_posits,
-                            // &surfaces.charge_density,
-                            &surfaces.V_acting_on_this, // todo temp!
+                            &surfaces.charge_density_2d,
                             CHARGE_DENSITY_SCALER,
                             grid_n,
                         ),
