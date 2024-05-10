@@ -64,7 +64,7 @@
 
 #[cfg(feature = "cuda")]
 use cudarc::{driver::CudaDevice, nvrtc::Ptx};
-use lin_alg::f64::Vec3;
+use lin_alg::f64::{Quaternion, Vec3};
 
 mod basis_finder;
 mod basis_init;
@@ -82,6 +82,7 @@ mod grid_setup;
 mod interp;
 mod num_diff;
 mod potential;
+mod presets;
 mod render;
 mod types;
 mod ui;
@@ -89,16 +90,17 @@ mod util;
 mod wf_ops;
 
 use crate::{
-    basis_wfs::Basis,
+    basis_wfs::{Basis, SphericalHarmonic, Sto},
     dirac::BasisSpinor,
     grid_setup::{new_data, new_data_2d_real, new_data_real, Arr2dReal, Arr3d, Arr3dReal},
+    presets::Preset,
     types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
     ui::procedures,
     wf_ops::{DerivCalc, Spin, Q_PROT},
 };
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 6.;
+const GRID_MAX_RENDER: f64 = 2.;
 const GRID_MAX_CHARGE: f64 = 10.;
 
 const GRID_N_RENDER_DEFAULT: usize = 90;
@@ -218,6 +220,7 @@ pub struct State {
     // pub max_basis_n: u16,
     pub num_elecs: usize,
     pub ui: StateUi,
+    pub presets: Vec<Preset>,
 }
 
 impl State {
@@ -228,12 +231,12 @@ impl State {
     ) -> Self {
         println!("Initializing state...");
 
-        let posit_charge_1 = Vec3::new(0., 0., 0.);
-        let posit_charge_2 = Vec3::new(0.4, 0., 0.);
+        let posit_charge_1 = Vec3::new(-0.7, 0., 0.);
+        let posit_charge_2 = Vec3::new(0.7, 0., 0.);
 
         let nuclei = vec![
-            (posit_charge_1, Q_PROT * num_elecs as f64),
-            // (posit_charge_1, Q_PROT * 2. as f64),
+            (posit_charge_1, Q_PROT),
+            (posit_charge_2, Q_PROT),
             // (posit_charge_2, Q_PROT * num_elecs as f64),
         ];
 
@@ -250,7 +253,7 @@ impl State {
             let n = if i_elec > 1 { 2 } else { 1 };
 
             basis_init::initialize_bases(&mut bases_this_elec, &nuclei, n);
-            wf_ops::initialize_bases_spinor(&mut bases_this_elec_spinor, &nuclei, n);
+            basis_init::initialize_bases_spinor(&mut bases_this_elec_spinor, &nuclei, n);
 
             bases_per_elec.push(bases_this_elec);
             bases_per_elec_spinor.push(bases_this_elec_spinor);
@@ -350,6 +353,15 @@ impl State {
 
         println!("State init complete.");
 
+        // todo: Sort out how and where to handle presets
+        let presets_ = vec![
+            Preset::make_h(),
+            Preset::make_h_ion(),
+            Preset::make_h2(),
+            Preset::make_he(),
+            Preset::make_li(),
+        ];
+
         Self {
             dev_charge,
             dev_psi,
@@ -372,6 +384,7 @@ impl State {
             // max_basis_n,
             num_elecs,
             ui: Default::default(),
+            presets: presets_,
         }
     }
 }

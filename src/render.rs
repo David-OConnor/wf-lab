@@ -59,11 +59,13 @@ const SURFACE_SHINYNESS: f32 = 10.5;
 const CHARGE_SHINYNESS: f32 = 3.;
 
 // To make the WF and other surfaces more visually significant.
-const PSI_SCALER: f32 = 100.;
+// const PSI_SCALER: f32 = 100.;
+const PSI_SCALER: f32 = 1.;
 const CHARGE_DENSITY_SCALER: f32 = 10_000.;
 const PSI_PP_SCALER: f32 = 20.;
 
-const V_SCALER: f32 = 1.;
+// const V_SCALER: f32 = 1.;
+const V_SCALER: f32 = 0.02;
 
 fn event_handler(
     _state: &mut State,
@@ -857,7 +859,7 @@ pub fn render(state: State) {
         entities: Vec::new(), // updated beloCw.
         camera: Camera {
             fov_y: TAU / 8.,
-            position: Vec3::new(0., 10., -40.),
+            position: Vec3::new(0., 10., -20.),
             far: RENDER_DIST,
             orientation: Quaternion::from_axis_angle(Vec3::new(1., 0., 0.), TAU / 16.),
             ..Default::default()

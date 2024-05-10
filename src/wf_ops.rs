@@ -28,18 +28,15 @@ use lin_alg::f64::Vec3;
 #[cfg(feature = "cuda")]
 use crate::gpu;
 use crate::{
-    basis_wfs::{Basis, Sto},
+    basis_wfs::Basis,
     complex_nums::Cplx,
     dirac,
     dirac::{BasisSpinor, CompPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3},
     eigen_fns::{self},
     eigen_raw,
-    grid_setup::{new_data, new_data_real, Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{new_data_real, Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, iter_arr_2d, num_diff,
-    types::{
-        ComputationDevice, Derivatives, Derivatives2D, DerivativesSingle, SurfacesPerElec,
-        SurfacesShared,
-    },
+    types::{ComputationDevice, Derivatives, Derivatives2D, DerivativesSingle},
     util::{self, MAX_PSI_FOR_NORM},
 };
 
@@ -75,56 +72,6 @@ pub enum DerivCalc {
 impl Default for DerivCalc {
     fn default() -> Self {
         Self::Numeric
-    }
-}
-
-pub fn initialize_bases_spinor(
-    bases: &mut Vec<BasisSpinor>,
-    charges_fixed: &[(Vec3, f64)],
-    max_n: u16, // quantum number n
-) {
-    // todo: For performance reasons while not using it.
-    return;
-    *bases = Vec::new();
-
-    // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
-    // todo for now as a kludge to preserve weights, we copy the prev weights.
-    for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
-        // See Sebens, for weights under equation 24; this is for Helium.
-
-        for (xi, weight) in [
-            (1., 1.),
-            // (2., 0.),
-            // (3., 0.),
-            // (4., 0.),
-            // (5., 0.),
-            // (6., 0.),
-            // (7., 0.),
-        ] {
-            for n in 1..max_n + 1 {
-                let sto = Sto {
-                    posit: *nuc_posit,
-                    n,
-                    xi,
-                    weight,
-                    charge_id,
-                    harmonic: Default::default(),
-                };
-
-                let mut sto_zero = sto.clone();
-                sto_zero.weight = 0.;
-
-                let mut sto_neg = sto.clone();
-                sto_neg.weight = -sto.weight;
-
-                bases.push(BasisSpinor {
-                    c0: sto.clone(),
-                    c1: sto_zero.clone(),
-                    c2: sto_zero.clone(),
-                    c3: sto_neg,
-                });
-            }
-        }
     }
 }
 
