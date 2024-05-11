@@ -4,7 +4,17 @@ use egui::{self, Button, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg::f64::Vec3;
 
-use crate::{basis_finder, basis_init, basis_wfs::Basis, eigen_fns, grid_setup, grid_setup::{new_data, new_data_2d}, render, types::{Derivatives, Derivatives2D}, wf_ops, wf_ops::{DerivCalc, Spin}, ActiveElec, State, GRID_MAX_RENDER, SPACING_FACTOR_DEFAULT, Axis};
+use crate::{
+    basis_finder, basis_init,
+    basis_wfs::Basis,
+    eigen_fns, grid_setup,
+    grid_setup::{new_data, new_data_2d},
+    render,
+    types::{Derivatives, Derivatives2D},
+    wf_ops,
+    wf_ops::{DerivCalc, Spin},
+    ActiveElec, Axis, State, GRID_MAX_RENDER, SPACING_FACTOR_DEFAULT,
+};
 
 pub(crate) mod procedures;
 
@@ -148,7 +158,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                            state.charges_fixed.iter().enumerate()
+                                state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -396,7 +406,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                        .text("Wt"),
+                    .text("Wt"),
                 );
 
                 // Re-compute this basis WF. Eg, after changing n, l, m, xi, or the associated electron.
@@ -571,13 +581,11 @@ fn bottom_items(
         ui.label("Hidden axis: ");
         let mut make_axis_btn = |axis, name| {
             if ui
-                .button(
-                    RichText::new(name).color(if state.ui.hidden_axis == axis {
-                        Color32::DARK_BLUE
-                    } else {
-                        Color32::LIGHT_BLUE
-                    }),
-                )
+                .button(RichText::new(name).color(if state.ui.hidden_axis == axis {
+                    Color32::DARK_BLUE
+                } else {
+                    Color32::LIGHT_BLUE
+                }))
                 .clicked()
             {
                 state.ui.hidden_axis = axis;
@@ -862,7 +870,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.ui.z_displayed
                 },
             )
-                .text("Z slice"),
+            .text("Z slice"),
         );
 
         ui.add(
@@ -874,7 +882,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui.visual_rotation
             })
-                .text("Visual rotation"),
+            .text("Visual rotation"),
         );
 
         ui.add(
@@ -898,7 +906,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_range_render.1
             })
-                .text("Grid range"),
+            .text("Grid range"),
         );
 
         match state.ui.active_elec {
@@ -919,7 +927,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_per_elec[ae].E
                     })
-                        .text("E"),
+                    .text("E"),
                 );
 
                 let prev_spin = state.surfaces_per_elec[ae].spin;

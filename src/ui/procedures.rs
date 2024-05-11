@@ -293,6 +293,7 @@ pub fn update_meshes(state: &mut State, scene: &mut Scene, engine_updates: &mut 
         render_multi_elec,
         &state.surface_descs_per_elec,
         &state.surface_descs_combined,
+        state.ui.hidden_axis,
     );
 }
 

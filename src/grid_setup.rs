@@ -2,7 +2,7 @@
 
 use lin_alg::f64::Vec3;
 
-use crate::{Axis, complex_nums::Cplx, iter_arr, types::DerivativesSingle, util};
+use crate::{complex_nums::Cplx, iter_arr, types::DerivativesSingle, util, Axis};
 
 pub type Arr2dReal = Vec<Vec<f64>>;
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
@@ -114,7 +114,7 @@ pub fn update_grid_posits_2d(
     grid_posits: &mut Arr2dVec,
     grid_range: (f64, f64),
     spacing_factor: f64,
-    z: f64, // Constant, unlike in the 3d variant of this.
+    hidden_slice: f64, // Constant, unlike in the 3d variant of this.
     n: usize,
     axis_hidden: Axis,
 ) {
@@ -138,9 +138,9 @@ pub fn update_grid_posits_2d(
     for (i, x) in grid_1d.iter().enumerate() {
         for (j, y) in grid_1d.iter().enumerate() {
             grid_posits[i][j] = match axis_hidden {
-                Axis::X => Vec3::new(z, *y, *x),
-                Axis::Y => Vec3::new(*x, z, *y),
-                Axis::Z => Vec3::new(*x, *y, z),
+                Axis::X => Vec3::new(hidden_slice, *x, *y),
+                Axis::Y => Vec3::new(*x, hidden_slice, *y),
+                Axis::Z => Vec3::new(*x, *y, hidden_slice),
             };
         }
     }

@@ -14,7 +14,7 @@ use lin_alg::{
 use crate::{
     grid_setup::{Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec},
     types::{SurfacesPerElec, SurfacesShared},
-    State, SurfaceDesc, SurfaceToRender, RENDER_L, RENDER_SPINOR,
+    Axis, State, SurfaceDesc, SurfaceToRender, RENDER_L, RENDER_SPINOR,
 };
 
 type Color = (f32, f32, f32);
@@ -105,6 +105,7 @@ fn prepare_2d_mesh_real(
     vals: &Arr2dReal,
     scaler: f32,
     grid_n: usize,
+    axis_hidden: Axis,
 ) -> Vec<Vec<Vec3>> {
     // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64,
     // todo and 2d vice 3d.
@@ -118,12 +119,18 @@ fn prepare_2d_mesh_real(
 
     for i in 0..grid_n {
         for j in 0..grid_n {
-            result[i][j] = Vec3::new(
-                // posits[i][j][z_i].x as f32,
-                posits[i][j].x as f32,
-                posits[i][j].y as f32,
-                vals[i][j] as f32 * scaler,
-            );
+            let x = posits[i][j].x as f32;
+            let y = posits[i][j].y as f32;
+            let z = posits[i][j].z as f32;
+            let val = vals[i][j] as f32 * scaler;
+            // I believe these should match the order used when setting up the 2D grid.
+
+            // note: By altering the values here, we can change the orientation of the plot.
+            result[i][j] = match axis_hidden {
+                Axis::X => Vec3::new(y, z, val),
+                Axis::Y => Vec3::new(z, x, val),
+                Axis::Z => Vec3::new(x, y, val),
+            };
         }
     }
 
@@ -138,6 +145,7 @@ fn prepare_2d_mesh(
     mag_phase: bool,
     imag: bool,
     grid_n: usize,
+    axis_hidden: Axis,
 ) -> Vec<Vec<Vec3>> {
     // todo: DRY from new_data fns. We have to repeat due to using f32 type instead of f64.
     let mut y = Vec::new();
@@ -163,11 +171,19 @@ fn prepare_2d_mesh(
                 vals[i][j].real
             };
 
-            result[i][j] = Vec3::new(
-                posits[i][j].x as f32,
-                posits[i][j].y as f32,
-                val as f32 * scaler,
-            );
+            // todo: DRY
+            let x = posits[i][j].x as f32;
+            let y = posits[i][j].y as f32;
+            let z = posits[i][j].z as f32;
+            let val = val as f32 * scaler;
+
+            // I believe these should match the order used when setting up the 2D grid.
+            // note: By altering the values here, we can change the orientation of the plot.
+            result[i][j] = match axis_hidden {
+                Axis::X => Vec3::new(y, z, val),
+                Axis::Y => Vec3::new(z, x, val),
+                Axis::Z => Vec3::new(x, y, val),
+            };
         }
     }
 
@@ -189,6 +205,7 @@ pub fn update_meshes(
     render_multi_elec: bool,
     sfc_descs_per_elec: &[SurfaceDesc],
     sfc_descs_combined: &[SurfaceDesc],
+    axis_hidden: Axis,
 ) {
     // Our meshes are defined in terms of a start point,
     // and a step. Adjust the step to center the grid at
@@ -327,6 +344,7 @@ pub fn update_meshes(
                             // z_i,
                             V_SCALER,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -340,6 +358,7 @@ pub fn update_meshes(
                             mag_phase,
                             false,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -353,6 +372,7 @@ pub fn update_meshes(
                             mag_phase,
                             true,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -364,6 +384,7 @@ pub fn update_meshes(
                             &surfaces.charge_density_2d,
                             CHARGE_DENSITY_SCALER,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -378,6 +399,7 @@ pub fn update_meshes(
                             mag_phase,
                             false,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -392,6 +414,7 @@ pub fn update_meshes(
                             mag_phase,
                             true,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -406,6 +429,7 @@ pub fn update_meshes(
                             mag_phase,
                             false,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -420,6 +444,7 @@ pub fn update_meshes(
                             mag_phase,
                             true,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -432,6 +457,7 @@ pub fn update_meshes(
                             &surfaces.V_elec_eigen,
                             V_SCALER,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -444,6 +470,7 @@ pub fn update_meshes(
                             &surfaces.V_total_eigen,
                             V_SCALER,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -595,6 +622,7 @@ pub fn update_meshes(
                             mag_phase,
                             false,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -608,6 +636,7 @@ pub fn update_meshes(
                             mag_phase,
                             true,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -621,6 +650,7 @@ pub fn update_meshes(
                             mag_phase,
                             false,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -634,6 +664,7 @@ pub fn update_meshes(
                             mag_phase,
                             true,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -648,6 +679,7 @@ pub fn update_meshes(
                             mag_phase,
                             false,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -662,6 +694,7 @@ pub fn update_meshes(
                             mag_phase,
                             true,
                             grid_n,
+                            axis_hidden,
                         ),
                         true,
                     ));
@@ -927,6 +960,7 @@ pub fn render(state: State) {
         false,
         &state.surface_descs_per_elec,
         &state.surface_descs_combined,
+        state.ui.hidden_axis,
     );
 
     update_entities(
