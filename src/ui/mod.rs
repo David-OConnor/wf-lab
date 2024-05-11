@@ -817,7 +817,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         grid_setup::update_grid_posits_2d(
                             &mut state.surfaces_shared.grid_posits,
-                            (-GRID_MAX_RENDER, GRID_MAX_RENDER),
+                            (state.grid_range_render.0, state.grid_range_render.1),
                             SPACING_FACTOR_DEFAULT,
                             state.ui.z_displayed,
                             state.grid_n_render,
@@ -854,12 +854,17 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 if let Some(v_) = v {
                     state.grid_range_render = (-v_, v_);
 
-                    // state.h_grid = (state.grid_max - state.grid_min) / (N as f64);
-                    // state.h_grid_sq = state.h_grid.powi(2);
+                    grid_setup::update_grid_posits_2d(
+                        &mut state.surfaces_shared.grid_posits,
+                        (state.grid_range_render.0, state.grid_range_render.1),
+                        SPACING_FACTOR_DEFAULT,
+                        state.ui.z_displayed,
+                        state.grid_n_render,
+                    );
 
-                    updated_basis_weights = true;
                     updated_evaluated_wfs = true;
-                    updated_fixed_charges = true; // Seems to be required.
+                    updated_basis_weights = true;
+                    updated_meshes = true;
                 }
 
                 state.grid_range_render.1
