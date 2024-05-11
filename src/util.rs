@@ -336,3 +336,137 @@ pub fn add_to_norm(n: &mut f64, v: Cplx) {
         println!("Exceeded norm thresh in create: {:?}", abs_sq);
     }
 }
+
+// todo: C+P from peptide. Reconcile A/R
+/// Generate discrete mappings between a 0. - 1. uniform distribution
+/// to the wave function's PDF: Discretized through 3D space. ie, each
+/// PDF value maps to a cube of space. <ψ|ψ> is normalized here.
+/// This function generates a random number when called.
+fn generate_pdf_map(
+    charge_density: &Arr3dReal,
+    posits: &Arr3dVec,
+    // x_range: (f64, f64),
+    // y_range: (f64, f64),
+    // z_range: (f64, f64),
+    // Of a cube, centered on... center-of-mass of system??
+    // vals_per_side: usize,
+) -> Vec<(f64, Vec3)> {
+    // let x_vals = linspace(x_range, vals_per_side);
+    // let y_vals = linspace(y_range, vals_per_side);
+    // let z_vals = linspace(z_range, vals_per_side);
+
+    let mut pdf_cum = 0.;
+    let mut gates = Vec::new();
+
+    let n = charge_density.len();
+
+    // Log the cumulative values of the PDF (charge density), at each point,
+    // as we iterate through the array in a specific, but arbitrary order.
+    // Note that pdf_cum will range from 0. to 1., since charge_density
+    // is normalized. This maps well to a RNG of 0. to 1.
+    // for (i, x) in x_vals.iter().enumerate() {
+    //     for (j, y) in y_vals.iter().enumerate() {
+    //         for (k, z) in z_vals.iter().enumerate() {
+
+    for (i, j, k) in iter_arr!(n) {
+        // let posit_sample = Vec3::new(*x, *y, *z);
+
+        // Note: If you end up with non-size-uniform chunks of space,
+        // you'll need to incorporate a dVolume term.s
+
+        pdf_cum += charge_density[i][j][k];
+
+        // todo: Maybe just return an Arr3dReal.
+        gates.push((pdf_cum, posits[i][j][k]));
+    }
+
+    // Now that we have our gates maping r to a cumulative PDF,
+    // map this PDF to our 0-1 output range.
+    const RNG_RANGE: (f64, f64) = (0., 1.);
+
+    let scale_factor = pdf_cum / (RNG_RANGE.1 - RNG_RANGE.0); // Always works out to be pdf_cum.
+
+    let mut result = Vec::new();
+    for (pdf, grid_pt) in gates {
+        result.push((pdf / scale_factor, grid_pt));
+    }
+
+    result
+}
+
+// todo: May need to combine above and below fns to turn this cartesian vice radial.
+// todo: C+P from peptide. Reconcile A/R
+/// Using a cumultive probability map, map a uniform RNG value
+/// to a wavefunction value. Assumes increasing
+/// PDF values in the map (it's 0 index.)
+///
+/// Generate a random electron position, per a center reference point, and the wave
+/// function.
+fn gen_electron_posit(map: &Vec<(f64, Vec3)>) -> Vec3 {
+    let uniform_sample = rand::random::<f64>();
+
+    // todo: we can't interpolate unless the grid mapping is continuous.
+    // todo currently, it wraps.
+
+    // todo: This approach will need a 3D map, and possibly 3 RNG values. (Or the RNG range
+    // todo split in 3). You'll need to modify the PDF map to make this happen.
+    // todo: Alternative approach using interpolation:
+    // for (i, (pdf, posit)) in map.into_iter().enumerate() {
+    //     wf_lab::util::interpolate_spline3pt(surface: Arr3d, val: f64, sfc_range: (f64, f64))
+    // }
+
+    for (i, (pdf, posit)) in map.into_iter().enumerate() {
+        if uniform_sample < *pdf {
+            // Interpolate.
+            let v = if i > 0 {
+                // todo: QC this. If you're having trouble, TS by using just *posit,
+                // todo as below.
+                // util::map_linear(uniform_sample, (map[i - 1].0, *pdf), (map[i - 1].1, *posit))
+                *posit
+            } else {
+                // todo: Map to 0 here?
+                *posit
+            };
+
+            // return ctr_pt + v;
+            return v;
+        }
+    }
+
+    // If it's the final value, return this.
+    // todo: Map lin on this too.?
+
+    map[map.len() - 1].1
+
+    // center_pt
+    //     + util::map_linear(
+    //         uniform_sample,
+    //         (map[map.len() - 2].0, map[map.len() - 1].0),
+    //         (map[map.len() - 2].1, map[map.len() - 1].1),
+    //     )
+}
+
+/// Find positions, along a 3D grid representative of charge density at each point.
+pub(crate) fn make_density_balls(
+    charge: &Arr3dReal,
+    posits: &Arr3dVec,
+    n_balls: usize,
+) -> Vec<Vec3> {
+    // let n = charge.len();
+
+    println!("Len charge: {}, posit: {}", charge.len(), posits.len());
+
+    // let min_posit = posits[0][0][0].x;
+    // let max_posit = posits[0][0][n-1].x;
+    // let range = (min_posit, max_posit);
+
+    // let pdf = generate_pdf_map(charge, range, range, range, n_balls);
+    let pdf = generate_pdf_map(charge, posits);
+
+    let mut result = Vec::new();
+    for _ in 0..n_balls {
+        result.push(gen_electron_posit(&pdf));
+    }
+
+    result
+}

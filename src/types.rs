@@ -286,10 +286,12 @@ pub struct SurfacesPerElec {
 
 impl SurfacesPerElec {
     /// Fills with 0.s
+    // pub fn new(num_bases: usize, grid_n: usize, grid_n_charge: usize, spin: Spin) -> Self {
     pub fn new(num_bases: usize, grid_n: usize, spin: Spin) -> Self {
         let data = new_data(grid_n);
         let data_2d = new_data_2d(grid_n);
         let data_real = new_data_real(grid_n);
+        // let data_real_charge = new_data_real(grid_n_charge);
         let data_2d_real = new_data_2d_real(grid_n);
         // let derivs = Derivatives::new(grid_n);
         let derivs = Derivatives2D::new(grid_n);

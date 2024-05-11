@@ -317,6 +317,7 @@ impl State {
             // SurfaceDesc::new(SurfaceToRender::VPElec, false),
             SurfaceDesc::new(SurfaceToRender::H, false),
             SurfaceDesc::new(SurfaceToRender::HIm, false),
+            SurfaceDesc::new(SurfaceToRender::ChargeDensityBalls, false),
         ];
 
         if RENDER_L {
@@ -669,6 +670,9 @@ pub enum SurfaceToRender {
     PsiSpinorCalc1,
     PsiSpinorCalc2,
     PsiSpinorCalc3,
+    /// This isn't a 2D surface; it renders spheres or similar proportional
+    /// to charge density. This is over 3D space, vice 2D + function value.
+    ChargeDensityBalls,
 }
 
 impl SurfaceToRender {
@@ -699,6 +703,7 @@ impl SurfaceToRender {
             Self::PsiSpinorCalc1 => "ψ_c1",
             Self::PsiSpinorCalc2 => "ψ2_c",
             Self::PsiSpinorCalc3 => "ψ3_c",
+            Self::ChargeDensityBalls => "ρ 3D",
         }
         .to_string()
     }

@@ -14,7 +14,7 @@ use lin_alg::{
 use crate::{
     grid_setup::{Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec},
     types::{SurfacesPerElec, SurfacesShared},
-    Axis, State, SurfaceDesc, SurfaceToRender, RENDER_L, RENDER_SPINOR,
+    util, Axis, State, SurfaceDesc, SurfaceToRender, RENDER_L, RENDER_SPINOR,
 };
 
 type Color = (f32, f32, f32);
@@ -33,6 +33,7 @@ const COLOR_PSI_PP_CALC_1D: Color = (0., 1., 0.);
 const COLOR_PSI_PP_MEAS_1D: Color = (0., 0.5, 0.5);
 
 const CHARGE_SPHERE_SIZE: f32 = 0.05;
+const CHARGE_DENSITY_SPHERE_SIZE: f32 = 0.01;
 
 const SURFACE_COLORS: [Color; 18] = [
     (0., 0., 1.),
@@ -66,6 +67,8 @@ const PSI_PP_SCALER: f32 = 20.;
 
 // const V_SCALER: f32 = 1.;
 const V_SCALER: f32 = 0.02;
+
+const N_CHARGE_BALLS: usize = 300;
 
 fn event_handler(
     _state: &mut State,
@@ -698,6 +701,18 @@ pub fn update_meshes(
                         ),
                         true,
                     ));
+                }
+                SurfaceToRender::ChargeDensityBalls => {
+                    // todo: Once this is working, move this code; it may be slow
+                    // todo being here. (or not?)
+                    // let balls = util::make_density_balls(
+                    //     &surfaces.charge_density,
+                    //     &surfaces_shared.grid_posits_charge,
+                    //     N_CHARGE_BALLS,
+                    // );
+                    // for ball in balls {
+                    //     meshes.push(Mesh::new_sphere(CHARGE_DENSITY_SPHERE_SIZE, 6, 6))
+                    // }
                 }
                 SurfaceToRender::VPElec => unimplemented!(), // todo: Put these in A/R, with enum variants
                                                              // SurfaceToRender::V => {
