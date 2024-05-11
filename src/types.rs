@@ -4,18 +4,10 @@ use std::{ops::Add, sync::Arc};
 use cudarc::driver::CudaDevice;
 use lin_alg::f64::Vec3;
 
-use crate::{
-    basis_wfs::Basis,
-    complex_nums::Cplx,
-    dirac::{Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeDInner3},
-    elec_elec::WaveFunctionMultiElec,
-    grid_setup::{
-        self, new_data, new_data_2d, new_data_2d_real, new_data_2d_vec, new_data_real,
-        new_data_vec, Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec,
-    },
-    wf_ops,
-    wf_ops::{DerivCalc, Spin},
-};
+use crate::{Axis, basis_wfs::Basis, complex_nums::Cplx, dirac::{Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeDInner3}, elec_elec::WaveFunctionMultiElec, grid_setup::{
+    self, new_data, new_data_2d, new_data_2d_real, new_data_2d_vec, new_data_real,
+    new_data_vec, Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec,
+}, wf_ops, wf_ops::{DerivCalc, Spin}};
 
 #[derive(Debug, Clone)]
 pub enum ComputationDevice {
@@ -72,6 +64,7 @@ impl SurfacesShared {
         n_grid: usize,
         n_grid_charge: usize,
         num_elecs: usize,
+        axis_hidden: Axis,
     ) -> Self {
         let data = new_data(n_grid);
         let data_real = new_data_real(n_grid);
@@ -81,7 +74,7 @@ impl SurfacesShared {
         let mut grid_posits = new_data_2d_vec(n_grid);
         // grid_setup::update_grid_posits(&mut grid_posits, grid_range, spacing_factor, n_grid);
         // todo: z_init at 0.; We will need to run this whenever we change the z slider.
-        grid_setup::update_grid_posits_2d(&mut grid_posits, grid_range, spacing_factor, 0., n_grid);
+        grid_setup::update_grid_posits_2d(&mut grid_posits, grid_range, spacing_factor, 0., n_grid, axis_hidden);
 
         let mut grid_posits_charge = new_data_vec(n_grid_charge);
 

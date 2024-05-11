@@ -4,17 +4,7 @@ use egui::{self, Button, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg::f64::Vec3;
 
-use crate::{
-    basis_finder, basis_init,
-    basis_wfs::Basis,
-    eigen_fns, grid_setup,
-    grid_setup::{new_data, new_data_2d},
-    render,
-    types::{Derivatives, Derivatives2D},
-    wf_ops,
-    wf_ops::{DerivCalc, Spin},
-    ActiveElec, State, GRID_MAX_RENDER, SPACING_FACTOR_DEFAULT,
-};
+use crate::{basis_finder, basis_init, basis_wfs::Basis, eigen_fns, grid_setup, grid_setup::{new_data, new_data_2d}, render, types::{Derivatives, Derivatives2D}, wf_ops, wf_ops::{DerivCalc, Spin}, ActiveElec, State, GRID_MAX_RENDER, SPACING_FACTOR_DEFAULT, Axis};
 
 pub(crate) mod procedures;
 
@@ -158,7 +148,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                                state.charges_fixed.iter().enumerate()
+                            state.charges_fixed.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -406,7 +396,7 @@ fn basis_fn_mixer(
 
                         basis.weight()
                     })
-                    .text("Wt"),
+                        .text("Wt"),
                 );
 
                 // Re-compute this basis WF. Eg, after changing n, l, m, xi, or the associated electron.
@@ -576,6 +566,42 @@ fn bottom_items(
                 *updated_meshes = true;
             }
         }
+
+        // Buttons to select the hidden axis.
+        ui.label("Hidden axis: ");
+        let mut make_axis_btn = |axis, name| {
+            if ui
+                .button(
+                    RichText::new(name).color(if state.ui.hidden_axis == axis {
+                        Color32::DARK_BLUE
+                    } else {
+                        Color32::LIGHT_BLUE
+                    }),
+                )
+                .clicked()
+            {
+                state.ui.hidden_axis = axis;
+
+                // This is what changes the axis effectively:
+                grid_setup::update_grid_posits_2d(
+                    &mut state.surfaces_shared.grid_posits,
+                    (state.grid_range_render.0, state.grid_range_render.1),
+                    SPACING_FACTOR_DEFAULT,
+                    state.ui.z_displayed,
+                    state.grid_n_render,
+                    state.ui.hidden_axis,
+                );
+
+                *updated_evaluated_wfs = true;
+                *updated_E_or_V = true;
+                *updated_basis_weights = true;
+                *updated_meshes = true;
+            }
+        };
+
+        make_axis_btn(Axis::X, "X");
+        make_axis_btn(Axis::Y, "Y");
+        make_axis_btn(Axis::Z, "Z");
     });
 }
 
@@ -632,6 +658,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &state.charges_fixed,
                     state.num_elecs,
                     state.deriv_calc,
+                    state.ui.hidden_axis,
                 );
 
                 state.charges_from_electron = charges_electron;
@@ -821,6 +848,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             SPACING_FACTOR_DEFAULT,
                             state.ui.z_displayed,
                             state.grid_n_render,
+                            state.ui.hidden_axis,
                         );
                         // Now that the positions are updated, update the per-basis
                         // wave functions, using the positions.
@@ -834,7 +862,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.ui.z_displayed
                 },
             )
-            .text("Z slice"),
+                .text("Z slice"),
         );
 
         ui.add(
@@ -846,7 +874,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.ui.visual_rotation
             })
-            .text("Visual rotation"),
+                .text("Visual rotation"),
         );
 
         ui.add(
@@ -860,6 +888,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         SPACING_FACTOR_DEFAULT,
                         state.ui.z_displayed,
                         state.grid_n_render,
+                        state.ui.hidden_axis,
                     );
 
                     updated_evaluated_wfs = true;
@@ -869,7 +898,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.grid_range_render.1
             })
-            .text("Grid range"),
+                .text("Grid range"),
         );
 
         match state.ui.active_elec {
@@ -890,7 +919,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                         state.surfaces_per_elec[ae].E
                     })
-                    .text("E"),
+                        .text("E"),
                 );
 
                 let prev_spin = state.surfaces_per_elec[ae].spin;

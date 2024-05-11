@@ -103,7 +103,7 @@ const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_RENDER: f64 = 3.;
 const GRID_MAX_CHARGE: f64 = 10.;
 
-const GRID_N_RENDER_DEFAULT: usize = 80;
+const GRID_N_RENDER_DEFAULT: usize = 70;
 const GRID_N_CHARGE_DEFAULT: usize = 61;
 
 const RENDER_SPINOR: bool = false;
@@ -120,6 +120,13 @@ const RENDER_L: bool = true;
 pub enum ActiveElec {
     PerElec(usize),
     Combined,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Axis {
+    X,
+    Y,
+    Z,
 }
 
 /// Ui state, and adjustable settings.
@@ -150,6 +157,8 @@ pub struct StateUi {
     pub display_alpha: bool,
     /// Allows toggling spin-beta electrons.
     pub display_beta: bool,
+    /// Allows rotating the view, vice using a Z-axis slider alone to view the third dimension
+    pub hidden_axis: Axis,
 }
 
 impl Default for StateUi {
@@ -167,6 +176,7 @@ impl Default for StateUi {
             create_3d_electron_V: true,
             display_alpha: true,
             display_beta: true,
+            hidden_axis: Axis::Z,
         }
     }
 }
@@ -288,6 +298,7 @@ impl State {
                 &nuclei,
                 num_elecs,
                 psi_pp_calc,
+                Axis::Z,
             );
 
         println!("Grid init complete.");
@@ -416,6 +427,7 @@ pub fn init_from_grid(
     charges_fixed: &[(Vec3, f64)],
     num_electrons: usize,
     deriv_calc: DerivCalc,
+    axis_hidden: Axis,
 ) -> (
     Vec<Arr3dReal>,
     // Vec<Arr3dReal>,
@@ -441,6 +453,7 @@ pub fn init_from_grid(
         grid_n_sample,
         grid_n_charge,
         num_electrons,
+        axis_hidden,
     );
 
     grid_setup::update_grid_posits_2d(
@@ -450,6 +463,7 @@ pub fn init_from_grid(
         // todo: Don't reset to 0.
         0., // z_displayed: Initialize.
         grid_n_sample,
+        axis_hidden,
     );
 
     grid_setup::update_grid_posits(

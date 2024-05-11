@@ -2,7 +2,7 @@
 
 use lin_alg::f64::Vec3;
 
-use crate::{complex_nums::Cplx, iter_arr, types::DerivativesSingle, util};
+use crate::{Axis, complex_nums::Cplx, iter_arr, types::DerivativesSingle, util};
 
 pub type Arr2dReal = Vec<Vec<f64>>;
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;
@@ -116,6 +116,7 @@ pub fn update_grid_posits_2d(
     spacing_factor: f64,
     z: f64, // Constant, unlike in the 3d variant of this.
     n: usize,
+    axis_hidden: Axis,
 ) {
     let grid_lin = util::linspace((grid_range.0, grid_range.1), n);
 
@@ -130,9 +131,17 @@ pub fn update_grid_posits_2d(
         grid_1d[i] = val;
     }
 
+    // todo: Not working.
+    // This is what effects which of the 3 axis is hidden (Replaced by function value).
+    // Note: We arbitrarily choose the order of the other axis; another approach would be
+    // to allow teh user to select, eg through discrete rotations.
     for (i, x) in grid_1d.iter().enumerate() {
         for (j, y) in grid_1d.iter().enumerate() {
-            grid_posits[i][j] = Vec3::new(*x, *y, z);
+            grid_posits[i][j] = match axis_hidden {
+                Axis::X => Vec3::new(z, *y, *x),
+                Axis::Y => Vec3::new(*x, z, *y),
+                Axis::Z => Vec3::new(*x, *y, z),
+            };
         }
     }
 }
