@@ -9,9 +9,9 @@ use crate::{
     basis_wfs::Basis,
     eigen_fns, grid_setup,
     grid_setup::{new_data, new_data_2d},
-    render,
+    iter_arr, render,
     types::{Derivatives, Derivatives2D},
-    wf_ops,
+    util, wf_ops,
     wf_ops::{DerivCalc, Spin},
     ActiveElec, Axis, State, GRID_MAX_RENDER, SPACING_FACTOR_DEFAULT,
 };
@@ -559,6 +559,50 @@ fn bottom_items(
             *updated_basis_weights = true;
             *updated_meshes = true;
         }
+
+        if ui.add(Button::new("Build dots")).clicked() {
+            // todo: Investigate if/why we are recreating this here; shouldn't it already exist?
+            // Create the 3D Psi here. Then its square (charge density).
+            // let arr_3d = new_data(state.grid_n_charge);
+            // let mut psi_3d = Vec::new(); // todo. C+P etc.
+            // for  _ in 0..state.bases[ae].len() {
+            //     psi_3d.push(arr_3d.clone());
+            // }
+            //
+            // wf_ops::wf_from_bases_charge(
+            //     &state.dev_psi,
+            //     &mut state.psi_charge[ae],
+            //     &state.bases[ae],
+            //     &state.surfaces_shared.grid_posits_charge,
+            // );
+
+            // todo: Build for all; not just per-elec. Will need to change the render code as well.
+            // This is creating psi^2, 3D, from the render grid.
+            let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
+            procedures::create_elec_charge(
+                &mut state.surfaces_per_elec[ae].charge_density,
+                // &psi_3d,
+                &state.psi_charge[ae],
+                &weights,
+                state.grid_n_charge,
+            );
+
+            state.charge_density_balls = util::make_density_balls(
+                &state.surfaces_per_elec[ae].charge_density,
+                &state.surfaces_shared.grid_posits_charge,
+                render::N_CHARGE_BALLS,
+            );
+
+            // *updated_evaluated_wfs = true;
+            // *updated_E_or_V = true;
+            // *updated_basis_weights = true;
+            render::update_entities(
+                &state.charges_fixed,
+                &state.surface_descs_per_elec,
+                scene,
+                &state.charge_density_balls,
+            );
+        }
     });
 
     ui.horizontal(|ui| {
@@ -1053,6 +1097,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         &state.charges_fixed,
                         &state.surface_descs_per_elec,
                         scene,
+                        &state.charge_density_balls,
                     );
                 }
                 ActiveElec::Combined => {
@@ -1060,6 +1105,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         &state.charges_fixed,
                         &state.surface_descs_combined,
                         scene,
+                        &state.charge_density_balls,
                     );
                 }
             }

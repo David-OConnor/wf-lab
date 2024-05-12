@@ -101,7 +101,7 @@ use crate::{
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_RENDER: f64 = 3.;
-const GRID_MAX_CHARGE: f64 = 10.;
+const GRID_MAX_CHARGE: f64 = 8.;
 
 const GRID_N_RENDER_DEFAULT: usize = 70;
 const GRID_N_CHARGE_DEFAULT: usize = 61;
@@ -231,6 +231,8 @@ pub struct State {
     pub num_elecs: usize,
     pub ui: StateUi,
     pub presets: Vec<Preset>,
+    /// These are rendered.
+    pub charge_density_balls: Vec<Vec3>,
 }
 
 impl State {
@@ -317,7 +319,6 @@ impl State {
             // SurfaceDesc::new(SurfaceToRender::VPElec, false),
             SurfaceDesc::new(SurfaceToRender::H, false),
             SurfaceDesc::new(SurfaceToRender::HIm, false),
-            SurfaceDesc::new(SurfaceToRender::ChargeDensityBalls, false),
         ];
 
         if RENDER_L {
@@ -397,6 +398,7 @@ impl State {
             num_elecs,
             ui: Default::default(),
             presets: presets_,
+            charge_density_balls: Vec::new(),
         }
     }
 }
@@ -440,7 +442,12 @@ pub fn init_from_grid(
     // let arr_real = new_data_real(grid_n_sample);
     let arr_real_2d = new_data_2d_real(grid_n_sample);
 
-    let sfcs_one_elec = SurfacesPerElec::new(bases_per_elec[0].len(), grid_n_sample, Spin::Alpha);
+    let sfcs_one_elec = SurfacesPerElec::new(
+        bases_per_elec[0].len(),
+        grid_n_sample,
+        grid_n_charge,
+        Spin::Alpha,
+    );
 
     let mut surfaces_per_elec = Vec::new();
     for _ in 0..num_electrons {
@@ -670,9 +677,6 @@ pub enum SurfaceToRender {
     PsiSpinorCalc1,
     PsiSpinorCalc2,
     PsiSpinorCalc3,
-    /// This isn't a 2D surface; it renders spheres or similar proportional
-    /// to charge density. This is over 3D space, vice 2D + function value.
-    ChargeDensityBalls,
 }
 
 impl SurfaceToRender {
@@ -703,7 +707,6 @@ impl SurfaceToRender {
             Self::PsiSpinorCalc1 => "ψ_c1",
             Self::PsiSpinorCalc2 => "ψ2_c",
             Self::PsiSpinorCalc3 => "ψ3_c",
-            Self::ChargeDensityBalls => "ρ 3D",
         }
         .to_string()
     }

@@ -108,24 +108,24 @@ pub fn update_basis_weights(state: &mut State, ae: usize) {
     //     &state.surfaces_shared.V_from_nuclei,
     // );
 
-    let mut charge_density = &mut sfcs.charge_density;
+    // let mut charge_density = &mut sfcs.charge_density;
 
-    if state.ui.auto_gen_elec_V {
-        let mut psi_charge_grid = new_data(state.grid_n_charge);
-
-        wf_ops::mix_bases_charge(
-            &mut psi_charge_grid,
-            &mut charge_density,
-            &state.psi_charge[ae],
-            &weights,
-        );
-
-        wf_ops::charge_from_psi(
-            &mut state.charges_from_electron[ae],
-            &psi_charge_grid,
-            state.grid_n_charge,
-        );
-    }
+    // if state.ui.auto_gen_elec_V {
+    //     let mut psi_charge_grid = new_data(state.grid_n_charge);
+    //
+    //     wf_ops::mix_bases_charge(
+    //         &mut psi_charge_grid,
+    //         &mut charge_density,
+    //         &state.psi_charge[ae],
+    //         &weights,
+    //     );
+    //
+    //     wf_ops::charge_from_psi(
+    //         &mut state.charges_from_electron[ae],
+    //         &psi_charge_grid,
+    //         state.grid_n_charge,
+    //     );
+    // }
 
     // todo: Come back to: Broke after 2D refactor.
     // {
@@ -186,6 +186,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
     //     &state.surfaces_shared.grid_posits,
     // );
 
+    // Note: This is a heavy operation, because it's 3D, while our other surfaces are 2D.
     wf_ops::wf_from_bases_charge(
         &state.dev_psi,
         &mut state.psi_charge[ae],
@@ -218,7 +219,12 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
     }
 
     // Update sphere entity locations.
-    render::update_entities(&state.charges_fixed, &state.surface_descs_per_elec, scene);
+    render::update_entities(
+        &state.charges_fixed,
+        &state.surface_descs_per_elec,
+        scene,
+        &state.charge_density_balls,
+    );
 }
 
 /// Create the electric charge from a single electron's wave function squared. Note that this
@@ -305,13 +311,10 @@ pub(crate) fn he_solver(state: &mut State) {
     let sample_pts = basis_finder::generate_sample_pts();
 
     for i in 0..3 {
-        let elec_id = i % 2;
+        let ae = i % 2;
 
-        let charges_other_elecs = wf_ops::combine_electron_charges(
-            elec_id,
-            &state.charges_from_electron,
-            state.grid_n_charge,
-        );
+        let charges_other_elecs =
+            wf_ops::combine_electron_charges(ae, &state.charges_from_electron, state.grid_n_charge);
 
         // let xis: Vec<f64> = state.bases[elec_id].iter().map(|b| b.xi()).collect();
 
@@ -321,18 +324,18 @@ pub(crate) fn he_solver(state: &mut State) {
             &charges_other_elecs,
             &state.surfaces_shared.grid_posits_charge,
             &sample_pts,
-            &state.bases[elec_id],
+            &state.bases[ae],
             state.deriv_calc,
         );
 
-        state.surfaces_per_elec[elec_id].E = E;
-        state.bases[elec_id] = bases;
-        state.ui.active_elec = ActiveElec::PerElec(elec_id);
+        state.surfaces_per_elec[ae].E = E;
+        state.bases[ae] = bases;
+        state.ui.active_elec = ActiveElec::PerElec(ae);
 
         wf_ops::wf_from_bases_charge(
             &state.dev_psi,
-            &mut state.psi_charge[elec_id],
-            &state.bases[elec_id],
+            &mut state.psi_charge[ae],
+            &state.bases[ae],
             &state.surfaces_shared.grid_posits_charge,
         );
 
@@ -340,11 +343,11 @@ pub(crate) fn he_solver(state: &mut State) {
         // by the `updated_weights` flag.
 
         // let mut psi_charge_grid = new_data(state.grid_n_charge);
-        let weights: Vec<f64> = state.bases[elec_id].iter().map(|b| b.weight()).collect();
+        let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
 
         create_elec_charge(
-            &mut state.charges_from_electron[elec_id],
-            &state.psi_charge[elec_id],
+            &mut state.charges_from_electron[ae],
+            &state.psi_charge[ae],
             &weights,
             state.grid_n_charge,
         );
@@ -360,7 +363,4 @@ pub(crate) fn he_solver(state: &mut State) {
             state.grid_n_charge,
         );
     }
-
-    // create_elec_charge(state, 0);
-    // create_elec_charge(state, 1);
 }

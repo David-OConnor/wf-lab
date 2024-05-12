@@ -33,7 +33,6 @@ impl Default for ComputationDevice {
 
 pub struct SurfacesShared {
     /// Represents points on a grid, for our non-uniform grid.
-    // pub grid_posits: Arr3dVec,
     pub grid_posits: Arr2dVec,
     pub grid_posits_charge: Arr3dVec,
     /// Potential from nuclei, and all electrons
@@ -59,7 +58,7 @@ pub struct SurfacesShared {
     pub charge_beta: Arr3dReal,
     // Splitting up by charge density and spin density should be equivalent to splitting by
     // spin up and spin down.
-    /// Electron density total
+    /// Electron density total (todo: Currently unused, but we will likely eventually use it...)
     pub charge_density_all: Arr3dReal,
     /// Charge density for all spin beta electrons.
     pub spin_density: Arr3dReal,
@@ -286,12 +285,10 @@ pub struct SurfacesPerElec {
 
 impl SurfacesPerElec {
     /// Fills with 0.s
-    // pub fn new(num_bases: usize, grid_n: usize, grid_n_charge: usize, spin: Spin) -> Self {
-    pub fn new(num_bases: usize, grid_n: usize, spin: Spin) -> Self {
+    pub fn new(num_bases: usize, grid_n: usize, grid_n_charge: usize, spin: Spin) -> Self {
         let data = new_data(grid_n);
         let data_2d = new_data_2d(grid_n);
         let data_real = new_data_real(grid_n);
-        // let data_real_charge = new_data_real(grid_n_charge);
         let data_2d_real = new_data_2d_real(grid_n);
         // let derivs = Derivatives::new(grid_n);
         let derivs = Derivatives2D::new(grid_n);
@@ -337,7 +334,8 @@ impl SurfacesPerElec {
             V_acting_on_this: data_2d_real.clone(),
             psi: data_2d.clone(),
             charge_density_2d: data_2d_real.clone(),
-            charge_density: data_real.clone(),
+            // charge_density: data_real.clone(),
+            charge_density: new_data_real(grid_n_charge),
             psi_pp_calculated: data_2d.clone(),
             // derivs: data.clone(),
             derivs,

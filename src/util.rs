@@ -454,8 +454,6 @@ pub(crate) fn make_density_balls(
 ) -> Vec<Vec3> {
     // let n = charge.len();
 
-    println!("Len charge: {}, posit: {}", charge.len(), posits.len());
-
     // let min_posit = posits[0][0][0].x;
     // let max_posit = posits[0][0][n-1].x;
     // let range = (min_posit, max_posit);
