@@ -189,7 +189,10 @@ pub struct State {
     pub deriv_calc: DerivCalc,
     /// Eg, Nuclei (position, charge amt), per the Born-Oppenheimer approximation. Charges over space
     /// due to electrons are stored in `Surfaces`.
-    pub charges_fixed: Vec<(Vec3, f64)>,
+    pub nucleii: Vec<(Vec3, f64)>,
+    /// The electric force acting on the nucleus, from electrons and nuclei
+    /// todo: Combine with charges_fixed as a third Tuple term, or make it a struct.
+    pub net_force_on_nuc: Vec<Vec3>,
     /// Charges from electrons, over 3d space. Each value is the charge created by a single electron. Computed from <ψ|ψ>.
     /// This is not part of `SurfacesPerElec` since we use all values at once (or all except one)
     /// when calculating the potential. (easier to work with API)
@@ -251,6 +254,7 @@ impl State {
             (posit_charge_2, Q_PROT),
             // (posit_charge_2, Q_PROT * num_elecs as f64),
         ];
+        let net_force = vec![Vec3::new_zero(); nuclei.len()];
 
         // Outer of these is per-elec.
         let mut bases_per_elec = Vec::new();
@@ -379,7 +383,8 @@ impl State {
             dev_charge,
             dev_psi,
             deriv_calc: psi_pp_calc,
-            charges_fixed: nuclei,
+            nucleii: nuclei,
+            net_force_on_nuc: net_force,
             charges_from_electron: charges_electron,
             V_from_elecs,
             bases: bases_per_elec,

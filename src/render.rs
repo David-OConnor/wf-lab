@@ -883,7 +883,6 @@ pub fn update_entities(
     }
 
     for posit in charge_density_balls {
-        println!("Ball: {:?}", posit);
         entities.push(Entity::new(
             num_sfcs,
             Vec3::new(
@@ -987,7 +986,7 @@ pub fn render(state: State) {
     );
 
     update_entities(
-        &state.charges_fixed,
+        &state.nucleii,
         &state.surface_descs_per_elec,
         &mut scene,
         &state.charge_density_balls,

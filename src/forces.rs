@@ -9,44 +9,54 @@ use crate::{
     wf_ops::{K_C, Q_ELEC, Q_PROT},
 };
 
-/// Returns the force on nuc0, then nuc1.
-pub(crate) fn h2_force(
-    charge_elec0: &Arr3dReal,
-    charge_elec1: &Arr3dReal,
-    posit_nuc0: Vec3,
-    posit_nuc1: Vec3,
+
+pub(crate) fn calc_force_on_nucs(
+    nucs: &[(Vec3, f64)],
+    charges_elecs: &[Arr3dReal],
     grid_charge: &Arr3dVec,
-) -> (Vec3, Vec3) {
-    let diff_nuc = posit_nuc1 - posit_nuc0;
-    let nuc_dist = diff_nuc.magnitude();
+) -> Vec<Vec3> {
+    let mut result = Vec::new();
 
-    let q_elec_part = Q_ELEC / grid_charge.len() as f64;
+    for (i, (nuc_posit, nuc_charge)) in nucs.iter().enumerate() {
+        let mut f_on_this_nuc = Vec3::new_zero();
 
-    // todo: QC order.
-    // Initialize to force from the other nucleus;
-    // Note: We factor out KC * Q_PROT, since they are present in every calculation.
-    let mut f0 = diff_nuc * Q_PROT / nuc_dist.powi(2);
-    let mut f1 = -f0;
+        // Calculate force from other nuclei.
+        for (j, (nuc_posit_other, nuc_charge_other)) in nucs.iter().enumerate() {
+            if i == j {
+                continue
+            }
+            let posit_diff = *nuc_posit_other - *nuc_posit;
+            let nuc_dist = posit_diff.magnitude();
 
-    // Calculate the combined electron force on the nucleus.
-    // todo: GPU
-    for (i, j, k) in iter_arr!(grid_charge.len()) {
-        let diff_elec_nuc0 = grid_charge[i][j][k] - posit_nuc0;
-        let diff_elec_nuc1 = grid_charge[i][j][k] - posit_nuc1;
-        let nuc_dist0 = diff_elec_nuc0.magnitude();
-        let nuc_dist1 = diff_elec_nuc1.magnitude();
+            // Note: We factor out KC * Q_PROT, since they are present in every calculation.
+            // Calculate the Coulomb force between nuclei.
 
-        let charge0 = charge_elec0[i][j][k];
-        let charge1 = charge_elec1[i][j][k];
+            let f_mag = nuc_charge * nuc_charge_other / nuc_dist.powi(2);
 
-        // Force from both electroncs on nuc0.
-        f0 += diff_elec_nuc0 * charge0 * q_elec_part / nuc_dist0;
-        f0 += diff_elec_nuc0 * charge1 * q_elec_part / nuc_dist0;
+            f_on_this_nuc += posit_diff * f_mag;
+        }
 
-        // Force from both electroncs on nuc1.
-        f1 += diff_elec_nuc1 * charge0 * q_elec_part / nuc_dist1;
-        f1 += diff_elec_nuc1 * charge1 * q_elec_part / nuc_dist1;
+        // Calculate force from electrons.
+
+        // This variable is a component we can re-use, when calculating coulomb force.
+        let f_elec_part = nuc_charge / grid_charge.len() as f64;
+
+        for charge_elec in charges_elecs {
+            // todo: GPU
+            for (i, j, k) in iter_arr!(grid_charge.len()) {
+                let posit_diff = grid_charge[i][j][Ik] - *nuc_posit;
+                let dist_nuc = posit_diff.magnitude();
+
+                let charge = charge_elec[i][j][k];
+
+                // Force from both electroncs on nuc0.
+                let f_mag = f_elec_part * charge / dist_nuc.powi(2);
+                f_on_this_nuc += posit_diff * f_mag;
+            }
+        }
+        result.push(f_on_this_nuc);
     }
 
-    (f0 * K_C * Q_PROT, f1 * K_C * Q_PROT)
+    println!("Force on nucs: {:?}", result);
+    result
 }

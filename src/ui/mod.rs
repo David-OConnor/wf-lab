@@ -4,17 +4,7 @@ use egui::{self, Button, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg::f64::Vec3;
 
-use crate::{
-    basis_finder, basis_init,
-    basis_wfs::Basis,
-    eigen_fns, grid_setup,
-    grid_setup::{new_data, new_data_2d},
-    iter_arr, render,
-    types::{Derivatives, Derivatives2D},
-    util, wf_ops,
-    wf_ops::{DerivCalc, Spin},
-    ActiveElec, Axis, State, GRID_MAX_RENDER, SPACING_FACTOR_DEFAULT,
-};
+use crate::{basis_finder, basis_init, basis_wfs::Basis, eigen_fns, grid_setup, grid_setup::{new_data, new_data_2d}, iter_arr, render, types::{Derivatives, Derivatives2D}, util, wf_ops, wf_ops::{DerivCalc, Spin}, ActiveElec, Axis, State, GRID_MAX_RENDER, SPACING_FACTOR_DEFAULT, forces};
 
 pub(crate) mod procedures;
 
@@ -158,7 +148,7 @@ fn basis_fn_mixer(
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
                             for (charge_i, (_charge_posit, _amt)) in
-                                state.charges_fixed.iter().enumerate()
+                                state.nucleii.iter().enumerate()
                             {
                                 ui.selectable_value(
                                     basis.charge_id_mut(),
@@ -169,7 +159,7 @@ fn basis_fn_mixer(
                         });
 
                     if basis.charge_id() != prev_charge_id {
-                        *basis.posit_mut() = state.charges_fixed[basis.charge_id()].0;
+                        *basis.posit_mut() = state.nucleii[basis.charge_id()].0;
 
                         recalc_this_basis = true;
                         *updated_basis_weights = true;
@@ -460,6 +450,7 @@ fn bottom_items(
     updated_basis_weights: &mut bool,
     updated_E_or_V: &mut bool,
     updated_evaluated_wfs: &mut bool,
+    updated_entities: &mut bool
 ) {
     ui.horizontal(|ui| {
         // if ui.add(Button::new("Empty e- charge")).clicked() {
@@ -520,7 +511,7 @@ fn bottom_items(
 
             let (bases, E) = basis_finder::run(
                 &state.dev_charge,
-                &state.charges_fixed,
+                &state.nucleii,
                 &charges_other_elecs,
                 &state.surfaces_shared.grid_posits_charge,
                 &sample_pts,
@@ -560,6 +551,16 @@ fn bottom_items(
             *updated_meshes = true;
         }
 
+        if ui.add(Button::new("Calc F")).clicked() {
+            state.net_force_on_nuc = forces::calc_force_on_nucs(
+                &state.nucleii,
+                &state.charges_from_electron,
+                &state.surfaces_shared.grid_posits_charge,
+            );
+
+            println!("\n Force on nucs: {:?}", state.net_force_on_nuc);
+        }
+
         if ui.add(Button::new("Build dots")).clicked() {
             // todo: Investigate if/why we are recreating this here; shouldn't it already exist?
             // Create the 3D Psi here. Then its square (charge density).
@@ -597,11 +598,12 @@ fn bottom_items(
             // *updated_E_or_V = true;
             // *updated_basis_weights = true;
             render::update_entities(
-                &state.charges_fixed,
+                &state.nucleii,
                 &state.surface_descs_per_elec,
                 scene,
                 &state.charge_density_balls,
             );
+            *updated_entities = true;
         }
     });
 
@@ -707,7 +709,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     state.grid_n_charge,
                     &state.bases,
                     &state.bases_spinor,
-                    &state.charges_fixed,
+                    &state.nucleii,
                     state.num_elecs,
                     state.deriv_calc,
                     state.ui.hidden_axis,
@@ -722,7 +724,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 for elec_i in 0..state.surfaces_per_elec.len() {
                     // todo: Kludge for Li
                     let n = if elec_i > 1 { 2 } else { 1 };
-                    basis_init::initialize_bases(&mut state.bases[elec_i], &state.charges_fixed, n);
+                    basis_init::initialize_bases(&mut state.bases[elec_i], &state.nucleii, n);
                 }
 
                 updated_evaluated_wfs = true;
@@ -1007,7 +1009,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 ui.heading("Charges:");
 
                 charge_editor(
-                    &mut state.charges_fixed,
+                    &mut state.nucleii,
                     &mut state.bases[ae],
                     &mut updated_evaluated_wfs,
                     &mut updated_basis_weights,
@@ -1027,6 +1029,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                     &mut updated_basis_weights,
                     &mut updated_E_or_V,
                     &mut updated_evaluated_wfs,
+                    &mut engine_updates.entities,
                 );
 
                 ui.add_space(ITEM_SPACING);
@@ -1094,7 +1097,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             match state.ui.active_elec {
                 ActiveElec::PerElec(ae) => {
                     render::update_entities(
-                        &state.charges_fixed,
+                        &state.nucleii,
                         &state.surface_descs_per_elec,
                         scene,
                         &state.charge_density_balls,
@@ -1102,7 +1105,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 }
                 ActiveElec::Combined => {
                     render::update_entities(
-                        &state.charges_fixed,
+                        &state.nucleii,
                         &state.surface_descs_combined,
                         scene,
                         &state.charge_density_balls,

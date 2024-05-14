@@ -198,7 +198,7 @@ pub fn update_evaluated_wfs(state: &mut State, ae: usize) {
 pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
     potential::update_V_from_nuclei(
         &mut state.surfaces_shared.V_from_nuclei,
-        &state.charges_fixed,
+        &state.nucleii,
         &state.surfaces_shared.grid_posits,
     );
 
@@ -208,7 +208,7 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
     for elec_i in 0..state.surfaces_per_elec.len() {
         // todo: Kludge for Li
         let n = if elec_i > 1 { 2 } else { 1 };
-        basis_init::initialize_bases(&mut state.bases[elec_i], &state.charges_fixed, n);
+        basis_init::initialize_bases(&mut state.bases[elec_i], &state.nucleii, n);
 
         potential::update_V_acting_on_elec(
             &mut state.surfaces_per_elec[elec_i].V_acting_on_this,
@@ -220,7 +220,7 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
 
     // Update sphere entity locations.
     render::update_entities(
-        &state.charges_fixed,
+        &state.nucleii,
         &state.surface_descs_per_elec,
         scene,
         &state.charge_density_balls,
@@ -320,7 +320,7 @@ pub(crate) fn he_solver(state: &mut State) {
 
         let (bases, E) = basis_finder::run(
             &state.dev_charge,
-            &state.charges_fixed,
+            &state.nucleii,
             &charges_other_elecs,
             &state.surfaces_shared.grid_posits_charge,
             &sample_pts,
