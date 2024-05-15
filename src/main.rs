@@ -100,11 +100,9 @@ use crate::{
 };
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 3.;
+const GRID_MAX_RENDER: f64 = 2.;
 
-// todo: We have this temporarily high for force calc troubleshooting
-// const GRID_MAX_CHARGE: f64 = 8.;
-const GRID_MAX_CHARGE: f64 = 12.;
+const GRID_MAX_CHARGE: f64 = 8.;
 
 const GRID_N_RENDER_DEFAULT: usize = 70;
 
@@ -252,6 +250,9 @@ impl State {
     ) -> Self {
         println!("Initializing state...");
 
+        // todo: No, that's not your value for H2. That's your value for H2 using h bases
+        // with no modifications. Find the actual wave function, then measure distance.
+        // Getting bond len = 1.92 for H2... not right. Should be 1.4.
         let posit_charge_1 = Vec3::new(-0.7, 0., 0.);
         let posit_charge_2 = Vec3::new(0.7, 0., 0.);
 

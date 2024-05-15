@@ -34,6 +34,23 @@ pub fn initialize_bases(
         (10., 0.),
     ];
 
+    let weights_h2 = vec![
+        (1., 0.7),
+        (2., 0.3),
+        // (2.5, 0.),
+        (3., 0.05),
+        // (3.5, 0.),
+        (4., 0.),
+        // (4.5, 0.),
+        (5., 0.),
+        // (5.5, 0.),
+        (6., 0.),
+        // (7., 0.),
+        (8., 0.),
+        // (9., 0.),
+        (10., 0.),
+    ];
+
     let weights_he = vec![
         (1., 0.45),
         (2., -0.02),
@@ -127,7 +144,8 @@ pub fn initialize_bases(
         // See Sebens, for weights under equation 24; this is for Helium.
 
         let weights = if n == 1 {
-            &weights_h
+            // &weights_h
+            &weights_h2
             // &weights_he_no_norm
             // &weights_li_inner_no_norm
         } else {

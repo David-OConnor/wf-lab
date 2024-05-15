@@ -33,7 +33,7 @@ pub(crate) mod gto;
 pub(crate) mod h;
 pub(crate) mod sto;
 
-pub(crate) use gto::Gto;
+pub(crate) use gto::Gaussian;
 pub(crate) use h::HOrbital;
 pub(crate) use sto::Sto;
 
@@ -41,7 +41,7 @@ pub(crate) use sto::Sto;
 #[derive(Clone, Debug)]
 pub enum Basis {
     H(HOrbital),
-    Gto(Gto),
+    G(Gaussian),
     Sto(Sto),
 }
 
@@ -63,7 +63,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.posit,
             Self::H(v) => v.posit,
-            Self::Gto(v) => v.posit,
+            Self::G(v) => v.posit,
             Self::Sto(v) => v.posit,
         }
     }
@@ -72,7 +72,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.posit,
             Self::H(v) => &mut v.posit,
-            Self::Gto(v) => &mut v.posit,
+            Self::G(v) => &mut v.posit,
             Self::Sto(v) => &mut v.posit,
         }
     }
@@ -81,7 +81,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.n,
             Self::H(v) => v.n,
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => v.n,
         }
     }
@@ -90,7 +90,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.n,
             Self::H(v) => &mut v.n,
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => &mut v.n,
         }
     }
@@ -99,7 +99,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.harmonic.l,
             Self::H(v) => v.harmonic.l,
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(_v) => unimplemented!(),
         }
     }
@@ -108,7 +108,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.harmonic.l,
             Self::H(v) => &mut v.harmonic.l,
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(_v) => unimplemented!(),
         }
     }
@@ -117,7 +117,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.harmonic.l,
             Self::H(_v) => unimplemented!(),
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => &mut v.xi,
         }
     }
@@ -126,7 +126,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.harmonic.m,
             Self::H(v) => v.harmonic.m,
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(_v) => unimplemented!(),
         }
     }
@@ -135,7 +135,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.harmonic.m,
             Self::H(v) => &mut v.harmonic.m,
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(_v) => unimplemented!(),
         }
     }
@@ -144,7 +144,8 @@ impl Basis {
         match self {
             // Self::Sto(v) => &v.harmonic,
             Self::H(v) => &v.harmonic,
-            Self::Gto(v) => &v.harmonic,
+            // Self::G(v) => &v.harmonic,
+            Self::G(v) => unimplemented!(),
             Self::Sto(v) => &v.harmonic,
         }
     }
@@ -153,7 +154,8 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.harmonic,
             Self::H(v) => &mut v.harmonic,
-            Self::Gto(v) => &mut v.harmonic,
+            // Self::G(v) => &mut v.harmonic,
+            Self::G(v) => unimplemented!(),
             Self::Sto(v) => &mut v.harmonic,
         }
     }
@@ -162,7 +164,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.weight,
             Self::H(v) => v.weight,
-            Self::Gto(v) => v.weight,
+            Self::G(v) => v.weight,
             Self::Sto(v) => v.weight,
         }
     }
@@ -171,7 +173,7 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.weight,
             Self::H(v) => unimplemented!(),
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => v.xi,
         }
     }
@@ -179,7 +181,7 @@ impl Basis {
     pub fn weight_mut(&mut self) -> &mut f64 {
         match self {
             Self::H(v) => &mut v.weight,
-            Self::Gto(v) => &mut v.weight,
+            Self::G(v) => &mut v.weight,
             Self::Sto(v) => &mut v.weight,
         }
     }
@@ -187,7 +189,7 @@ impl Basis {
     pub fn value(&self, posit_sample: Vec3) -> Cplx {
         match self {
             Self::H(v) => v.value(posit_sample),
-            Self::Gto(v) => v.value(posit_sample),
+            Self::G(v) => v.value(posit_sample),
             Self::Sto(v) => v.value(posit_sample),
         }
     }
@@ -195,7 +197,7 @@ impl Basis {
     pub fn dx(&self, posit_sample: Vec3) -> Cplx {
         match self {
             Self::H(v) => unimplemented!(),
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => v.dx(posit_sample),
         }
     }
@@ -203,7 +205,7 @@ impl Basis {
     pub fn dy(&self, posit_sample: Vec3) -> Cplx {
         match self {
             Self::H(v) => unimplemented!(),
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => v.dy(posit_sample),
         }
     }
@@ -211,7 +213,7 @@ impl Basis {
     pub fn dz(&self, posit_sample: Vec3) -> Cplx {
         match self {
             Self::H(v) => unimplemented!(),
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => v.dz(posit_sample),
         }
     }
@@ -219,7 +221,7 @@ impl Basis {
     pub fn d2x(&self, posit_sample: Vec3) -> Cplx {
         match self {
             Self::H(v) => unimplemented!(),
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => v.d2x(posit_sample),
         }
     }
@@ -227,7 +229,7 @@ impl Basis {
     pub fn d2y(&self, posit_sample: Vec3) -> Cplx {
         match self {
             Self::H(v) => unimplemented!(),
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => v.d2y(posit_sample),
         }
     }
@@ -235,7 +237,7 @@ impl Basis {
     pub fn d2z(&self, posit_sample: Vec3) -> Cplx {
         match self {
             Self::H(v) => unimplemented!(),
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => v.d2z(posit_sample),
         }
     }
@@ -244,7 +246,7 @@ impl Basis {
     pub fn second_deriv(&self, posit_sample: Vec3) -> Cplx {
         match self {
             Self::H(v) => v.second_deriv(posit_sample),
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => v.second_deriv(posit_sample),
             // Self::Sto(v) => v.second_deriv_type2(posit_sample),
         }
@@ -262,7 +264,7 @@ impl Basis {
     pub fn V_p_from_psi(&self, posit_sample: Vec3) -> f64 {
         match self {
             Self::H(_v) => 0.,
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => v.V_p_from_psi(posit_sample),
         }
     }
@@ -270,7 +272,7 @@ impl Basis {
     pub fn V_pp_from_psi(&self, posit_sample: Vec3) -> f64 {
         match self {
             Self::H(_v) => 0.,
-            Self::Gto(_v) => unimplemented!(),
+            Self::G(_v) => unimplemented!(),
             Self::Sto(v) => v.V_pp_from_psi(posit_sample),
         }
     }
@@ -279,7 +281,8 @@ impl Basis {
         match self {
             // Self::Sto(v) => v.charge_id,
             Self::H(v) => v.charge_id,
-            Self::Gto(v) => v.charge_id,
+            // Self::G(v) => v.charge_id,
+            Self::G(v) => unimplemented!(),
             Self::Sto(v) => v.charge_id,
         }
     }
@@ -288,7 +291,8 @@ impl Basis {
         match self {
             // Self::Sto(v) => &mut v.charge_id,
             Self::H(v) => &mut v.charge_id,
-            Self::Gto(v) => &mut v.charge_id,
+            // Self::G(v) => &mut v.charge_id,
+            Self::G(v) => unimplemented!(),
             Self::Sto(v) => &mut v.charge_id,
         }
     }
@@ -297,7 +301,7 @@ impl Basis {
         match self {
             // Self::Sto(_) => "STO",
             Self::H(_) => "H",
-            Self::Gto(_) => "SO1",
+            Self::G(_) => "SO1",
             Self::Sto(_) => "SO2",
         }
         .to_owned()

@@ -224,7 +224,7 @@ fn basis_fn_mixer(
                                 *updated_basis_weights = true;
                             }
                         }
-                        Basis::Gto(b) => {
+                        Basis::G(b) => {
                             ui.heading("α:");
                             let mut entry = b.alpha.to_string(); // angle
                             let response =
@@ -570,6 +570,16 @@ fn bottom_items(
 
             println!("\n Force on nucs: {:?}", state.net_force_on_nuc);
         }
+
+        // if ui.add(Button::new("Set bond dist")).clicked() {
+        //     state.net_force_on_nuc = forces::calc_force_on_nucs(
+        //         &state.nucleii,
+        //         &state.charges_from_electron,
+        //         &state.surfaces_shared.grid_posits_charge,
+        //     );
+        //
+        //     println!("\n Force on nucs: {:?}", state.net_force_on_nuc);
+        // }
 
         if ui.add(Button::new("Build dots")).clicked() {
             // todo: Investigate if/why we are recreating this here; shouldn't it already exist?

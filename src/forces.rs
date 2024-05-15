@@ -37,12 +37,13 @@ pub(crate) fn calc_force_on_nucs(
             f_on_this_nuc += posit_diff_unit * f_mag;
         }
 
-        println!("Force from other nucs: {:?}", f_on_this_nuc);
+        println!("Repulsion from other nucs: {:?}", f_on_this_nuc);
 
         // Calculate force from electrons.
 
         // This variable is a component we can re-use, when calculating coulomb force.
-        let f_elec_part = nuc_charge / grid_charge.len().powi(3) as f64;
+        // let f_elec_part = nuc_charge / grid_charge.len().pow(3) as f64;
+        let f_elec_part = nuc_charge;
 
         for charge_elec in charges_elecs {
             // todo: GPU
@@ -62,7 +63,7 @@ pub(crate) fn calc_force_on_nucs(
 
                 elec_f += posit_diff_unit * f_mag;
             }
-            println!("Force from this elec: {:?}", elec_f);
+            println!("Attraction from this elec: {:?}", elec_f);
         }
         result.push(f_on_this_nuc);
     }
