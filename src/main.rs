@@ -101,10 +101,16 @@ use crate::{
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_RENDER: f64 = 3.;
-const GRID_MAX_CHARGE: f64 = 8.;
+
+// todo: We have this temporarily high for force calc troubleshooting
+// const GRID_MAX_CHARGE: f64 = 8.;
+const GRID_MAX_CHARGE: f64 = 12.;
 
 const GRID_N_RENDER_DEFAULT: usize = 70;
-const GRID_N_CHARGE_DEFAULT: usize = 61;
+
+// todo: We have this temporarily high for force calc troubleshooting
+// const GRID_N_CHARGE_DEFAULT: usize = 61;
+const GRID_N_CHARGE_DEFAULT: usize = 91;
 
 const RENDER_SPINOR: bool = false;
 const RENDER_L: bool = true;

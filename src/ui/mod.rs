@@ -4,7 +4,17 @@ use egui::{self, Button, Color32, RichText, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg::f64::Vec3;
 
-use crate::{basis_finder, basis_init, basis_wfs::Basis, eigen_fns, grid_setup, grid_setup::{new_data, new_data_2d}, iter_arr, render, types::{Derivatives, Derivatives2D}, util, wf_ops, wf_ops::{DerivCalc, Spin}, ActiveElec, Axis, State, GRID_MAX_RENDER, SPACING_FACTOR_DEFAULT, forces};
+use crate::{
+    basis_finder, basis_init,
+    basis_wfs::Basis,
+    eigen_fns, forces, grid_setup,
+    grid_setup::{new_data, new_data_2d},
+    iter_arr, render,
+    types::{Derivatives, Derivatives2D},
+    util, wf_ops,
+    wf_ops::{DerivCalc, Spin},
+    ActiveElec, Axis, State, GRID_MAX_RENDER, SPACING_FACTOR_DEFAULT,
+};
 
 pub(crate) mod procedures;
 
@@ -450,7 +460,7 @@ fn bottom_items(
     updated_basis_weights: &mut bool,
     updated_E_or_V: &mut bool,
     updated_evaluated_wfs: &mut bool,
-    updated_entities: &mut bool
+    updated_entities: &mut bool,
 ) {
     ui.horizontal(|ui| {
         // if ui.add(Button::new("Empty e- charge")).clicked() {
