@@ -35,8 +35,9 @@ pub fn initialize_bases(
     ];
 
     let weights_h2 = vec![
+        // Also: Gaussian at midpoint, C=0.5, weight=0.2
         (1., 0.7),
-        (2., 0.3),
+        (2., 0.2),
         // (2.5, 0.),
         (3., 0.05),
         // (3.5, 0.),
@@ -151,6 +152,9 @@ pub fn initialize_bases(
         } else {
             &weights_li_outer_no_norm
         };
+
+        // Experimenting
+        bases.push(Basis::new_gauss(Vec3::new_zero(), 1., 0.5));
 
         for (xi, weight) in weights {
             bases.push(Basis::new_sto(*nuc_posit, n, *xi, *weight, charge_id));

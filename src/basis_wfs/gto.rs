@@ -11,8 +11,8 @@ use crate::complex_nums::Cplx;
 pub struct Gaussian {
     // pub charge_id: usize,
     pub posit: Vec3,
-    /// Height
-    pub alpha: f64,
+    // Height
+    // pub a: f64,
     /// Standard deviation.
     pub c: f64,
     pub weight: f64,
@@ -26,15 +26,10 @@ impl Gaussian {
         let diff = posit_sample - self.posit;
         let r_sq = diff.magnitude_squared();
 
-        Cplx::from_real((-self.alpha * r_sq).exp())
-    }
+        // todO: How should we handle the complex part?
 
-    /// Going back to Gaussian basics here. Re-evaluate your original `value` fn.
-    pub fn value2(&self, posit_sample: Vec3) -> Cplx {
-        let diff = posit_sample - self.posit;
-        let r_sq = diff.magnitude_squared();
-        // let r = diff.magnitude;
+        // println!("TEST r{:?} w{} c{} V{}",r_sq, self.weight, self.c, self.weight * (-r_sq / (2. * self.c.powi(2))).exp());
 
-        Cplx::from_real(self.alpha * (r_sq / (2. * self.c.powi(2))).exp())
+        Cplx::from_real(self.weight * (-r_sq / (2. * self.c.powi(2))).exp())
     }
 }

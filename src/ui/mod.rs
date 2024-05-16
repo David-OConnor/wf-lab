@@ -83,6 +83,9 @@ fn charge_editor(
 
                 // Updated basis centers based on the updated charge positions.
                 for basis in basis_fns.iter_mut() {
+                    if let Basis::G(_) = basis {
+                        continue; // Not associated with a nucleus.
+                    }
                     if basis.charge_id() == i {
                         *basis.posit_mut() = *posit;
                     }
@@ -225,12 +228,26 @@ fn basis_fn_mixer(
                             }
                         }
                         Basis::G(b) => {
-                            ui.heading("α:");
-                            let mut entry = b.alpha.to_string(); // angle
-                            let response =
-                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            let c_prev = b.c;
+
+                            ui.heading("c:");
+
+                            const C_INT_FACTOR: f64 = 100.;
+                            let mut val = (b.c * C_INT_FACTOR) as u32;
+                            let mut entry = val.to_string();
+
+                            let response = ui.add(
+                                egui::TextEdit::singleline(&mut entry)
+                                    .desired_width(FLOAT_EDIT_WIDTH),
+                            );
                             if response.changed() {
-                                b.alpha = entry.parse().unwrap_or(1.);
+                                val = entry.parse().unwrap_or(100);
+                                b.c = (val as f64) / C_INT_FACTOR;
+                            }
+
+                            if b.c != c_prev {
+                                recalc_this_basis = true;
+                                *updated_basis_weights = true;
                             }
                         } // Basis::Sto(_b) => (),
                         Basis::Sto(b) => {
@@ -422,28 +439,6 @@ fn basis_fn_mixer(
                         *state.bases[elec_i][*basis_i].weight_mut() =
                             state.bases[active_elec][*basis_i].weight();
                         // *updated_basis_weights = true; // Make this update for all!
-
-                        // todo: DRY-filled C+P from `if updated_basis_weights` below! Fix this with
-                        // todo a better API
-
-                        let ae = elec_i;
-
-                        // wf_ops::update_wf_fm_bases(
-                        //     &mut state.surfaces_per_elec[ae],
-                        //     &state.bases_evaluated[ae],
-                        //     state.surfaces_shared.E,
-                        //     state.grid_n_render,
-                        //     &weights,
-                        // );
-
-                        let E = if state.ui.adjust_E_with_weights {
-                            None
-                        } else {
-                            Some(state.surfaces_per_elec[ae].E)
-                        };
-
-                        let weights: Vec<f64> =
-                            state.bases[ae].iter().map(|b| b.weight()).collect();
                     }
                 }
             }

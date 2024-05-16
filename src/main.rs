@@ -107,8 +107,8 @@ const GRID_MAX_CHARGE: f64 = 8.;
 const GRID_N_RENDER_DEFAULT: usize = 70;
 
 // todo: We have this temporarily high for force calc troubleshooting
-// const GRID_N_CHARGE_DEFAULT: usize = 61;
-const GRID_N_CHARGE_DEFAULT: usize = 91;
+const GRID_N_CHARGE_DEFAULT: usize = 61;
+// const GRID_N_CHARGE_DEFAULT: usize = 91;
 
 const RENDER_SPINOR: bool = false;
 const RENDER_L: bool = true;
@@ -255,12 +255,9 @@ impl State {
         // Getting bond len = 1.92 for H2... not right. Should be 1.4.
         let posit_charge_1 = Vec3::new(-0.7, 0., 0.);
         let posit_charge_2 = Vec3::new(0.7, 0., 0.);
+        // let posit_charge_1 = Vec3::new(0., 0., 0.);
 
-        let nuclei = vec![
-            (posit_charge_1, Q_PROT),
-            (posit_charge_2, Q_PROT),
-            // (posit_charge_2, Q_PROT * num_elecs as f64),
-        ];
+        let nuclei = vec![(posit_charge_1, Q_PROT), (posit_charge_2, Q_PROT)];
         let net_force = vec![Vec3::new_zero(); nuclei.len()];
 
         // Outer of these is per-elec.

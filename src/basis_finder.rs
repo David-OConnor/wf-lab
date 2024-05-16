@@ -298,6 +298,9 @@ fn find_bases_system_of_eqs(
     let mut psi_pp_mat_ = Vec::new();
 
     for basis in bases {
+        if let Basis::G(_) = basis {
+            continue;
+        }
         let sto = Basis::new_sto(basis.posit(), basis.n(), basis.xi(), 1., basis.charge_id());
 
         // Sample positions are the columns.

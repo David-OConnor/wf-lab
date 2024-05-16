@@ -66,7 +66,7 @@ const CHARGE_DENSITY_SCALER: f32 = 10_000.;
 const PSI_PP_SCALER: f32 = 20.;
 
 // const V_SCALER: f32 = 1.;
-const V_SCALER: f32 = 0.02;
+const V_SCALER: f32 = 0.05;
 
 pub(crate) const N_CHARGE_BALLS: usize = 2_000;
 

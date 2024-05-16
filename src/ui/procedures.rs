@@ -2,15 +2,13 @@
 //! Components here may be called in one or more places.
 
 use graphics::{EngineUpdates, Scene};
-use lin_alg::f64::Vec3;
 
 use crate::{
     basis_finder, basis_init,
-    basis_wfs::{Basis, Sto},
-    grid_setup::{new_data, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec},
-    iter_arr, potential, render,
+    grid_setup::{new_data, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal},
+    potential, render,
     types::SurfacesPerElec,
-    util, wf_ops, ActiveElec, State,
+    wf_ops, ActiveElec, State,
 };
 
 pub fn update_E_or_V(
@@ -44,50 +42,63 @@ pub fn update_E_or_V(
 }
 
 /// Set up our basis-function based trial wave function.
-pub fn update_basis_weights(state: &mut State, ae: usize) {
-    let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
+pub fn update_basis_weights(state: &mut State, ae_: usize) {
+    // If symmetry is enabled update weights for all electrons; not just the active one.
+    let elecs_i = if state.ui.weight_symmetry {
+        let mut r = Vec::new();
+        for i in 0..state.num_elecs {
+            r.push(i);
+        }
+        r
+    } else {
+        vec![ae_]
+    };
 
-    let sfcs = &mut state.surfaces_per_elec[ae];
+    for ae in elecs_i {
+        let weights: Vec<f64> = state.bases[ae].iter().map(|b| b.weight()).collect();
 
-    // Prevents double borrow-mut error
-    let psi = &mut sfcs.psi;
-    let charge_density_2d = &mut sfcs.charge_density_2d;
-    let psi_pp = &mut sfcs.derivs;
-    let spinor = &mut sfcs.spinor;
-    let spinor_derivs = &mut sfcs.spinor_derivs;
+        let sfcs = &mut state.surfaces_per_elec[ae];
 
-    wf_ops::mix_bases(
-        psi,
-        charge_density_2d,
-        psi_pp,
-        &sfcs.psi_per_basis,
-        &sfcs.derivs_per_basis,
-        &weights,
-    );
+        // Prevents double borrow-mut error
+        let psi = &mut sfcs.psi;
+        let charge_density_2d = &mut sfcs.charge_density_2d;
+        let psi_pp = &mut sfcs.derivs;
+        let spinor = &mut sfcs.spinor;
+        let spinor_derivs = &mut sfcs.spinor_derivs;
 
-    wf_ops::mix_bases_spinor(
-        spinor,
-        None, // todo
-        Some(spinor_derivs),
-        &sfcs.spinor_per_basis,
-        Some(&sfcs.spinor_derivs_per_basis),
-        &weights,
-    );
+        wf_ops::mix_bases(
+            psi,
+            charge_density_2d,
+            psi_pp,
+            &sfcs.psi_per_basis,
+            &sfcs.derivs_per_basis,
+            &weights,
+        );
 
-    wf_ops::update_eigen_vals(
-        &mut sfcs.V_elec_eigen,
-        &mut sfcs.V_total_eigen,
-        &mut sfcs.psi_pp_calculated,
-        &sfcs.psi,
-        &sfcs.derivs,
-        &sfcs.V_acting_on_this,
-        sfcs.E,
-        &state.surfaces_shared.V_from_nuclei,
-        &state.surfaces_shared.grid_posits,
-        &mut sfcs.psi_fm_H,
-        &mut sfcs.psi_fm_L2,
-        &mut sfcs.psi_fm_Lz,
-    );
+        wf_ops::mix_bases_spinor(
+            spinor,
+            None, // todo
+            Some(spinor_derivs),
+            &sfcs.spinor_per_basis,
+            Some(&sfcs.spinor_derivs_per_basis),
+            &weights,
+        );
+
+        wf_ops::update_eigen_vals(
+            &mut sfcs.V_elec_eigen,
+            &mut sfcs.V_total_eigen,
+            &mut sfcs.psi_pp_calculated,
+            &sfcs.psi,
+            &sfcs.derivs,
+            &sfcs.V_acting_on_this,
+            sfcs.E,
+            &state.surfaces_shared.V_from_nuclei,
+            &state.surfaces_shared.grid_posits,
+            &mut sfcs.psi_fm_H,
+            &mut sfcs.psi_fm_L2,
+            &mut sfcs.psi_fm_Lz,
+        );
+    }
 
     // todo: A/R
     // wf_ops::update_eigen_vals_spinor(

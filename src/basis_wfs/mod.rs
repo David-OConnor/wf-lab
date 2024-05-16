@@ -58,6 +58,10 @@ impl Basis {
         })
     }
 
+    pub fn new_gauss(posit: Vec3, c: f64, weight: f64) -> Self {
+        Self::G(Gaussian { posit, c, weight })
+    }
+
     /// These getters and setters allow access to common values (all but slater weight) without unpacking.
     pub fn posit(&self) -> Vec3 {
         match self {
@@ -282,7 +286,8 @@ impl Basis {
             // Self::Sto(v) => v.charge_id,
             Self::H(v) => v.charge_id,
             // Self::G(v) => v.charge_id,
-            Self::G(v) => unimplemented!(),
+            // Self::G(v) => unimplemented!(),
+            Self::G(v) => 0, // todo?,
             Self::Sto(v) => v.charge_id,
         }
     }
@@ -292,6 +297,7 @@ impl Basis {
             // Self::Sto(v) => &mut v.charge_id,
             Self::H(v) => &mut v.charge_id,
             // Self::G(v) => &mut v.charge_id,
+            // Self::G(v) => unimplemented!(),
             Self::G(v) => unimplemented!(),
             Self::Sto(v) => &mut v.charge_id,
         }
