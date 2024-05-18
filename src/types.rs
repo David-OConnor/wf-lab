@@ -261,6 +261,8 @@ pub struct SurfacesPerElec {
     /// Aux surfaces are for misc visualizations
     pub V_elec_eigen: Arr2dReal,
     pub V_total_eigen: Arr2dReal,
+    /// todo: Experimenting with using Gaussians to fill in the gaps. These are the gaps.
+    pub V_diff: Arr2dReal,
     pub aux3: Arr2dReal,
     /// Hamiltonian (Schrodinger equation energery eigenfunction)
     pub psi_fm_H: Arr2d,
@@ -347,6 +349,7 @@ impl SurfacesPerElec {
             // charge: new_data_real(n_grid_charge),
             V_elec_eigen: data_2d_real.clone(),
             V_total_eigen: data_2d_real.clone(),
+            V_diff: data_2d_real.clone(),
             aux3: data_2d_real,
             psi_fm_H: data_2d.clone(),
             psi_fm_L2: data_2d.clone(),

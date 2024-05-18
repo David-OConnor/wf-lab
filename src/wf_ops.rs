@@ -413,7 +413,7 @@ pub fn mix_bases_charge(
         }
     }
 
-    println!("3D norm: {:?}.", norm);
+    // println!("3D norm: {:?}.", norm);
 
     util::normalize_arr(psi, norm);
 
@@ -552,6 +552,7 @@ pub(crate) fn charge_from_psi(
 pub fn update_eigen_vals(
     V_elec: &mut Arr2dReal,
     V_total: &mut Arr2dReal,
+    V_diff: &mut Arr2dReal,
     psi_pp_calculated: &mut Arr2d,
     psi: &Arr2d,
     derivs: &Derivatives2D,
@@ -595,6 +596,9 @@ pub fn update_eigen_vals(
     for (i, j) in iter_arr_2d!(grid_n) {
         V_total[i][j] = eigen_fns::calc_V_on_psi(psi[i][j], derivs.d2_sum[i][j], E);
         V_elec[i][j] = V_total[i][j] - V_nuc[i][j];
+
+        // todo: Experimenting
+        V_diff[i][j] = V_acting_on_this[i][j] - V_total[i][j];
 
         // todo: Another case where a reversed Derivs API would help.
         let derivs_single = DerivativesSingle {

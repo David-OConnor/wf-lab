@@ -20,6 +20,7 @@ pub fn update_E_or_V(
     wf_ops::update_eigen_vals(
         &mut sfcs.V_elec_eigen,
         &mut sfcs.V_total_eigen,
+        &mut sfcs.V_diff,
         &mut sfcs.psi_pp_calculated,
         &sfcs.psi,
         &sfcs.derivs,
@@ -87,6 +88,7 @@ pub fn update_basis_weights(state: &mut State, ae_: usize) {
         wf_ops::update_eigen_vals(
             &mut sfcs.V_elec_eigen,
             &mut sfcs.V_total_eigen,
+            &mut sfcs.V_diff,
             &mut sfcs.psi_pp_calculated,
             &sfcs.psi,
             &sfcs.derivs,

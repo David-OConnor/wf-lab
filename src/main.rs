@@ -76,6 +76,7 @@ mod eigen_raw;
 mod elec_elec;
 mod eval;
 mod forces;
+mod gauss_padding;
 #[cfg(feature = "cuda")]
 mod gpu;
 mod grid_setup;
@@ -100,7 +101,7 @@ use crate::{
 };
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 2.;
+const GRID_MAX_RENDER: f64 = 3.;
 
 const GRID_MAX_CHARGE: f64 = 8.;
 
@@ -253,11 +254,18 @@ impl State {
         // todo: No, that's not your value for H2. That's your value for H2 using h bases
         // with no modifications. Find the actual wave function, then measure distance.
         // Getting bond len = 1.92 for H2... not right. Should be 1.4.
-        let posit_charge_1 = Vec3::new(-0.7, 0., 0.);
-        let posit_charge_2 = Vec3::new(0.7, 0., 0.);
+        // let posit_charge_1 = Vec3::new(-0.7, 0., 0.);
+        // let posit_charge_2 = Vec3::new(0.7, 0., 0.);
+
+        let posit_charge_1 = Vec3::new(-1.5, 0., 0.);
+        let posit_charge_2 = Vec3::new(1.5, 0., 0.);
+
         // let posit_charge_1 = Vec3::new(0., 0., 0.);
 
-        let nuclei = vec![(posit_charge_1, Q_PROT), (posit_charge_2, Q_PROT)];
+        // let nuclei = vec![(posit_charge_1, Q_PROT), (posit_charge_2, Q_PROT)];
+        // todo: Experimenting with LiH.
+        let nuclei = vec![(posit_charge_1, Q_PROT), (posit_charge_2, Q_PROT * 3.)];
+
         let net_force = vec![Vec3::new_zero(); nuclei.len()];
 
         // Outer of these is per-elec.
@@ -324,6 +332,7 @@ impl State {
             SurfaceDesc::new(SurfaceToRender::PsiPpMeasIm, false),
             SurfaceDesc::new(SurfaceToRender::ElecVFromPsi, false),
             SurfaceDesc::new(SurfaceToRender::TotalVFromPsi, true),
+            SurfaceDesc::new(SurfaceToRender::VDiff, false), // todo: Experiment
             // SurfaceDesc::new(SurfaceToRender::VPElec, false),
             SurfaceDesc::new(SurfaceToRender::H, false),
             SurfaceDesc::new(SurfaceToRender::HIm, false),
@@ -571,6 +580,7 @@ pub fn init_from_grid(
         wf_ops::update_eigen_vals(
             &mut sfcs.V_elec_eigen,
             &mut sfcs.V_total_eigen,
+            &mut sfcs.V_diff,
             &mut sfcs.psi_pp_calculated,
             &sfcs.psi,
             &sfcs.derivs,
@@ -676,6 +686,9 @@ pub enum SurfaceToRender {
     LSqIm,
     LZ,
     LZIm,
+    /// The difference between V acting on this electron, and V calculated from the Eigen function:
+    /// V - V from psi
+    VDiff,
     // Spinor
     // todo: Im of these A/R
     PsiSpinor0,
@@ -708,6 +721,7 @@ impl SurfaceToRender {
             Self::LSqIm => "L^2 im",
             Self::LZ => "L_z",
             Self::LZIm => "L_z im",
+            Self::VDiff => "dV",
             Self::PsiSpinor0 => "ψ0",
             Self::PsiSpinor1 => "ψ1",
             Self::PsiSpinor2 => "2",
@@ -749,7 +763,7 @@ fn main() {
     let dev_charge = ComputationDevice::Cpu;
 
     let dev_psi = ComputationDevice::Cpu;
-    let num_elecs = 2;
+    let num_elecs = 4;
 
     render::render(State::new(num_elecs, dev_psi, dev_charge));
 }

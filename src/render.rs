@@ -32,7 +32,7 @@ const COLOR_NEG_CHARGE: Color = (0., 0., 1.);
 const COLOR_PSI_PP_CALC_1D: Color = (0., 1., 0.);
 const COLOR_PSI_PP_MEAS_1D: Color = (0., 0.5, 0.5);
 
-const CHARGE_SPHERE_SIZE: f32 = 0.05;
+const CHARGE_SPHERE_SIZE: f32 = 0.01;
 const CHARGE_DENSITY_SPHERE_SIZE: f32 = 0.04;
 
 const SURFACE_COLORS: [Color; 18] = [
@@ -68,7 +68,7 @@ const PSI_PP_SCALER: f32 = 20.;
 // const V_SCALER: f32 = 1.;
 const V_SCALER: f32 = 0.05;
 
-pub(crate) const N_CHARGE_BALLS: usize = 2_000;
+pub(crate) const N_CHARGE_BALLS: usize = 1_000;
 
 fn event_handler(
     _state: &mut State,
@@ -471,6 +471,19 @@ pub fn update_meshes(
                         &prepare_2d_mesh_real(
                             grid_posits,
                             &surfaces.V_total_eigen,
+                            V_SCALER,
+                            grid_n,
+                            axis_hidden,
+                        ),
+                        true,
+                    ));
+                }
+
+                SurfaceToRender::VDiff => {
+                    meshes.push(Mesh::new_surface(
+                        &prepare_2d_mesh_real(
+                            grid_posits,
+                            &surfaces.V_diff,
                             V_SCALER,
                             grid_n,
                             axis_hidden,

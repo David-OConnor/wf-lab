@@ -81,6 +81,18 @@ pub fn initialize_bases(
         (10., -0.05),
     ];
 
+    // todo: Which of these he weights is right?
+    let weights_he_no_norm_ = vec![
+        (1., 0.77),
+        (2., -0.01),
+        (3., 0.05),
+        (4., -0.062),
+        (5., 0.20),
+        (6., -0.12),
+        (8., -0.03),
+        (10., -0.53),
+    ];
+
     let weights_li_inner = vec![
         (1., 0.32),
         (2., -0.60),
@@ -104,19 +116,7 @@ pub fn initialize_bases(
         (10., -0.75),
     ];
 
-    // todo: Update these
-    let weights_he_no_norm = vec![
-        (1., 0.77),
-        (2., -0.01),
-        (3., 0.05),
-        (4., -0.062),
-        (5., 0.20),
-        (6., -0.12),
-        (8., -0.03),
-        (10., -0.53),
-    ];
-
-    let weights_li_inner_no_norm = vec![
+    let weights_li_inner = vec![
         (1., 0.32),
         (2., -0.60),
         (3., -0.17),
@@ -127,7 +127,7 @@ pub fn initialize_bases(
         (10., 0.01),
     ];
 
-    let weights_li_outer_no_norm = vec![
+    let weights_li_outer = vec![
         // WIP for lithium:
         (1., 1.),
         (2., 0.51),
@@ -139,25 +139,86 @@ pub fn initialize_bases(
         (10., -0.75),
     ];
 
+    let weights_li_inner = vec![
+        (1., 0.32),
+        (2., -0.60),
+        (3., -0.17),
+        (4., 0.32),
+        (5., -0.26),
+        (6., 0.10),
+        (8., -0.02),
+        (10., 0.01),
+    ];
+
+    let weights_li_h_li_outer = vec![
+        (1., 1.),
+        (2., 0.),
+        (3., 0.),
+        (4., 0.),
+        (5., 0.),
+        (6., 0.),
+        (8., 0.),
+        (10., 0.),
+    ];
+
+    let weights_li_h_li_inner = vec![
+        (1., 1.),
+        (2., 0.),
+        (3., 0.),
+        (4., 0.),
+        (5., 0.),
+        (6., 0.),
+        (8., 0.),
+        (10., 0.),
+    ];
+
+    let weights_li_h_h = vec![
+        (1., 1.),
+        (2., 0.),
+        (3., 0.),
+        (4., 0.),
+        (5., 0.),
+        (6., 0.),
+        (8., 0.),
+        (10., 0.),
+    ];
+
+    // todo: Re-do this function to be more flexible.
+
+    // Experimenting
+    // bases.push(Basis::new_gauss(Vec3::new_zero(), 0.5, 0.2));
+
     // todo: We currently call this in some cases where it maybe isn't strictly necessarly;
     // todo for now as a kludge to preserve weights, we copy the prev weights.
-    for (charge_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
+    for (nuc_id, (nuc_posit, _)) in charges_fixed.iter().enumerate() {
         // See Sebens, for weights under equation 24; this is for Helium.
 
-        let weights = if n == 1 {
-            // &weights_h
-            &weights_h2
-            // &weights_he_no_norm
-            // &weights_li_inner_no_norm
+        // Experimenting with Li_h
+        println!("CID: {}", nuc_id);
+        let weights = if nuc_id == 0 {
+            // h nucleus.
+            &weights_li_h_h
         } else {
-            &weights_li_outer_no_norm
+            if n == 1 {
+                &weights_li_h_li_inner
+            } else {
+                &weights_li_h_li_outer
+            }
         };
 
-        // Experimenting
-        bases.push(Basis::new_gauss(Vec3::new_zero(), 1., 0.5));
+        //
+        // let weights = if n == 1 {
+        //     // &weights_h
+        //     &weights_h2
+        //     // &weights_he_no_norm
+        //     // &weights_li_inner_no_norm
+        // } else {
+        //     // &weights_li_outer
+        //     &weights_li_h_li_outer
+        // };
 
         for (xi, weight) in weights {
-            bases.push(Basis::new_sto(*nuc_posit, n, *xi, *weight, charge_id));
+            bases.push(Basis::new_sto(*nuc_posit, n, *xi, *weight, nuc_id));
         }
     }
 }
