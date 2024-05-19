@@ -71,7 +71,7 @@ impl SurfacesShared {
         spacing_factor: f64,
         n_grid: usize,
         n_grid_charge: usize,
-        num_elecs: usize,
+        // num_elecs: usize,
         axis_hidden: Axis,
     ) -> Self {
         let data = new_data(n_grid);
@@ -100,6 +100,8 @@ impl SurfacesShared {
             1.,
             n_grid_charge,
         );
+
+        let num_elecs = 0; // todo temp placeholder.
 
         Self {
             grid_posits,

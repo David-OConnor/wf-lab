@@ -981,23 +981,24 @@ pub fn render(state: State) {
     // };
 
     let active_elec_init = 0; // todo?
+    if state.surfaces_per_elec.len() > 0 {
+        let surfaces = &state.surfaces_per_elec[active_elec_init];
 
-    let surfaces = &state.surfaces_per_elec[active_elec_init];
-
-    update_meshes(
-        &state.surfaces_shared,
-        surfaces,
-        state.ui.z_displayed,
-        &mut scene,
-        &state.surfaces_shared.grid_posits,
-        state.ui.mag_phase,
-        &state.charges_from_electron[active_elec_init],
-        state.grid_n_render,
-        false,
-        &state.surface_descs_per_elec,
-        &state.surface_descs_combined,
-        state.ui.hidden_axis,
-    );
+        update_meshes(
+            &state.surfaces_shared,
+            surfaces,
+            state.ui.z_displayed,
+            &mut scene,
+            &state.surfaces_shared.grid_posits,
+            state.ui.mag_phase,
+            &state.charges_from_electron[active_elec_init],
+            state.grid_n_render,
+            false,
+            &state.surface_descs_per_elec,
+            &state.surface_descs_combined,
+            state.ui.hidden_axis,
+        );
+    }
 
     update_entities(
         &state.nucleii,

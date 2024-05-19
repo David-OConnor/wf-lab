@@ -546,7 +546,7 @@ fn bottom_items(
 
         if ui.add(Button::new("Reset")).clicked() {
             *state = State::new(
-                state.num_elecs,
+                // state.num_elecs,
                 state.dev_psi.clone(),
                 state.dev_charge.clone(),
             );

@@ -290,7 +290,8 @@ fn main() {
     let dev_charge = ComputationDevice::Cpu;
 
     let dev_psi = ComputationDevice::Cpu;
-    let num_elecs = 4;
+    // let num_elecs = 0;
 
-    render::render(State::new(num_elecs, dev_psi, dev_charge));
+    // render::render(State::new(num_elecs, dev_psi, dev_charge));
+    render::render(State::new(dev_psi, dev_charge));
 }

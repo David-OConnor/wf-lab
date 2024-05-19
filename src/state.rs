@@ -76,7 +76,7 @@ pub struct State {
 
 impl State {
     pub fn new(
-        num_elecs: usize,
+        // num_elecs: usize,
         dev_psi: ComputationDevice,
         dev_charge: ComputationDevice,
     ) -> Self {
@@ -91,6 +91,8 @@ impl State {
         let V_from_elecs = Vec::new();
         let psi_charge = Vec::new();
         let surfaces_per_elec = Vec::new();
+
+        let num_elecs = 0;
 
         // todoFigure out why you get incorrect answers if these 2 grids don't line up.
         // todo: FOr now, you can continue with matching them if you wish.
@@ -112,7 +114,7 @@ impl State {
             spacing_factor,
             grid_n_render,
             grid_n_charge,
-            num_elecs,
+            // num_elecs,
             Axis::Z,
         );
 
@@ -235,6 +237,9 @@ impl State {
             charge_density_balls: Vec::new(),
         };
 
+        // todo: Maybe this is required to set up bases, to set up the first per-electron surface?
+        // todo: Our UI code expects there to be at least one per-electron surface.
+        result.set_preset(0);
         result.init_from_grid();
 
         result
@@ -243,17 +248,20 @@ impl State {
     /// Run this whenever n changes. Ie, at init, or when n changes in the GUI.
     /// (todo: Other caess?0-
     pub fn init_from_grid(&mut self) {
-        let grid_n = self.grid_n_render; // Code shortener; we use this a frequently.
+        let grid_n = self.grid_n_render; // Code shortener; we use this frequently.
 
-        // let arr_real = new_data_real(grid_n_sample);
         let arr_real_2d = new_data_2d_real(grid_n);
 
-        let sfcs_one_elec =
-            SurfacesPerElec::new(self.bases[0].len(), grid_n, self.grid_n_charge, Spin::Alpha);
+        // let sfcs_one_elec =
+        // SurfacesPerElec::new(self.bases[0].len(), grid_n, self.grid_n_charge, Spin::Alpha);
+        // SurfacesPerElec::new(0, grid_n, self.grid_n_charge, Spin::Alpha);
 
+        // todo: Reconcile how elecs are managed. Per-nuc? Not?
         self.surfaces_per_elec = Vec::new();
-        for _ in 0..self.num_elecs {
-            self.surfaces_per_elec.push(sfcs_one_elec.clone());
+        for i in 0..self.num_elecs {
+            self.surfaces_per_elec.push(
+                SurfacesPerElec::new(self.bases[i].len(), grid_n, self.grid_n_charge, Spin::Alpha), // sfcs_one_elec.clone()
+            );
         }
 
         self.surfaces_shared = SurfacesShared::new(
@@ -262,7 +270,7 @@ impl State {
             self.sample_factor_render,
             grid_n,
             self.grid_n_charge,
-            self.num_elecs,
+            // self.num_elecs,
             self.ui.hidden_axis,
         );
 
@@ -290,13 +298,14 @@ impl State {
         );
 
         // These must be initialized from wave functions later.
-        let mut psi_charge_all_elecs = Vec::new();
-        let mut charges_electron = Vec::new();
-        let mut V_from_elecs = Vec::new();
+        self.psi_charge = Vec::new();
+        self.charges_from_electron = Vec::new();
+        self.V_from_elecs = Vec::new();
 
         for i_elec in 0..self.num_elecs {
-            charges_electron.push(new_data_real(self.grid_n_charge));
-            V_from_elecs.push(arr_real_2d.clone());
+            self.charges_from_electron
+                .push(new_data_real(self.grid_n_charge));
+            self.V_from_elecs.push(arr_real_2d.clone());
 
             // todo: Call procedures::update_bases_weights etc here.
             let sfcs = &mut self.surfaces_per_elec[i_elec];
@@ -402,13 +411,13 @@ impl State {
             );
 
             procedures::create_elec_charge(
-                &mut charges_electron[i_elec],
+                &mut self.charges_from_electron[i_elec],
                 &psi_charge,
                 &weights,
                 self.grid_n_charge,
             );
 
-            psi_charge_all_elecs.push(psi_charge);
+            self.psi_charge.push(psi_charge);
 
             // todo: Create electron V here
             // potential::create_V_from_elecs(
@@ -445,8 +454,10 @@ impl State {
         self.net_force_on_nuc = Vec::new();
         self.bases = Vec::new();
         self.bases_spinor = Vec::new();
+        self.num_elecs = 0;
 
         for nuc in &self.presets[preset].nuclei {
+            self.num_elecs += nuc.num_elecs;
             // This assumes a neutral atom.
             self.nucleii
                 .push((nuc.posit, Q_PROT * nuc.num_elecs as f64));
