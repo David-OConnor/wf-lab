@@ -5,7 +5,7 @@ use graphics::{EngineUpdates, Scene};
 use lin_alg::f64::Vec3;
 
 use crate::{
-    basis_finder, basis_init,
+    basis_finder,
     basis_wfs::Basis,
     forces, grid_setup,
     grid_setup::new_data_2d,
@@ -633,6 +633,7 @@ fn bottom_items(
                 .clicked()
             {
                 state.set_preset(i);
+                state.init_from_grid();
 
                 *updated_evaluated_wfs = true;
                 *updated_E_or_V = true;
@@ -713,11 +714,11 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                 state.init_from_grid();
 
-                for elec_i in 0..state.surfaces_per_elec.len() {
-                    // todo: Kludge for Li
-                    let n = if elec_i > 1 { 2 } else { 1 };
-                    basis_init::initialize_bases(&mut state.bases[elec_i], &state.nucleii, n);
-                }
+                // for elec_i in 0..state.surfaces_per_elec.len() {
+                //     // todo: Kludge for Li
+                //     let n = if elec_i > 1 { 2 } else { 1 };
+                //     basis_init::initialize_bases(&mut state.bases[elec_i], &state.nucleii, n);
+                // }
 
                 updated_evaluated_wfs = true;
                 updated_meshes = true;
@@ -937,6 +938,8 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         state.ui.hidden_axis,
                     );
 
+                    state.init_from_grid();
+                    updated_E_or_V = true;
                     updated_evaluated_wfs = true;
                     updated_basis_weights = true;
                     updated_meshes = true;

@@ -5,14 +5,12 @@ use lin_alg::f64::Vec3;
 use crate::{
     basis_wfs::Basis,
     dirac::BasisSpinor,
-    grid_setup,
-    grid_setup::{new_data, new_data_2d_real, new_data_real, Arr2dReal, Arr3d, Arr3dReal},
+    grid_setup::{self, new_data, new_data_2d_real, new_data_real, Arr2dReal, Arr3d, Arr3dReal},
     potential,
     presets::Preset,
     types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
     ui::procedures,
-    wf_ops,
-    wf_ops::{DerivCalc, Spin, Q_PROT},
+    wf_ops::{self, DerivCalc, Spin, Q_PROT},
     Axis, StateUi, SurfaceDesc, SurfaceToRender, GRID_MAX_CHARGE, GRID_MAX_RENDER,
     GRID_N_CHARGE_DEFAULT, GRID_N_RENDER_DEFAULT, RENDER_L, RENDER_SPINOR, SPACING_FACTOR_DEFAULT,
 };
@@ -450,11 +448,18 @@ impl State {
     /// Replace nuclei and electron data with that from a preset.
     pub fn set_preset(&mut self, preset: usize) {
         // Reset relevant state variables.
+        self.num_elecs = 0;
+
         self.nucleii = Vec::new();
         self.net_force_on_nuc = Vec::new();
         self.bases = Vec::new();
         self.bases_spinor = Vec::new();
-        self.num_elecs = 0;
+
+        // // todo: Sort out how to handle electron distro across nuclei.
+        // for nuc in &self.presets[preset].nuclei {
+        //     self.num_elecs += nuc.num_elecs;
+        // }
+        //
 
         for nuc in &self.presets[preset].nuclei {
             self.num_elecs += nuc.num_elecs;
@@ -467,27 +472,16 @@ impl State {
 
             // Outer of these is per-elec.
 
-            let mut bases_this_elec = Vec::new();
-            for sto in &nuc.bases {
-                bases_this_elec.push(Basis::Sto(sto.clone()));
-            }
-            self.bases.push(bases_this_elec)
-
-            // Initialize bases.
             // todo: YOu will need to re-think how you manage electrons, as distributed across nuclei.
-            // for i_elec in 0..nuc.num_elecs {
-            //     let mut bases_this_elec = Vec::new();
-            //     // let mut bases_this_elec_spinor = Vec::new();
-            //
-            //     basis_init::initialize_bases(&mut bases_this_elec, &nuclei, n);
-            //
-            //     self.bases.push()
-            //
-            //     // basis_init::initialize_bases_spinor(&mut bases_this_elec_spinor, &nuclei, n);
-            //
-            //     self.bases.push(bases_this_elec);
-            //     // self.bases_spinor.push(bases_this_elec_spinor);
-            // }
+            for _ in 0..nuc.num_elecs {
+                let mut bases_this_elec = Vec::new();
+
+                for sto in &nuc.bases {
+                    bases_this_elec.push(Basis::Sto(sto.clone()));
+                }
+
+                self.bases.push(bases_this_elec);
+            }
         }
 
         self.net_force_on_nuc = vec![Vec3::new_zero(); self.nucleii.len()];

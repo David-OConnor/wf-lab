@@ -4,7 +4,7 @@
 use graphics::{EngineUpdates, Scene};
 
 use crate::{
-    basis_finder, basis_init,
+    basis_finder,
     grid_setup::{new_data, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal},
     potential, render,
     state::State,
@@ -221,8 +221,8 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
     // Note: An alternative would be to add the new bases without 0ing the existing ones.
     for elec_i in 0..state.surfaces_per_elec.len() {
         // todo: Kludge for Li
-        let n = if elec_i > 1 { 2 } else { 1 };
-        basis_init::initialize_bases(&mut state.bases[elec_i], &state.nucleii, n);
+        // let n = if elec_i > 1 { 2 } else { 1 };
+        // basis_init::initialize_bases(&mut state.bases[elec_i], &state.nucleii, n);
 
         potential::update_V_acting_on_elec(
             &mut state.surfaces_per_elec[elec_i].V_acting_on_this,
