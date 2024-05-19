@@ -99,6 +99,7 @@ use crate::{
     ui::procedures,
     wf_ops::{DerivCalc, Spin, Q_PROT},
 };
+use crate::wf_ops::Q_ELEC;
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
 const GRID_MAX_RENDER: f64 = 3.;
@@ -384,12 +385,13 @@ impl State {
         println!("State init complete.");
 
         // todo: Sort out how and where to handle presets
-        let presets_ = vec![
+        let presets = vec![
             Preset::make_h(),
-            Preset::make_h_ion(),
+            Preset::make_h_anion(),
             Preset::make_h2(),
             Preset::make_he(),
             Preset::make_li(),
+            Preset::make_li_h(),
         ];
 
         Self {
@@ -415,8 +417,21 @@ impl State {
             // max_basis_n,
             num_elecs,
             ui: Default::default(),
-            presets: presets_,
+            presets,
             charge_density_balls: Vec::new(),
+        }
+    }
+
+    /// Replace nuclei and electron data with that from a preset.
+    pub fn set_preset(&mut self, preset: usize) {
+        self.nucleii = Vec::new();
+
+        for nuc in &self.presets[preset].nuclei {
+            // This assumes a neutral atom.
+            self.nucleii.push((nuc.posit, Q_PROT * nuc.num_elecs as f64));
+
+            // rebuild electrons / surfaces / bases etc.
+
         }
     }
 }

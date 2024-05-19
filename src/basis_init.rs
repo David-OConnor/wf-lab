@@ -194,7 +194,6 @@ pub fn initialize_bases(
         // See Sebens, for weights under equation 24; this is for Helium.
 
         // Experimenting with Li_h
-        println!("CID: {}", nuc_id);
         let weights = if nuc_id == 0 {
             // h nucleus.
             &weights_li_h_h

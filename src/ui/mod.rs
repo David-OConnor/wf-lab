@@ -623,13 +623,15 @@ fn bottom_items(
     });
 
     ui.horizontal(|ui| {
-        for preset in &state.presets {
-            // todo: Function to stop this DRY.
+        let presets_clone = state.presets.clone();
+
+        // todo: I don't like this clone, but it avoids a borrow-check error.
+        for (i, preset) in presets_clone.into_iter().enumerate() {
             if ui
                 .button(RichText::new(&preset.name).color(Color32::LIGHT_BLUE))
                 .clicked()
             {
-                // state.bases = preset.bases.clone();
+                state.set_preset(i);
 
                 *updated_evaluated_wfs = true;
                 *updated_E_or_V = true;
