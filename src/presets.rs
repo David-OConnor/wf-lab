@@ -262,9 +262,9 @@ fn build_stos(data: &[StoData]) -> Vec<Sto> {
             posit: Vec3::new_zero(), // todo ?
             n: d.n,
             xi: d.xi,
-            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),  // todo ?
+            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // todo ?
             weight: d.weight,
-            charge_id: 0,  // todo ?
+            charge_id: 0, // todo ?
         })
     }
 

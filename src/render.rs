@@ -12,9 +12,10 @@ use lin_alg::{
 };
 
 use crate::{
-    grid_setup::{Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{Arr2d, Arr2dReal, Arr2dVec, Arr3dReal},
+    state::State,
     types::{SurfacesPerElec, SurfacesShared},
-    util, Axis, State, SurfaceDesc, SurfaceToRender, RENDER_L, RENDER_SPINOR,
+    Axis, SurfaceDesc, SurfaceToRender,
 };
 
 type Color = (f32, f32, f32);

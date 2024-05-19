@@ -7,8 +7,9 @@ use crate::{
     basis_finder, basis_init,
     grid_setup::{new_data, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal},
     potential, render,
+    state::State,
     types::SurfacesPerElec,
-    wf_ops, ActiveElec, State,
+    wf_ops, ActiveElec,
 };
 
 pub fn update_E_or_V(

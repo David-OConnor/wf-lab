@@ -7,13 +7,14 @@ use lin_alg::f64::Vec3;
 use crate::{
     basis_finder, basis_init,
     basis_wfs::Basis,
-    eigen_fns, forces, grid_setup,
-    grid_setup::{new_data, new_data_2d},
-    iter_arr, render,
-    types::{Derivatives, Derivatives2D},
+    forces, grid_setup,
+    grid_setup::new_data_2d,
+    render,
+    state::State,
+    types::Derivatives2D,
     util, wf_ops,
     wf_ops::{DerivCalc, Spin},
-    ActiveElec, Axis, State, GRID_MAX_RENDER, SPACING_FACTOR_DEFAULT,
+    ActiveElec, Axis, SPACING_FACTOR_DEFAULT,
 };
 
 pub(crate) mod procedures;
@@ -710,33 +711,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 let result = entry.parse::<usize>().unwrap_or(20);
                 state.grid_n_render = result;
 
-                let (
-                    charges_electron,
-                    V_from_elecs,
-                    bases_evaluated_charge,
-                    surfaces_shared,
-                    surfaces_per_elec,
-                ) = crate::init_from_grid(
-                    &state.dev_psi,
-                    &state.dev_charge,
-                    state.grid_range_render,
-                    state.grid_range_charge,
-                    state.sample_factor_render,
-                    state.grid_n_render,
-                    state.grid_n_charge,
-                    &state.bases,
-                    &state.bases_spinor,
-                    &state.nucleii,
-                    state.num_elecs,
-                    state.deriv_calc,
-                    state.ui.hidden_axis,
-                );
-
-                state.charges_from_electron = charges_electron;
-                state.V_from_elecs = V_from_elecs;
-                state.psi_charge = bases_evaluated_charge;
-                state.surfaces_shared = surfaces_shared;
-                state.surfaces_per_elec = surfaces_per_elec;
+                state.init_from_grid();
 
                 for elec_i in 0..state.surfaces_per_elec.len() {
                     // todo: Kludge for Li
