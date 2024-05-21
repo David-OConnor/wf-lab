@@ -7,16 +7,19 @@ use crate::basis_wfs::{SphericalHarmonic, Sto};
 #[derive(Debug, Clone)]
 pub struct NucPreset {
     pub posit: Vec3,
-    /// We assume a neutral charge, so this is also charge.
-    pub num_elecs: usize,
-    /// todo: Weights instead?
-    pub bases: Vec<Sto>,
+    pub num_protons: u8,
+    // /// We assume a neutral charge, so this is also charge.
+    // pub num_elecs: usize,
+    // /// todo: Weights instead?
+    // pub bases: Vec<Sto>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Preset {
     pub name: String,
     pub nuclei: Vec<NucPreset>,
+    pub elecs: Vec<Vec<Sto>>
+
 }
 
 impl Preset {
@@ -25,16 +28,25 @@ impl Preset {
             name: "H".to_owned(),
             nuclei: vec![NucPreset {
                 posit: Vec3::new_zero(),
-                num_elecs: 1,
-                bases: vec![Sto {
-                    posit: Vec3::new_zero(),
-                    n: 1,
-                    xi: 1.,
-                    harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
-                    weight: 0.7,
-                    charge_id: 0,
-                }],
+                num_protons: 1,
+                // num_elecs: 1,
+                // bases: vec![Sto {
+                //     posit: Vec3::new_zero(),
+                //     n: 1,
+                //     xi: 1.,
+                //     harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
+                //     weight: 0.7,
+                //     charge_id: 0,
+                // }],
             }],
+            elecs: vec![vec![Sto {
+                posit: Vec3::new_zero(),
+                n: 1,
+                xi: 1.,
+                harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
+                weight: 0.7,
+                nuc_id: 0,
+            }],]
         }
     }
 
@@ -46,18 +58,20 @@ impl Preset {
             xi: 1.,
             harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
             weight: 0.7,
-            charge_id: 0,
+            nuc_id: 0,
         };
 
         Self {
             name: "H-".to_owned(),
             nuclei: vec![NucPreset {
                 posit: Vec3::new_zero(),
-                num_elecs: 2,
+                num_protons: 1,
+                // num_elecs: 2,
                 // todo: What should these actually be?
                 // todo: also note: There are (at least) two solutions.
-                bases: vec![sto.clone(), sto],
+                // bases: vec![sto.clone(), sto],
             }],
+            elecs: vec![vec![sto.clone()], vec![sto]],
         }
     }
 
@@ -91,10 +105,12 @@ impl Preset {
 
         for b in &mut bases_0 {
             b.posit = nuc_0_posit;
+            b.nuc_id = 0;
         }
 
         for b in &mut bases_1 {
             b.posit = nuc_1_posit;
+            b.nuc_id = 1;
         }
 
         Self {
@@ -102,15 +118,18 @@ impl Preset {
             nuclei: vec![
                 NucPreset {
                     posit: nuc_0_posit,
-                    num_elecs: 1,
-                    bases: bases_0,
+                    num_protons: 1,
+                    // num_elecs: 1,
+                    // bases: bases_0,
                 },
                 NucPreset {
                     posit: nuc_1_posit,
-                    num_elecs: 1,
-                    bases: bases_1,
+                    num_protons: 1,
+                    // num_elecs: 1,
+                    // bases: bases_1,
                 },
             ],
+            elecs: vec![bases_0, bases_1]
         }
     }
 
@@ -144,14 +163,16 @@ impl Preset {
             name: "He".to_owned(),
             nuclei: vec![NucPreset {
                 posit: Vec3::new_zero(),
-                num_elecs: 2,
-                bases: stos,
+                num_protons: 2,
+                // num_elecs: 2,
+                // bases: stos,
             }],
+            elecs: vec![stos.clone(), stos.clone()]
         }
     }
 
     pub fn make_li() -> Self {
-        let weights_li_outer = vec![
+        let weights_outer = vec![
             // WIP for lithium:
             (1., 1.),
             (2., 0.51),
@@ -163,7 +184,7 @@ impl Preset {
             (10., -0.75),
         ];
 
-        let weights_li_inner = vec![
+        let weights_inner = vec![
             (1., 0.32),
             (2., -0.60),
             (3., -0.17),
@@ -174,39 +195,47 @@ impl Preset {
             (10., 0.01),
         ];
 
+        let sto_outer: Vec<_> = weights_outer.iter().map(|d| StoData::new(2, d.0, d.1)).collect();
+        let sto_inner: Vec<_> = weights_inner.iter().map(|d| StoData::new(1, d.0, d.1)).collect();
+
+        let stos_outer = build_stos(&sto_outer);
+        let stos_inner = build_stos(&sto_inner);
+
         Self {
             name: "Li".to_owned(),
             nuclei: vec![NucPreset {
                 posit: Vec3::new_zero(),
-                num_elecs: 3,
-                /// todo: Update these from bases_init.
-                bases: vec![
-                    Sto {
-                        posit: Vec3::new_zero(),
-                        n: 1,
-                        xi: 1.,
-                        harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
-                        weight: 0.7,
-                        charge_id: 0,
-                    },
-                    Sto {
-                        posit: Vec3::new_zero(),
-                        n: 1,
-                        xi: 1.,
-                        harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
-                        weight: 0.7,
-                        charge_id: 0,
-                    },
-                    Sto {
-                        posit: Vec3::new_zero(),
-                        n: 2,
-                        xi: 1.,
-                        harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
-                        weight: 0.7,
-                        charge_id: 0,
-                    },
-                ],
+                num_protons: 3,
+                // num_elecs: 3,
+                // todo: Update these from bases_init.
+                // bases: vec![
+                //     Sto {
+                //         posit: Vec3::new_zero(),
+                //         n: 1,
+                //         xi: 1.,
+                //         harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
+                //         weight: 0.7,
+                //         nuc_id: 0,
+                //     },
+                //     Sto {
+                //         posit: Vec3::new_zero(),
+                //         n: 1,
+                //         xi: 1.,
+                //         harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
+                //         weight: 0.7,
+                //         nuc_id: 0,
+                //     },
+                //     Sto {
+                //         posit: Vec3::new_zero(),
+                //         n: 2,
+                //         xi: 1.,
+                //         harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
+                //         weight: 0.7,
+                //         nuc_id: 0,
+                //     },
+                // ],
             }],
+            elecs: vec![stos_inner.clone(), stos_inner, stos_outer],
         }
     }
 
@@ -217,49 +246,14 @@ impl Preset {
             nuclei: vec![
                 NucPreset {
                     posit: Vec3::new(-1.5, 0., 0.),
-                    num_elecs: 1,
-                    /// todo: Update these from bases_init.
-                    bases: vec![Sto {
-                        posit: Vec3::new_zero(),
-                        n: 1,
-                        xi: 1.,
-                        harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
-                        weight: 0.7,
-                        charge_id: 0,
-                    }],
+                    num_protons: 1,
                 },
                 NucPreset {
-                    posit: Vec3::new(-1.5, 0., 0.),
-                    num_elecs: 3,
-                    /// todo: Update these from bases_init.
-                    bases: vec![
-                        Sto {
-                            posit: Vec3::new_zero(),
-                            n: 1,
-                            xi: 1.,
-                            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
-                            weight: 0.7,
-                            charge_id: 0,
-                        },
-                        Sto {
-                            posit: Vec3::new_zero(),
-                            n: 1,
-                            xi: 1.,
-                            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
-                            weight: 0.7,
-                            charge_id: 0,
-                        },
-                        Sto {
-                            posit: Vec3::new_zero(),
-                            n: 2,
-                            xi: 1.,
-                            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
-                            weight: 0.7,
-                            charge_id: 0,
-                        },
-                    ],
+                    posit: Vec3::new(1.5, 0., 0.),
+                    num_protons: 3,
                 },
             ],
+            elecs: vec![], // todo
         }
     }
 }
@@ -282,12 +276,12 @@ fn build_stos(data: &[StoData]) -> Vec<Sto> {
 
     for d in data {
         result.push(Sto {
-            posit: Vec3::new_zero(), // todo ?
+            posit: Vec3::new_zero(),
             n: d.n,
             xi: d.xi,
-            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()), // todo ?
+            harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
             weight: d.weight,
-            charge_id: 0, // todo ?
+            nuc_id: 0,
         })
     }
 

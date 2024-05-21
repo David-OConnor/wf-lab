@@ -10,7 +10,7 @@ use crate::{
 /// See Sebens: Electric Charge Density, equation 24
 #[derive(Clone, Debug)]
 pub struct Sto {
-    pub charge_id: usize,
+    pub nuc_id: usize,
     pub posit: Vec3,
     pub n: u16,
     pub xi: f64,

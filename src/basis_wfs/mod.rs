@@ -53,7 +53,7 @@ impl Basis {
             n,
             xi,
             weight,
-            charge_id,
+            nuc_id: charge_id,
             harmonic: Default::default(), // todo
         })
     }
@@ -288,7 +288,7 @@ impl Basis {
             // Self::G(v) => v.charge_id,
             // Self::G(v) => unimplemented!(),
             Self::G(v) => 0, // todo?,
-            Self::Sto(v) => v.charge_id,
+            Self::Sto(v) => v.nuc_id,
         }
     }
 
@@ -299,7 +299,7 @@ impl Basis {
             // Self::G(v) => &mut v.charge_id,
             // Self::G(v) => unimplemented!(),
             Self::G(v) => unimplemented!(),
-            Self::Sto(v) => &mut v.charge_id,
+            Self::Sto(v) => &mut v.nuc_id,
         }
     }
 

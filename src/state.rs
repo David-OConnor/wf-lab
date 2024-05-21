@@ -258,7 +258,7 @@ impl State {
         self.surfaces_per_elec = Vec::new();
         for i in 0..self.num_elecs {
             self.surfaces_per_elec.push(
-                SurfacesPerElec::new(self.bases[i].len(), grid_n, self.grid_n_charge, Spin::Alpha), // sfcs_one_elec.clone()
+                SurfacesPerElec::new(self.bases[i].len(), grid_n, self.grid_n_charge, Spin::Alpha),
             );
         }
 
@@ -448,8 +448,6 @@ impl State {
     /// Replace nuclei and electron data with that from a preset.
     pub fn set_preset(&mut self, preset: usize) {
         // Reset relevant state variables.
-        self.num_elecs = 0;
-
         self.nucleii = Vec::new();
         self.net_force_on_nuc = Vec::new();
         self.bases = Vec::new();
@@ -461,27 +459,30 @@ impl State {
         // }
         //
 
+        self.num_elecs = self.presets[preset].elecs.len();
+
+        // for bases in &self.presets[preset].elecs {
+        //     self.net_force_on_nuc.push(Vec3::new_zero());
+        //
+        //     // rebuild electrons / surfaces / bases etc.
+        //
+        //     // Outer of these is per-elec.
+        // }
+
         for nuc in &self.presets[preset].nuclei {
-            self.num_elecs += nuc.num_elecs;
-            // This assumes a neutral atom.
             self.nucleii
-                .push((nuc.posit, Q_PROT * nuc.num_elecs as f64));
-            self.net_force_on_nuc.push(Vec3::new_zero());
+                .push((nuc.posit, Q_PROT * nuc.num_protons as f64));
+        }
 
-            // rebuild electrons / surfaces / bases etc.
+        // todo: YOu will need to re-think how you manage electrons, as distributed across nuclei.
+        for bases in &self.presets[preset].elecs {
+            let mut bases_this_elec = Vec::new();
 
-            // Outer of these is per-elec.
-
-            // todo: YOu will need to re-think how you manage electrons, as distributed across nuclei.
-            for _ in 0..nuc.num_elecs {
-                let mut bases_this_elec = Vec::new();
-
-                for sto in &nuc.bases {
-                    bases_this_elec.push(Basis::Sto(sto.clone()));
-                }
-
-                self.bases.push(bases_this_elec);
+            for sto in bases {
+                bases_this_elec.push(Basis::Sto(sto.clone()));
             }
+
+            self.bases.push(bases_this_elec);
         }
 
         self.net_force_on_nuc = vec![Vec3::new_zero(); self.nucleii.len()];
