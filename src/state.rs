@@ -203,6 +203,7 @@ impl State {
             Preset::make_h(),
             Preset::make_h_anion(),
             Preset::make_h2(),
+            Preset::make_h2_cation(),
             Preset::make_he(),
             Preset::make_li(),
             Preset::make_li_h(),
@@ -453,21 +454,9 @@ impl State {
         self.bases = Vec::new();
         self.bases_spinor = Vec::new();
 
-        // // todo: Sort out how to handle electron distro across nuclei.
-        // for nuc in &self.presets[preset].nuclei {
-        //     self.num_elecs += nuc.num_elecs;
-        // }
-        //
+        // todo: Sort out how to handle electron distro across nuclei.
 
         self.num_elecs = self.presets[preset].elecs.len();
-
-        // for bases in &self.presets[preset].elecs {
-        //     self.net_force_on_nuc.push(Vec3::new_zero());
-        //
-        //     // rebuild electrons / surfaces / bases etc.
-        //
-        //     // Outer of these is per-elec.
-        // }
 
         for nuc in &self.presets[preset].nuclei {
             self.nucleii
@@ -478,8 +467,14 @@ impl State {
         for bases in &self.presets[preset].elecs {
             let mut bases_this_elec = Vec::new();
 
-            for sto in bases {
-                bases_this_elec.push(Basis::Sto(sto.clone()));
+            for basis in bases {
+                // for (i, nuc) in self.presets[preset].nuclei.iter().enumerate() {
+                    // let mut sto_ = sto.clone();
+
+                    // sto_.nuc_id = i;
+                    // sto_.posit = nuc.posit;
+                    bases_this_elec.push(basis.clone());
+                // }
             }
 
             self.bases.push(bases_this_elec);

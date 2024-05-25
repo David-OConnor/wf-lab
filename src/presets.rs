@@ -2,7 +2,7 @@
 
 use lin_alg::f64::{Quaternion, Vec3};
 
-use crate::basis_wfs::{SphericalHarmonic, Sto};
+use crate::basis_wfs::{Basis, Gaussian, SphericalHarmonic, Sto};
 
 #[derive(Debug, Clone)]
 pub struct NucPreset {
@@ -18,7 +18,7 @@ pub struct NucPreset {
 pub struct Preset {
     pub name: String,
     pub nuclei: Vec<NucPreset>,
-    pub elecs: Vec<Vec<Sto>>
+    pub elecs: Vec<Vec<Basis>>
 
 }
 
@@ -39,14 +39,14 @@ impl Preset {
                 //     charge_id: 0,
                 // }],
             }],
-            elecs: vec![vec![Sto {
+            elecs: vec![vec![Basis::Sto(Sto {
                 posit: Vec3::new_zero(),
                 n: 1,
                 xi: 1.,
                 harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
                 weight: 0.7,
                 nuc_id: 0,
-            }],]
+            })],]
         }
     }
 
@@ -71,7 +71,7 @@ impl Preset {
                 // todo: also note: There are (at least) two solutions.
                 // bases: vec![sto.clone(), sto],
             }],
-            elecs: vec![vec![sto.clone()], vec![sto]],
+            elecs: vec![vec![Basis::Sto(sto.clone())], vec![Basis::Sto(sto)]],
         }
     }
 
@@ -94,23 +94,32 @@ impl Preset {
             // (10., 0.),
         ];
 
-        let sto_data: Vec<_> = data.iter().map(|d| StoData::new(1, d.0, d.1)).collect();
+        let sto_data: Vec<_> = data.iter().map(|d| StoData::new(0,1, d.0, d.1)).collect();
         let stos = build_stos(&sto_data);
 
         let nuc_0_posit = Vec3::new(-0.7, 0., 0.);
         let nuc_1_posit = Vec3::new(0.7, 0., 0.);
 
-        let mut bases_0 = stos.clone();
-        let mut bases_1 = stos.clone();
+        let mut stos_0 = stos.clone();
+        let mut stos_1 = stos.clone();
 
-        for b in &mut bases_0 {
+        for b in &mut stos_0 {
             b.posit = nuc_0_posit;
             b.nuc_id = 0;
         }
 
-        for b in &mut bases_1 {
+        for b in &mut stos_1 {
             b.posit = nuc_1_posit;
             b.nuc_id = 1;
+        }
+
+        let mut bases_0 = Vec::new();
+        for s in stos_0{
+            bases_0.push(Basis::Sto(s));
+        }
+        let mut bases_1 = Vec::new();
+        for s in stos_1{
+            bases_1.push(Basis::Sto(s));
         }
 
         Self {
@@ -130,6 +139,67 @@ impl Preset {
                 },
             ],
             elecs: vec![bases_0, bases_1]
+        }
+    }
+
+    pub fn make_h2_cation() -> Self {
+        let data = vec![
+            // Also: Gaussian at midpoint, C=0.5, weight=0.2
+            (0, 1., 0.7),
+            (0, 2., 0.6),
+            (0, 3., -0.18),
+            (0, 4., 0.06),
+            (0, 5., 0.),
+            (1, 1., 0.7),
+            (1, 2., 0.6),
+            (1, 3., -0.18),
+            (1, 4., 0.06),
+            (1, 5., 0.),
+        ];
+
+        let sto_data: Vec<_> = data.iter().map(|d| StoData::new(d.0, 1, d.1, d.2)).collect();
+        let stos = build_stos(&sto_data);
+
+        // The experimental value is 2.00 for the distance; ours is significantly off. Can this be
+        // explained by our fit not being great?
+        let nuc_0_posit = Vec3::new(-0.92, 0., 0.);
+        let nuc_1_posit = Vec3::new(0.92, 0., 0.);
+
+        let mut stos = stos.clone();
+
+        for b in &mut stos {
+            if b.nuc_id == 0 {
+                b.posit = nuc_0_posit
+            } else {
+                b.posit = nuc_1_posit
+            }
+        }
+
+        let mut bases = Vec::new();
+        for s in stos {
+            bases.push(Basis::Sto(s));
+        }
+
+
+        bases.push(Basis::G(Gaussian{
+            posit: Vec3::new_zero(),
+            c: 0.40,
+            weight: 0.20,
+        }));
+
+        Self {
+            name: "H2+".to_owned(),
+            nuclei: vec![
+                NucPreset {
+                    posit: nuc_0_posit,
+                    num_protons: 1,
+                },
+                NucPreset {
+                    posit: nuc_1_posit,
+                    num_protons: 1,
+                },
+            ],
+            elecs: vec![bases]
         }
     }
 
@@ -156,8 +226,13 @@ impl Preset {
         //     (10., -0.53),
         // ];
 
-        let sto_data: Vec<_> = data.iter().map(|d| StoData::new(1, d.0, d.1)).collect();
+        let sto_data: Vec<_> = data.iter().map(|d| StoData::new(0,1, d.0, d.1)).collect();
         let stos = build_stos(&sto_data);
+
+        let mut bases = Vec::new();
+        for s in stos {
+            bases.push(Basis::Sto(s));
+        }
 
         Self {
             name: "He".to_owned(),
@@ -167,7 +242,7 @@ impl Preset {
                 // num_elecs: 2,
                 // bases: stos,
             }],
-            elecs: vec![stos.clone(), stos.clone()]
+            elecs: vec![bases.clone(), bases.clone()]
         }
     }
 
@@ -195,11 +270,20 @@ impl Preset {
             (10., 0.01),
         ];
 
-        let sto_outer: Vec<_> = weights_outer.iter().map(|d| StoData::new(2, d.0, d.1)).collect();
-        let sto_inner: Vec<_> = weights_inner.iter().map(|d| StoData::new(1, d.0, d.1)).collect();
+        let sto_outer: Vec<_> = weights_outer.iter().map(|d| StoData::new(0,2, d.0, d.1)).collect();
+        let sto_inner: Vec<_> = weights_inner.iter().map(|d| StoData::new(0,1, d.0, d.1)).collect();
 
         let stos_outer = build_stos(&sto_outer);
         let stos_inner = build_stos(&sto_inner);
+
+        let mut bases_inner = Vec::new();
+        for s in stos_inner {
+            bases_inner.push(Basis::Sto(s));
+        }
+        let mut bases_outer = Vec::new();
+        for s in stos_outer {
+            bases_outer.push(Basis::Sto(s));
+        }
 
         Self {
             name: "Li".to_owned(),
@@ -235,7 +319,7 @@ impl Preset {
                 //     },
                 // ],
             }],
-            elecs: vec![stos_inner.clone(), stos_inner, stos_outer],
+            elecs: vec![bases_inner.clone(), bases_inner, bases_outer],
         }
     }
 
@@ -260,14 +344,15 @@ impl Preset {
 
 /// We use this to represent what is required to build an STO.
 struct StoData {
+    pub nuc_id: usize,
     pub n: u16,
     pub xi: f64,
     pub weight: f64,
 }
 
 impl StoData {
-    pub fn new(n: u16, xi: f64, weight: f64) -> Self {
-        Self { n, xi, weight }
+    pub fn new(nuc_id: usize, n: u16, xi: f64, weight: f64) -> Self {
+        Self { nuc_id, n, xi, weight }
     }
 }
 
@@ -276,12 +361,12 @@ fn build_stos(data: &[StoData]) -> Vec<Sto> {
 
     for d in data {
         result.push(Sto {
+            nuc_id: d.nuc_id,
             posit: Vec3::new_zero(),
             n: d.n,
             xi: d.xi,
             harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
             weight: d.weight,
-            nuc_id: 0,
         })
     }
 
