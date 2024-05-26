@@ -325,19 +325,99 @@ impl Preset {
 
     /// Lithium hidride
     pub fn make_li_h() -> Self {
+        let weights_li_outer = vec![
+            // WIP for lithium:
+            (0, 1., 1.),
+            (0, 2., 0.51),
+            (0, 3., -0.16),
+            (0, 4., -0.17),
+            (0, 5., -1.26),
+            (0, 6., -0.83),
+            (0, 8., -0.25),
+            (0, 10., -0.75),
+        ];
+
+        let weights_li_inner = vec![
+            (0, 1., 0.32),
+            (0, 2., -0.60),
+            (0, 3., -0.17),
+            (0, 4., 0.32),
+            (0, 5., -0.26),
+            (0, 6., 0.10),
+            (0, 8., -0.02),
+            (0, 10., 0.01),
+        ];
+
+        let weights_h = vec![
+            (1, 1., 0.7),
+            (1, 2., 0.),
+            (1, 3., 0.),
+            (1, 4., 0.),
+        ];
+
+        let sto_li_outer: Vec<_> = weights_li_outer.iter().map(|d| StoData::new(d.0, 2, d.1, d.2)).collect();
+        let sto_li_inner: Vec<_> = weights_li_inner.iter().map(|d| StoData::new(d.0, 1, d.1, d.2)).collect();
+        let sto_h: Vec<_> = weights_h.iter().map(|d| StoData::new(d.0, 1, d.1, d.2)).collect();
+
+        let mut stos_li_outer = build_stos(&sto_li_outer);
+        let mut stos_li_inner = build_stos(&sto_li_inner);
+        let mut stos_h = build_stos(&sto_h);
+
+        let nuc_0_posit = Vec3::new(-1.5, 0., 0.);
+        let nuc_1_posit = Vec3::new(1.5, 0., 0.);
+
+        for b in &mut stos_li_inner {
+            if b.nuc_id == 0 {
+                b.posit = nuc_0_posit
+            } else {
+                b.posit = nuc_1_posit
+            }
+        }
+        for b in &mut stos_li_outer {
+            if b.nuc_id == 0 {
+                b.posit = nuc_0_posit
+            } else {
+                b.posit = nuc_1_posit
+            }
+        }
+        for b in &mut stos_h {
+            if b.nuc_id == 0 {
+                b.posit = nuc_0_posit
+            } else {
+                b.posit = nuc_1_posit
+            }
+        }
+
+
+        let mut bases_li_inner = Vec::new();
+        for s in stos_li_inner {
+            bases_li_inner.push(Basis::Sto(s));
+        }
+        let mut bases_li_outer = Vec::new();
+        for s in stos_li_outer {
+            bases_li_outer.push(Basis::Sto(s));
+        }
+
+        let mut bases_h = Vec::new();
+        for s in stos_h {
+            bases_h.push(Basis::Sto(s));
+        }
+
+
         Self {
             name: "LiH".to_owned(),
             nuclei: vec![
                 NucPreset {
-                    posit: Vec3::new(-1.5, 0., 0.),
-                    num_protons: 1,
-                },
-                NucPreset {
-                    posit: Vec3::new(1.5, 0., 0.),
+                    posit: nuc_0_posit,
                     num_protons: 3,
                 },
+                NucPreset {
+                    posit: nuc_1_posit,
+                    num_protons: 1,
+                },
+
             ],
-            elecs: vec![], // todo
+            elecs: vec![bases_li_inner.clone(), bases_li_inner, bases_li_outer, bases_h],
         }
     }
 }
