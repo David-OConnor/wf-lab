@@ -238,6 +238,7 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
         &state.surface_descs_per_elec,
         scene,
         &state.charge_density_balls,
+        &state.surfaces_shared.elec_field_gradient,
         &state.surfaces_shared.grid_posits_charge,
     );
 }

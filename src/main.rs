@@ -228,8 +228,8 @@ pub enum SurfaceToRender {
     PsiSpinorCalc2,
     PsiSpinorCalc3,
     // Experimenting
-    /// A gradient of the electric field.
-    ElecFieldGradient,
+    // /// A gradient of the electric field.
+    // ElecFieldGradient,
 }
 
 impl SurfaceToRender {
@@ -261,7 +261,7 @@ impl SurfaceToRender {
             Self::PsiSpinorCalc1 => "ψ_c1",
             Self::PsiSpinorCalc2 => "ψ2_c",
             Self::PsiSpinorCalc3 => "ψ3_c",
-            Self::ElecFieldGradient => "E ∇",
+            // Self::ElecFieldGradient => "E ∇",
         }
         .to_string()
     }

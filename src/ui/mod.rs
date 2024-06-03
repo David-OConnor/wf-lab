@@ -570,7 +570,9 @@ fn bottom_items(
         if ui.add(Button::new("Calc ∇")).clicked() {
             // todo: Update which grid to use A/R.
             state.surfaces_shared.elec_field_gradient = field_visuals::calc_gradient(
-                &state.surfaces_shared.charge_density_all,
+                // &state.surfaces_shared.charge_density_all, // todo: Is this correct?
+                &state.charges_from_electron[0], // todo: Once it works for a single-elec case, fix this.
+                &state.nucleii,
                 &state.surfaces_shared.grid_posits_charge,
             );
         }
@@ -626,6 +628,7 @@ fn bottom_items(
                 &state.surface_descs_per_elec,
                 scene,
                 &state.charge_density_balls,
+                &state.surfaces_shared.elec_field_gradient,
                 &state.surfaces_shared.grid_posits_charge,
             );
             *updated_entities = true;
@@ -1105,6 +1108,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         &state.surface_descs_per_elec,
                         scene,
                         &state.charge_density_balls,
+                        &state.surfaces_shared.elec_field_gradient,
                         &state.surfaces_shared.grid_posits_charge,
                     );
                 }
@@ -1114,6 +1118,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         &state.surface_descs_combined,
                         scene,
                         &state.charge_density_balls,
+                        &state.surfaces_shared.elec_field_gradient,
                         &state.surfaces_shared.grid_posits_charge,
                     );
                 }

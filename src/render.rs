@@ -10,6 +10,7 @@ use lin_alg::{
     f32::{Quaternion, Vec3},
     f64::Vec3 as Vec3F64,
 };
+use lin_alg::f32::UP;
 
 use crate::{
     grid_setup::{Arr2d, Arr2dReal, Arr2dVec, Arr3dReal, Arr3dVec},
@@ -832,6 +833,7 @@ pub fn update_entities(
     surface_descs: &[SurfaceDesc],
     scene: &mut Scene,
     charge_density_balls: &[Vec3F64],
+    gradient: &Arr3dVec,
     grid_posits_gradient: &Arr3dVec,
 ) {
     let num_sfcs = surface_descs.len();
@@ -925,10 +927,23 @@ pub fn update_entities(
     // todo: Which grid?
     for (i, j, k) in iter_arr!(grid_posits_gradient.len()) {
         let posit = grid_posits_gradient[i][j][k];
+        let grad = gradient[i][j][k];
+
+        // Note: We don't need any information on the rotation around the arrow's axis,
+        // so we have an unused degree of freedom in this quaternion.
+        // todo: QC this. I believe the starting vec should be oriented with the arrow in
+        // todo the mesh. (Although you may have to do a coordinate conversion.
+        let arrow_orientation = Quaternion::from_unit_vecs(
+            UP,
+            Vec3::new(grad.x as f32, grad.y as f32, grad.z as f32),
+        );
+
+        // todo: You need to change the arrow's length as appropriate. Or color?
+
         entities.push(Entity::new(
             vector_arrow_i,
             Vec3::new(posit.x as f32, posit.y as f32, posit.z as f32),
-            Quaternion::from_axis_angle(), // todo
+            arrow_orientation,
             0.5,
             (0.2, 1., 0.5),
             CHARGE_SHINYNESS,
@@ -1026,6 +1041,7 @@ pub fn render(state: State) {
         &state.surface_descs_per_elec,
         &mut scene,
         &state.charge_density_balls,
+        &state.surfaces_shared.elec_field_gradient,
         &state.surfaces_shared.grid_posits_charge,
     );
 

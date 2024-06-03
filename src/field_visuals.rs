@@ -34,16 +34,16 @@ pub fn calc_gradient(charge_elecs: &Arr3dReal, charge_nucs: &[(Vec3, f64)], grid
         // Add electron charge.
         for (i_charge, j_charge, k_charge) in iter_arr!(n) {
             let posit_charge = grid[i_charge][j_charge][k_charge];
+            let charge_elecs = charge_elecs[i_charge][j_charge][k_charge];
 
-            let E_scalar = potential::E_coulomb(posit_charge, posit_sample, charge_elecs[i_charge][j_charge][k_charge]);
-            E += (grid[i_charge][j_charge][k_charge] - grid[i][j][k]) *  E_scalar;
+            let E_scalar = potential::E_coulomb(posit_charge, posit_sample, charge_elecs);
+            E += (posit_charge - posit_sample) *  E_scalar;
         }
 
         // Add nucleus charge.
         for (posit_nuc, charge_nuc) in charge_nucs {
             let E_scalar = potential::E_coulomb(*posit_nuc, posit_sample, *charge_nuc);
-            // todo: Uhoh.
-            E += (grid[i_charge][j_charge][k_charge] - grid[i][j][k]) *  E_scalar;
+            E += (*posit_nuc - posit_sample) *  E_scalar;
         }
 
         // todo: Is this right? What is the quantity we are diffing? How does this work
