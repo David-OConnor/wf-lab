@@ -179,12 +179,21 @@ pub(crate) fn create_V_from_elecs(
     println!("V creation complete");
 }
 
-/// Single-point Coulomb potential, eg a hydrogen nuclei.
+/// Single-point Coulomb potential, from a single point charge.
 pub(crate) fn V_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
     let diff = posit_sample - posit_charge;
     let r = diff.magnitude();
 
     K_C * charge / (r + SOFTENING_FACTOR)
+}
+
+/// Single-point Coulomb electric field, form a single point charge.
+/// todo: Return the result as a vector?
+pub(crate) fn E_coulomb(posit_charge: Vec3, posit_sample: Vec3, charge: f64) -> f64 {
+    let diff = posit_sample - posit_charge;
+    let r = diff.magnitude();
+
+    K_C * charge / (r.powi(2) + SOFTENING_FACTOR)
 }
 
 /// Update the V associated with a single electron's charge.

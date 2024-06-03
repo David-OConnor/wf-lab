@@ -2,16 +2,14 @@
 
 use lin_alg::f64::Vec3;
 
-use crate::{
-    grid_setup::{new_data_vec, Arr3dReal, Arr3dVec},
-    iter_arr,
-};
+use crate::{grid_setup::{new_data_vec, Arr3dReal, Arr3dVec}, iter_arr, potential};
+use crate::wf_ops::Q_ELEC;
 
 /// Generate a vectorfield of the gradient, from a charge density field. Note the convention of vectors
 /// pointing towards positive charge, and away from negative charge.
 /// todo: Custom type for type safety?
-pub fn calc_gradient(charge_density: &Arr3dReal, grid: &Arr3dVec) -> Arr3dVec {
-    let n = charge_density.len();
+pub fn calc_gradient(charge_elecs: &Arr3dReal, charge_nucs: &[(Vec3, f64)], grid: &Arr3dVec) -> Arr3dVec {
+    let n = charge_elecs.len();
 
     // Assume even spacing for now. Adjust for a non-uniform grid, or remove
     // this in favor of a const if using analytic fns, A/R.
@@ -29,14 +27,33 @@ pub fn calc_gradient(charge_density: &Arr3dReal, grid: &Arr3dVec) -> Arr3dVec {
         if i == 0 || i == n - 1 || j == 0 || j == n - 1 || k == 0 || k == n - 1 {
             continue;
         }
+        let posit_sample = grid[i][j][k];
 
-        // todo: Is this right? What is the quantity we are diffing? How does this work for
-        // point charges like the nucleii?
+        let mut E = Vec3::new_zero();
+
+        // Add electron charge.
+        for (i_charge, j_charge, k_charge) in iter_arr!(n) {
+            let posit_charge = grid[i_charge][j_charge][k_charge];
+
+            let E_scalar = potential::E_coulomb(posit_charge, posit_sample, charge_elecs[i_charge][j_charge][k_charge]);
+            E += (grid[i_charge][j_charge][k_charge] - grid[i][j][k]) *  E_scalar;
+        }
+
+        // Add nucleus charge.
+        for (posit_nuc, charge_nuc) in charge_nucs {
+            let E_scalar = potential::E_coulomb(*posit_nuc, posit_sample, *charge_nuc);
+            // todo: Uhoh.
+            E += (grid[i_charge][j_charge][k_charge] - grid[i][j][k]) *  E_scalar;
+        }
+
+        // todo: Is this right? What is the quantity we are diffing? How does this work
+        // todo point charges like the nucleii? Maybe we need to, for each point, calculate
+        // todo a value based on Coulomb's law? Likely!
 
         result[i][j][k] = Vec3::new(
-            (charge_density[i + 1][j][k] - charge_density[i - 1][j][k]) / h_2,
-            (charge_density[i][j + 1][k] - charge_density[i][j - 1][k]) / h_2,
-            (charge_density[i][j][k + 1] - charge_density[i][j][k - 1]) / h_2,
+            (charge_elecs[i + 1][j][k] - charge_elecs[i - 1][j][k]) / h_2,
+            (charge_elecs[i][j + 1][k] - charge_elecs[i][j - 1][k]) / h_2,
+            (charge_elecs[i][j][k + 1] - charge_elecs[i][j][k - 1]) / h_2,
         );
     }
 
