@@ -62,6 +62,8 @@ pub struct SurfacesShared {
     pub charge_density_all: Arr3dReal,
     /// Charge density for all spin beta electrons.
     pub spin_density: Arr3dReal,
+    /// Experimenting with a gradient vector.
+    pub elec_field_gradient: Arr3dVec,
 }
 
 impl SurfacesShared {
@@ -118,6 +120,7 @@ impl SurfacesShared {
             charge_beta: data_real.clone(),
             charge_density_all: data_real.clone(),
             spin_density: data_real,
+            elec_field_gradient: new_data_vec(n_grid_charge), // todo: Is this the grid we want to use?
         }
     }
 }

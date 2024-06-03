@@ -7,7 +7,7 @@ use lin_alg::f64::Vec3;
 use crate::{
     basis_finder,
     basis_wfs::Basis,
-    forces, grid_setup,
+    field_visuals, forces, grid_setup,
     grid_setup::new_data_2d,
     render,
     state::State,
@@ -567,6 +567,14 @@ fn bottom_items(
             println!("\n Force on nucs: {:?}", state.net_force_on_nuc);
         }
 
+        if ui.add(Button::new("Calc ∇")).clicked() {
+            // todo: Update which grid to use A/R.
+            state.surfaces_shared.elec_field_gradient = field_visuals::calc_gradient(
+                &state.surfaces_shared.charge_density_all,
+                &state.surfaces_shared.grid_posits_charge,
+            );
+        }
+
         // if ui.add(Button::new("Set bond dist")).clicked() {
         //     state.net_force_on_nuc = forces::calc_force_on_nucs(
         //         &state.nucleii,
@@ -618,6 +626,7 @@ fn bottom_items(
                 &state.surface_descs_per_elec,
                 scene,
                 &state.charge_density_balls,
+                &state.surfaces_shared.grid_posits_charge,
             );
             *updated_entities = true;
         }
@@ -1096,6 +1105,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         &state.surface_descs_per_elec,
                         scene,
                         &state.charge_density_balls,
+                        &state.surfaces_shared.grid_posits_charge,
                     );
                 }
                 ActiveElec::Combined => {
@@ -1104,6 +1114,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         &state.surface_descs_combined,
                         scene,
                         &state.charge_density_balls,
+                        &state.surfaces_shared.grid_posits_charge,
                     );
                 }
             }

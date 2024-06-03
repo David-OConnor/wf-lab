@@ -12,7 +12,8 @@ use lin_alg::{
 };
 
 use crate::{
-    grid_setup::{Arr2d, Arr2dReal, Arr2dVec, Arr3dReal},
+    grid_setup::{Arr2d, Arr2dReal, Arr2dVec, Arr3dReal, Arr3dVec},
+    iter_arr,
     state::State,
     types::{SurfacesPerElec, SurfacesShared},
     Axis, SurfaceDesc, SurfaceToRender,
@@ -831,8 +832,13 @@ pub fn update_entities(
     surface_descs: &[SurfaceDesc],
     scene: &mut Scene,
     charge_density_balls: &[Vec3F64],
+    grid_posits_gradient: &Arr3dVec,
 ) {
     let num_sfcs = surface_descs.len();
+
+    let mesh_sphere_i = num_sfcs;
+    let vector_arrow_i = num_sfcs + 1;
+
     let mut entities = Vec::new();
     for i in 0..num_sfcs {
         if !surface_descs[i].visible {
@@ -850,7 +856,7 @@ pub fn update_entities(
 
     for (posit, val) in charges {
         entities.push(Entity::new(
-            num_sfcs, // Index 1 after surfaces.
+            mesh_sphere_i,
             Vec3::new(
                 posit.x as f32,
                 // We invert Y and Z due to diff coord systems
@@ -886,7 +892,7 @@ pub fn update_entities(
         Vec3::new(3., 2. * V_SCALER, 0.),
     ] {
         entities.push(Entity::new(
-            num_sfcs, // Index 1 after surfaces.
+            mesh_sphere_i,
             *grid_marker,
             Quaternion::new_identity(),
             2.,
@@ -898,7 +904,7 @@ pub fn update_entities(
 
     for posit in charge_density_balls {
         entities.push(Entity::new(
-            num_sfcs,
+            mesh_sphere_i,
             Vec3::new(
                 posit.x as f32,
                 // todo: QC this
@@ -908,6 +914,21 @@ pub fn update_entities(
                 posit.y as f32,
             ),
             Quaternion::new_identity(),
+            0.5,
+            (0.2, 1., 0.5),
+            CHARGE_SHINYNESS,
+        ));
+    }
+
+    // Add a vector field
+    // todo: Flux lines in adddition to or instead of this?
+    // todo: Which grid?
+    for (i, j, k) in iter_arr!(grid_posits_gradient.len()) {
+        let posit = grid_posits_gradient[i][j][k];
+        entities.push(Entity::new(
+            vector_arrow_i,
+            Vec3::new(posit.x as f32, posit.y as f32, posit.z as f32),
+            Quaternion::from_axis_angle(), // todo
             0.5,
             (0.2, 1., 0.5),
             CHARGE_SHINYNESS,
@@ -1005,6 +1026,7 @@ pub fn render(state: State) {
         &state.surface_descs_per_elec,
         &mut scene,
         &state.charge_density_balls,
+        &state.surfaces_shared.grid_posits_charge,
     );
 
     let input_settings = InputSettings {

@@ -151,6 +151,7 @@ impl State {
             // SurfaceDesc::new(SurfaceToRender::VPElec, false),
             SurfaceDesc::new(SurfaceToRender::H, false),
             SurfaceDesc::new(SurfaceToRender::HIm, false),
+            SurfaceDesc::new(SurfaceToRender::ElecFieldGradient, false),
         ];
 
         if RENDER_L {
@@ -258,9 +259,12 @@ impl State {
         // todo: Reconcile how elecs are managed. Per-nuc? Not?
         self.surfaces_per_elec = Vec::new();
         for i in 0..self.num_elecs {
-            self.surfaces_per_elec.push(
-                SurfacesPerElec::new(self.bases[i].len(), grid_n, self.grid_n_charge, Spin::Alpha),
-            );
+            self.surfaces_per_elec.push(SurfacesPerElec::new(
+                self.bases[i].len(),
+                grid_n,
+                self.grid_n_charge,
+                Spin::Alpha,
+            ));
         }
 
         self.surfaces_shared = SurfacesShared::new(
@@ -469,11 +473,11 @@ impl State {
 
             for basis in bases {
                 // for (i, nuc) in self.presets[preset].nuclei.iter().enumerate() {
-                    // let mut sto_ = sto.clone();
+                // let mut sto_ = sto.clone();
 
-                    // sto_.nuc_id = i;
-                    // sto_.posit = nuc.posit;
-                    bases_this_elec.push(basis.clone());
+                // sto_.nuc_id = i;
+                // sto_.posit = nuc.posit;
+                bases_this_elec.push(basis.clone());
                 // }
             }
 

@@ -18,8 +18,7 @@ pub struct NucPreset {
 pub struct Preset {
     pub name: String,
     pub nuclei: Vec<NucPreset>,
-    pub elecs: Vec<Vec<Basis>>
-
+    pub elecs: Vec<Vec<Basis>>,
 }
 
 impl Preset {
@@ -46,7 +45,7 @@ impl Preset {
                 harmonic: SphericalHarmonic::new(0, 0, Quaternion::new_identity()),
                 weight: 0.7,
                 nuc_id: 0,
-            })],]
+            })]],
         }
     }
 
@@ -94,7 +93,7 @@ impl Preset {
             // (10., 0.),
         ];
 
-        let sto_data: Vec<_> = data.iter().map(|d| StoData::new(0,1, d.0, d.1)).collect();
+        let sto_data: Vec<_> = data.iter().map(|d| StoData::new(0, 1, d.0, d.1)).collect();
         let stos = build_stos(&sto_data);
 
         let nuc_0_posit = Vec3::new(-0.7, 0., 0.);
@@ -114,11 +113,11 @@ impl Preset {
         }
 
         let mut bases_0 = Vec::new();
-        for s in stos_0{
+        for s in stos_0 {
             bases_0.push(Basis::Sto(s));
         }
         let mut bases_1 = Vec::new();
-        for s in stos_1{
+        for s in stos_1 {
             bases_1.push(Basis::Sto(s));
         }
 
@@ -138,7 +137,7 @@ impl Preset {
                     // bases: bases_1,
                 },
             ],
-            elecs: vec![bases_0, bases_1]
+            elecs: vec![bases_0, bases_1],
         }
     }
 
@@ -157,7 +156,10 @@ impl Preset {
             (1, 5., 0.),
         ];
 
-        let sto_data: Vec<_> = data.iter().map(|d| StoData::new(d.0, 1, d.1, d.2)).collect();
+        let sto_data: Vec<_> = data
+            .iter()
+            .map(|d| StoData::new(d.0, 1, d.1, d.2))
+            .collect();
         let stos = build_stos(&sto_data);
 
         // The experimental value is 2.00 for the distance; ours is significantly off. Can this be
@@ -180,8 +182,7 @@ impl Preset {
             bases.push(Basis::Sto(s));
         }
 
-
-        bases.push(Basis::G(Gaussian{
+        bases.push(Basis::G(Gaussian {
             posit: Vec3::new_zero(),
             c: 0.40,
             weight: 0.20,
@@ -199,7 +200,7 @@ impl Preset {
                     num_protons: 1,
                 },
             ],
-            elecs: vec![bases]
+            elecs: vec![bases],
         }
     }
 
@@ -226,7 +227,7 @@ impl Preset {
         //     (10., -0.53),
         // ];
 
-        let sto_data: Vec<_> = data.iter().map(|d| StoData::new(0,1, d.0, d.1)).collect();
+        let sto_data: Vec<_> = data.iter().map(|d| StoData::new(0, 1, d.0, d.1)).collect();
         let stos = build_stos(&sto_data);
 
         let mut bases = Vec::new();
@@ -242,7 +243,7 @@ impl Preset {
                 // num_elecs: 2,
                 // bases: stos,
             }],
-            elecs: vec![bases.clone(), bases.clone()]
+            elecs: vec![bases.clone(), bases.clone()],
         }
     }
 
@@ -270,8 +271,14 @@ impl Preset {
             (10., 0.01),
         ];
 
-        let sto_outer: Vec<_> = weights_outer.iter().map(|d| StoData::new(0,2, d.0, d.1)).collect();
-        let sto_inner: Vec<_> = weights_inner.iter().map(|d| StoData::new(0,1, d.0, d.1)).collect();
+        let sto_outer: Vec<_> = weights_outer
+            .iter()
+            .map(|d| StoData::new(0, 2, d.0, d.1))
+            .collect();
+        let sto_inner: Vec<_> = weights_inner
+            .iter()
+            .map(|d| StoData::new(0, 1, d.0, d.1))
+            .collect();
 
         let stos_outer = build_stos(&sto_outer);
         let stos_inner = build_stos(&sto_inner);
@@ -325,18 +332,6 @@ impl Preset {
 
     /// Lithium hidride
     pub fn make_li_h() -> Self {
-        let weights_li_outer = vec![
-            // WIP for lithium:
-            (0, 1., 1.),
-            (0, 2., 0.51),
-            (0, 3., -0.16),
-            (0, 4., -0.17),
-            (0, 5., -1.26),
-            (0, 6., -0.83),
-            (0, 8., -0.25),
-            (0, 10., -0.75),
-        ];
-
         let weights_li_inner = vec![
             (0, 1., 0.32),
             (0, 2., -0.60),
@@ -348,16 +343,39 @@ impl Preset {
             (0, 10., 0.01),
         ];
 
-        let weights_h = vec![
-            (1, 1., 0.7),
-            (1, 2., 0.),
-            (1, 3., 0.),
-            (1, 4., 0.),
+        // Share with h?
+        let weights_li_outer = vec![
+            (0, 2, 1., 1.),
+            (0, 2, 2., 0.),
+            (0, 2, 3., 0.),
+            (0, 2, 4., 0.),
+            (0, 2, 5., 0.),
+            (1, 1, 1., 0.4),
+            (1, 1, 2., 0.),
+            (1, 1, 3., 0.),
         ];
 
-        let sto_li_outer: Vec<_> = weights_li_outer.iter().map(|d| StoData::new(d.0, 2, d.1, d.2)).collect();
-        let sto_li_inner: Vec<_> = weights_li_inner.iter().map(|d| StoData::new(d.0, 1, d.1, d.2)).collect();
-        let sto_h: Vec<_> = weights_h.iter().map(|d| StoData::new(d.0, 1, d.1, d.2)).collect();
+        // Share with Li S2 valence?
+        let weights_h = weights_li_outer.clone();
+        // let weights_h = vec![
+        //     (1, 1., 0.7),
+        //     (1, 2., 0.),
+        //     (1, 3., 0.),
+        //     (1, 4., 0.),
+        // ];
+
+        let sto_li_inner: Vec<_> = weights_li_inner
+            .iter()
+            .map(|d| StoData::new(d.0, 1, d.1, d.2))
+            .collect();
+        let sto_li_outer: Vec<_> = weights_li_outer
+            .iter()
+            .map(|d| StoData::new(d.0, d.1, d.2, d.3))
+            .collect();
+        let sto_h: Vec<_> = weights_h
+            .iter()
+            .map(|d| StoData::new(d.0, d.1, d.2, d.3))
+            .collect();
 
         let mut stos_li_outer = build_stos(&sto_li_outer);
         let mut stos_li_inner = build_stos(&sto_li_inner);
@@ -388,7 +406,6 @@ impl Preset {
             }
         }
 
-
         let mut bases_li_inner = Vec::new();
         for s in stos_li_inner {
             bases_li_inner.push(Basis::Sto(s));
@@ -403,7 +420,6 @@ impl Preset {
             bases_h.push(Basis::Sto(s));
         }
 
-
         Self {
             name: "LiH".to_owned(),
             nuclei: vec![
@@ -415,9 +431,13 @@ impl Preset {
                     posit: nuc_1_posit,
                     num_protons: 1,
                 },
-
             ],
-            elecs: vec![bases_li_inner.clone(), bases_li_inner, bases_li_outer, bases_h],
+            elecs: vec![
+                bases_li_inner.clone(),
+                bases_li_inner,
+                bases_li_outer,
+                bases_h,
+            ],
         }
     }
 }
@@ -432,7 +452,12 @@ struct StoData {
 
 impl StoData {
     pub fn new(nuc_id: usize, n: u16, xi: f64, weight: f64) -> Self {
-        Self { nuc_id, n, xi, weight }
+        Self {
+            nuc_id,
+            n,
+            xi,
+            weight,
+        }
     }
 }
 
