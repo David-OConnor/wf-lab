@@ -151,7 +151,7 @@ impl State {
             // SurfaceDesc::new(SurfaceToRender::VPElec, false),
             SurfaceDesc::new(SurfaceToRender::H, false),
             SurfaceDesc::new(SurfaceToRender::HIm, false),
-            SurfaceDesc::new(SurfaceToRender::ElecFieldGradient, false),
+            // SurfaceDesc::new(SurfaceToRender::ElecFieldGradient, false),
         ];
 
         if RENDER_L {

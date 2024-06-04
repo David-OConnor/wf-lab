@@ -7,10 +7,9 @@ use graphics::{
     Lighting, Mesh, PointLight, Scene, UiLayout, UiSettings,
 };
 use lin_alg::{
-    f32::{Quaternion, Vec3},
+    f32::{Quaternion, Vec3, UP},
     f64::Vec3 as Vec3F64,
 };
-use lin_alg::f32::UP;
 
 use crate::{
     grid_setup::{Arr2d, Arr2dReal, Arr2dVec, Arr3dReal, Arr3dVec},
@@ -72,6 +71,10 @@ const PSI_PP_SCALER: f32 = 5.;
 const V_SCALER: f32 = 0.05;
 
 pub(crate) const N_CHARGE_BALLS: usize = 1_000;
+
+fn new_arrow_mesh() -> Mesh {
+    Mesh::new_tetrahedron(0.1) // todo temp
+}
 
 fn event_handler(
     _state: &mut State,
@@ -197,7 +200,8 @@ fn prepare_2d_mesh(
 }
 
 /// Updates meshes. For example, when updating a plot due to changing parameters.
-/// Note that this is where we decide which Z to render.
+/// Note that this is where we decide which Z to render. THis includes both surface meshes,
+/// and static ones like spheres and arrows.
 pub fn update_meshes(
     surfaces_shared: &SurfacesShared,
     surfaces: &SurfacesPerElec,
@@ -820,6 +824,7 @@ pub fn update_meshes(
     }
 
     meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 12, 12));
+    meshes.push(new_arrow_mesh());
 
     scene.meshes = meshes;
 }
@@ -880,18 +885,18 @@ pub fn update_entities(
 
     // A grid, which helps visualizations.
     for grid_marker in &[
-        Vec3::new(1., -1. * V_SCALER, 0.),
-        Vec3::new(1., 0. * V_SCALER, 0.),
-        Vec3::new(1., 1. * V_SCALER, 0.),
-        Vec3::new(1., 2. * V_SCALER, 0.),
-        Vec3::new(2., -1. * V_SCALER, 0.),
-        Vec3::new(2., 0. * V_SCALER, 0.),
-        Vec3::new(2., 1. * V_SCALER, 0.),
-        Vec3::new(2., 2. * V_SCALER, 0.),
-        Vec3::new(3., -1. * V_SCALER, 0.),
-        Vec3::new(3., 0. * V_SCALER, 0.),
-        Vec3::new(3., 1. * V_SCALER, 0.),
-        Vec3::new(3., 2. * V_SCALER, 0.),
+        Vec3::new(1., -1., 0.),
+        Vec3::new(1., 0., 0.),
+        Vec3::new(1., 1., 0.),
+        Vec3::new(1., 2., 0.),
+        Vec3::new(2., -1., 0.),
+        Vec3::new(2., 0., 0.),
+        Vec3::new(2., 1., 0.),
+        Vec3::new(2., 2., 0.),
+        Vec3::new(3., -1., 0.),
+        Vec3::new(3., 0., 0.),
+        Vec3::new(3., 1., 0.),
+        Vec3::new(3., 2., 0.),
     ] {
         entities.push(Entity::new(
             mesh_sphere_i,
@@ -927,7 +932,14 @@ pub fn update_entities(
     // todo: Which grid?
     for (i, j, k) in iter_arr!(grid_posits_gradient.len()) {
         let posit = grid_posits_gradient[i][j][k];
-        let grad = gradient[i][j][k];
+
+        // Swap Y and Z axis due to the renderer's different coord system.
+        let posit = Vec3::new(posit.x as f32, posit.z as f32, posit.y as f32);
+
+        let mut grad = gradient[i][j][k];
+
+        // todo temp
+        grad.x = 1.;
 
         // Note: We don't need any information on the rotation around the arrow's axis,
         // so we have an unused degree of freedom in this quaternion.
@@ -935,16 +947,14 @@ pub fn update_entities(
         // todo the mesh. (Although you may have to do a coordinate conversion.
         let arrow_orientation = Quaternion::from_unit_vecs(
             UP,
-            Vec3::new(grad.x as f32, grad.y as f32, grad.z as f32),
+            Vec3::new(grad.x as f32, grad.y as f32, grad.z as f32).to_normalized(),
         );
-
-        // todo: You need to change the arrow's length as appropriate. Or color?
 
         entities.push(Entity::new(
             vector_arrow_i,
-            Vec3::new(posit.x as f32, posit.y as f32, posit.z as f32),
+            posit,
             arrow_orientation,
-            0.5,
+            grad.magnitude() as f32,
             (0.2, 1., 0.5),
             CHARGE_SHINYNESS,
         ));

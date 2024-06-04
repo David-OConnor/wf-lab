@@ -2,13 +2,20 @@
 
 use lin_alg::f64::Vec3;
 
-use crate::{grid_setup::{new_data_vec, Arr3dReal, Arr3dVec}, iter_arr, potential};
-use crate::wf_ops::Q_ELEC;
+use crate::{
+    grid_setup::{new_data_vec, Arr3dReal, Arr3dVec},
+    iter_arr, potential,
+    wf_ops::Q_ELEC,
+};
 
 /// Generate a vectorfield of the gradient, from a charge density field. Note the convention of vectors
 /// pointing towards positive charge, and away from negative charge.
 /// todo: Custom type for type safety?
-pub fn calc_gradient(charge_elecs: &Arr3dReal, charge_nucs: &[(Vec3, f64)], grid: &Arr3dVec) -> Arr3dVec {
+pub fn calc_gradient(
+    charge_elecs: &Arr3dReal,
+    charge_nucs: &[(Vec3, f64)],
+    grid: &Arr3dVec,
+) -> Arr3dVec {
     let n = charge_elecs.len();
 
     // Assume even spacing for now. Adjust for a non-uniform grid, or remove
@@ -37,13 +44,13 @@ pub fn calc_gradient(charge_elecs: &Arr3dReal, charge_nucs: &[(Vec3, f64)], grid
             let charge_elecs = charge_elecs[i_charge][j_charge][k_charge];
 
             let E_scalar = potential::E_coulomb(posit_charge, posit_sample, charge_elecs);
-            E += (posit_charge - posit_sample) *  E_scalar;
+            E += (posit_charge - posit_sample) * E_scalar;
         }
 
         // Add nucleus charge.
         for (posit_nuc, charge_nuc) in charge_nucs {
             let E_scalar = potential::E_coulomb(*posit_nuc, posit_sample, *charge_nuc);
-            E += (*posit_nuc - posit_sample) *  E_scalar;
+            E += (*posit_nuc - posit_sample) * E_scalar;
         }
 
         // todo: Is this right? What is the quantity we are diffing? How does this work

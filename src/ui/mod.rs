@@ -567,7 +567,7 @@ fn bottom_items(
             println!("\n Force on nucs: {:?}", state.net_force_on_nuc);
         }
 
-        if ui.add(Button::new("Calc ∇")).clicked() {
+        if ui.add(Button::new("Calc grad")).clicked() {
             // todo: Update which grid to use A/R.
             state.surfaces_shared.elec_field_gradient = field_visuals::calc_gradient(
                 // &state.surfaces_shared.charge_density_all, // todo: Is this correct?
