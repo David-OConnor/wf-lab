@@ -225,7 +225,7 @@ pub fn update_fixed_charges(state: &mut State, scene: &mut Scene) {
         // basis_init::initialize_bases(&mut state.bases[elec_i], &state.nucleii, n);
 
         potential::update_V_acting_on_elec(
-            &mut state.surfaces_per_elec[elec_i].V_acting_on_this,id fo
+            &mut state.surfaces_per_elec[elec_i].V_acting_on_this,
             &state.surfaces_shared.V_from_nuclei,
             &state.V_from_elecs[elec_i],
             state.grid_n_render,

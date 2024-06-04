@@ -112,7 +112,7 @@ impl SurfacesShared {
             &mut grid_posits_gradient,
             grid_range_gradient,
             1.,
-            n_grid_charge,
+            n_grid_gradient,
         );
 
         let num_elecs = 0; // todo temp placeholder.

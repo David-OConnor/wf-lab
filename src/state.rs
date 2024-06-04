@@ -12,8 +12,8 @@ use crate::{
     ui::procedures,
     wf_ops::{self, DerivCalc, Spin, Q_PROT},
     Axis, StateUi, SurfaceDesc, SurfaceToRender, GRID_MAX_CHARGE, GRID_MAX_GRADIENT,
-    GRID_MAX_RENDER, GRID_N_CHARGE_DEFAULT, GRID_N_RENDER_DEFAULT, RENDER_L, RENDER_SPINOR,
-    SPACING_FACTOR_DEFAULT,
+    GRID_MAX_RENDER, GRID_N_CHARGE_DEFAULT, GRID_N_GRADIENT_DEFAULT, GRID_N_RENDER_DEFAULT,
+    RENDER_L, RENDER_SPINOR, SPACING_FACTOR_DEFAULT,
 };
 
 pub struct State {
@@ -108,7 +108,7 @@ impl State {
 
         let grid_n_render = GRID_N_RENDER_DEFAULT;
         let grid_n_charge = GRID_N_CHARGE_DEFAULT;
-        let grid_n_gradient = GRID_N_CHARGE_DEFAULT;
+        let grid_n_gradient = GRID_N_GRADIENT_DEFAULT;
 
         let psi_pp_calc = DerivCalc::Numeric;
 

@@ -48,6 +48,8 @@ pub fn calc_gradient(
 
         // Add electron charge.
         for (i_charge, j_charge, k_charge) in iter_arr!(n_charge) {
+            continue; // todo temp; focusin on nucs to start.
+
             let posit_charge = grid_charge[i_charge][j_charge][k_charge];
             let charge_elecs = charge_elecs[i_charge][j_charge][k_charge];
 
@@ -61,15 +63,17 @@ pub fn calc_gradient(
             E += (*posit_nuc - posit_sample) * E_scalar;
         }
 
+        result[i][j][k] = E;
+
         // todo: Is this right? What is the quantity we are diffing? How does this work
         // todo point charges like the nucleii? Maybe we need to, for each point, calculate
         // todo a value based on Coulomb's law? Likely!
 
-        result[i][j][k] = Vec3::new(
-            (charge_elecs[i + 1][j][k] - charge_elecs[i - 1][j][k]) / h_2,
-            (charge_elecs[i][j + 1][k] - charge_elecs[i][j - 1][k]) / h_2,
-            (charge_elecs[i][j][k + 1] - charge_elecs[i][j][k - 1]) / h_2,
-        );
+        // result[i][j][k] = Vec3::new(
+        //     (charge_elecs[i + 1][j][k] - charge_elecs[i - 1][j][k]) / h_2,
+        //     (charge_elecs[i][j + 1][k] - charge_elecs[i][j - 1][k]) / h_2,
+        //     (charge_elecs[i][j][k + 1] - charge_elecs[i][j][k - 1]) / h_2,
+        // );
     }
 
     result

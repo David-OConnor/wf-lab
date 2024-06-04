@@ -72,8 +72,90 @@ const V_SCALER: f32 = 0.05;
 
 pub(crate) const N_CHARGE_BALLS: usize = 1_000;
 
-fn new_arrow_mesh() -> Mesh {
-    Mesh::new_tetrahedron(0.1) // todo temp
+/// Add entities other than surfaces. For example: A gradient field, markers for grid positions,
+/// markers for charge density etc.
+fn add_non_surface_entities(
+    entities: &mut Vec<Entity>,
+    charge_density_balls: &[Vec3F64],
+    gradient: &Arr3dVec,
+    grid_posits_gradient: &Arr3dVec,
+    mesh_sphere_i: usize,
+    vector_arrow_i: usize,
+) {
+    // A grid, which helps visualizations.
+    for grid_marker in &[
+        Vec3::new(1., -1., 0.),
+        Vec3::new(1., 0., 0.),
+        Vec3::new(1., 1., 0.),
+        Vec3::new(1., 2., 0.),
+        Vec3::new(2., -1., 0.),
+        Vec3::new(2., 0., 0.),
+        Vec3::new(2., 1., 0.),
+        Vec3::new(2., 2., 0.),
+        Vec3::new(3., -1., 0.),
+        Vec3::new(3., 0., 0.),
+        Vec3::new(3., 1., 0.),
+        Vec3::new(3., 2., 0.),
+    ] {
+        entities.push(Entity::new(
+            mesh_sphere_i,
+            *grid_marker,
+            Quaternion::new_identity(),
+            2.,
+            // todo: More fine-grained shading
+            (1., 0., 1.),
+            CHARGE_SHINYNESS,
+        ));
+    }
+
+    for posit in charge_density_balls {
+        entities.push(Entity::new(
+            mesh_sphere_i,
+            Vec3::new(
+                posit.x as f32,
+                // todo: QC this
+                // We invert Y and Z due to diff coord systems
+                // between the meshes and the renderer.
+                posit.z as f32,
+                posit.y as f32,
+            ),
+            Quaternion::new_identity(),
+            0.5,
+            (0.2, 1., 0.5),
+            CHARGE_SHINYNESS,
+        ));
+    }
+
+    // Add a vector field
+    // todo: Flux lines in adddition to or instead of this?
+    for (i, j, k) in iter_arr!(grid_posits_gradient.len()) {
+        let posit = grid_posits_gradient[i][j][k];
+
+        // Swap Y and Z axis due to the renderer's different coord system.
+        let posit = Vec3::new(posit.x as f32, posit.z as f32, posit.y as f32);
+        // let posit = Vec3::new(posit.x as f32, posit.y as f32, posit.z as f32); // todo?
+
+        let mut grad = gradient[i][j][k];
+
+        // Note: We don't need any information on the rotation around the arrow's axis,
+        // so we have an unused degree of freedom in this quaternion.
+        // todo: QC this. I believe the starting vec should be oriented with the arrow in
+        // todo the mesh. (Although you may have to do a coordinate conversion.
+        let arrow_orientation = Quaternion::from_unit_vecs(
+            UP,
+            Vec3::new(grad.x as f32, grad.y as f32, grad.z as f32).to_normalized(),
+        );
+
+        entities.push(Entity::new(ing
+            vector_arrow_i,
+            posit,
+            arrow_orientation,
+            // todo: Auto-scaling, based on grid density, average arrow len etc.
+            grad.magnitude() as f32 * 0.2,
+            (0.3, 1., 0.5),
+            CHARGE_SHINYNESS,
+        ));
+    }
 }
 
 fn event_handler(
@@ -824,7 +906,7 @@ pub fn update_meshes(
     }
 
     meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 12, 12));
-    meshes.push(new_arrow_mesh());
+    meshes.push(Mesh::new_arrow(2., 0.2, 8));
 
     scene.meshes = meshes;
 }
@@ -883,84 +965,16 @@ pub fn update_entities(
         ));
     }
 
-    // A grid, which helps visualizations.
-    for grid_marker in &[
-        Vec3::new(1., -1., 0.),
-        Vec3::new(1., 0., 0.),
-        Vec3::new(1., 1., 0.),
-        Vec3::new(1., 2., 0.),
-        Vec3::new(2., -1., 0.),
-        Vec3::new(2., 0., 0.),
-        Vec3::new(2., 1., 0.),
-        Vec3::new(2., 2., 0.),
-        Vec3::new(3., -1., 0.),
-        Vec3::new(3., 0., 0.),
-        Vec3::new(3., 1., 0.),
-        Vec3::new(3., 2., 0.),
-    ] {
-        entities.push(Entity::new(
-            mesh_sphere_i,
-            *grid_marker,
-            Quaternion::new_identity(),
-            2.,
-            // todo: More fine-grained shading
-            (1., 0., 1.),
-            CHARGE_SHINYNESS,
-        ));
-    }
-
-    for posit in charge_density_balls {
-        entities.push(Entity::new(
-            mesh_sphere_i,
-            Vec3::new(
-                posit.x as f32,
-                // todo: QC this
-                // We invert Y and Z due to diff coord systems
-                // between the meshes and the renderer.
-                posit.z as f32,
-                posit.y as f32,
-            ),
-            Quaternion::new_identity(),
-            0.5,
-            (0.2, 1., 0.5),
-            CHARGE_SHINYNESS,
-        ));
-    }
-
-    // Add a vector field
-    // todo: Flux lines in adddition to or instead of this?
-    for (i, j, k) in iter_arr!(grid_posits_gradient.len()) {
-        let posit = grid_posits_gradient[i][j][k];
-
-        // Swap Y and Z axis due to the renderer's different coord system.
-        let posit = Vec3::new(posit.x as f32, posit.z as f32, posit.y as f32);
-
-        let mut grad = gradient[i][j][k];
-
-        // todo temp
-        grad.x = 1.;
-
-        // Note: We don't need any information on the rotation around the arrow's axis,
-        // so we have an unused degree of freedom in this quaternion.
-        // todo: QC this. I believe the starting vec should be oriented with the arrow in
-        // todo the mesh. (Although you may have to do a coordinate conversion.
-        let arrow_orientation = Quaternion::from_unit_vecs(
-            UP,
-            Vec3::new(grad.x as f32, grad.y as f32, grad.z as f32).to_normalized(),
-        );
-
-        entities.push(Entity::new(
-            vector_arrow_i,
-            posit,
-            arrow_orientation,
-            grad.magnitude() as f32,
-            (0.2, 1., 0.5),
-            CHARGE_SHINYNESS,
-        ));
-    }
+    add_non_surface_entities(
+        &mut entities,
+        charge_density_balls,
+        gradient,
+        grid_posits_gradient,
+        mesh_sphere_i,
+        vector_arrow_i,
+    );
 
     // todo: Im comps if ticked
-    // todo: How to handle Z comp?
 
     scene.entities = entities;
 }

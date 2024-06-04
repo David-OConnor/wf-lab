@@ -103,7 +103,7 @@ const GRID_N_RENDER_DEFAULT: usize = 70;
 
 // todo: We have this temporarily high for force calc troubleshooting
 const GRID_N_CHARGE_DEFAULT: usize = 61;
-const GRID_N_GRADIENT_DEFAULT: usize = 20;
+const GRID_N_GRADIENT_DEFAULT: usize = 10;
 // const GRID_N_CHARGE_DEFAULT: usize = 91;
 
 const RENDER_SPINOR: bool = false;

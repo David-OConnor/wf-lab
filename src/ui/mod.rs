@@ -576,6 +576,16 @@ fn bottom_items(
                 &state.surfaces_shared.grid_posits_gradient,
                 &state.surfaces_shared.grid_posits_charge,
             );
+
+            render::update_entities(
+                &state.nucleii,
+                &state.surface_descs_per_elec,
+                scene,
+                &state.charge_density_balls,
+                &state.surfaces_shared.elec_field_gradient,
+                &state.surfaces_shared.grid_posits_gradient,
+            );
+            *updated_entities = true;
         }
 
         // if ui.add(Button::new("Set bond dist")).clicked() {
@@ -621,9 +631,6 @@ fn bottom_items(
                 render::N_CHARGE_BALLS,
             );
 
-            // *updated_evaluated_wfs = true;
-            // *updated_E_or_V = true;
-            // *updated_basis_weights = true;
             render::update_entities(
                 &state.nucleii,
                 &state.surface_descs_per_elec,
