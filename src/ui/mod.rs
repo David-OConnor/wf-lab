@@ -573,6 +573,7 @@ fn bottom_items(
                 // &state.surfaces_shared.charge_density_all, // todo: Is this correct?
                 &state.charges_from_electron[0], // todo: Once it works for a single-elec case, fix this.
                 &state.nucleii,
+                &state.surfaces_shared.grid_posits_gradient,
                 &state.surfaces_shared.grid_posits_charge,
             );
         }
@@ -629,7 +630,7 @@ fn bottom_items(
                 scene,
                 &state.charge_density_balls,
                 &state.surfaces_shared.elec_field_gradient,
-                &state.surfaces_shared.grid_posits_charge,
+                &state.surfaces_shared.grid_posits_gradient,
             );
             *updated_entities = true;
         }
@@ -1109,7 +1110,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         scene,
                         &state.charge_density_balls,
                         &state.surfaces_shared.elec_field_gradient,
-                        &state.surfaces_shared.grid_posits_charge,
+                        &state.surfaces_shared.grid_posits_gradient,
                     );
                 }
                 ActiveElec::Combined => {
@@ -1119,7 +1120,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                         scene,
                         &state.charge_density_balls,
                         &state.surfaces_shared.elec_field_gradient,
-                        &state.surfaces_shared.grid_posits_charge,
+                        &state.surfaces_shared.grid_posits_gradient,
                     );
                 }
             }

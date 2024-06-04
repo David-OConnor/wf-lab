@@ -11,8 +11,9 @@ use crate::{
     types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
     ui::procedures,
     wf_ops::{self, DerivCalc, Spin, Q_PROT},
-    Axis, StateUi, SurfaceDesc, SurfaceToRender, GRID_MAX_CHARGE, GRID_MAX_RENDER,
-    GRID_N_CHARGE_DEFAULT, GRID_N_RENDER_DEFAULT, RENDER_L, RENDER_SPINOR, SPACING_FACTOR_DEFAULT,
+    Axis, StateUi, SurfaceDesc, SurfaceToRender, GRID_MAX_CHARGE, GRID_MAX_GRADIENT,
+    GRID_MAX_RENDER, GRID_N_CHARGE_DEFAULT, GRID_N_RENDER_DEFAULT, RENDER_L, RENDER_SPINOR,
+    SPACING_FACTOR_DEFAULT,
 };
 
 pub struct State {
@@ -56,8 +57,11 @@ pub struct State {
     /// This charge grid is generally denser than the main grid. This allows more fidelity for
     /// modelling electron charge, without evaluating the wave function at too many points.
     pub grid_n_charge: usize,
+    /// For our gradient vector field display.
+    pub grid_n_gradient: usize,
     pub grid_range_render: (f64, f64),
     pub grid_range_charge: (f64, f64),
+    pub grid_range_gradient: (f64, f64),
     /// 1.0 is an evenly-spaced grid. A higher value spreads out the grid; high values
     /// mean increased non-linearity, with higher spacing farther from the center.
     /// This only (currently) applies to the main grid, with a uniform grid set for
@@ -96,6 +100,7 @@ impl State {
         // todo: FOr now, you can continue with matching them if you wish.
         let grid_range_render = (-GRID_MAX_RENDER, GRID_MAX_RENDER);
         let grid_range_charge = (-GRID_MAX_CHARGE, GRID_MAX_CHARGE);
+        let grid_range_gradient = (-GRID_MAX_GRADIENT, GRID_MAX_GRADIENT);
 
         // let spacing_factor = 1.6;
         // Currently, must be one as long as used with elec-elec charge.
@@ -103,16 +108,18 @@ impl State {
 
         let grid_n_render = GRID_N_RENDER_DEFAULT;
         let grid_n_charge = GRID_N_CHARGE_DEFAULT;
+        let grid_n_gradient = GRID_N_CHARGE_DEFAULT;
 
         let psi_pp_calc = DerivCalc::Numeric;
 
         let surfaces_shared = SurfacesShared::new(
             grid_range_render,
             grid_range_charge,
+            grid_range_gradient,
             spacing_factor,
             grid_n_render,
             grid_n_charge,
-            // num_elecs,
+            grid_n_gradient,
             Axis::Z,
         );
 
@@ -227,8 +234,10 @@ impl State {
             surface_descs_combined,
             grid_n_render,
             grid_n_charge,
+            grid_n_gradient,
             grid_range_render,
             grid_range_charge,
+            grid_range_gradient,
             sample_factor_render: spacing_factor,
             // max_basis_n,
             num_elecs,
@@ -270,10 +279,11 @@ impl State {
         self.surfaces_shared = SurfacesShared::new(
             self.grid_range_render,
             self.grid_range_charge,
+            self.grid_range_gradient,
             self.sample_factor_render,
             grid_n,
             self.grid_n_charge,
-            // self.num_elecs,
+            self.grid_n_gradient,
             self.ui.hidden_axis,
         );
 

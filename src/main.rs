@@ -94,14 +94,16 @@ mod wf_ops;
 use crate::{state::State, types::ComputationDevice, wf_ops::Q_PROT};
 
 const SPACING_FACTOR_DEFAULT: f64 = 1.;
-const GRID_MAX_RENDER: f64 = 3.;
 
+const GRID_MAX_RENDER: f64 = 3.;
 const GRID_MAX_CHARGE: f64 = 8.;
+const GRID_MAX_GRADIENT: f64 = GRID_MAX_RENDER;
 
 const GRID_N_RENDER_DEFAULT: usize = 70;
 
 // todo: We have this temporarily high for force calc troubleshooting
 const GRID_N_CHARGE_DEFAULT: usize = 61;
+const GRID_N_GRADIENT_DEFAULT: usize = 20;
 // const GRID_N_CHARGE_DEFAULT: usize = 91;
 
 const RENDER_SPINOR: bool = false;

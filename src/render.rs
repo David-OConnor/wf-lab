@@ -929,7 +929,6 @@ pub fn update_entities(
 
     // Add a vector field
     // todo: Flux lines in adddition to or instead of this?
-    // todo: Which grid?
     for (i, j, k) in iter_arr!(grid_posits_gradient.len()) {
         let posit = grid_posits_gradient[i][j][k];
 
@@ -1052,7 +1051,7 @@ pub fn render(state: State) {
         &mut scene,
         &state.charge_density_balls,
         &state.surfaces_shared.elec_field_gradient,
-        &state.surfaces_shared.grid_posits_charge,
+        &state.surfaces_shared.grid_posits_gradient,
     );
 
     let input_settings = InputSettings {

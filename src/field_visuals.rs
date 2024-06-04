@@ -14,13 +14,15 @@ use crate::{
 pub fn calc_gradient(
     charge_elecs: &Arr3dReal,
     charge_nucs: &[(Vec3, f64)],
-    grid: &Arr3dVec,
+    grid_gradient: &Arr3dVec,
+    grid_charge: &Arr3dVec,
 ) -> Arr3dVec {
-    let n = charge_elecs.len();
+    let n_gradient = grid_gradient.len();
+    let n_charge = grid_charge.len();
 
     // Assume even spacing for now. Adjust for a non-uniform grid, or remove
     // this in favor of a const if using analytic fns, A/R.
-    let h_2 = (grid[2][0][0] - grid[0][0][0]).x;
+    let h_2 = (grid_gradient[2][0][0] - grid_gradient[0][0][0]).x;
 
     // todo: Combine from elecs and prots A/R here.
 
@@ -28,19 +30,25 @@ pub fn calc_gradient(
     // todo as required: Much more accurate.
 
     // todo: Modify in place instead of creating a new array for result?
-    let mut result = new_data_vec(n);
+    let mut result = new_data_vec(n_gradient);
 
-    for (i, j, k) in iter_arr!(n) {
-        if i == 0 || i == n - 1 || j == 0 || j == n - 1 || k == 0 || k == n - 1 {
+    for (i, j, k) in iter_arr!(n_gradient) {
+        if i == 0
+            || i == n_charge - 1
+            || j == 0
+            || j == n_gradient - 1
+            || k == 0
+            || k == n_gradient - 1
+        {
             continue;
         }
-        let posit_sample = grid[i][j][k];
+        let posit_sample = grid_gradient[i][j][k];
 
         let mut E = Vec3::new_zero();
 
         // Add electron charge.
-        for (i_charge, j_charge, k_charge) in iter_arr!(n) {
-            let posit_charge = grid[i_charge][j_charge][k_charge];
+        for (i_charge, j_charge, k_charge) in iter_arr!(n_charge) {
+            let posit_charge = grid_charge[i_charge][j_charge][k_charge];
             let charge_elecs = charge_elecs[i_charge][j_charge][k_charge];
 
             let E_scalar = potential::E_coulomb(posit_charge, posit_sample, charge_elecs);

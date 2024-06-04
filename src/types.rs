@@ -35,6 +35,7 @@ pub struct SurfacesShared {
     /// Represents points on a grid, for our non-uniform grid.
     pub grid_posits: Arr2dVec,
     pub grid_posits_charge: Arr3dVec,
+    pub grid_posits_gradient: Arr3dVec,
     /// Potential from nuclei, and all electrons
     pub V_total: Arr3dReal,
     /// Potential from nuclei only. We use this as a baseline for individual electron
@@ -70,9 +71,11 @@ impl SurfacesShared {
     pub fn new(
         grid_range: (f64, f64),
         grid_range_charge: (f64, f64),
+        grid_range_gradient: (f64, f64),
         spacing_factor: f64,
         n_grid: usize,
         n_grid_charge: usize,
+        n_grid_gradient: usize,
         // num_elecs: usize,
         axis_hidden: Axis,
     ) -> Self {
@@ -103,11 +106,21 @@ impl SurfacesShared {
             n_grid_charge,
         );
 
+        let mut grid_posits_gradient = new_data_vec(n_grid_gradient);
+
+        grid_setup::update_grid_posits(
+            &mut grid_posits_gradient,
+            grid_range_gradient,
+            1.,
+            n_grid_charge,
+        );
+
         let num_elecs = 0; // todo temp placeholder.
 
         Self {
             grid_posits,
             grid_posits_charge,
+            grid_posits_gradient,
             V_total: data_real.clone(),
             V_from_nuclei: data_real_2d.clone(),
             psi: WaveFunctionMultiElec::new(num_elecs, n_grid),
@@ -120,7 +133,7 @@ impl SurfacesShared {
             charge_beta: data_real.clone(),
             charge_density_all: data_real.clone(),
             spin_density: data_real,
-            elec_field_gradient: new_data_vec(n_grid_charge), // todo: Is this the grid we want to use?
+            elec_field_gradient: new_data_vec(n_grid_gradient),
         }
     }
 }
