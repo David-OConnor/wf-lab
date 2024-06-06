@@ -133,7 +133,6 @@ fn add_non_surface_entities(
 
         // Swap Y and Z axis due to the renderer's different coord system.
         let posit = Vec3::new(posit.x as f32, posit.z as f32, posit.y as f32);
-        // let posit = Vec3::new(posit.x as f32, posit.y as f32, posit.z as f32); // todo?
 
         let mut grad = gradient[i][j][k];
 
@@ -142,11 +141,11 @@ fn add_non_surface_entities(
         // todo: QC this. I believe the starting vec should be oriented with the arrow in
         // todo the mesh. (Although you may have to do a coordinate conversion.
         let arrow_orientation = Quaternion::from_unit_vecs(
-            UP,
-            Vec3::new(grad.x as f32, grad.y as f32, grad.z as f32).to_normalized(),
+            Vec3::new(0., 1., 0.), // this instead of "UP" due to the different coordinate system.
+            Vec3::new(grad.x as f32, grad.z as f32, grad.y as f32).to_normalized(),
         );
 
-        entities.push(Entity::new(ing
+        entities.push(Entity::new(
             vector_arrow_i,
             posit,
             arrow_orientation,

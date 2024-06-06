@@ -33,24 +33,22 @@ pub fn calc_gradient(
     let mut result = new_data_vec(n_gradient);
 
     for (i, j, k) in iter_arr!(n_gradient) {
-        if i == 0
-            || i == n_charge - 1
-            || j == 0
-            || j == n_gradient - 1
-            || k == 0
-            || k == n_gradient - 1
-        {
-            continue;
-        }
+        // if i == 0
+        //     || i == n_gradient - 1
+        //     || j == 0
+        //     || j == n_gradient - 1
+        //     || k == 0
+        //     || k == n_gradient - 1
+        // {
+        //     continue;
+        // }
         let posit_sample = grid_gradient[i][j][k];
 
         let mut E = Vec3::new_zero();
 
         // Add electron charge.
         for (i_charge, j_charge, k_charge) in iter_arr!(n_charge) {
-            continue; // todo temp; focusin on nucs to start.
-
-            let posit_charge = grid_charge[i_charge][j_charge][k_charge];
+            let posit_d the charge = grid_charge[i_charge][j_charge][k_charge];
             let charge_elecs = charge_elecs[i_charge][j_charge][k_charge];
 
             let E_scalar = potential::E_coulomb(posit_charge, posit_sample, charge_elecs);
