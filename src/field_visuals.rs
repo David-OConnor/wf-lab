@@ -48,17 +48,17 @@ pub fn calc_gradient(
 
         // Add electron charge.
         for (i_charge, j_charge, k_charge) in iter_arr!(n_charge) {
-            let posit_d the charge = grid_charge[i_charge][j_charge][k_charge];
+            let posit_charge = grid_charge[i_charge][j_charge][k_charge];
             let charge_elecs = charge_elecs[i_charge][j_charge][k_charge];
 
             let E_scalar = potential::E_coulomb(posit_charge, posit_sample, charge_elecs);
-            E += (posit_charge - posit_sample) * E_scalar;
+            E += (posit_sample - posit_charge) * E_scalar;
         }
 
         // Add nucleus charge.
         for (posit_nuc, charge_nuc) in charge_nucs {
             let E_scalar = potential::E_coulomb(*posit_nuc, posit_sample, *charge_nuc);
-            E += (*posit_nuc - posit_sample) * E_scalar;
+            E += (posit_sample - *posit_nuc) * E_scalar;
         }
 
         result[i][j][k] = E;

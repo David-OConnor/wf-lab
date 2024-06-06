@@ -426,7 +426,7 @@ impl Spinor {
         }
     }
 
-    pub fn differentiate(&self, deriv: &mut Self, component: Component, grid_spacing: f64) {
+    pub(crate) fn differentiate(&self, deriv: &mut Self, component: Component, grid_spacing: f64) {
         // For use with our midpoint formula.
         let n = self.c0.len();
         let diff = grid_spacing / 2.;
