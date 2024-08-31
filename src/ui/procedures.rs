@@ -4,13 +4,14 @@
 use graphics::{EngineUpdates, Scene};
 
 use crate::{
+    ActiveElec,
     basis_finder,
-    grid_setup::{new_data, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal},
-    potential, render,
+    grid_setup::{Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, new_data},
+    render,
     state::State,
-    types::SurfacesPerElec,
-    wf_ops, ActiveElec,
+    types::SurfacesPerElec, wf_ops,
 };
+use crate::core_calcs::potential;
 
 pub fn update_E_or_V(
     sfcs: &mut SurfacesPerElec,

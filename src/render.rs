@@ -905,7 +905,7 @@ pub fn update_meshes(
     }
 
     meshes.push(Mesh::new_sphere(CHARGE_SPHERE_SIZE, 12, 12));
-    meshes.push(Mesh::new_arrow(2., 0.2, 8));
+    meshes.push(Mesh::new_arrow(2., 0.2, 12));
 
     scene.meshes = meshes;
 }

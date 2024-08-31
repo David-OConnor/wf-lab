@@ -32,13 +32,13 @@ use crate::{
     complex_nums::Cplx,
     dirac,
     dirac::{BasisSpinor, CompPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3},
-    eigen_fns::{self},
-    eigen_raw,
-    grid_setup::{new_data_real, Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec},
+    grid_setup::{Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec, new_data_real},
     iter_arr, iter_arr_2d, num_diff,
     types::{ComputationDevice, Derivatives, Derivatives2D, DerivativesSingle},
     util::{self, MAX_PSI_FOR_NORM},
 };
+use crate::core_calcs::eigen_fns::{self};
+use crate::core_calcs::eigen_raw;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;
@@ -211,6 +211,7 @@ pub fn wf_from_bases_charge(
     println!("WF from bases complete.");
 }
 
+#[allow(unused)]
 /// Create psi, and optionally derivatives using basis functions. Creates one psi per basis. Does not mix bases;
 /// creates these values per-basis.
 /// todo: This currently keeps the bases unmixed. Do we want 2 variants: One mixed, one unmixed?
@@ -425,6 +426,7 @@ pub fn mix_bases_charge(
     )
 }
 
+#[allow(unused)]
 pub fn mix_bases_spinor(
     psi: &mut Spinor3,
     mut charge_density: Option<&mut Arr3dReal>,
@@ -619,6 +621,7 @@ pub fn update_eigen_vals(
     }
 }
 
+#[allow(unused)]
 /// For now, a thin wrapper.
 /// todo: When do we use this, vice `calcualte_v_elec`?
 pub fn update_eigen_vals_spinor(

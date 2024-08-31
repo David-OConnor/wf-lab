@@ -11,6 +11,9 @@
 
 //! This program explores solving the wave equation for
 //! arbitrary potentials. It visualizes the wave function in 3d, with user interaction.
+//!
+//! [Eliminating electron self-repulision](https://arxiv.org/pdf/2206.09472)
+//! [Quantum electrostatics](https://arxiv.org/pdf/2003.07473)
 
 // When applying your force via electron density (Sim code; maybe not this lib),
 // You may need to interpolate to avoid quantized (not in the way we need!) positions
@@ -70,9 +73,6 @@ mod basis_finder;
 mod basis_wfs;
 mod complex_nums;
 mod dirac;
-mod eigen_fns;
-mod eigen_raw;
-mod elec_elec;
 mod eval;
 mod field_visuals;
 mod forces;
@@ -82,7 +82,6 @@ mod gpu;
 mod grid_setup;
 mod interp;
 mod num_diff;
-mod potential;
 mod presets;
 mod render;
 mod state;
@@ -90,6 +89,7 @@ mod types;
 mod ui;
 mod util;
 mod wf_ops;
+mod core_calcs;
 
 use crate::{state::State, types::ComputationDevice, wf_ops::Q_PROT};
 

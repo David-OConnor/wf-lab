@@ -1,21 +1,11 @@
 use std::f64::consts::TAU;
 
-use egui::{self, Button, Color32, RichText, Ui};
+use egui::{self, Button, Color32, RichText, Ui, TextEdit};
 use graphics::{EngineUpdates, Scene};
 use lin_alg::f64::Vec3;
 
-use crate::{
-    basis_finder,
-    basis_wfs::Basis,
-    field_visuals, forces, grid_setup,
-    grid_setup::new_data_2d,
-    render,
-    state::State,
-    types::Derivatives2D,
-    util, wf_ops,
-    wf_ops::{DerivCalc, Spin},
-    ActiveElec, Axis, SPACING_FACTOR_DEFAULT,
-};
+use crate::{basis_finder, basis_wfs::Basis, field_visuals, forces, grid_setup, grid_setup::new_data_2d, render, state::State, types::Derivatives2D, util, wf_ops, wf_ops::{DerivCalc, Spin}, ActiveElec, Axis, SPACING_FACTOR_DEFAULT, iter_arr};
+use crate::grid_setup::new_data_real;
 
 pub(crate) mod procedures;
 
@@ -46,7 +36,7 @@ const SFC_CHECK_ROWS: usize = 5;
 fn text_edit_float(val: &mut f64, _default: f64, ui: &mut Ui) {
     let mut entry = val.to_string();
 
-    let response = ui.add(egui::TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
+    let response = ui.add(TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
     if response.changed() {
         *val = entry.parse::<f64>().unwrap_or(0.);
     }
@@ -191,7 +181,7 @@ fn basis_fn_mixer(
                             ui.heading("n:");
                             let mut entry = basis.n().to_string(); // angle
                             let response =
-                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                                ui.add(TextEdit::singleline(&mut entry).desired_width(16.));
                             if response.changed() {
                                 *basis.n_mut() = entry.parse().unwrap_or(1);
                             }
@@ -199,7 +189,7 @@ fn basis_fn_mixer(
                             ui.heading("l:");
                             let mut entry = basis.l().to_string(); // angle
                             let response =
-                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                                ui.add(TextEdit::singleline(&mut entry).desired_width(16.));
                             if response.changed() {
                                 *basis.l_mut() = entry.parse().unwrap_or(0);
                             }
@@ -207,7 +197,7 @@ fn basis_fn_mixer(
                             ui.heading("m:");
                             let mut entry = basis.m().to_string(); // angle
                             let response =
-                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                                ui.add(TextEdit::singleline(&mut entry).desired_width(16.));
                             if response.changed() {
                                 *basis.m_mut() = entry.parse().unwrap_or(0);
                             }
@@ -238,7 +228,7 @@ fn basis_fn_mixer(
                             let mut entry = val.to_string();
 
                             let response = ui.add(
-                                egui::TextEdit::singleline(&mut entry)
+                                TextEdit::singleline(&mut entry)
                                     .desired_width(FLOAT_EDIT_WIDTH),
                             );
                             if response.changed() {
@@ -259,7 +249,7 @@ fn basis_fn_mixer(
                             // ui.heading("c:");
                             // let mut entry = b.c.to_string(); // angle
                             // let response =
-                            //     ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                            //     ui.add(TextEdit::singleline(&mut entry).desired_width(16.));
                             // if response.changed() {
                             //     b.c = entry.parse().unwrap_or(1.);
                             // }
@@ -267,7 +257,7 @@ fn basis_fn_mixer(
                             ui.heading("n:");
                             let mut entry = b.n.to_string(); // angle
                             let response =
-                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                                ui.add(TextEdit::singleline(&mut entry).desired_width(16.));
                             if response.changed() {
                                 b.n = entry.parse().unwrap_or(1);
                             }
@@ -275,7 +265,7 @@ fn basis_fn_mixer(
                             ui.heading("l:");
                             let mut entry = b.harmonic.l.to_string(); // angle
                             let response =
-                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                                ui.add(TextEdit::singleline(&mut entry).desired_width(16.));
                             if response.changed() {
                                 b.harmonic.l = entry.parse().unwrap_or(0);
                             }
@@ -283,7 +273,7 @@ fn basis_fn_mixer(
                             ui.heading("m:");
                             let mut entry = b.harmonic.m.to_string(); // angle
                             let response =
-                                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(16.));
+                                ui.add(TextEdit::singleline(&mut entry).desired_width(16.));
                             if response.changed() {
                                 b.harmonic.m = entry.parse().unwrap_or(0);
                             }
@@ -294,7 +284,7 @@ fn basis_fn_mixer(
                             let mut val = (b.xi * XI_INT_FACTOR) as u32; // angle
                             let mut entry = val.to_string();
                             let response = ui.add(
-                                egui::TextEdit::singleline(&mut entry)
+                                TextEdit::singleline(&mut entry)
                                     .desired_width(FLOAT_EDIT_WIDTH),
                             );
                             if response.changed() {
@@ -437,9 +427,11 @@ fn basis_fn_mixer(
                         continue;
                     }
                     for basis_i in &bases_modified {
-                        *state.bases[elec_i][*basis_i].weight_mut() =
-                            state.bases[active_elec][*basis_i].weight();
-                        // *updated_basis_weights = true; // Make this update for all!
+                        let basis_this = &state.bases[elec_i][*basis_i];
+                        let basis_active = &state.bases[active_elec][*basis_i];
+                        if basis_active.n() == basis_this.n() {
+                            *state.bases[elec_i][*basis_i].weight_mut() = basis_active.weight();
+                        }
                     }
                 }
             }
@@ -567,11 +559,20 @@ fn bottom_items(
             println!("\n Force on nucs: {:?}", state.net_force_on_nuc);
         }
 
-        if ui.add(Button::new("Calc grad")).clicked() {
+        if ui.add(Button::new("Calc E field")).clicked() {
             // todo: Update which grid to use A/R.
-            state.surfaces_shared.elec_field_gradient = field_visuals::calc_gradient(
-                // &state.surfaces_shared.charge_density_all, // todo: Is this correct?
-                &state.charges_from_electron[0], // todo: Once it works for a single-elec case, fix this.
+
+            // Compute the electric charge from all electrons.
+            let n = state.grid_n_charge;
+            let mut charge_all_elecs = new_data_real(n);
+            for elec in &state.charges_from_electron {
+                for (i, j, k) in iter_arr!(n) {
+                    charge_all_elecs[i][j][k] += elec[i][j][k];
+                }
+            }
+
+            state.surfaces_shared.elec_field_gradient = field_visuals::calc_E_field(
+                &charge_all_elecs,
                 &state.nucleii,
                 &state.surfaces_shared.grid_posits_gradient,
                 &state.surfaces_shared.grid_posits_charge,
@@ -727,7 +728,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
             // Box to adjust grid n.
             let response =
-                ui.add(egui::TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
+                ui.add(TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
             if response.changed() {
                 let result = entry.parse::<usize>().unwrap_or(20);
                 state.grid_n_render = result;

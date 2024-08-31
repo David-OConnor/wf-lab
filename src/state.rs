@@ -3,18 +3,18 @@
 use lin_alg::f64::Vec3;
 
 use crate::{
+    Axis,
     basis_wfs::Basis,
     dirac::BasisSpinor,
-    grid_setup::{self, new_data, new_data_2d_real, new_data_real, Arr2dReal, Arr3d, Arr3dReal},
-    potential,
-    presets::Preset,
-    types::{ComputationDevice, SurfacesPerElec, SurfacesShared},
-    ui::procedures,
-    wf_ops::{self, DerivCalc, Spin, Q_PROT},
-    Axis, StateUi, SurfaceDesc, SurfaceToRender, GRID_MAX_CHARGE, GRID_MAX_GRADIENT,
-    GRID_MAX_RENDER, GRID_N_CHARGE_DEFAULT, GRID_N_GRADIENT_DEFAULT, GRID_N_RENDER_DEFAULT,
-    RENDER_L, RENDER_SPINOR, SPACING_FACTOR_DEFAULT,
+    GRID_MAX_CHARGE,
+    GRID_MAX_GRADIENT,
+    GRID_MAX_RENDER,
+    GRID_N_CHARGE_DEFAULT,
+    GRID_N_GRADIENT_DEFAULT, GRID_N_RENDER_DEFAULT, grid_setup::{self, Arr2dReal, Arr3d, Arr3dReal, new_data, new_data_2d_real, new_data_real}, presets::Preset, RENDER_L, RENDER_SPINOR,
+    SPACING_FACTOR_DEFAULT, StateUi, SurfaceDesc, SurfaceToRender,
+    types::{ComputationDevice, SurfacesPerElec, SurfacesShared}, ui::procedures, wf_ops::{self, DerivCalc, Q_PROT, Spin},
 };
+use crate::core_calcs::potential;
 
 pub struct State {
     /// Computation device for evaluating the very expensive charge potential computation.
@@ -214,6 +214,7 @@ impl State {
             Preset::make_h2_cation(),
             Preset::make_he(),
             Preset::make_li(),
+            Preset::make_li_test(),
             Preset::make_li_h(),
         ];
 

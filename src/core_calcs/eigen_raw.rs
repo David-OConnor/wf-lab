@@ -1,13 +1,13 @@
-//! Contains code related to calcualting the results of the basic eigenfunctions (H, L^2, L_z)
+//! Contains code related to calculating the results of the basic eigenfunctions (H, L^2, L_z)
 //! on ψ.
 
 use lin_alg::f64::Vec3;
 
 use crate::{
     complex_nums::{Cplx, IM},
-    eigen_fns::KE_COEFF,
     types::DerivativesSingle,
 };
+use crate::core_calcs::eigen_fns::KE_COEFF;
 
 /// Calculate H; the hamiltonian (Energy eigenfunction). H = (h^2/2m ∇^2 + V) ψ
 pub(crate) fn calc_H(psi: Cplx, psi_pp: Cplx, V: f64) -> Cplx {
@@ -34,7 +34,7 @@ pub(crate) fn calc_L_sq(posit: Vec3, d: &DerivativesSingle) -> Cplx {
 
     let part0 = d.d2z * (x_sq + y_sq) + d.d2x * (y_sq + z_sq) + d.d2y * (z_sq + x_sq);
 
-    // // todo: Experimetning...
+    // // todo: Experimenting...
     // let l_sq_sq = part0.abs_sq();
     // return Cplx::from_real(l_sq_sq);
 
@@ -50,7 +50,7 @@ pub(crate) fn calc_L_sq(posit: Vec3, d: &DerivativesSingle) -> Cplx {
     let part1 = (d_dydz * y * z + d_dzdx * z * x + d_dxdy * x * y) * 2.;
     // println!("Part 1:  {:?}", part1); // todo: part1 0 from cancelling cross terms? Appears to be.
 
-    // todo: Maybe you need to take the dervatives in series, instead of multiplying? Yea.
+    // todo: Maybe you need to take the derivatives in series, instead of multiplying? Yea.
     // todo: dx * dx isn't (dpsi/dx)^2... it's the second derivative.
 
     // TS note: Part 1 seems to be 0 for several test cases. (Cross-deriv terms cancelling, likely)

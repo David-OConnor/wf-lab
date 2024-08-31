@@ -330,6 +330,62 @@ impl Preset {
         }
     }
 
+    /// Experimenting with unifying inner electron WFs.
+    pub fn make_li_test() -> Self {
+        let weights_outer = vec![
+            // WIP for lithium:
+            (1., 1.),
+            (2., 0.51),
+            (3., -0.16),
+            (4., -0.17),
+            (5., -1.26),
+            (6., -0.83),
+            (8., -0.25),
+            (10., -0.75),
+        ];
+
+        let weights_inner = vec![
+            (1., 0.32),
+            (2., 0.),
+            (3., 0.),
+            (4., 0.),
+            (5., 0.),
+            (6., 0.),
+            (8., 0.),
+            (10., 0.),
+        ];
+
+        let sto_outer: Vec<_> = weights_outer
+            .iter()
+            .map(|d| StoData::new(0, 2, d.0, d.1))
+            .collect();
+        let sto_inner: Vec<_> = weights_inner
+            .iter()
+            .map(|d| StoData::new(0, 1, d.0, d.1))
+            .collect();
+
+        let stos_outer = build_stos(&sto_outer);
+        let stos_inner = build_stos(&sto_inner);
+
+        let mut bases_inner = Vec::new();
+        for s in stos_inner {
+            bases_inner.push(Basis::Sto(s));
+        }
+        let mut bases_outer = Vec::new();
+        for s in stos_outer {
+            bases_outer.push(Basis::Sto(s));
+        }
+
+        Self {
+            name: "Li test".to_owned(),
+            nuclei: vec![NucPreset {
+                posit: Vec3::new_zero(),
+                num_protons: 3,
+            }],
+            elecs: vec![bases_inner.clone(), bases_inner, bases_outer],
+        }
+    }
+
     /// Lithium hidride
     pub fn make_li_h() -> Self {
         let weights_li_inner = vec![

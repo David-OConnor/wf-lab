@@ -1,6 +1,6 @@
 //! This module contains code for setting up grids and sample points.
 
-use lin_alg::f64::Vec3;
+use lin_alg::f64::{Mat3, Vec3};
 
 use crate::{complex_nums::Cplx, iter_arr, types::DerivativesSingle, util, Axis};
 
@@ -15,6 +15,7 @@ pub type Arr4d = Vec<Vec<Vec<Vec<Cplx>>>>;
 
 pub type Arr2dVec = Vec<Vec<Vec3>>;
 pub type Arr3dVec = Vec<Vec<Vec<Vec3>>>;
+pub type Arr3dJacobian = Vec<Vec<Vec<Mat3>>>;
 
 /// Find sample points for evaluating wave functions, based on nuclei positions.
 /// Attempts to choose a minimal set of points that can accuruately be used

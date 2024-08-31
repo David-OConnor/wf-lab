@@ -1,8 +1,7 @@
 # Rust
 /target
 
-
-# Pycharm
+# IDE
 *.iws
 workspace.xml
 

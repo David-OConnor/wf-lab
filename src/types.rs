@@ -5,18 +5,17 @@ use cudarc::driver::CudaDevice;
 use lin_alg::f64::Vec3;
 
 use crate::{
-    basis_wfs::Basis,
-    complex_nums::Cplx,
-    dirac::{Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeDInner3},
-    elec_elec::WaveFunctionMultiElec,
-    grid_setup::{
-        self, new_data, new_data_2d, new_data_2d_real, new_data_2d_vec, new_data_real,
-        new_data_vec, Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec,
-    },
-    wf_ops,
-    wf_ops::{DerivCalc, Spin},
     Axis,
+    complex_nums::Cplx,
+    dirac::{Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeDInner3}
+    ,
+    grid_setup::{
+        self, Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal,
+        Arr3dVec, new_data, new_data_2d, new_data_2d_real, new_data_2d_vec, new_data_real, new_data_vec,
+    },
+    wf_ops::Spin,
 };
+use crate::core_calcs::elec_elec::WaveFunctionMultiElec;
 
 #[derive(Debug, Clone)]
 pub enum ComputationDevice {

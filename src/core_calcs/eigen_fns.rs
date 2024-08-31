@@ -25,11 +25,11 @@ use lin_alg::f64::Vec3;
 
 use crate::{
     complex_nums::{Cplx, IM},
-    elec_elec::WaveFunctionMultiElec,
     grid_setup::{Arr3d, Arr3dVec},
     types::DerivativesSingle,
-    wf_ops::{self, ħ, K_C, Q_ELEC, Q_PROT},
+    wf_ops::{self, K_C, Q_ELEC, Q_PROT, ħ},
 };
+use crate::core_calcs::elec_elec::WaveFunctionMultiElec;
 
 pub const KE_COEFF: f64 = -(ħ * ħ) / (2. * wf_ops::M_ELEC);
 pub const KE_COEFF_INV: f64 = 1. / KE_COEFF;
@@ -139,7 +139,7 @@ pub fn _find_E_2_elec(
 // todo: Separate module for this work on V-based evaluation?
 
 /// Calculate the V that must be acting on a given psi, and its (known to be accurate, eg numerical
-/// differention) derivative.
+/// differentiation) derivative.
 pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
     // psi''/psi is always real, due to being an eigenvalue of a Hermitian operator.
     // todo: What's going on? Why do we need to invert E here?

@@ -5,16 +5,16 @@ use ndarray::prelude::*;
 use ndarray_linalg::SVD;
 
 use crate::{
-    basis_wfs::{Basis, Sto},
+    basis_wfs::Basis,
     complex_nums::Cplx,
-    eigen_fns::{calc_E_on_psi, calc_V_on_psi, KE_COEFF_INV},
-    grid_setup::{new_data, new_data_real, Arr3dReal, Arr3dVec},
+    grid_setup::{Arr3dReal, Arr3dVec, new_data, new_data_real},
     iter_arr,
-    potential::{self, V_coulomb},
     types::ComputationDevice,
     util, wf_ops,
     wf_ops::{DerivCalc, Q_ELEC},
 };
+use crate::core_calcs::eigen_fns::{calc_E_on_psi, calc_V_on_psi, KE_COEFF_INV};
+use crate::core_calcs::potential::{self, V_coulomb};
 
 /// Normalize a set of weights, to keep the values reasonable and consistent when viewing.
 fn _normalize_weights(weights: &[f64]) -> Vec<f64> {
