@@ -1,0 +1,8 @@
+[package]
+name = "coulomb_microcharge"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lin-alg = { package = "lin-alg2", version = "^0.1.1" }
+graphics = { path = "../../../graphics_wgpu" }

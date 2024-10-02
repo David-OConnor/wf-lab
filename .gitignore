@@ -10,3 +10,4 @@ workspace.xml
 *.exp
 *.lib
 *.ptx
+/scripts/coulomb_microcharge/target/

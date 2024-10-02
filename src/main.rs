@@ -90,6 +90,7 @@ mod ui;
 mod util;
 mod wf_ops;
 mod core_calcs;
+mod experiminting;
 
 use crate::{state::State, types::ComputationDevice, wf_ops::Q_PROT};
 
