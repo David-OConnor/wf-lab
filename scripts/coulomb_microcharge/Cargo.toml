@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 lin-alg = { package = "lin-alg2", version = "^0.1.1" }
-graphics = { path = "../../../graphics_wgpu" }
+#graphics = { path = "../../../graphics_wgpu" }
+rerun = "^0.18.2"
