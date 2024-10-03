@@ -1,26 +1,32 @@
+use rand::Rng; // Add this to use the random number generator
+use std::f64::consts::TAU;
+
 use lin_alg::f64::Vec3;
+use lin_alg::f32::Vec3 as Vec3f32;
 use rerun::{RecordingStream, RecordingStreamError, Image, Points3D, demo_util::grid, external::glam, Position3D};
 
 const M_ELEC: f64 = 1.;
 const Q_ELEC: f64 = -1.;
 
-const NUM_TIMESTEPS: usize = 1_000;
-
+#[derive(Debug)]
 struct SnapShot {
     pub time: f64,
     // pub nucs: Vec<Nucleus>,
     // todo: To save memory, you could store the snapshots as f32; we only need f64 precision
     // todo during the integration.
-    pub elecs: Vec<Electron>,
+    // pub elecs: Vec<Electron>,
+    pub elec_posits: Vec<Vec3f32>,
+    pub nuc_posits: Vec<Vec3f32>,
 }
 
+#[derive(Debug)]
 struct Nucleus {
     pub mass: f64,
     pub charge: f64, // todo: Integer?
     pub posit: Vec3,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Electron {
     pub posit: Vec3,
     pub v: Vec3,
@@ -69,7 +75,42 @@ fn integrate_rk4(elecs: &mut [Electron], dt: f64) {
     }
 }
 
-fn run(snapshots: &mut Vec<SnapShot>, num_elecs: usize, dt: f64) {
+/// Set up initial condition for electron positions and velocities. This may have
+/// significant effects on the outcome.
+fn make_initial_elecs(n_elecs: usize) -> Vec<Electron> {
+    let mut result = Vec::new();
+
+    let mut rng = rand::thread_rng();
+
+    let distribution_center = Vec3::new_zero(); // todo: Nucleus etc.
+    let distribution_radius = 2.;
+
+    for i in 0..num_elecs {
+        // Generate random spherical coordinates
+        let r = distribution_radius * rng.gen::<f64>().cbrt();  // Random radius scaled within [0, distribution_radius]
+        let theta = rng.gen_range(0.0..TAU);              // Random angle theta in [0, 2*pi]
+        let phi = rng.gen_range(0.0..TAU/2.);                      // Random angle phi in [0, pi]
+
+        // Convert spherical coordinates to Cartesian coordinates
+        let x = r * phi.sin() * theta.cos();
+        let y = r * phi.sin() * theta.sin();
+        let z = r * phi.cos();
+
+        let posit = distribution_center + Vec3::new(x, y, z);
+
+        result.push(Electron {
+            posit,
+            v: Vec3::new_zero(),
+            a: Vec3::new_zero(),
+        })
+    }
+
+    result
+}
+
+fn run(n_elecs: usize, n_timesteps: usize, dt: f64) -> Vec<Snapshot> {
+    let mut snapshots = Vec::new();
+
     let charge_per_elec = Q_ELEC / num_elecs as f64;
 
     let nuc = Nucleus {
@@ -78,17 +119,9 @@ fn run(snapshots: &mut Vec<SnapShot>, num_elecs: usize, dt: f64) {
         posit: Vec3::new_zero(),
     };
 
-    let mut elecs = Vec::new();
-    for _ in 0..num_elecs {
-        // todo: Initial condition
-        elecs.push(Electron {
-            posit: Vec3::new_zero(),
-            v: Vec3::new_zero(),
-            a: Vec3::new_zero(),
-        })
-    }
+    let elecs = make_initial_elecs(n_elecs);
 
-    for snap_i in 0..NUM_TIMESTEPS {
+    for snap_i in 0..n_timesteps {
         let len = elecs.len();
         for elec_acted_on in 0..len {
             let mut a = Vec3::new_zero();
@@ -129,23 +162,31 @@ fn run(snapshots: &mut Vec<SnapShot>, num_elecs: usize, dt: f64) {
         // }
         integrate_rk4(&mut elecs, dt);
 
-
         snapshots.push(SnapShot {
             time: snap_i as f64 * dt,
-            elecs: elecs.clone(),
+            elec_posits: elecs.iter().map(|e| Vec3f32::new(e.posit.x as f32, e.posit.y as f32, e.posit.z as f32)).collect(),
+            nuc_posits: vec![Vec3f32::new(nuc.posit.x as f32, nuc.posit.y as f32, nuc.posit.z as f32)]
         })
     }
+
+    snapshots
 }
 
+/// Render, by logging to Rerun.
 fn render(snapshots: &[SnapShot]) -> Result<(), RecordingStreamError> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal").spawn()?;
 
     for snap in snapshots {
-        let positions: Vec<Position3D> = snap
-            .elecs
+        let mut positions: Vec<Position3D> = snap
+            .elec_posits
             .iter()
-            .map(|s| Position3D::new(s.posit.x as f32, s.posit.y as f32, s.posit.z as f32))
+            .map(|s| Position3D::new(s.x, s.y, s.z))
             .collect();
+
+        for nuc_posit in &snap.nuc_posits {
+            positions.push(Position3D::new(nuc_posit.x, nuc_posit.y, nuc_posit.z))
+        }
+
 
         let posits2 = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10);
         let colors = grid(glam::Vec3::ZERO, glam::Vec3::splat(255.0), 10)
@@ -175,10 +216,8 @@ fn render(snapshots: &[SnapShot]) -> Result<(), RecordingStreamError> {
 
 fn main() {
     // todo: Statically allocate?
-    let mut snapshots = Vec::new();
-
     println!("Building snapshots...");
-    run(&mut snapshots, 100, 1.);
+    let snapshots = run(100, 1_000, 1.);
     println!("Complete. Rendering...");
 
     render(&snapshots);
