@@ -5,16 +5,29 @@ use lin_alg::f64::Vec3;
 use lin_alg::f32::Vec3 as Vec3f32;
 use rerun::{RecordingStream, RecordingStreamError, Image, Points3D, demo_util::grid, external::glam, Position3D};
 
+// todo: What if you have total electric charge different from a whole number? Misc elec "particles"
+// todo zipping around in the either, to be capture.
+
+
+// todo: Next, try having the electrons add up to more than 1 charge.
+// todo: Try to quantify the elec density, so you can compare it to Schrodinger.
+
 const M_ELEC: f64 = 1.;
 const Q_ELEC: f64 = -1.;
+
+// If two particles are closer to each other than this, don't count accel, or cap it.
+const MIN_DIST: f64 = 0.001;
+// SKip these many frames in rerun, to keep it from hanging.
+const RERUN_SKIP_AMOUNT: usize = 200;
+
+// Don't calculate force if particles are farther than this from each other. Computation saver.
+// const MAX_DIST: f64 = 0.1;
 
 #[derive(Debug)]
 struct SnapShot {
     pub time: f64,
-    // pub nucs: Vec<Nucleus>,
     // todo: To save memory, you could store the snapshots as f32; we only need f64 precision
     // todo during the integration.
-    // pub elecs: Vec<Electron>,
     pub elec_posits: Vec<Vec3f32>,
     pub nuc_posits: Vec<Vec3f32>,
 }
@@ -33,6 +46,37 @@ struct Electron {
     pub a: Vec3,
 }
 
+// (radius, charge_in_radius)
+fn density(elec_posits: &[Vec3f32], q_per_elec: f64, center_ref: Vec3f32) -> Vec<(f32, f32)> {
+    // Must be ascending radii for the below code to work.
+    let per_elec = q_per_elec as f32;
+
+    // Equidistant ish, for now.
+    let mut result = vec![
+        ((0.0, 0.2), 0.),
+         ((0.2, 0.4),0.),
+        ((0.4, 0.6),0.),
+        ((0.8, 1.), 0.),
+         ((1., 1.2),0.),
+        ((1.2, 1.4),0.),
+         ((1.4, 1.6), 0.),
+        ((1.6, 1.8), 0.),
+        ((1.8, 2.0), 0.),
+        ((2.0, 9999.), 0.),
+    ];
+
+    for (r_bound, q) in &mut result {
+        for posit in elec_posits {
+            let mag = (center_ref - *posit).magnitude();
+            if mag < *r_bound.1 && mag > *r_bound.0 {
+                *q += per_elec;
+            }
+        }
+    }
+
+    result
+}
+
 /// Calculate the Coulomb acceleration on a particle, from a single other particle.
 fn accel_coulomb(
     posit_acted_on: Vec3,
@@ -41,7 +85,7 @@ fn accel_coulomb(
     q_actor: f64,
     mass_acted_on: f64,
 ) -> Vec3 {
-    let posit_diff = posit_actor - posit_acted_on;
+    let posit_diff = posit_acted_on - posit_actor;
     let dist = posit_diff.magnitude();
 
     let posit_diff_unit = posit_diff / dist;
@@ -50,6 +94,11 @@ fn accel_coulomb(
     // Calculate the Coulomb force between nuclei.
 
     let f_mag = q_acted_on * q_actor / dist.powi(2);
+
+    if dist < MIN_DIST {
+        println!("Min dist: {:?} Force: {:?}", dist, f_mag);
+        return Vec3::new_zero();
+    }
 
     posit_diff_unit * f_mag / mass_acted_on
 }
@@ -85,7 +134,7 @@ fn make_initial_elecs(n_elecs: usize) -> Vec<Electron> {
     let distribution_center = Vec3::new_zero(); // todo: Nucleus etc.
     let distribution_radius = 2.;
 
-    for i in 0..num_elecs {
+    for i in 0..n_elecs {
         // Generate random spherical coordinates
         let r = distribution_radius * rng.gen::<f64>().cbrt();  // Random radius scaled within [0, distribution_radius]
         let theta = rng.gen_range(0.0..TAU);              // Random angle theta in [0, 2*pi]
@@ -108,10 +157,10 @@ fn make_initial_elecs(n_elecs: usize) -> Vec<Electron> {
     result
 }
 
-fn run(n_elecs: usize, n_timesteps: usize, dt: f64) -> Vec<Snapshot> {
+fn run(n_elecs: usize, n_timesteps: usize, dt: f64) -> Vec<SnapShot> {
     let mut snapshots = Vec::new();
 
-    let charge_per_elec = Q_ELEC / num_elecs as f64;
+    let charge_per_elec = Q_ELEC / n_elecs as f64;
 
     let nuc = Nucleus {
         mass: 2_000., // todo temp?
@@ -119,7 +168,7 @@ fn run(n_elecs: usize, n_timesteps: usize, dt: f64) -> Vec<Snapshot> {
         posit: Vec3::new_zero(),
     };
 
-    let elecs = make_initial_elecs(n_elecs);
+    let mut elecs = make_initial_elecs(n_elecs);
 
     for snap_i in 0..n_timesteps {
         let len = elecs.len();
@@ -138,8 +187,8 @@ fn run(n_elecs: usize, n_timesteps: usize, dt: f64) -> Vec<Snapshot> {
                 a += accel_coulomb(
                     elecs[elec_acted_on].posit,
                     elecs[elec_actor].posit,
-                    Q_ELEC,
-                    Q_ELEC,
+                    charge_per_elec,
+                    charge_per_elec,
                     M_ELEC,
                 );
             }
@@ -148,18 +197,13 @@ fn run(n_elecs: usize, n_timesteps: usize, dt: f64) -> Vec<Snapshot> {
             a += accel_coulomb(
                 elecs[elec_acted_on].posit,
                 nuc.posit,
-                Q_ELEC,
+                charge_per_elec,
                 -Q_ELEC,
                 M_ELEC,
             );
             elecs[elec_acted_on].a = a;
         }
 
-        // todo: Euler for now; improve.
-        // for elec in &mut elecs {
-        //     elec.v += elec.a * dt;
-        //     elec.posit += elec.v * dt;
-        // }
         integrate_rk4(&mut elecs, dt);
 
         snapshots.push(SnapShot {
@@ -176,7 +220,11 @@ fn run(n_elecs: usize, n_timesteps: usize, dt: f64) -> Vec<Snapshot> {
 fn render(snapshots: &[SnapShot]) -> Result<(), RecordingStreamError> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal").spawn()?;
 
-    for snap in snapshots {
+    for (i, snap) in snapshots.iter().enumerate() {
+        if i % RERUN_SKIP_AMOUNT != 0 {
+            continue
+        }
+
         let mut positions: Vec<Position3D> = snap
             .elec_posits
             .iter()
@@ -187,15 +235,13 @@ fn render(snapshots: &[SnapShot]) -> Result<(), RecordingStreamError> {
             positions.push(Position3D::new(nuc_posit.x, nuc_posit.y, nuc_posit.z))
         }
 
-
-        let posits2 = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10);
         let colors = grid(glam::Vec3::ZERO, glam::Vec3::splat(255.0), 10)
             .map(|v| rerun::Color::from_rgb(v.x as u8, v.y as u8, v.z as u8));
 
         let points = Points3D::new(positions)
             // let points = Points3D::new(posits2)
             //     .with_colors(colors)
-            .with_radii([0.5]);
+            .with_radii([0.02]);
 
         // let points = Points3D {
         //     positions,
@@ -209,6 +255,9 @@ fn render(snapshots: &[SnapShot]) -> Result<(), RecordingStreamError> {
         // let rec = RecordingStream::global(rerun::StoreKind::Recording).unwrap();
 
         rec.log(format!("Elecs T:{}", snap.time), &points)?;
+
+        // rec.set_timepoint(snap.time);
+        rec.set_time_seconds("test", snap.time);
     }
 
     Ok(())
@@ -217,7 +266,7 @@ fn render(snapshots: &[SnapShot]) -> Result<(), RecordingStreamError> {
 fn main() {
     // todo: Statically allocate?
     println!("Building snapshots...");
-    let snapshots = run(100, 1_000, 1.);
+    let snapshots = run(100, 50_000, 0.005);
     println!("Complete. Rendering...");
 
     render(&snapshots);

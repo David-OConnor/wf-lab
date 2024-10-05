@@ -7,3 +7,4 @@ edition = "2021"
 lin-alg = { package = "lin-alg2", version = "^0.1.1" }
 #graphics = { path = "../../../graphics_wgpu" }
 rerun = "^0.18.2"
+rand = "^0.8.5"

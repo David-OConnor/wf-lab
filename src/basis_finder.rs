@@ -358,8 +358,13 @@ fn find_bases_system_of_eqs(
 
     // you can use an iterative method, which will be more efficient for larger matrices where full svd is
     // unfeasible. also check that rust's svd sorts singular values in non-increasing order (pretty sure it does)
-    let svd = mat_to_solve.svd(false, true).unwrap();
-    let weights = svd.2.unwrap().slice(s![-1, ..]).to_vec();
+
+
+    // todo: Oct 24. Commented out. Broken byh upgrade to ndarray or ndarry_linalg.
+    // let svd = mat_to_solve.svd(false, true).unwrap();
+    // let weights = svd.2.unwrap().slice(s![-1, ..]).to_vec();
+
+    let weights = Vec::new();
 
     // let weights_normalized = normalize_weights(&weights);
     // todo TS

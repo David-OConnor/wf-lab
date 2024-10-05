@@ -704,7 +704,7 @@ fn bottom_items(
 pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> EngineUpdates {
     let mut engine_updates = EngineUpdates::default();
 
-    let panel = egui::SidePanel::left(0) // ID must be unique among panels.
+    let panel = egui::SidePanel::left("0") // ID must be unique among panels.
         .default_width(SIDE_PANEL_SIZE);
 
     panel.show(cx, |ui| {
