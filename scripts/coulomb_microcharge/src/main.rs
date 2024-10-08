@@ -16,7 +16,7 @@ const M_ELEC: f64 = 1.;
 const Q_ELEC: f64 = -1.;
 
 // If two particles are closer to each other than this, don't count accel, or cap it.
-const MIN_DIST: f64 = 0.001;
+const MIN_DIST: f64 = 0.1;
 // SKip these many frames in rerun, to keep it from hanging.
 const RERUN_SKIP_AMOUNT: usize = 200;
 
@@ -47,7 +47,7 @@ struct Electron {
 }
 
 // (radius, charge_in_radius)
-fn density(elec_posits: &[Vec3f32], q_per_elec: f64, center_ref: Vec3f32) -> Vec<(f32, f32)> {
+fn density(elec_posits: &[Vec3f32], q_per_elec: f64, center_ref: Vec3f32) -> Vec<((f32, f32), f32)> {
     // Must be ascending radii for the below code to work.
     let per_elec = q_per_elec as f32;
 
@@ -68,7 +68,7 @@ fn density(elec_posits: &[Vec3f32], q_per_elec: f64, center_ref: Vec3f32) -> Vec
     for (r_bound, q) in &mut result {
         for posit in elec_posits {
             let mag = (center_ref - *posit).magnitude();
-            if mag < *r_bound.1 && mag > *r_bound.0 {
+            if mag < r_bound.1 && mag > r_bound.0 {
                 *q += per_elec;
             }
         }
@@ -84,6 +84,7 @@ fn accel_coulomb(
     q_acted_on: f64,
     q_actor: f64,
     mass_acted_on: f64,
+    nuc_actor: bool
 ) -> Vec3 {
     let posit_diff = posit_acted_on - posit_actor;
     let dist = posit_diff.magnitude();
@@ -94,6 +95,12 @@ fn accel_coulomb(
     // Calculate the Coulomb force between nuclei.
 
     let f_mag = q_acted_on * q_actor / dist.powi(2);
+
+    // todo: Solving the nuc-toss-out problem.
+    if nuc_actor && dist < 0.1 {
+        // println!("Min dist: {:?} Force: {:?}", dist, f_mag);
+        return Vec3::new_zero();
+    }
 
     if dist < MIN_DIST {
         println!("Min dist: {:?} Force: {:?}", dist, f_mag);
@@ -137,6 +144,9 @@ fn make_initial_elecs(n_elecs: usize) -> Vec<Electron> {
     for i in 0..n_elecs {
         // Generate random spherical coordinates
         let r = distribution_radius * rng.gen::<f64>().cbrt();  // Random radius scaled within [0, distribution_radius]
+
+        let r = 1.; // Hard-coded to the Bohr radius.
+
         let theta = rng.gen_range(0.0..TAU);              // Random angle theta in [0, 2*pi]
         let phi = rng.gen_range(0.0..TAU/2.);                      // Random angle phi in [0, pi]
 
@@ -177,6 +187,8 @@ fn run(n_elecs: usize, n_timesteps: usize, dt: f64) -> Vec<SnapShot> {
 
             // Force of other elecs on this elec.
             for elec_actor in 0..len {
+                // continue; // todo removing elec-elec charge for now.
+
                 // Split the slice to get mutable and immutable elements
                 // let (acted_on, actor) = elecs.split_at_mut(i);
 
@@ -190,6 +202,7 @@ fn run(n_elecs: usize, n_timesteps: usize, dt: f64) -> Vec<SnapShot> {
                     charge_per_elec,
                     charge_per_elec,
                     M_ELEC,
+                    false,
                 );
             }
 
@@ -200,6 +213,7 @@ fn run(n_elecs: usize, n_timesteps: usize, dt: f64) -> Vec<SnapShot> {
                 charge_per_elec,
                 -Q_ELEC,
                 M_ELEC,
+                true,
             );
             elecs[elec_acted_on].a = a;
         }
@@ -266,7 +280,8 @@ fn render(snapshots: &[SnapShot]) -> Result<(), RecordingStreamError> {
 fn main() {
     // todo: Statically allocate?
     println!("Building snapshots...");
-    let snapshots = run(100, 50_000, 0.005);
+    // let snapshots = run(200, 50_000, 0.001);
+    let snapshots = run(100, 100_000, 0.001);
     println!("Complete. Rendering...");
 
     render(&snapshots);

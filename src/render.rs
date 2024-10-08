@@ -18,6 +18,7 @@ use crate::{
     types::{SurfacesPerElec, SurfacesShared},
     Axis, SurfaceDesc, SurfaceToRender,
 };
+use crate::ui::ui_handler;
 
 type Color = (f32, f32, f32);
 
@@ -163,31 +164,14 @@ fn event_handler(
     _scene: &mut Scene,
     _dt: f32,
 ) -> EngineUpdates {
-    // match event {
-    //     DeviceEvent::Key(key) => {}
-    //     _ => (),
-    // }
     EngineUpdates::default()
 }
 
 /// This runs each frame. Currently, no updates.
 fn render_handler(_state: &mut State, _scene: &mut Scene, _dt: f32) -> EngineUpdates {
-    // EngineUpdates::default()
-
-    EngineUpdates {
-        // compute: true,
-        ..Default::default()
-    }
+    EngineUpdates::default()
 }
 
-/// Utility function to linearly map an input value to an output
-pub fn _map_linear(val: f64, range_in: (f64, f64), range_out: (f64, f64)) -> f64 {
-    // todo: You may be able to optimize calls to this by having the ranges pre-store
-    // todo the total range vals.
-    let portion = (val - range_in.0) / (range_in.1 - range_in.0);
-
-    portion * (range_out.1 - range_out.0) + range_out.0
-}
 
 /// Generate a f32 mesh from a 3d F64 mesh, using a z slice. Replaces the z value with function value.
 fn prepare_2d_mesh_real(
@@ -1086,7 +1070,6 @@ pub fn render(state: State) {
         ui_settings,
         render_handler,
         event_handler,
-        crate::ui::ui_handler,
-        // include_str!("shader_compute.wgsl"),
+        ui_handler,
     );
 }
