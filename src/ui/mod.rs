@@ -543,6 +543,7 @@ fn bottom_items(
                 state.dev_charge.clone(),
             );
 
+            println!("C");
             *updated_evaluated_wfs = true;
             *updated_E_or_V = true;
             *updated_basis_weights = true;
@@ -918,6 +919,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                             state.grid_n_render,
                             state.ui.hidden_axis,
                         );
+                        println!("G");
                         // Now that the positions are updated, update the per-basis
                         // wave functions, using the positions.
                         // updated_basis_weights = true;
@@ -961,6 +963,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
 
                     state.init_from_grid();
                     updated_E_or_V = true;
+                    println!("H");
                     updated_evaluated_wfs = true;
                     updated_basis_weights = true;
                     updated_meshes = true;
@@ -1061,6 +1064,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 }
 
                 if updated_evaluated_wfs {
+                    println!("Updated eval WFS..."); // todo temp
                     procedures::update_evaluated_wfs(state, ae);
                     updated_meshes = true;
                 }

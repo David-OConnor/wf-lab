@@ -156,7 +156,7 @@ pub fn wf_from_bases_charge(
     bases: &[Basis],
     grid_posits: &Arr3dVec,
 ) {
-    println!("Starting WF from bases...");
+    println!("Starting WF from bases (charge)...");
     let grid_n = grid_posits.len();
 
     // Setting up posits_flat here prevents repetition between CUDA and CPU code below.
