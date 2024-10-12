@@ -3,11 +3,10 @@
 use lin_alg::f64::Vec3;
 
 use crate::{
-    grid_setup::{Arr3dReal, Arr3dVec, new_data_vec},
-    iter_arr
-    ,
+    core_calcs::potential,
+    grid_setup::{new_data_vec, Arr3dReal, Arr3dVec},
+    iter_arr,
 };
-use crate::core_calcs::potential;
 /// Calcualte the electric field on a grid.
 pub(crate) fn calc_E_field(
     charge_elecs: &Arr3dReal,
@@ -44,7 +43,6 @@ pub(crate) fn calc_E_field(
             let E_scalar = potential::E_coulomb(*posit_nuc, posit_sample, *charge_nuc);
             E += (posit_sample - *posit_nuc) * E_scalar;
         }
-
 
         result[i][j][k] = E;
     }
@@ -102,7 +100,6 @@ pub(crate) fn calc_E_field(
 //
 //     result
 // }
-
 
 // /// Generate a vectorfield of the gradient, from a charge density field. Note the convention of vectors
 // /// pointing towards positive charge, and away from negative charge.

@@ -30,15 +30,17 @@ use crate::gpu;
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
+    core_calcs::{
+        eigen_fns::{self},
+        eigen_raw,
+    },
     dirac,
     dirac::{BasisSpinor, CompPsi, Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeE3},
-    grid_setup::{Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec, new_data_real},
+    grid_setup::{new_data_real, Arr2d, Arr2dReal, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec},
     iter_arr, iter_arr_2d, num_diff,
     types::{ComputationDevice, Derivatives, Derivatives2D, DerivativesSingle},
     util::{self, MAX_PSI_FOR_NORM},
 };
-use crate::core_calcs::eigen_fns::{self};
-use crate::core_calcs::eigen_raw;
 
 // We use Hartree units: ħ, elementary charge, electron mass, and Bohr radius.
 pub const K_C: f64 = 1.;

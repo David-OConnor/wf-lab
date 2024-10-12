@@ -1,11 +1,21 @@
 use std::f64::consts::TAU;
 
-use egui::{self, Button, Color32, RichText, Ui, TextEdit};
+use egui::{self, Button, Color32, ComboBox, RichText, Slider, TextEdit, Ui};
 use graphics::{EngineUpdates, Scene};
 use lin_alg::f64::Vec3;
 
-use crate::{basis_finder, basis_wfs::Basis, field_visuals, forces, grid_setup, grid_setup::new_data_2d, render, state::State, types::Derivatives2D, util, wf_ops, wf_ops::{DerivCalc, Spin}, ActiveElec, Axis, SPACING_FACTOR_DEFAULT, iter_arr};
-use crate::grid_setup::new_data_real;
+use crate::{
+    basis_finder,
+    basis_wfs::Basis,
+    field_visuals, forces, grid_setup,
+    grid_setup::{new_data_2d, new_data_real},
+    iter_arr, render,
+    state::State,
+    types::Derivatives2D,
+    util, wf_ops,
+    wf_ops::{DerivCalc, Spin},
+    ActiveElec, Axis, SPACING_FACTOR_DEFAULT,
+};
 
 pub(crate) mod procedures;
 
@@ -147,7 +157,7 @@ fn basis_fn_mixer(
                     let prev_charge_id = basis.charge_id();
 
                     // Pair WFs with charge positions.
-                    egui::ComboBox::from_id_source(basis_i + 1_000)
+                    ComboBox::from_id_salt(basis_i + 1_000)
                         .width(30.)
                         .selected_text(basis.charge_id().to_string())
                         .show_ui(ui, |ui| {
@@ -228,8 +238,7 @@ fn basis_fn_mixer(
                             let mut entry = val.to_string();
 
                             let response = ui.add(
-                                TextEdit::singleline(&mut entry)
-                                    .desired_width(FLOAT_EDIT_WIDTH),
+                                TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH),
                             );
                             if response.changed() {
                                 val = entry.parse().unwrap_or(100);
@@ -284,8 +293,7 @@ fn basis_fn_mixer(
                             let mut val = (b.xi * XI_INT_FACTOR) as u32; // angle
                             let mut entry = val.to_string();
                             let response = ui.add(
-                                TextEdit::singleline(&mut entry)
-                                    .desired_width(FLOAT_EDIT_WIDTH),
+                                TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH),
                             );
                             if response.changed() {
                                 val = entry.parse().unwrap_or(0);
@@ -403,19 +411,15 @@ fn basis_fn_mixer(
                     //     temp_psi_pp_div_psi.remove(0);
                 }
 
-                ui.add(
-                    egui::Slider::from_get_set(WEIGHT_MIN..=WEIGHT_MAX, |v| {
-                        if let Some(v_) = v {
-                            *basis.weight_mut() = v_;
-                            *updated_basis_weights = true;
-
-                            bases_modified.push(basis_i);
-                        }
-
-                        basis.weight()
-                    })
-                    .text("Wt"),
-                );
+                ui.label("Wt");
+                if ui
+                    .add(Slider::new(basis.weight_mut(), WEIGHT_MIN..=WEIGHT_MAX))
+                    .changed()
+                {
+                    // if prev != basis.weight() {
+                    *updated_basis_weights = true;
+                    bases_modified.push(basis_i);
+                }
 
                 // Re-compute this basis WF. Eg, after changing n, l, m, xi, or the associated electron.
                 if ui.add(Button::new("C")).clicked() {}
@@ -728,8 +732,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             let mut entry = state.grid_n_render.to_string();
 
             // Box to adjust grid n.
-            let response =
-                ui.add(TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
+            let response = ui.add(TextEdit::singleline(&mut entry).desired_width(FLOAT_EDIT_WIDTH));
             if response.changed() {
                 let result = entry.parse::<usize>().unwrap_or(20);
                 state.grid_n_render = result;
@@ -755,7 +758,7 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 ActiveElec::PerElec(i) => i.to_string(),
             };
 
-            egui::ComboBox::from_id_source(0)
+            egui::ComboBox::from_id_salt(0)
                 .width(30.)
                 .selected_text(active_elec_text)
                 .show_ui(ui, |ui| {
@@ -903,76 +906,77 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
             }
         });
 
-        ui.add(
-            // -0.1 is a kludge.
-            egui::Slider::from_get_set(
-                state.grid_range_render.0..=state.grid_range_render.1 - 0.1,
-                |v| {
-                    if let Some(v_) = v {
-                        state.ui.z_displayed = v_;
+        // todo: Rem oct 2024 due to a glitch!
+        // ui.add(
+        //     // -0.1 is a kludge.
+        //     egui::Slider::from_get_set(
+        //         state.grid_range_render.0..=state.grid_range_render.1 - 0.1,
+        //         |v| {
+        //             if let Some(v_) = v {
+        //                 state.ui.z_displayed = v_;
+        //
+        //                 grid_setup::update_grid_posits_2d(
+        //                     &mut state.surfaces_shared.grid_posits,
+        //                     (state.grid_range_render.0, state.grid_range_render.1),
+        //                     SPACING_FACTOR_DEFAULT,
+        //                     state.ui.z_displayed,
+        //                     state.grid_n_render,
+        //                     state.ui.hidden_axis,
+        //                 );
+        //                 println!("G");
+        //                 // Now that the positions are updated, update the per-basis
+        //                 // wave functions, using the positions.
+        //                 // updated_basis_weights = true;
+        //                 // ideally: Only update eval once you drop teh slider, or click a btn.
+        //                 updated_evaluated_wfs = true;
+        //                 updated_basis_weights = true; // Required to re-mix using the new evaled WFs.
+        //                 updated_meshes = true;
+        //             }
+        //
+        //             state.ui.z_displayed
+        //         },
+        //     )
+        //     .text("Z slice"),
+        // );
 
-                        grid_setup::update_grid_posits_2d(
-                            &mut state.surfaces_shared.grid_posits,
-                            (state.grid_range_render.0, state.grid_range_render.1),
-                            SPACING_FACTOR_DEFAULT,
-                            state.ui.z_displayed,
-                            state.grid_n_render,
-                            state.ui.hidden_axis,
-                        );
-                        println!("G");
-                        // Now that the positions are updated, update the per-basis
-                        // wave functions, using the positions.
-                        // updated_basis_weights = true;
-                        // ideally: Only update eval once you drop teh slider, or click a btn.
-                        updated_evaluated_wfs = true;
-                        updated_basis_weights = true; // Required to re-mix using the new evaled WFs.
-                        updated_meshes = true;
-                    }
+        ui.label("Visual rotation");
+        if ui
+            .add(Slider::new(
+                &mut state.ui.visual_rotation,
+                -TAU / 2.0..=TAU / 2.0,
+            ))
+            .changed()
+        {
+            updated_meshes = true;
+        }
 
-                    state.ui.z_displayed
-                },
-            )
-            .text("Z slice"),
-        );
-
-        ui.add(
-            egui::Slider::from_get_set(-TAU / 2.0..=TAU / 2.0, |v| {
-                if let Some(v_) = v {
-                    state.ui.visual_rotation = v_;
-                    updated_meshes = true;
-                }
-
-                state.ui.visual_rotation
-            })
-            .text("Visual rotation"),
-        );
-
-        ui.add(
-            egui::Slider::from_get_set(GRID_SIZE_MIN..=GRID_SIZE_MAX, |v| {
-                if let Some(v_) = v {
-                    state.grid_range_render = (-v_, v_);
-
-                    grid_setup::update_grid_posits_2d(
-                        &mut state.surfaces_shared.grid_posits,
-                        (state.grid_range_render.0, state.grid_range_render.1),
-                        SPACING_FACTOR_DEFAULT,
-                        state.ui.z_displayed,
-                        state.grid_n_render,
-                        state.ui.hidden_axis,
-                    );
-
-                    state.init_from_grid();
-                    updated_E_or_V = true;
-                    println!("H");
-                    updated_evaluated_wfs = true;
-                    updated_basis_weights = true;
-                    updated_meshes = true;
-                }
-
-                state.grid_range_render.1
-            })
-            .text("Grid range"),
-        );
+        // todo: Oct 2024 troubleshooting.
+        // ui.add(
+        //     egui::Slider::from_get_set(GRID_SIZE_MIN..=GRID_SIZE_MAX, |v| {
+        //         if let Some(v_) = v {
+        //             state.grid_range_render = (-v_, v_);
+        //
+        //             grid_setup::update_grid_posits_2d(
+        //                 &mut state.surfaces_shared.grid_posits,
+        //                 (state.grid_range_render.0, state.grid_range_render.1),
+        //                 SPACING_FACTOR_DEFAULT,
+        //                 state.ui.z_displayed,
+        //                 state.grid_n_render,
+        //                 state.ui.hidden_axis,
+        //             );
+        //
+        //             state.init_from_grid();
+        //             updated_E_or_V = true;
+        //             println!("H");
+        //             updated_evaluated_wfs = true;
+        //             updated_basis_weights = true;
+        //             updated_meshes = true;
+        //         }
+        //
+        //         state.grid_range_render.1
+        //     })
+        //     .text("Grid range"),
+        // );
 
         match state.ui.active_elec {
             ActiveElec::PerElec(ae) => {
@@ -981,23 +985,23 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
                 //     state.eval_data_per_elec[ae].score
                 // ));
 
-                ui.add(
-                    egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
-                        if let Some(v_) = v {
-                            state.surfaces_per_elec[ae].E = v_;
-
-                            updated_meshes = true;
-                            updated_E_or_V = true;
-                        }
-
-                        state.surfaces_per_elec[ae].E
-                    })
-                    .text("E"),
-                );
+                // let prev_val = state.surfaces_per_elec[ae].E;
+                ui.label("E");
+                if ui
+                    .add(Slider::new(
+                        &mut state.surfaces_per_elec[ae].E,
+                        E_MIN..=E_MAX,
+                    ))
+                    .changed()
+                {
+                    // if state.surfaces_per_elec[ae].E != prev_val {
+                    updated_meshes = true;
+                    updated_E_or_V = true;
+                }
 
                 let prev_spin = state.surfaces_per_elec[ae].spin;
                 // Combobox to select the active electron, or select the combined wave functino.
-                egui::ComboBox::from_id_source(0)
+                ComboBox::from_id_salt(0)
                     .width(30.)
                     .selected_text(prev_spin.to_string())
                     .show_ui(ui, |ui| {

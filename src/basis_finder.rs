@@ -7,14 +7,16 @@ use ndarray_linalg::SVD;
 use crate::{
     basis_wfs::Basis,
     complex_nums::Cplx,
-    grid_setup::{Arr3dReal, Arr3dVec, new_data, new_data_real},
+    core_calcs::{
+        eigen_fns::{calc_E_on_psi, calc_V_on_psi, KE_COEFF_INV},
+        potential::{self, V_coulomb},
+    },
+    grid_setup::{new_data, new_data_real, Arr3dReal, Arr3dVec},
     iter_arr,
     types::ComputationDevice,
     util, wf_ops,
     wf_ops::{DerivCalc, Q_ELEC},
 };
-use crate::core_calcs::eigen_fns::{calc_E_on_psi, calc_V_on_psi, KE_COEFF_INV};
-use crate::core_calcs::potential::{self, V_coulomb};
 
 /// Normalize a set of weights, to keep the values reasonable and consistent when viewing.
 fn _normalize_weights(weights: &[f64]) -> Vec<f64> {
@@ -358,7 +360,6 @@ fn find_bases_system_of_eqs(
 
     // you can use an iterative method, which will be more efficient for larger matrices where full svd is
     // unfeasible. also check that rust's svd sorts singular values in non-increasing order (pretty sure it does)
-
 
     // todo: Oct 24. Commented out. Broken byh upgrade to ndarray or ndarry_linalg.
     // let svd = mat_to_solve.svd(false, true).unwrap();

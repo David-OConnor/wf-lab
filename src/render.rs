@@ -16,9 +16,9 @@ use crate::{
     iter_arr,
     state::State,
     types::{SurfacesPerElec, SurfacesShared},
+    ui::ui_handler,
     Axis, SurfaceDesc, SurfaceToRender,
 };
-use crate::ui::ui_handler;
 
 type Color = (f32, f32, f32);
 
@@ -171,7 +171,6 @@ fn event_handler(
 fn render_handler(_state: &mut State, _scene: &mut Scene, _dt: f32) -> EngineUpdates {
     EngineUpdates::default()
 }
-
 
 /// Generate a f32 mesh from a 3d F64 mesh, using a z slice. Replaces the z value with function value.
 fn prepare_2d_mesh_real(

@@ -1,11 +1,11 @@
 use lin_alg::f64::Vec3;
 
-use super::{A_0, SphericalHarmonic};
+use super::{SphericalHarmonic, A_0};
 use crate::{
     complex_nums::Cplx,
-    util::{self, EPS_DIV0, factorial},
+    core_calcs::eigen_fns::KE_COEFF,
+    util::{self, factorial, EPS_DIV0},
 };
-use crate::core_calcs::eigen_fns::KE_COEFF;
 
 /// See Sebens: Electric Charge Density, equation 24
 #[derive(Clone, Debug)]

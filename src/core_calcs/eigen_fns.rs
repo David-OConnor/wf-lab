@@ -25,11 +25,11 @@ use lin_alg::f64::Vec3;
 
 use crate::{
     complex_nums::{Cplx, IM},
+    core_calcs::elec_elec::WaveFunctionMultiElec,
     grid_setup::{Arr3d, Arr3dVec},
     types::DerivativesSingle,
-    wf_ops::{self, K_C, Q_ELEC, Q_PROT, ħ},
+    wf_ops::{self, ħ, K_C, Q_ELEC, Q_PROT},
 };
-use crate::core_calcs::elec_elec::WaveFunctionMultiElec;
 
 pub const KE_COEFF: f64 = -(ħ * ħ) / (2. * wf_ops::M_ELEC);
 pub const KE_COEFF_INV: f64 = 1. / KE_COEFF;

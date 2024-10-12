@@ -5,9 +5,9 @@ use lin_alg::f64::Vec3;
 
 use crate::{
     complex_nums::{Cplx, IM},
+    core_calcs::eigen_fns::KE_COEFF,
     types::DerivativesSingle,
 };
-use crate::core_calcs::eigen_fns::KE_COEFF;
 
 /// Calculate H; the hamiltonian (Energy eigenfunction). H = (h^2/2m ∇^2 + V) ψ
 pub(crate) fn calc_H(psi: Cplx, psi_pp: Cplx, V: f64) -> Cplx {

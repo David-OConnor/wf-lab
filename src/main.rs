@@ -72,8 +72,10 @@ mod basis_finder;
 // mod basis_init;
 mod basis_wfs;
 mod complex_nums;
+mod core_calcs;
 mod dirac;
 mod eval;
+mod experiminting;
 mod field_visuals;
 mod forces;
 mod gauss_padding;
@@ -89,8 +91,6 @@ mod types;
 mod ui;
 mod util;
 mod wf_ops;
-mod core_calcs;
-mod experiminting;
 
 use crate::{state::State, types::ComputationDevice, wf_ops::Q_PROT};
 
