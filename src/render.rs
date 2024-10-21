@@ -1056,9 +1056,6 @@ pub fn render(state: State) {
     };
     let ui_settings = UiSettings {
         layout: UiLayout::Left,
-        // todo: How to handle this? For blocking keyboard and moues inputs when over the UI.
-        // width: gui::UI_WIDTH as f64, // todo: Not working correctly.
-        size: 0., // todo: Bad API here.
         icon_path: Some("./resources/icon.png".to_owned()),
     };
 
