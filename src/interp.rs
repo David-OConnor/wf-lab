@@ -6,9 +6,7 @@
 // todo: This possibly needs complex support. Perhaps as a wrapper since you can treat the real and
 // todo complex parts separately.
 
-use lin_alg::f64::Vec3;
-
-use crate::complex_nums::Cplx;
+use lin_alg::{complex_nums::Cplx, f64::Vec3};
 
 /// Complex wrapper for 3d linear interpolation.
 pub fn linear_3d_cplx(

@@ -1,6 +1,8 @@
 use std::f64::consts::TAU;
 
-use egui::{self, Button, Color32, ComboBox, RichText, Slider, TextEdit, Ui};
+use egui::{
+    self, Button, Color32, ComboBox, Context, RichText, Slider, TextEdit, ThemePreference, Ui,
+};
 use graphics::{EngineUpdates, Scene};
 use lin_alg::f64::Vec3;
 
@@ -20,7 +22,6 @@ use crate::{
 pub(crate) mod procedures;
 
 const UI_WIDTH: f32 = 280.;
-const SIDE_PANEL_SIZE: f32 = 400.;
 const SLIDER_WIDTH: f32 = 260.;
 const SLIDER_WIDTH_ORIENTATION: f32 = 100.;
 
@@ -705,14 +706,11 @@ fn bottom_items(
 }
 
 /// This function draws the (immediate-mode) GUI.
-/// [UI items](https://docs.rs/egui/latest/egui/struct.Ui.html#method.heading)
-pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> EngineUpdates {
+/// [UI items](https://docs.rs/egui/latest/egui/struct.Ui.html)
+pub fn ui_handler(state: &mut State, ctx: &Context, scene: &mut Scene) -> EngineUpdates {
     let mut engine_updates = EngineUpdates::default();
 
-    let panel = egui::SidePanel::left("0") // ID must be unique among panels.
-        .default_width(SIDE_PANEL_SIZE);
-
-    panel.show(cx, |ui| {
+    egui::SidePanel::left("0").show(ctx, |ui| {
         ui.spacing_mut().item_spacing = egui::vec2(10.0, 12.0);
 
         // todo: Wider values on larger windows?
@@ -908,13 +906,16 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.horizontal(|ui| {
             ui.label("Z slice");
 
-            if ui.add(
-                // -0.1 is a kludge.
-                Slider::new(&mut state.ui.z_displayed,
-                            state.grid_range_render.0..=state.grid_range_render.1 - 0.1,
-
+            if ui
+                .add(
+                    // -0.1 is a kludge.
+                    Slider::new(
+                        &mut state.ui.z_displayed,
+                        state.grid_range_render.0..=state.grid_range_render.1 - 0.1,
+                    ),
                 )
-            ).clicked() {
+                .clicked()
+            {
                 grid_setup::update_grid_posits_2d(
                     &mut state.surfaces_shared.grid_posits,
                     (state.grid_range_render.0, state.grid_range_render.1),
@@ -935,8 +936,6 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         });
 
         ui.horizontal(|ui| {
-
-
             ui.label("Visual rotation");
             if ui
                 .add(Slider::new(
@@ -952,196 +951,200 @@ pub fn ui_handler(state: &mut State, cx: &egui::Context, scene: &mut Scene) -> E
         ui.horizontal(|ui| {
             ui.label("Grid range");
 
-            if ui.add(
-                Slider::new(&mut state.grid_range_render.1,GRID_SIZE_MIN..=GRID_SIZE_MAX)
-            ).clicked() {
-            state.grid_range_render.0 = -state.grid_range_render.1;
+            if ui
+                .add(Slider::new(
+                    &mut state.grid_range_render.1,
+                    GRID_SIZE_MIN..=GRID_SIZE_MAX,
+                ))
+                .clicked()
+            {
+                state.grid_range_render.0 = -state.grid_range_render.1;
 
-            grid_setup::update_grid_posits_2d(
-                &mut state.surfaces_shared.grid_posits,
-                (state.grid_range_render.0, state.grid_range_render.1),
-                SPACING_FACTOR_DEFAULT,
-                state.ui.z_displayed,
-                state.grid_n_render,
-                state.ui.hidden_axis,
-            );
+                grid_setup::update_grid_posits_2d(
+                    &mut state.surfaces_shared.grid_posits,
+                    (state.grid_range_render.0, state.grid_range_render.1),
+                    SPACING_FACTOR_DEFAULT,
+                    state.ui.z_displayed,
+                    state.grid_n_render,
+                    state.ui.hidden_axis,
+                );
 
-            state.init_from_grid();
-            updated_E_or_V = true;
-            updated_evaluated_wfs = true;
-            updated_basis_weights = true;
-            updated_meshes = true;
+                state.init_from_grid();
+                updated_E_or_V = true;
+                updated_evaluated_wfs = true;
+                updated_basis_weights = true;
+                updated_meshes = true;
+            }
+        });
+
+        match state.ui.active_elec {
+            ActiveElec::PerElec(ae) => {
+                // ui.heading(format!(
+                //     "ψ'' score: {:.10}",
+                //     state.eval_data_per_elec[ae].score
+                // ));
+
+                ui.horizontal(|ui| {
+                    if ui
+                        .add(Slider::new(
+                            &mut state.surfaces_per_elec[ae].E,
+                            E_MIN..=E_MAX,
+                        ))
+                        .changed()
+                    {
+                        // if state.surfaces_per_elec[ae].E != prev_val {
+                        updated_meshes = true;
+                        updated_E_or_V = true;
+                    }
+                });
+
+                let prev_spin = state.surfaces_per_elec[ae].spin;
+                // Combobox to select the active electron, or select the combined wave functino.
+                ComboBox::from_id_salt(0)
+                    .width(30.)
+                    .selected_text(prev_spin.to_string())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut state.surfaces_per_elec[ae].spin,
+                            Spin::Alpha,
+                            Spin::Alpha.to_string(),
+                        );
+                        ui.selectable_value(
+                            &mut state.surfaces_per_elec[ae].spin,
+                            Spin::Beta,
+                            Spin::Beta.to_string(),
+                        );
+                    });
+
+                if prev_spin != state.surfaces_per_elec[ae].spin {
+                    // todo: Put back A/R. Broken during 2D conversion
+                    // wf_ops::update_combined(
+                    //     &mut state.surfaces_shared,
+                    //     &state.surfaces_per_elec,
+                    //     state.grid_n_render,
+                    // );
+                    updated_meshes = true;
+                }
+
+                ui.add_space(ITEM_SPACING);
+
+                ui.heading("Charges:");
+
+                charge_editor(
+                    &mut state.nucleii,
+                    &mut state.bases[ae],
+                    &mut updated_evaluated_wfs,
+                    &mut updated_basis_weights,
+                    &mut updated_fixed_charges,
+                    &mut engine_updates.entities,
+                    ui,
+                );
+
+                ui.add_space(ITEM_SPACING);
+
+                bottom_items(
+                    ui,
+                    state,
+                    scene,
+                    ae,
+                    &mut updated_meshes,
+                    &mut updated_basis_weights,
+                    &mut updated_E_or_V,
+                    &mut updated_evaluated_wfs,
+                    &mut engine_updates.entities,
+                );
+
+                ui.add_space(ITEM_SPACING);
+
+                ui.heading("Basis functions and weights:");
+
+                basis_fn_mixer(state, &mut updated_basis_weights, ui, ae);
+
+                // Code below handles various updates that were flagged above.
+
+                if updated_fixed_charges {
+                    procedures::update_fixed_charges(state, scene);
+                }
+
+                if updated_evaluated_wfs {
+                    println!("Updated eval WFS..."); // todo temp
+                    procedures::update_evaluated_wfs(state, ae);
+                    updated_meshes = true;
+                }
+
+                if updated_basis_weights {
+                    procedures::update_basis_weights(state, ae);
+                    updated_meshes = true;
+                }
+
+                if updated_E_or_V {
+                    let E = state.surfaces_per_elec[ae].E;
+                    procedures::update_E_or_V(
+                        &mut state.surfaces_per_elec[ae],
+                        &state.surfaces_shared.V_from_nuclei,
+                        E,
+                        &state.surfaces_shared.grid_posits,
+                    );
+                }
+            }
+
+            ActiveElec::Combined => {
+                // ui.add(
+                //     egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
+                //         if let Some(v_) = v {
+                //             state.surfaces_shared.E = v_;
+                //
+                //             updated_E_or_V = true;
+                //             updated_meshes = true;
+                //         }
+                //
+                //         state.surfaces_shared.E
+                //     })
+                //     .text("E"),
+                // );
+
+                // Multiply wave functions together, and stores in Shared surfaces.
+                // todo: This is an approximation
+                // if ui.add(Button::new("Combine wavefunctions")).clicked() {
+                //     procedures::combine_wfs(state);
+                //     updated_meshes = true;
+                //     engine_updates.entities = true;
+                // }
+            }
+        }
+        // Code here runs for both multi-electron, and combined states
+
+        // Track using a variable to avoid mixing mutable and non-mutable borrows to
+        // surfaces.
+        if engine_updates.entities {
+            match state.ui.active_elec {
+                ActiveElec::PerElec(ae) => {
+                    render::update_entities(
+                        &state.nucleii,
+                        &state.surface_descs_per_elec,
+                        scene,
+                        &state.charge_density_balls,
+                        &state.surfaces_shared.elec_field_gradient,
+                        &state.surfaces_shared.grid_posits_gradient,
+                    );
+                }
+                ActiveElec::Combined => {
+                    render::update_entities(
+                        &state.nucleii,
+                        &state.surface_descs_combined,
+                        scene,
+                        &state.charge_density_balls,
+                        &state.surfaces_shared.elec_field_gradient,
+                        &state.surfaces_shared.grid_posits_gradient,
+                    );
+                }
+            }
+        }
+
+        if updated_meshes {
+            procedures::update_meshes(state, scene, &mut engine_updates);
         }
     });
 
-    match state.ui.active_elec {
-        ActiveElec::PerElec(ae) => {
-            // ui.heading(format!(
-            //     "ψ'' score: {:.10}",
-            //     state.eval_data_per_elec[ae].score
-            // ));
-
-            ui.horizontal(|ui| {
-                if ui
-                    .add(Slider::new(
-                        &mut state.surfaces_per_elec[ae].E,
-                        E_MIN..=E_MAX,
-                    ))
-                    .changed()
-                {
-                    // if state.surfaces_per_elec[ae].E != prev_val {
-                    updated_meshes = true;
-                    updated_E_or_V = true;
-                }
-            });
-
-            let prev_spin = state.surfaces_per_elec[ae].spin;
-            // Combobox to select the active electron, or select the combined wave functino.
-            ComboBox::from_id_salt(0)
-                .width(30.)
-                .selected_text(prev_spin.to_string())
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut state.surfaces_per_elec[ae].spin,
-                        Spin::Alpha,
-                        Spin::Alpha.to_string(),
-                    );
-                    ui.selectable_value(
-                        &mut state.surfaces_per_elec[ae].spin,
-                        Spin::Beta,
-                        Spin::Beta.to_string(),
-                    );
-                });
-
-            if prev_spin != state.surfaces_per_elec[ae].spin {
-                // todo: Put back A/R. Broken during 2D conversion
-                // wf_ops::update_combined(
-                //     &mut state.surfaces_shared,
-                //     &state.surfaces_per_elec,
-                //     state.grid_n_render,
-                // );
-                updated_meshes = true;
-            }
-
-            ui.add_space(ITEM_SPACING);
-
-            ui.heading("Charges:");
-
-            charge_editor(
-                &mut state.nucleii,
-                &mut state.bases[ae],
-                &mut updated_evaluated_wfs,
-                &mut updated_basis_weights,
-                &mut updated_fixed_charges,
-                &mut engine_updates.entities,
-                ui,
-            );
-
-            ui.add_space(ITEM_SPACING);
-
-            bottom_items(
-                ui,
-                state,
-                scene,
-                ae,
-                &mut updated_meshes,
-                &mut updated_basis_weights,
-                &mut updated_E_or_V,
-                &mut updated_evaluated_wfs,
-                &mut engine_updates.entities,
-            );
-
-            ui.add_space(ITEM_SPACING);
-
-            ui.heading("Basis functions and weights:");
-
-            basis_fn_mixer(state, &mut updated_basis_weights, ui, ae);
-
-            // Code below handles various updates that were flagged above.
-
-            if updated_fixed_charges {
-                procedures::update_fixed_charges(state, scene);
-            }
-
-            if updated_evaluated_wfs {
-                println!("Updated eval WFS..."); // todo temp
-                procedures::update_evaluated_wfs(state, ae);
-                updated_meshes = true;
-            }
-
-            if updated_basis_weights {
-                procedures::update_basis_weights(state, ae);
-                updated_meshes = true;
-            }
-
-            if updated_E_or_V {
-                let E = state.surfaces_per_elec[ae].E;
-                procedures::update_E_or_V(
-                    &mut state.surfaces_per_elec[ae],
-                    &state.surfaces_shared.V_from_nuclei,
-                    E,
-                    &state.surfaces_shared.grid_posits,
-                );
-            }
-        }
-
-        ActiveElec::Combined => {
-            // ui.add(
-            //     egui::Slider::from_get_set(E_MIN..=E_MAX, |v| {
-            //         if let Some(v_) = v {
-            //             state.surfaces_shared.E = v_;
-            //
-            //             updated_E_or_V = true;
-            //             updated_meshes = true;
-            //         }
-            //
-            //         state.surfaces_shared.E
-            //     })
-            //     .text("E"),
-            // );
-
-            // Multiply wave functions together, and stores in Shared surfaces.
-            // todo: This is an approximation
-            // if ui.add(Button::new("Combine wavefunctions")).clicked() {
-            //     procedures::combine_wfs(state);
-            //     updated_meshes = true;
-            //     engine_updates.entities = true;
-            // }
-        }
-    }
-    // Code here runs for both multi-electron, and combined states
-
-    // Track using a variable to avoid mixing mutable and non-mutable borrows to
-    // surfaces.
-    if engine_updates.entities {
-        match state.ui.active_elec {
-            ActiveElec::PerElec(ae) => {
-                render::update_entities(
-                    &state.nucleii,
-                    &state.surface_descs_per_elec,
-                    scene,
-                    &state.charge_density_balls,
-                    &state.surfaces_shared.elec_field_gradient,
-                    &state.surfaces_shared.grid_posits_gradient,
-                );
-            }
-            ActiveElec::Combined => {
-                render::update_entities(
-                    &state.nucleii,
-                    &state.surface_descs_combined,
-                    scene,
-                    &state.charge_density_balls,
-                    &state.surfaces_shared.elec_field_gradient,
-                    &state.surfaces_shared.grid_posits_gradient,
-                );
-            }
-        }
-    }
-
-    if updated_meshes {
-        procedures::update_meshes(state, scene, &mut engine_updates);
-    }
-});
-
-engine_updates
+    engine_updates
 }

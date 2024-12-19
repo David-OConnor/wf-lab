@@ -16,12 +16,11 @@
 
 use std::f64::consts::PI;
 
+use lin_alg::complex_nums::{Cplx, IM};
 // todo: There's also a WIP scilib Quantum lib that can do these H orbital calculations
 // todo directly.
 use lin_alg::f64::{Quaternion, Vec3};
 use scilib;
-
-use crate::complex_nums::{Cplx, IM};
 
 // Hartree units.
 const A_0: f64 = 1.;

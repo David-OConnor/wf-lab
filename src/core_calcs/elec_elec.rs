@@ -3,10 +3,9 @@
 
 use std::{collections::HashMap, f64::consts::FRAC_1_SQRT_2};
 
-use lin_alg::f64::Vec3;
+use lin_alg::{complex_nums::Cplx, f64::Vec3};
 
 use crate::{
-    complex_nums::Cplx,
     grid_setup::{new_data, Arr3d},
     num_diff,
 };

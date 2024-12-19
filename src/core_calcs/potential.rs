@@ -1,5 +1,7 @@
 //! Contains code related to creating and combining potentials.
 
+#![allow(non_snake_case)]
+
 use lin_alg::f64::Vec3;
 
 #[cfg(feature = "cuda")]

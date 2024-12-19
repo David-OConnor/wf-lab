@@ -5,7 +5,7 @@ edition = "2021"
 
 
 [dependencies]
-graphics = { path = "../graphics_wgpu" }
+graphics = { path = "../graphics" }
 lin-alg = { package = "lin-alg2", path = "../lin_alg" }
 egui = "^0.29.1"
 

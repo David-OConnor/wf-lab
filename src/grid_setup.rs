@@ -1,8 +1,11 @@
 //! This module contains code for setting up grids and sample points.
 
-use lin_alg::f64::{Mat3, Vec3};
+use lin_alg::{
+    complex_nums::Cplx,
+    f64::{Mat3, Vec3},
+};
 
-use crate::{complex_nums::Cplx, iter_arr, types::DerivativesSingle, util, Axis};
+use crate::{iter_arr, types::DerivativesSingle, util, Axis};
 
 pub type Arr2dReal = Vec<Vec<f64>>;
 pub type Arr3dReal = Vec<Vec<Vec<f64>>>;

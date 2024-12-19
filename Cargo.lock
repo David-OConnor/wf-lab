@@ -1153,13 +1153,13 @@ dependencies = [
 
 [[package]]
 name = "graphics"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "egui",
  "egui-wgpu",
  "egui-winit",
  "image",
- "lin-alg2",
+ "lin-alg2 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "obj",
  "pollster",
  "wgpu",
@@ -1539,7 +1539,13 @@ dependencies = [
 
 [[package]]
 name = "lin-alg2"
-version = "0.1.1"
+version = "1.0.0"
+
+[[package]]
+name = "lin-alg2"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62b015dd3d6f83266fc73c715fdb5aa952ac8ace7825537f7201f5a2e3926857"
 
 [[package]]
 name = "linux-raw-sys"
@@ -2292,9 +2298,9 @@ dependencies = [
 
 [[package]]
 name = "pollster"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22686f4785f02a4fcc856d3b3bb19bf6c8160d103f7a99cc258bddd0251dc7f2"
+checksum = "2f3a9f18d041e6d0e102a0a46750538147e5e8992d3b4873aaafee2520b00ce3"
 
 [[package]]
 name = "portable-atomic"
@@ -3516,7 +3522,7 @@ dependencies = [
  "egui",
  "graphics",
  "itertools 0.13.0",
- "lin-alg2",
+ "lin-alg2 1.0.0",
  "nalgebra",
  "ndarray 0.16.1",
  "ndarray-linalg",

@@ -38,13 +38,15 @@
 
 use core::ops::{Add, Mul, Sub};
 
-use lin_alg::f64::Vec3;
+use lin_alg::{
+    complex_nums::{Cplx, IM},
+    f64::Vec3,
+};
 use na::{Matrix2, Matrix4};
 use nalgebra as na;
 
 use crate::{
     basis_wfs::Sto,
-    complex_nums::{Cplx, IM},
     grid_setup,
     grid_setup::{Arr3d, Arr3dReal, Arr4d},
     iter_arr, iter_arr_4,

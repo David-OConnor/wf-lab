@@ -9,7 +9,6 @@
 //! We use this module to define exports for when
 /// using this package as a library.
 pub mod basis_wfs;
-pub mod complex_nums;
 mod eigen_fns;
 pub mod elec_elec;
 pub mod eval;

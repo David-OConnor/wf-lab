@@ -26,8 +26,8 @@ const RERUN_SKIP_AMOUNT: usize = 200;
 #[derive(Debug)]
 struct SnapShot {
     pub time: f64,
-    // todo: To save memory, you could store the snapshots as f32; we only need f64 precision
-    // todo during the integration.
+    // To save memory, we store the snapshots as f32; we only need f64 precision
+    // during the integration.
     pub elec_posits: Vec<Vec3f32>,
     pub nuc_posits: Vec<Vec3f32>,
 }
@@ -111,30 +111,30 @@ fn accel_coulomb(
 }
 
 fn integrate_rk4(elecs: &mut [Electron], dt: f64) {
-    for elec in elecs.iter_mut() {
+    for body in elecs.iter_mut() {
         // Step 1: Calculate the k-values for position and velocity
-        let k1_v = elec.a * dt;
-        let k1_posit = elec.v * dt;
+        let k1_v = body.a * dt;
+        let k1_posit = body.v * dt;
 
-        let k2_v = (elec.a) * dt;
-        let k2_posit = (elec.v + k1_v * 0.5) * dt;
+        let k2_v = compute_acceleration(initial_posit + k1_posit * 0.5) * dt;
+        let k2_posit = (body.v + k1_v * 0.5) * dt;
 
-        let k3_v = (elec.a) * dt;
-        let k3_posit = (elec.v + k2_v * 0.5) * dt;
+        let k3_v = compute_acceleration(initial_posit + k2_posit * 0.5) * dt;
+        let k3_posit = (body.v + k2_v * 0.5) * dt;
 
-        let k4_v = (elec.a) * dt;
-        let k4_posit = (elec.v + k3_v) * dt;
+        let k4_v = compute_acceleration(initial_posit + k3_posit) * dt;
+        let k4_posit = (body.v + k3_v) * dt;
 
         // Step 2: Update position and velocity using weighted average of k-values
-        elec.v += (k1_v + k2_v * 2. + k3_v * 2. + k4_v) / 6.;
-        elec.posit += (k1_posit + k2_posit * 2. + k3_posit * 2. + k4_posit) / 6.;
+        body.v += (k1_v + k2_v * 2. + k3_v * 2. + k4_v) / 6.;
+        body.posit += (k1_posit + k2_posit * 2. + k3_posit * 2. + k4_posit) / 6.;
     }
 }
 
 /// Set up initial condition for electron positions and velocities. This may have
 /// significant effects on the outcome.
 fn make_initial_elecs(n_elecs: usize) -> Vec<Electron> {
-    let mut result = Vec::new();
+    let mut result = Vec::with_capacity(n_elecs);
 
     let mut rng = rand::thread_rng();
 
@@ -147,6 +147,8 @@ fn make_initial_elecs(n_elecs: usize) -> Vec<Electron> {
 
         let r = 1.; // Hard-coded to the Bohr radius.
 
+        // check causal grav; this may have peaks at the poles.
+
         let theta = rng.gen_range(0.0..TAU);              // Random angle theta in [0, 2*pi]
         let phi = rng.gen_range(0.0..TAU/2.);                      // Random angle phi in [0, pi]
 
@@ -157,9 +159,12 @@ fn make_initial_elecs(n_elecs: usize) -> Vec<Electron> {
 
         let posit = distribution_center + Vec3::new(x, y, z);
 
+        // Set V A/R for testing.
+        let v = Vec3::new(0.5, 0., 0.);
+
         result.push(Electron {
             posit,
-            v: Vec3::new_zero(),
+            v,
             a: Vec3::new_zero(),
         })
     }
@@ -168,7 +173,7 @@ fn make_initial_elecs(n_elecs: usize) -> Vec<Electron> {
 }
 
 fn run(n_elecs: usize, n_timesteps: usize, dt: f64) -> Vec<SnapShot> {
-    let mut snapshots = Vec::new();
+    let mut snapshots = Vec::with_capacityh(n_timesteps);
 
     let charge_per_elec = Q_ELEC / n_elecs as f64;
 
@@ -281,7 +286,7 @@ fn main() {
     // todo: Statically allocate?
     println!("Building snapshots...");
     // let snapshots = run(200, 50_000, 0.001);
-    let snapshots = run(100, 100_000, 0.001);
+    let snapshots = run(1, 1000_000, 0.0001);
     println!("Complete. Rendering...");
 
     render(&snapshots);

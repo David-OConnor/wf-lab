@@ -1,8 +1,7 @@
-use lin_alg::f64::Vec3;
+use lin_alg::{complex_nums::Cplx, f64::Vec3};
 
 use super::{SphericalHarmonic, A_0};
 use crate::{
-    complex_nums::Cplx,
     core_calcs::eigen_fns::KE_COEFF,
     util::{self, factorial, EPS_DIV0},
 };

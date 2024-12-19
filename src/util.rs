@@ -1,9 +1,6 @@
-use lin_alg::f64::Vec3;
+use lin_alg::{complex_nums::Cplx, f64::Vec3};
 
-use crate::{
-    complex_nums::Cplx,
-    grid_setup::{Arr2d, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec},
-};
+use crate::grid_setup::{Arr2d, Arr2dVec, Arr3d, Arr3dReal, Arr3dVec};
 
 pub(crate) const EPS_DIV0: f64 = 0.0000000000001;
 // We use this to prevent adding psi values near the singularity when computing the norm.

@@ -23,13 +23,12 @@
 // todo: Something that would really help: A recipe for which basis wfs to add for a given
 // todo potential.
 
-use lin_alg::f64::Vec3;
+use lin_alg::{complex_nums::Cplx, f64::Vec3};
 
 #[cfg(feature = "cuda")]
 use crate::gpu;
 use crate::{
     basis_wfs::Basis,
-    complex_nums::Cplx,
     core_calcs::{
         eigen_fns::{self},
         eigen_raw,

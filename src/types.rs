@@ -2,10 +2,9 @@ use std::{ops::Add, sync::Arc};
 
 #[cfg(feature = "cuda")]
 use cudarc::driver::CudaDevice;
-use lin_alg::f64::Vec3;
+use lin_alg::{complex_nums::Cplx, f64::Vec3};
 
 use crate::{
-    complex_nums::Cplx,
     core_calcs::elec_elec::WaveFunctionMultiElec,
     dirac::{Spinor3, SpinorDerivsTypeD3, SpinorDerivsTypeDInner3},
     grid_setup::{

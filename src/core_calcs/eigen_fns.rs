@@ -21,10 +21,9 @@
 //!
 //! L^2 = d_psi_d_x^2 + d_psi_d_y^2 + d_psi_d_z^2
 
-use lin_alg::f64::Vec3;
+use lin_alg::{f64::Vec3, Cplx::IM};
 
 use crate::{
-    complex_nums::{Cplx, IM},
     core_calcs::elec_elec::WaveFunctionMultiElec,
     grid_setup::{Arr3d, Arr3dVec},
     types::DerivativesSingle,
@@ -43,10 +42,11 @@ pub const KE_COEFF_INV: f64 = 1. / KE_COEFF;
 /// This solves, analytically, the eigenvalue equation for the Hamiltonian operator.
 ///
 /// Hψ = Eψ. -ħ^2/2m * ψ'' + Vψ = Eψ. ψ'' = [(E - V) / (-ħ^2/2m)] ψ
-pub fn find_ψ_pp_calc(psi: Cplx, V: f64, E: f64) -> Cplx {
+pub fn find_ψ_pp_calc(ψ: Cplx, V: f64, E: f64) -> Cplx {
     // Note that V input is potential field; we get potential energy by multiplying it
     // by the charge being acted on (the electron)
-    psi * (E - V * Q_ELEC) * KE_COEFF_INV
+    // todo: Why q_elec here??
+    ψ * (E - V * Q_ELEC) * KE_COEFF_INV
 }
 
 /// Returns the *sum of psi'' from the 2 electrons*.
@@ -142,19 +142,6 @@ pub fn _find_E_2_elec(
 /// differentiation) derivative.
 pub fn calc_V_on_psi(psi: Cplx, psi_pp: Cplx, E: f64) -> f64 {
     // psi''/psi is always real, due to being an eigenvalue of a Hermitian operator.
-    // todo: What's going on? Why do we need to invert E here?
-    // KE_COEFF * (psi_pp / psi).real + E
-
-    // const EPS: f64 = 0.0001;
-
-    // todo: OK. Barking up the wrong tree: There is a legit asymptote.
-
-    // todo: TS issue on n>=2., at nodes.
-    // todo: Even if you do something like this, don't just use real!
-    // if psi.real.abs() < EPS && psi_pp.real.abs() < EPS {
-    //     return 0. - E;
-    // }
-
     KE_COEFF * (psi_pp / psi).real - E
 }
 

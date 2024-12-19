@@ -1,12 +1,11 @@
 //! Used to find weights and Xis for STOs.
 
-use lin_alg::f64::Vec3;
+use lin_alg::{complex_nums::Cplx, f64::Vec3};
 use ndarray::prelude::*;
 use ndarray_linalg::SVD;
 
 use crate::{
     basis_wfs::Basis,
-    complex_nums::Cplx,
     core_calcs::{
         eigen_fns::{calc_E_on_psi, calc_V_on_psi, KE_COEFF_INV},
         potential::{self, V_coulomb},

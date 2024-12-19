@@ -1,9 +1,8 @@
 //! Code related to Gaussian-Type Orbitals
 
-use lin_alg::f64::Vec3;
+use lin_alg::{complex_nums::Cplx, f64::Vec3};
 
 use super::SphericalHarmonic;
-use crate::complex_nums::Cplx;
 
 /// A Gaussian. We are currently experimenting with this for use as a general
 /// modifier to the wave function, vice for approximating atomic orbitals.

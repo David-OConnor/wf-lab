@@ -1,12 +1,9 @@
 //! Code related to Hydrogen-like orbitals
 
-use lin_alg::f64::Vec3;
+use lin_alg::{complex_nums::Cplx, f64::Vec3};
 
 use super::{SphericalHarmonic, A_0, Z_H};
-use crate::{
-    complex_nums::Cplx,
-    util::{self, factorial},
-};
+use crate::util::{self, factorial};
 
 /// A Hydrogen-atomic orbital. Note that unlike STOs, does not include an
 /// effective charge.
