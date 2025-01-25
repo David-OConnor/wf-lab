@@ -977,33 +977,23 @@ pub fn render(state: State) {
             ambient_color: [-1., 1., 1., 0.5],
             ambient_intensity: 0.03,
             point_lights: vec![
-                // // Light from above. The sun?
-                // PointLight {
-                //     type_: LightType::Omnidirectional,
-                //     position: Vec3::new(0., 100., 0.),
-                //     diffuse_color: [0.6, 0.4, 0.3, 1.],
-                //     specular_color: [0.6, 0.4, 0.3, 1.],
-                //     diffuse_intensity: 4_000.,
-                //     specular_intensity: 10_000.,
-                // },
-
-                // Light from above and to a side.
+                // Light from above
                 PointLight {
                     type_: LightType::Omnidirectional,
-                    position: Vec3::new(30., 50., 30.),
+                    position: Vec3::new(20., 20., 100.),
                     diffuse_color: [0.3, 0.4, 0.5, 1.],
                     specular_color: [0.3, 0.4, 0.5, 1.],
-                    diffuse_intensity: 8_000.,
-                    specular_intensity: 30_000.,
+                    diffuse_intensity: 1_000.,
+                    specular_intensity: 2_000.,
                 },
                 // Light from below
                 PointLight {
                     type_: LightType::Omnidirectional,
-                    position: Vec3::new(20., -50., 0.),
+                    position: Vec3::new(-20., 20., -100.),
                     diffuse_color: [0.3, 0.4, 0.5, 1.],
                     specular_color: [0.3, 0.4, 0.5, 1.],
-                    diffuse_intensity: 5_000.,
-                    specular_intensity: 20_000.,
+                    diffuse_intensity: 1_000.,
+                    specular_intensity: 2_000.,
                 },
             ],
         },

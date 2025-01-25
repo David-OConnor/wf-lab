@@ -6,8 +6,9 @@ edition = "2021"
 
 [dependencies]
 graphics = { path = "../graphics" }
-lin-alg = { package = "lin-alg2", path = "../lin_alg" }
-egui = "^0.29.1"
+#lin_alg = "^1.0.1"
+lin_alg = {path = "../lin_alg"}
+egui = "^0.30.0"
 
 # We use Scilib for computing H basis fns, eg with Laguerre and Legendre polynomials.
 scilib = "^1.0.0"
@@ -18,15 +19,19 @@ ndarray-linalg = { version = "^0.16.0", features = ["intel-mkl-static"] }
 
 nalgebra = "^0.33.0"
 
-# Keep this cuda version in sync with what you have installed on the system.
-cudarc = { version = "^0.12.1", optional=true, features=["cuda-12060"] }
-
 # todo: Eventually ditch this tool for permutations:
-itertools = "^0.13.0"
+itertools = "^0.14.0"
 rand = "^0.8.5"
 
+# todo: Integrate Rayon into your code.
+rayon = "^1.10.0"  # Parallel execution on CPU using thread pools.
 
-# We feature-gate the CUDA dependency, so this program can be run on computers that don't have a suitable graphics chip.
+# Keep this cuda version in sync with what you have installed on the system.
+cudarc = { version = "^0.13.3", optional=true, features=["cuda-12060"] }
+
+
+# We feature-gate the CUDA dependency, so this program can be run on computers that don't have a
+# suitable graphics chip.
 [features]
 default = ["cuda"]
 cuda = ["cudarc"]

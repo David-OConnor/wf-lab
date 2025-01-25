@@ -1,8 +1,7 @@
-//! GPU computation, via CUDA (not for graphics)
+//! GPU computation, via CUDA.
 //!
-//! Note: We are currently using f64s on the GPU. This induces a roughly 10-20x performance
-//! hit compared to f32. We'll switch to f32 as required, but this is still much faster
-//! than performing coulomb operations on the CPU.
+//! Note: f64 nduces a roughly 10-20x performance
+//! hit compared to f32.
 //!
 use std::{sync::Arc, time::Instant};
 

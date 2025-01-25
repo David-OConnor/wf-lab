@@ -13,6 +13,7 @@ pub enum GpuArchitecture {
     Rtx2,
     Rtx3,
     Rtx4,
+    Rtx5,
 }
 
 impl GpuArchitecture {
@@ -22,6 +23,7 @@ impl GpuArchitecture {
             Self::Rtx2 => 75,
             Self::Rtx3 => 86,
             Self::Rtx4 => 89,
+            Self::Rtx5 => 100,
         };
 
         String::from(format!("arch=compute_{version},code=sm_{version}"))

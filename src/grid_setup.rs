@@ -3,6 +3,7 @@
 use lin_alg::{
     complex_nums::Cplx,
     f64::{Mat3, Vec3},
+    linspace,
 };
 
 use crate::{iter_arr, types::DerivativesSingle, util, Axis};
@@ -90,7 +91,7 @@ pub fn update_grid_posits(
     spacing_factor: f64,
     n: usize,
 ) {
-    let grid_lin = util::linspace((grid_range.0, grid_range.1), n);
+    let grid_lin = linspace(grid_range.0, grid_range.1, n);
 
     // Set up a grid with values that increase in distance the farther we are from the center.
     let mut grid_1d = vec![0.; n];
@@ -122,7 +123,7 @@ pub fn update_grid_posits_2d(
     n: usize,
     axis_hidden: Axis,
 ) {
-    let grid_lin = util::linspace((grid_range.0, grid_range.1), n);
+    let grid_lin = linspace(grid_range.0, grid_range.1, n);
 
     // Set up a grid with values that increase in distance the farther we are from the center.
     let mut grid_1d = vec![0.; n];

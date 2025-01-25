@@ -21,7 +21,7 @@
 //!
 //! L^2 = d_psi_d_x^2 + d_psi_d_y^2 + d_psi_d_z^2
 
-use lin_alg::{f64::Vec3, Cplx::IM};
+use lin_alg::{f64::Vec3, complex_nums::{Cplx, IM}};
 
 use crate::{
     core_calcs::elec_elec::WaveFunctionMultiElec,

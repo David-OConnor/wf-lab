@@ -1,15 +1,13 @@
 // #include <math.h>
 #include <initializer_list>
 
-// todo: Header file.
 #include "util.cu"
-// #include "util.cuh"
 
 
 __device__
 dtype norm_term(uint16_t n, uint16_t l) {
-    double norm_term_num = std::pow(2.0f / n, 3) * factorial(n - l - 1);
-    double norm_term_denom = std::pow(2 * n * factorial(n + l), 3);
+    dtype norm_term_num = std::pow(2.0f / n, 3) * factorial(n - l - 1);
+    dtype norm_term_denom = std::pow(2 * n * factorial(n + l), 3);
     return std::sqrt(norm_term_num / norm_term_denom);
 }
 
@@ -36,23 +34,6 @@ dtype sto_val(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n, uint1
         * exp_term;
 }
 
-// We mainly use this for numerical psi'''
-__device__
-double sto_val_f64(double3 posit_sample, double3 posit_nuc, double xi, uint16_t n, uint16_t l) {
-    double r = calc_dist_f64(posit_sample, posit_nuc);
-
-    double exp_term = std::exp(-xi * r / n);
-
-    uint16_t lg_l = n - l - 1;
-    uint16_t lg_r = 2 * l + 1;
-    double lg_input = 2. * r / n;
-
-    double polynomial_term = std::pow(2. * r / n, l) * laguerre(lg_l, lg_r, lg_input);
-
-    return norm_term(n, l)
-        * polynomial_term
-        * exp_term;
-}
 
 // Note that this is for the radial component only. Real. See CPU side for a ref.
 __device__
@@ -114,33 +95,33 @@ dtype psi_pp_div_psi(dtype3 posit_sample, dtype3 posit_nuc, dtype xi, uint16_t n
     }
 }
 
-// We use `double` here, due to numerical problems with `float`
+// We use `dtype` here, due to numerical problems with `float`
 // todo: Still experiencing numerical or related problems after this change.
 __device__
 dtype find_psi_pp_num(
     dtype3 posit_sample_,
     dtype3 posit_nuc_,
-    double xi,
+    dtype xi,
     uint16_t n,
     uint16_t l,
-    double psi_sample_loc
+    dtype psi_sample_loc
 ) {
-   double3 posit_sample;
-   double3 posit_nuc;
+   dtype3 posit_sample;
+   dtype3 posit_nuc;
 
-   posit_sample.x = static_cast<double>(posit_sample_.x);
-   posit_sample.y = static_cast<double>(posit_sample_.y);
-   posit_sample.z = static_cast<double>(posit_sample_.z);
-   posit_nuc.x = static_cast<double>(posit_nuc_.x);
-   posit_nuc.y = static_cast<double>(posit_nuc_.y);
-   posit_nuc.z = static_cast<double>(posit_nuc_.z);
+   posit_sample.x = static_cast<dtype>(posit_sample_.x);
+   posit_sample.y = static_cast<dtype>(posit_sample_.y);
+   posit_sample.z = static_cast<dtype>(posit_sample_.z);
+   posit_nuc.x = static_cast<dtype>(posit_nuc_.x);
+   posit_nuc.y = static_cast<dtype>(posit_nuc_.y);
+   posit_nuc.z = static_cast<dtype>(posit_nuc_.z);
 
-    double3 x_prev;
-    double3 x_next;
-    double3 y_prev;
-    double3 y_next;
-    double3 z_prev;
-    double3 z_next;
+    dtype3 x_prev;
+    dtype3 x_next;
+    dtype3 y_prev;
+    dtype3 y_next;
+    dtype3 z_prev;
+    dtype3 z_next;
 
     x_prev.x = posit_sample.x - H;
     x_prev.y = posit_sample.y;
@@ -166,15 +147,15 @@ dtype find_psi_pp_num(
     z_next.y = posit_sample.y;
     z_next.z = posit_sample.z + H;
 
-    dtype psi_x_prev = sto_val_f64(x_prev, posit_nuc, xi, n, l);
-    dtype psi_x_next = sto_val_f64(x_next, posit_nuc, xi, n, l);
-    dtype psi_y_prev = sto_val_f64(y_prev, posit_nuc, xi, n, l);
-    dtype psi_y_next = sto_val_f64(y_next, posit_nuc, xi, n, l);
-    dtype psi_z_prev = sto_val_f64(z_prev, posit_nuc, xi, n, l);
-    dtype psi_z_next = sto_val_f64(z_next, posit_nuc, xi, n, l);
+    dtype psi_x_prev = sto_val(x_prev, posit_nuc, xi, n, l);
+    dtype psi_x_next = sto_val(x_next, posit_nuc, xi, n, l);
+    dtype psi_y_prev = sto_val(y_prev, posit_nuc, xi, n, l);
+    dtype psi_y_next = sto_val(y_next, posit_nuc, xi, n, l);
+    dtype psi_z_prev = sto_val(z_prev, posit_nuc, xi, n, l);
+    dtype psi_z_next = sto_val(z_next, posit_nuc, xi, n, l);
 
 
-    return static_cast<float>((psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
+    return static_cast<dtype>((psi_x_prev + psi_x_next + psi_y_prev + psi_y_next + psi_z_prev + psi_z_next
         - psi_sample_loc * 6.)
         / H_SQ);
 }
@@ -185,10 +166,10 @@ dtype find_psi_pp_num(
 // to the CPU in the other approach.
 extern "C" __global__
 void coulomb_kernel(
-    float *out,
-    float3 *posits_charge,
-    float3 *posits_sample,
-    float *charges,
+    dtype *out,
+    dtype3 *posits_charge,
+    dtype3 *posits_sample,
+    dtype *charges,
     size_t N_charges,
     size_t N_samples
 ) {
@@ -199,8 +180,8 @@ void coulomb_kernel(
         // Compute the sum serially, as it may not be possible to naively apply it in parallel,
         // and we may still be saturating GPU cores given the large number of samples.
         for (size_t i_charge = 0; i_charge < N_charges; i_charge++) {
-            float3 posit_charge = posits_charge[i_charge];
-            float3 posit_sample = posits_sample[i_sample];
+            dtype3 posit_charge = posits_charge[i_charge];
+            dtype3 posit_sample = posits_sample[i_sample];
 
             if (i_sample < N_samples) {
                 out[i_sample] += coulomb(posit_charge, posit_sample, charges[i_charge]);

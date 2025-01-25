@@ -1,7 +1,7 @@
 //! Contains code related to calculating the results of the basic eigenfunctions (H, L^2, L_z)
 //! on ψ.
 
-use lin_alg::{f64::Vec3, Cplx, IM};
+use lin_alg::{f64::Vec3, complex_nums::{Cplx, IM}};
 
 use crate::{core_calcs::eigen_fns::KE_COEFF, types::DerivativesSingle};
 

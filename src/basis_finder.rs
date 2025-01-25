@@ -1,6 +1,6 @@
 //! Used to find weights and Xis for STOs.
 
-use lin_alg::{complex_nums::Cplx, f64::Vec3};
+use lin_alg::{complex_nums::Cplx, f64::Vec3, linspace};
 use ndarray::prelude::*;
 use ndarray_linalg::SVD;
 
@@ -87,7 +87,7 @@ fn find_base_xi_E_common(
     let mut smallest_diff = f64::MAX;
 
     // This isn't perhaps an ideal approach, but try it to find the baseline xi.
-    let trial_base_xis = util::linspace((1., 3.), 200);
+    let trial_base_xis = linspace(1., 3., 200);
 
     let mut Es = vec![0.; trial_base_xis.len()];
 
@@ -186,8 +186,8 @@ fn find_base_xi_E2(
     // };
 
     // let trial_base_xis = util::linspace((0.5, 1.9), 100);
-    let trial_base_xis = util::linspace((1.38, 1.41), 10);
-    let trial_Es = util::linspace((-0.1, -0.45), 100);
+    let trial_base_xis = linspace(1.38, 1.41, 10);
+    let trial_Es = linspace(-0.1, -0.45, 100);
 
     let mut best_score = 999999.;
     let mut best_xi = 0.;
