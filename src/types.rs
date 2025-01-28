@@ -15,8 +15,9 @@ use crate::{
     Axis,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum ComputationDevice {
+    #[default]
     Cpu,
     #[cfg(feature = "cuda")]
     Gpu(Arc<CudaDevice>),

@@ -25,6 +25,8 @@
 
 use lin_alg::{complex_nums::Cplx, f64::Vec3};
 
+use rayon::prelude::*;
+
 #[cfg(feature = "cuda")]
 use crate::gpu;
 use crate::{
@@ -60,7 +62,7 @@ impl Spin {
             Self::Alpha => "α",
             Self::Beta => "β",
         }
-        .to_string()
+            .to_string()
     }
 }
 
@@ -124,25 +126,30 @@ pub fn wf_from_bases(
                 }
             }
             ComputationDevice::Cpu => {
-                for (i, j) in iter_arr_2d!(grid_n) {
-                    let posit_sample = grid_posits[i][j];
+                // for (i, j) in iter_arr_2d!(grid_n) {
+                for i in 0..grid_n {
+                    for j in 0..grid_n {
+                    // psi_per_basis[basis_i][i].par_iter_mut().enumerate(|(j, psi)| {
+                    // (0..grid_n).into_par_iter().for_each(|j| {
+                        let posit_sample = grid_posits[i][j];
 
-                    psi_per_basis[basis_i][i][j] = basis.value(posit_sample);
-                    let b = [basis.clone()];
+                        psi_per_basis[basis_i][i][j] = basis.value(posit_sample);
+                        let b = [basis.clone()];
 
-                    let d =
-                        calc_derivs_cpu(psi_per_basis[basis_i][i][j], &b, posit_sample, deriv_calc);
+                        let d =
+                            calc_derivs_cpu(psi_per_basis[basis_i][i][j], &b, posit_sample, deriv_calc);
 
-                    derivs_per_basis[basis_i].dx[i][j] = d.dx;
-                    derivs_per_basis[basis_i].dy[i][j] = d.dy;
-                    derivs_per_basis[basis_i].dz[i][j] = d.dz;
-                    derivs_per_basis[basis_i].d2x[i][j] = d.d2x;
-                    derivs_per_basis[basis_i].d2y[i][j] = d.d2y;
-                    derivs_per_basis[basis_i].d2z[i][j] = d.d2z;
-                    derivs_per_basis[basis_i].d2_sum[i][j] = d.d2_sum;
+                        derivs_per_basis[basis_i].dx[i][j] = d.dx;
+                        derivs_per_basis[basis_i].dy[i][j] = d.dy;
+                        derivs_per_basis[basis_i].dz[i][j] = d.dz;
+                        derivs_per_basis[basis_i].d2x[i][j] = d.d2x;
+                        derivs_per_basis[basis_i].d2y[i][j] = d.d2y;
+                        derivs_per_basis[basis_i].d2z[i][j] = d.d2z;
+                        derivs_per_basis[basis_i].d2_sum[i][j] = d.d2_sum;
 
-                    // todo: Impl your Derivatives construction from GPU as well, but we'll use CPU for calculating
-                    // todo these for now.
+                        // todo: Impl your Derivatives construction from GPU as well, but we'll use CPU for calculating
+                        // todo these for now.
+                    }
                 }
             }
         }
